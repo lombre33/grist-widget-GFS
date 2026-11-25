@@ -2,9 +2,9 @@
 // (kit/js/synchro/) branché sur le port de GFS (js/sharing/sync-port.js), une fois, dans un sens. Rien n'est simulé côté Grist : le port est celui de GFS, ses requêtes passent par le vrai cadre d'envoi, les
 // webhooks sont ceux de Grist. Le parcours est celui que dessine l'écran à venir, sans écran :
 //   SOURCE (le premier) : l'export du PDF (un seul fichier, une condition sur son identifiant), l'invitation et son code ;
-//   CIBLE (le second)   : l'invitation lue et contrôlée, la réception créée (un journal, son formulaire publié, la table `GFS_Recus`), le lien du formulaire collé une fois, le code de réponse ;
+//   CIBLE (le second)   : l'invitation lue et contrôlée, la réception créée (un journal, son formulaire publié, la table `GFS_Received`), le lien du formulaire collé une fois, le code de réponse ;
 //   SOURCE              : la réponse contrôlée chez Grist, le webhook branché, l'existant envoyé ;
-//   CIBLE               : le PDF est dans `GFS_Recus`, la pièce jointe a les mêmes octets.
+//   CIBLE               : le PDF est dans `GFS_Received`, la pièce jointe a les mêmes octets.
 //   GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-sync-partage.mjs
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
@@ -23,18 +23,18 @@ try {
   const source = await openGfs(context);
   await importSamples(source);
   const target = await openGfs(context);
-  check('deux documents ont GFS, le premier avec deux PDF', source.docId !== target.docId && (await source.rest.rows('GFS_Fichiers')).length === 2, [source.docId, target.docId]);
+  check('deux documents ont GFS, le premier avec deux PDF', source.docId !== target.docId && (await source.rest.rows('GFS_Files')).length === 2, [source.docId, target.docId]);
   await startEngine(source.frame);
   await startEngine(target.frame);
 
   // SOURCE : un export d'un seul fichier.
   const filter = { mode: 'all', conds: [{ id: 'Identifiant', op: 'eq', values: [source.id] }] };
-  const saved = await source.frame.evaluate(args => window.__try(() => window.__s.saveChosenExport({ name: 'Facture', selection: [{ table: 'GFS_Fichiers', columns: args.columns, filter: args.filter }] }).then(done => ({ id: done.id, created: done.created }))), { columns: COLUMNS, filter });
+  const saved = await source.frame.evaluate(args => window.__try(() => window.__s.saveChosenExport({ name: 'Facture', selection: [{ table: 'GFS_Files', columns: args.columns, filter: args.filter }] }).then(done => ({ id: done.id, created: done.created }))), { columns: COLUMNS, filter });
   check('SOURCE : l\'export d\'un fichier est créé', saved.ok && saved.value.created, saved);
-  const columns = (await source.rest.columns('GFS_Fichiers')).map(each => each.id);
-  say('Colonnes de GFS_Fichiers après l\'export :', columns.join(', '));
+  const columns = (await source.rest.columns('GFS_Files')).map(each => each.id);
+  say('Colonnes de GFS_Files après l\'export :', columns.join(', '));
   say('Tables de la SOURCE :', (await source.rest.tables()).join(', '));
-  check('SOURCE : la table technique GFS_Synchro, et trois colonnes d\'aide dans GFS_Fichiers', (await source.rest.tables()).includes('GFS_Synchro') && ['id_sync', 'MajLe', 'RecalculLe'].every(name => columns.includes(name)), columns);
+  check('SOURCE : la table technique GFS_Synchro, et trois colonnes d\'aide dans GFS_Files', (await source.rest.tables()).includes('GFS_Synchro') && ['id_sync', 'MajLe', 'RecalculLe'].every(name => columns.includes(name)), columns);
 
   const invited = await source.frame.evaluate(exp => window.__try(async () => {
     const { entry, secret } = await window.__s.startInvitation(exp);
@@ -45,19 +45,19 @@ try {
   const plan = await source.frame.evaluate(exp => window.__try(() => window.__s.loadPlan(exp)), saved.value.created);
   check('SOURCE : l\'envoi de l\'existant coûte un fichier', plan.ok && plan.value.count === 1, plan);
 
-  // CIBLE : l'invitation, la réception à part (`GFS_Recus`).
+  // CIBLE : l'invitation, la réception à part (`GFS_Received`).
   const read = await target.frame.evaluate(code => window.__try(async () => {
     const invitation = await window.__s.readInvitation(code);
     return { invitation, known: await window.__s.knownReception(invitation) };
   }), invited.value.code);
   check('CIBLE : l\'invitation est lue et contrôlée (même instance, un fichier, le nom de l\'export)', read.ok && read.value.invitation.name === 'Facture' && read.value.known === null, read.ok ? { name: read.value.invitation.name, from: read.value.invitation.from } : read);
   const made = await target.frame.evaluate(invitation => window.__try(async () => {
-    const plans = invitation.tables.map(tb => ({ tb, dest: 'GFS_Recus' }));
+    const plans = invitation.tables.map(tb => ({ tb, dest: 'GFS_Received' }));
     const { existing } = await window.__s.checkDestinations(invitation, plans);
     const reception = await window.__s.createReception(invitation, plans, { reserve: true, options: {} });
     return { existing, journal: reception.journal, created: reception.created, note: reception.note };
   }), read.value.invitation);
-  check('CIBLE : la réception est créée (un journal, sa page, la table reçue à part)', made.ok && made.value.created.includes('GFS_Recus') && /^GFS_Journal_/.test(made.value.journal), made.ok ? { existing: made.value.existing, journal: made.value.journal, created: made.value.created } : made);
+  check('CIBLE : la réception est créée (un journal, sa page, la table reçue à part)', made.ok && made.value.created.includes('GFS_Received') && /^GFS_Journal_/.test(made.value.journal), made.ok ? { existing: made.value.existing, journal: made.value.journal, created: made.value.created } : made);
   say('Tables de la CIBLE :', (await target.rest.tables()).join(', '));
   say('Pages de la CIBLE :', (await target.rest.pages()).join(', '));
 
@@ -89,26 +89,26 @@ try {
   const received = async () => {
     await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
     await target.frame.evaluate(() => window.__try(() => window.__s.consolidateAll({ reread: true })));
-    return target.rest.rows('GFS_Recus');
+    return target.rest.rows('GFS_Received');
   };
   let rows = [];
   for (let i = 0; i < 40 && !rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i++) { await target.page.waitForTimeout(2000); rows = await received(); }
-  say('Lignes de GFS_Recus :', JSON.stringify(rows.map(row => ({ Nom: row.Nom, Taille: row.Taille, Contenu: row.Contenu }))));
+  say('Lignes de GFS_Received :', JSON.stringify(rows.map(row => ({ Nom: row.Nom, Taille: row.Taille, Contenu: row.Contenu }))));
   check('CIBLE : le fichier choisi est dans la table reçue, et lui seul', rows.filter(row => row.Supprime !== true).length === 1 && rows.some(row => row.Nom === 'Facture.pdf'), rows.map(row => row.Nom));
-  const sent = (await source.rest.rows('GFS_Fichiers')).find(row => row.Identifiant === source.id);
+  const sent = (await source.rest.rows('GFS_Files')).find(row => row.Identifiant === source.id);
   const there = rows.find(row => row.Nom === 'Facture.pdf');
   const was = await source.rest.attachment(sent.Contenu[1]);
   const now = there && Array.isArray(there.Contenu) ? await target.rest.attachment(there.Contenu[1]) : null;
   check('CIBLE : la pièce jointe a les mêmes octets (empreinte, taille, type)', Boolean(now) && now.status === 200 && now.hash === was.hash && now.size === was.size, { was, now });
-  check('CIBLE : GFS_Fichiers de la CIBLE n\'existe pas (la table reçue est à part)', !(await target.rest.tables()).includes('GFS_Fichiers'), await target.rest.tables());
-  const left = (await source.rest.rows('GFS_Fichiers')).map(row => row.Nom);
+  check('CIBLE : GFS_Files de la CIBLE n\'existe pas (la table reçue est à part)', !(await target.rest.tables()).includes('GFS_Files'), await target.rest.tables());
+  const left = (await source.rest.rows('GFS_Files')).map(row => row.Nom);
   check('SOURCE : le fichier d\'origine est intact', left.includes('Facture.pdf') && left.includes('Devis.pdf'), left);
   // « Une fois » : quand le fichier est arrivé, la SOURCE arrête le partage (avis de fin, webhook et lignes de Synchro effacés) ; la copie reste chez la CIBLE.
   const pending = await source.frame.evaluate(id => window.__s.filesPending(id), saved.value.id);
   check('SOURCE : plus aucun fichier à envoyer', pending === 0, pending);
   const ended = await source.frame.evaluate(exp => window.__try(() => window.__s.endExport(exp)), { ...saved.value.created, recipients: [] });
   check('SOURCE : le partage est arrêté (endExport)', ended.ok, ended);
-  check('SOURCE : plus de webhook, plus de table GFS_Synchro ; les trois colonnes d\'aide restent', (await source.frame.evaluate(() => window.__p.listWebhooks())).length === 0 && !(await source.rest.tables()).includes('GFS_Synchro') && (await source.rest.columns('GFS_Fichiers')).some(each => each.id === 'id_sync'), await source.rest.tables());
+  check('SOURCE : plus de webhook, plus de table GFS_Synchro ; les trois colonnes d\'aide restent', (await source.frame.evaluate(() => window.__p.listWebhooks())).length === 0 && !(await source.rest.tables()).includes('GFS_Synchro') && (await source.rest.columns('GFS_Files')).some(each => each.id === 'id_sync'), await source.rest.tables());
   const kept = await received();
   check('CIBLE : la copie reste après la fin du partage, avec son contenu', kept.some(row => row.Nom === 'Facture.pdf' && row.Contenu), kept.map(row => ({ Nom: row.Nom, Contenu: row.Contenu })));
   say('Tables de la CIBLE après la fin :', (await target.rest.tables()).join(', '));

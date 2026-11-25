@@ -8,7 +8,7 @@ import { KeptFiles } from './kept-files.js';
 import { AppFiles } from './app-files.js';
 import { activeAppCalls } from '../broker/app-calls.js';
 
-// Les fichiers que GFS garde lui-même, les PDF : le cadre d'envoi, la table `GFS_Fichiers` (créée avec l'accord de la personne), et ce qu'il faut pour
+// Les fichiers que GFS garde lui-même, les PDF : le cadre d'envoi, la table `GFS_Files` (créée avec l'accord de la personne), et ce qu'il faut pour
 // importer, télécharger et supprimer. Le cadre d'envoi ne s'ouvre qu'au premier transfert.
 export function buildKept(c, { ask, hideNotice }) {
   const consent = () => ask({ title: c.t('files.table.title'), message: c.t('files.table.text'), confirmLabel: c.t('table.create'),
@@ -24,7 +24,7 @@ export function buildKept(c, { ask, hideNotice }) {
 }
 
 // Les fichiers des apps à la corbeille et à la copie : le gardien des tables que les manifestes disent savoir retirer, remettre et copier (`suppression`,
-// `copie`) ; `GFS_Corbeille` naît avec l'accord de la personne. Un fichier qui tient à plus qu'une ligne (contrats 2.4 `appel`) : l'app ouverte seule sait le
+// `copie`) ; `GFS_Trash` naît avec l'accord de la personne. Un fichier qui tient à plus qu'une ligne (contrats 2.4 `appel`) : l'app ouverte seule sait le
 // fermer ou le copier.
 export function buildAppFiles(c, { ask }) {
   const consent = () => ask({ title: c.t('trash.table.title'), message: c.t('trash.table.text'), confirmLabel: c.t('table.create'),

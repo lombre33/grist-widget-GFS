@@ -3,7 +3,8 @@
 //
 // Le verrou est celui de Grist, jamais un filtre d'écran : un filtre d'affichage n'arrête personne (cahier 2, « deux zones »). La table des personnes reste
 // à son propriétaire, et GFS n'y pose aucune règle ; ce que Grist verrouille est une COPIE, que GFS range dans la ligne du sous-annuaire (`Fiches`, de
-// `GFS_Annuaires`) : la table de GFS que le moteur de partage couvre (js/sharing/sharing-model.js, `ANNUAIRES_TARGET`), avec les mêmes lignes « qui voit quoi »
+// `GFS_Directories`) : la table de GFS que le moteur de partage couvre (js/sharing/sharing-model.js, `ANNUAIRES_TARGET`), avec les mêmes lignes « qui voit
+//   quoi »
 //   que les fichiers (lecture, écriture, administration, aucun accès, pour une personne, un groupe ou une catégorie). La copie dit quand elle a été prise ; la
 //   reprendre (« Actualiser ») relit l'annuaire d'origine, donc ce que la personne qui actualise y lit.
 //
@@ -107,7 +108,7 @@ export function unpackFiches(source, depth = 0) {
   return { people, schema, at: text(input.at) };
 }
 
-// La ligne qu'on ajoute à `GFS_Annuaires` pour un nouveau sous-annuaire. `parent` : l'annuaire d'origine ({ row, table, config }) ; `sub` : le critère
+// La ligne qu'on ajoute à `GFS_Directories` pour un nouveau sous-annuaire. `parent` : l'annuaire d'origine ({ row, table, config }) ; `sub` : le critère
 // ({ key, label, values }) ; `read` : la lecture de l'annuaire d'origine (ses personnes, son schéma) ; `at` : le moment.
 export function subRecord({ name, parent, sub, read, at }) {
   const people = peopleOfSub(copyable(read), sub);

@@ -58,23 +58,23 @@ test(`la boucle s'arrête : après ${LIMIT} lectures de suite que la page n'a pa
   let asked = 0;
   await assert.rejects(guard.run('Publipostage_Modeles', async () => { asked += 1; }), error => error instanceof ReadHeldError && error.held === true && error.count === LIMIT);
   assert.equal(asked, 0, 'la table retenue n\'est pas demandée à Grist');
-  assert.deepEqual(await guard.run('GFS_Fichiers', async () => 'lue'), 'lue', 'une autre table se lit');
+  assert.deepEqual(await guard.run('GFS_Files', async () => 'lue'), 'lue', 'une autre table se lit');
   await assert.rejects(guard.run('Publipostage_Modeles', async () => { asked += 1; }), ReadHeldError, 'ni à la lecture suivante de la même page');
   assert.equal(asked, 0);
 });
 
 test('plusieurs tables étaient en vol quand Grist a coupé : au démarrage suivant elles se lisent une à une, celle qui coupe se désigne et les autres sont blanchies', async () => {
   const t = tab();
-  await dies(t, ['Publipostage_Modeles', 'Publipostage_PreferencesModeles', 'GFS_Fichiers']);
-  assert.deepEqual(Object.keys(t.values).sort(), [keyOf('GFS_Fichiers'), keyOf('Publipostage_Modeles'), keyOf('Publipostage_PreferencesModeles')].sort());
+  await dies(t, ['Publipostage_Modeles', 'Publipostage_PreferencesModeles', 'GFS_Files']);
+  assert.deepEqual(Object.keys(t.values).sort(), [keyOf('GFS_Files'), keyOf('Publipostage_Modeles'), keyOf('Publipostage_PreferencesModeles')].sort());
   // démarrage 2 : une table innocente d'abord (elle finit), puis celle qui coupe ; la troisième attend son tour et n'est jamais lancée
   const second = t.page();
   const order = [];
   let release;
   const first = second.run('Publipostage_PreferencesModeles', () => { order.push('préférences'); return new Promise(resolve => { release = resolve; }); });
   void second.run('Publipostage_Modeles', () => { order.push('modèles'); return never(); }).catch(() => {});
-  void second.run('GFS_Fichiers', () => { order.push('fichiers'); return never(); }).catch(() => {});
-  const fresh = second.run('GFS_Rangement', async () => { order.push('rangement'); return 'lue'; });
+  void second.run('GFS_Files', () => { order.push('fichiers'); return never(); }).catch(() => {});
+  const fresh = second.run('GFS_Filing', async () => { order.push('rangement'); return 'lue'; });
   await settle();
   assert.deepEqual([...order].sort(), ['préférences', 'rangement'], 'une seule table suspecte en vol ; une table sans note n\'attend personne');
   assert.equal(await fresh, 'lue');
@@ -84,12 +84,12 @@ test('plusieurs tables étaient en vol quand Grist a coupé : au démarrage suiv
   assert.deepEqual([...order].sort(), ['modèles', 'préférences', 'rangement'], 'la suivante part quand la première a rendu ; la troisième attend encore');
   assert.equal(t.values[keyOf('Publipostage_PreferencesModeles')], undefined, 'la table qui a rendu est blanchie');
   assert.equal(t.values[keyOf('Publipostage_Modeles')].split(':')[0], '2');
-  assert.equal(t.values[keyOf('GFS_Fichiers')].split(':')[0], '1', 'une table qui n\'a pas été lancée ne compte pas une lecture de plus');
+  assert.equal(t.values[keyOf('GFS_Files')].split(':')[0], '1', 'une table qui n\'a pas été lancée ne compte pas une lecture de plus');
   t.clock.now += 9000;
   await dies(t, ['Publipostage_Modeles']); // démarrage 3 : elle coupe encore
   const fourth = t.page();
   await assert.rejects(fourth.run('Publipostage_Modeles', async () => 'lue'), ReadHeldError);
-  assert.equal(await fourth.run('GFS_Fichiers', async () => 'lue'), 'lue', 'la table qui attendait se lit enfin, seule');
+  assert.equal(await fourth.run('GFS_Files', async () => 'lue'), 'lue', 'la table qui attendait se lit enfin, seule');
   assert.deepEqual(Object.keys(t.values), [keyOf('Publipostage_Modeles')]);
 });
 
@@ -165,7 +165,7 @@ const manifest = publipostage();
 const spec = manifest.fichiers[0];
 const data = () => ({
   [spec.table]: { id: [1], Nom: ['Convocation'], TypeModele: [''], DateModif: [0], ModifiePar: [''] },
-  GFS_Fichiers: { id: [1], Identifiant: ['aa'], Nom: ['A.pdf'], Type: ['pdf'], Date: [10], Auteur: ['p'], Contenu: [['L', 7]], Taille: [900], Origine: ['import'], SupprimeLe: [null], SupprimePar: [''] },
+  GFS_Files: { id: [1], Identifiant: ['aa'], Nom: ['A.pdf'], Type: ['pdf'], Date: [10], Auteur: ['p'], Contenu: [['L', 7]], Taille: [900], Origine: ['import'], SupprimeLe: [null], SupprimePar: [''] },
 });
 
 test('loadFiles : toutes les lectures complètes des tables de fichiers passent par le garde-fou ; une table retenue est le problème de son app (`held`), et les fichiers des autres se montrent', async () => {

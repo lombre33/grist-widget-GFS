@@ -128,7 +128,7 @@ export class GfsController {
     this.live = liveSwitch(search);
     const docId = docKey(() => this.port.doc.getDocName()); // demandé une fois à Grist, pour ce qui se garde par document sur le navigateur
     this.#buildLightReads(docId);
-    // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste de la
+    // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Filing` (contrats 7.4), écrit seulement sur un geste de la
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
     // reste inconnue.
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.writeBlock(),

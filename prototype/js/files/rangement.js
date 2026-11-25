@@ -1,4 +1,4 @@
-// La table du document où GFS retient ce qui vaut pour tout le document et le rangement des fichiers : `GFS_Rangement` (contrats 6.4). Quatre sortes de lignes
+// La table du document où GFS retient ce qui vaut pour tout le document et le rangement des fichiers : `GFS_Filing` (contrats 6.4). Quatre sortes de lignes
 // (la dernière, les dossiers suivis, plus bas) : la ligne réservée des apps installées (`@document` / `gfs` / `apps`, la valeur en JSON dans `Valeur`, contrats
 // 7.4), la ligne-sonde qui apprend à GFS l'adresse de la personne (`@sonde`, ajoutée puis retirée aussitôt, 6.4 point 6) et une ligne par (personne, app,
 // fichier) qui a un favori ou un dossier (6.4, point 1). GFS seul l'écrit, par sa propre connexion à Grist. Les règles d'une table de GFS (lire ne crée rien,
@@ -12,7 +12,7 @@ import { DocumentNewer, STRUCTURE, STRUCTURE_ROW, isNewer, stamped, structureFro
 
 export { TableDeclined, DocumentNewer };
 
-export const TABLE = 'GFS_Rangement';
+export const TABLE = 'GFS_Filing';
 export const RESERVED = Object.freeze({ Utilisateur: '@document', App: 'gfs', Fichier: 'apps' });
 // La ligne-sonde : ajoutée puis retirée aussitôt, c'est elle seule que Grist remplit de l'adresse de la personne (formule déclenchée de `Adresse`, 6.4 point
 // 6).
@@ -288,7 +288,7 @@ export class Rangement {
   }
 
   // Les rangements que les apps tiennent elles-mêmes et que GFS écrit, pour celles dont la table est là avec ses colonnes (js/files/app-filing.js) : une Map,
-  // app -> { filing, tableId, data }. Pour les autres (la table n'est pas née, une colonne manque), GFS range comme avant, dans `GFS_Rangement`. Les tables des
+  // app -> { filing, tableId, data }. Pour les autres (la table n'est pas née, une colonne manque), GFS range comme avant, dans `GFS_Filing`. Les tables des
   // apps se lisent toutes ensemble : un aller-retour de réseau pour toutes, non un par app.
   async #appTargets() {
     const found = await Promise.all(this.#appFilings().map(async filing => {
@@ -319,7 +319,7 @@ export class Rangement {
   // Range des fichiers pour la personne que Grist connaît (`identity`, ou '' quand son adresse n'est pas lue : le rangement est alors commun au document, 6.4
   // point 4) : la ligne de chaque (personne, app, fichier) est mise à jour si elle existe, ajoutée sinon. `entries` : [{ app, file, pinned, folder }], le
   // dossier en chemin normalisé. **Les fichiers d'une app qui tient son rangement et le laisse écrire (6.4, point 8) sont rangés dans la table de l'app**, pas
-  // ici ; ce que `GFS_Rangement` disait déjà d'elle passe alors chez elle, dans le même lot.
+  // ici ; ce que `GFS_Filing` disait déjà d'elle passe alors chez elle, dans le même lot.
   // `folders` : { add, drop, moved, merged, extra, quiet }, les dossiers que la personne garde sans fichier (6.4, point 11) :
   // - `add` : les chemins à garder (une ligne chacun, s'il n'y en a pas déjà, ici et chez chaque app qui a une ligne d'état de dossier) ;
   // - `drop` : ceux à ne plus garder (toutes leurs lignes) ;
@@ -349,7 +349,7 @@ export class Rangement {
     return true;
   }
 
-  // Les actions d'un lot de rangement : les lignes des fichiers dans `GFS_Rangement` (ceux des apps qui tiennent leur rangement vont chez elles), les lignes
+  // Les actions d'un lot de rangement : les lignes des fichiers dans `GFS_Filing` (ceux des apps qui tiennent leur rangement vont chez elles), les lignes
   // d'état des dossiers, ce que les apps tiennent, puis les actions de plus (`extra`).
   #actionsOf(data, targets, entries, { add, drop, moved, merged, extra }) {
     const identity = this.identity;
@@ -367,7 +367,7 @@ export class Rangement {
     return [...actions, ...extra];
   }
 
-  // Les actions d'un lot pour une app qui tient son rangement : ses fichiers du lot, les dossiers gardés ou retirés, et ce que `GFS_Rangement` disait d'elle
+  // Les actions d'un lot pour une app qui tient son rangement : ses fichiers du lot, les dossiers gardés ou retirés, et ce que `GFS_Filing` disait d'elle
   // (`carryOver`), que le lot reprend sans le doubler.
   #appBatch(app, target, { entries, add, drop }, gfs, identity) {
     const own = entries.filter(entry => entry.app === app).map(({ file, pinned, folder }) => ({ file, pinned, folder }));

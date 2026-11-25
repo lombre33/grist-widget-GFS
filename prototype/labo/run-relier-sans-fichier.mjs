@@ -90,8 +90,8 @@ try {
   await source.frame.locator('.mod.mg .rr[data-link]').waitFor({ timeout: 20000 });
   check('« Autres documents » liste le lien (un webhook chez l\'envoyeur)', (await webhooks(source)) === 1, await text(source.frame, '.mod.mg'));
   await source.page.waitForTimeout(6000);
-  const none = await target.rest.rows('GFS_Recus');
-  check('la table reçue existe et reste vide : aucun fichier n\'est parti (la condition nomme l\'identifiant fictif de GFS)', (await target.rest.tables()).includes('GFS_Recus') && none.length === 0, none.map(row => row.Nom));
+  const none = await target.rest.rows('GFS_Received');
+  check('la table reçue existe et reste vide : aucun fichier n\'est parti (la condition nomme l\'identifiant fictif de GFS)', (await target.rest.tables()).includes('GFS_Received') && none.length === 0, none.map(row => row.Nom));
   await closeAll(source.page, source.frame);
   await closeAll(source.page, source.frame);
 
@@ -105,7 +105,7 @@ try {
   await source.frame.locator('.mod.sh .rr[data-link] .lvl').first().click();
   await source.frame.locator('.menu .menu-item', { hasText: t('so.level.live') }).click();
   let rows = [];
-  for (let i = 0; i < 90 && !rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i += 1) { rows = await target.rest.rows('GFS_Recus'); if (!rows.some(row => row.Contenu)) await source.page.waitForTimeout(1500); }
+  for (let i = 0; i < 90 && !rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i += 1) { rows = await target.rest.rows('GFS_Received'); if (!rows.some(row => row.Contenu)) await source.page.waitForTimeout(1500); }
   check('Facture arrive chez l\'autre, avec son contenu, sans nouvelle fenêtre d\'envoi ni nouveau code, et sans autre geste de l\'essai', rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu) && (await source.frame.locator('.mod.so').count()) === 0, rows.map(row => row.Nom));
   check('aucune erreur de GFS dans la console, des deux côtés', unexpected(source).length === 0 && unexpected(target).length === 0, [...unexpected(source), ...unexpected(target)]);
 } finally {

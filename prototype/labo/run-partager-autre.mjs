@@ -62,7 +62,7 @@ try {
   await frame.locator('.mod.so [data-fk="so-continue"]').waitFor();
   const before = await source.rest.tables();
   check('l\'accord dit ce que GFS ajoute, avec les vrais noms', (await text(frame, '.mod.so')).includes('GFS_Synchro') && (await text(frame, '.mod.so')).includes('id_sync'), await text(frame, '.mod.so'));
-  check('rien n\'est encore écrit dans le document (ni table technique, ni colonnes d\'aide)', !before.includes('GFS_Synchro') && !(await source.rest.columns('GFS_Fichiers')).some(each => each.id === 'id_sync'), before);
+  check('rien n\'est encore écrit dans le document (ni table technique, ni colonnes d\'aide)', !before.includes('GFS_Synchro') && !(await source.rest.columns('GFS_Files')).some(each => each.id === 'id_sync'), before);
   check('la fenêtre tient dans le panneau, boutons visibles, contraste de 4,5:1', await fits(frame, '.mod.so'), await contrastProblems(frame, '.mod.so'));
   await shot(frame, '2-accord');
   await page.keyboard.press('Escape');
@@ -80,7 +80,7 @@ try {
   await frame.locator('[data-fk="so-continue"]').click();
   await frame.locator('[data-fk="so-code"]').waitFor();
   const code = await frame.locator('[data-fk="so-code"]').inputValue();
-  check('un code d\'invitation est affiché, et GFS a posé la table technique et les colonnes d\'aide', /^GRISTSYNC2\./.test(code) && (await source.rest.tables()).includes('GFS_Synchro') && (await source.rest.columns('GFS_Fichiers')).some(each => each.id === 'id_sync'), code.slice(0, 20));
+  check('un code d\'invitation est affiché, et GFS a posé la table technique et les colonnes d\'aide', /^GRISTSYNC2\./.test(code) && (await source.rest.tables()).includes('GFS_Synchro') && (await source.rest.columns('GFS_Files')).some(each => each.id === 'id_sync'), code.slice(0, 20));
   check('la fenêtre du code tient dans le panneau', await fits(frame, '.mod.so'), await contrastProblems(frame, '.mod.so'));
   await shot(frame, '3-code');
   check('« Contrôler » est grisé tant que rien n\'est collé', (await frame.locator('[data-fk="so-check"]').getAttribute('aria-disabled')) === 'true');
@@ -88,7 +88,7 @@ try {
   const invitation = await target.frame.evaluate(text => window.__try(() => window.__s.readInvitation(text)), code);
   check('l\'autre document lit l\'invitation', invitation.ok && invitation.value.name === 'Facture', invitation);
   const made = await target.frame.evaluate(invite => window.__try(async () => {
-    const plans = invite.tables.map(tb => ({ tb, dest: 'GFS_Recus' }));
+    const plans = invite.tables.map(tb => ({ tb, dest: 'GFS_Received' }));
     const reception = await window.__s.createReception(invite, plans, { reserve: true, options: { archive: true } });
     return { journal: reception.journal, note: reception.note };
   }), invitation.value);
@@ -136,10 +136,10 @@ try {
   const back = await openGfs(context, { lang, path: targetPath });
   let rows = [];
   for (let i = 0; i < 90 && !rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i++) {
-    rows = await back.rest.rows('GFS_Recus');
+    rows = await back.rest.rows('GFS_Received');
     if (!rows.some(row => row.Contenu)) await page.waitForTimeout(1000);
   }
-  const sent = (await source.rest.rows('GFS_Fichiers')).find(row => row.Identifiant === source.id);
+  const sent = (await source.rest.rows('GFS_Files')).find(row => row.Identifiant === source.id);
   const was = await source.rest.attachment(sent.Contenu[1]);
   const now = rows[0] && rows[0].Contenu ? await back.rest.attachment(rows[0].Contenu[1]) : null;
   check('le fichier est dans l\'autre document, mêmes octets, et lui seul', rows.length === 1 && Boolean(now) && now.hash === was.hash && now.size === was.size, { rows: rows.map(row => row.Nom), was, now });
@@ -159,7 +159,7 @@ try {
   let gone = false;
   for (let i = 0; i < 20 && !gone; i++) { gone = !(await source.rest.tables()).includes('GFS_Synchro'); if (!gone) await page.waitForTimeout(500); }
   check('« Annuler » défait l\'export préparé (plus de table technique)', gone, await source.rest.tables());
-  check('les deux PDF de l\'envoyeur sont intacts', (await source.rest.rows('GFS_Fichiers')).map(row => row.Nom).sort().join() === 'Devis.pdf,Facture.pdf');
+  check('les deux PDF de l\'envoyeur sont intacts', (await source.rest.rows('GFS_Files')).map(row => row.Nom).sort().join() === 'Devis.pdf,Facture.pdf');
   await closeAll(page, frame);
   check('aucune erreur de GFS dans la console', unexpected(source).length === 0 && unexpected(back).length === 0, [...unexpected(source), ...unexpected(back)]);
 } finally {

@@ -50,13 +50,13 @@ try {
   const { page } = source;
   let frame = source.frame; // reprise après la fermeture de la fenêtre du premier envoi (Grist recharge la page : les règles de GFS_Synchro)
   await importSamples(source);
-  const devisId = (await source.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Devis.pdf').Identifiant;
+  const devisId = (await source.rest.rows('GFS_Files')).find(row => row.Nom === 'Devis.pdf').Identifiant;
   const target = await openGfs(context, { lang });
   await startEngine(target.frame);
   // Un passage du côté qui reçoit (la boucle du moteur : ce que GFS fera de lui-même à l'ouverture d'une page) ; l'envoyeur, lui, est GFS, qui rattrape tout seul.
   const pass = async () => {
     await target.frame.evaluate(() => window.__s.consolidateAll({ reread: true }));
-    return target.rest.rows('GFS_Recus');
+    return target.rest.rows('GFS_Received');
   };
   const until = async (test, tries = 60) => { let rows = []; for (let i = 0; i < tries; i += 1) { rows = await pass(); if (test(rows)) return rows; await page.waitForTimeout(1500); } return rows; };
   const has = (rows, name) => rows.some(row => row.Nom === name && row.Contenu);
@@ -70,7 +70,7 @@ try {
   const code = await frame.locator('[data-fk="so-code"]').inputValue();
   const invitation = await target.frame.evaluate(value => window.__try(() => window.__s.readInvitation(value)), code);
   const made = await target.frame.evaluate(invite => window.__try(async () => {
-    const reception = await window.__s.createReception(invite, invite.tables.map(tb => ({ tb, dest: 'GFS_Recus' })), { reserve: true, options: { archive: true } });
+    const reception = await window.__s.createReception(invite, invite.tables.map(tb => ({ tb, dest: 'GFS_Received' })), { reserve: true, options: { archive: true } });
     return { journal: reception.journal, note: reception.note };
   }), invitation.value);
   check('l\'autre document lit l\'invitation et crée sa réception (en archive)', invitation.ok && made.ok, { invitation, made });
@@ -153,7 +153,7 @@ try {
   check('plus de webhook ni de table technique chez l\'envoyeur', ended, { hooks: await webhooks(source), tables: await source.rest.tables() });
   rows = await until(() => false, 3);
   check('les deux PDF restent chez l\'autre', has(rows, 'Facture.pdf') && has(rows, 'Devis.pdf'), rows.map(row => row.Nom));
-  check('les deux PDF de l\'envoyeur sont intacts', (await source.rest.rows('GFS_Fichiers')).map(row => row.Nom).sort().join() === 'Devis.pdf,Facture.pdf');
+  check('les deux PDF de l\'envoyeur sont intacts', (await source.rest.rows('GFS_Files')).map(row => row.Nom).sort().join() === 'Devis.pdf,Facture.pdf');
   await closeAll(page, frame);
   await closeAll(page, frame);
   check('aucune erreur de GFS dans la console', unexpected(source).length === 0 && unexpected(target).length === 0, [...unexpected(source), ...unexpected(target)]);

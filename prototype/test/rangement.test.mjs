@@ -45,7 +45,7 @@ test('lire : la ligne réservée est retrouvée parmi les autres lignes ; un tex
 });
 
 test('lire : le nom de la table se reconnaît sans tenir compte de la casse', async () => {
-  const { port } = fakeGrist({ gfs_rangement: { columns: full, rows: [row(1, { ...RESERVED, Valeur: '{}' })] } });
+  const { port } = fakeGrist({ gfs_filing: { columns: full, rows: [row(1, { ...RESERVED, Valeur: '{}' })] } });
   const state = await new Rangement({ port, consent: accept() }).read();
   assert.deepEqual([state.exists, state.rowId, state.raw], [true, 1, {}]);
 });
@@ -84,10 +84,10 @@ test('l\'identifiant que Grist a vraiment donné à la table est celui des écri
   const warn = console.warn;
   console.warn = () => {};
   try {
-    const { port, tables, actions } = fakeGrist({}, { renameTo: 'GFS_Rangement2' });
+    const { port, tables, actions } = fakeGrist({}, { renameTo: 'GFS_Filing2' });
     await new Rangement({ port, consent: accept() }).update(() => ({}));
-    assert.ok(actions.slice(1).every(action => action[1] === 'GFS_Rangement2'), 'la sonde comme la ligne réservée vont à la table que Grist a nommée');
-    assert.equal(dataRows(tables.GFS_Rangement2.rows).length, 1);
+    assert.ok(actions.slice(1).every(action => action[1] === 'GFS_Filing2'), 'la sonde comme la ligne réservée vont à la table que Grist a nommée');
+    assert.equal(dataRows(tables.GFS_Filing2.rows).length, 1);
   } finally { console.warn = warn; }
 });
 
@@ -462,7 +462,7 @@ const appFilings = () => [appFilingOf(publipostage())];
 // Le faux Grist note `[verbe, table, ligne, colonnes]` : sans colonnes (un retrait), la quatrième case est vide.
 const sent = list => list.map(action => (action[3] === undefined ? action.slice(0, 3) : action));
 
-test('setFiling avec `ecriture` : un fichier de l\'app se range dans sa table, un fichier d\'une autre app dans GFS_Rangement, en un seul lot ; GFS_Rangement ne reçoit rien pour l\'app', async () => {
+test('setFiling avec `ecriture` : un fichier de l\'app se range dans sa table, un fichier d\'une autre app dans GFS_Filing, en un seul lot ; GFS_Filing ne reçoit rien pour l\'app', async () => {
   const tables = {
     [TABLE]: { columns: full, rows: [] },
     [PREFS]: { columns: prefColumns, rows: [pref(1, { ModeleId: 3, Dossier: 'Factures' }), pref(2, { Utilisateur: 'a@b.fr', ModeleId: 3, Dossier: 'Privé' })] },
@@ -501,7 +501,7 @@ test('setFiling avec `ecriture` : les dossiers gardés sans fichier s\'écrivent
   assert.deepEqual(dataRows(tables[TABLE].rows).map(row => row.Dossier), ['Déjà', 'Neuf']);
 });
 
-test('setFiling avec `ecriture` : ce que GFS_Rangement disait déjà de l\'app passe chez elle et part de GFS_Rangement, dans le même lot (rien n\'est perdu, rien ne défait plus un rangement fait dans l\'app)', async () => {
+test('setFiling avec `ecriture` : ce que GFS_Filing disait déjà de l\'app passe chez elle et part de GFS_Filing, dans le même lot (rien n\'est perdu, rien ne défait plus un rangement fait dans l\'app)', async () => {
   const tables = {
     [TABLE]: { columns: full, rows: [
       row(1, { App: 'publipostage', Fichier: '5', Favori: true, Dossier: 'Archives' }),
@@ -529,7 +529,7 @@ test('setFiling avec `ecriture` : ce que GFS_Rangement disait déjà de l\'app p
   assert.equal(unmarked(actions).length, 7, 'la reprise n\'a lieu qu\'une fois : le second rangement n\'écrit que la ligne du fichier');
 });
 
-test('setFiling avec `ecriture` : sans la table de l\'app, ou sans l\'une de ses colonnes, GFS range comme avant dans GFS_Rangement ; jamais une table ni une colonne ajoutée chez l\'app', async () => {
+test('setFiling avec `ecriture` : sans la table de l\'app, ou sans l\'une de ses colonnes, GFS range comme avant dans GFS_Filing ; jamais une table ni une colonne ajoutée chez l\'app', async () => {
   const entry = [{ app: 'publipostage', file: '3', pinned: true, folder: 'Factures' }];
   const first = { [TABLE]: { columns: full, rows: [] } };
   const one = fakeGrist(first);
@@ -541,7 +541,7 @@ test('setFiling avec `ecriture` : sans la table de l\'app, ou sans l\'une de ses
   assert.deepEqual(unmarked(two.actions), [['AddRecord', TABLE, null, { Utilisateur: '', App: 'publipostage', Fichier: '3', Favori: true, Dossier: 'Factures' }]]);
 });
 
-test('setFiling avec `ecriture` : la personne identifiée écrit sa propre ligne chez l\'app (la même adresse que celle de GFS_Rangement)', async () => {
+test('setFiling avec `ecriture` : la personne identifiée écrit sa propre ligne chez l\'app (la même adresse que celle de GFS_Filing)', async () => {
   const tables = { [TABLE]: { columns: full, rows: [] }, [PREFS]: { columns: prefColumns, rows: [pref(1, { Utilisateur: 'ana@exemple.org', ModeleId: 3, Dossier: 'A' })] } };
   const { port, actions } = fakeGrist(tables, { email: 'ana@exemple.org' });
   await new Rangement({ port, consent: () => assert.fail('pas de question'), appFilings }).setFiling([{ app: 'publipostage', file: '3', pinned: false, folder: 'B' }]);
@@ -577,16 +577,16 @@ test('setFiling avec `moved` et `extra` : un seul lot ; les actions de plus (par
   const tables = {
     [TABLE]: { columns: full, rows: [row(1, { Dossier: 'E' })] },
     [PREFS]: { columns: prefColumns, rows: [pref(1, { ModeleId: 0, Dossier: 'E' })] },
-    GFS_Partages: { columns: ['id', 'Cible'], rows: [{ id: 7, Cible: 'dossier:moi:a@b.fr/E' }] },
+    GFS_Shares: { columns: ['id', 'Cible'], rows: [{ id: 7, Cible: 'dossier:moi:a@b.fr/E' }] },
   };
   const { port, actions } = fakeGrist(tables);
   const lots = countLots(port);
-  const extra = [['UpdateRecord', 'GFS_Partages', 7, { Cible: 'dossier:moi:a@b.fr//1' }]];
+  const extra = [['UpdateRecord', 'GFS_Shares', 7, { Cible: 'dossier:moi:a@b.fr//1' }]];
   await new Rangement({ port, consent: () => assert.fail('pas de question'), appFilings, ...noProbe }).setFiling([], { moved: [['E', 'Neuf']], extra });
   assert.deepEqual(lots, [4]);
   assert.deepEqual(sent(unmarked(actions)), [['UpdateRecord', TABLE, 1, { Dossier: 'Neuf' }], ['RemoveRecord', PREFS, 1],
     ['AddRecord', PREFS, null, { Utilisateur: '', ModeleId: 0, Epingle: false, Dossier: 'Neuf' }], extra[0]]);
-  assert.equal(tables.GFS_Partages.rows[0].Cible, 'dossier:moi:a@b.fr//1');
+  assert.equal(tables.GFS_Shares.rows[0].Cible, 'dossier:moi:a@b.fr//1');
 });
 
 test('folderRows et folderIds : les lignes d\'état de la personne (numéro, chemin), jamais celles d\'une autre ni d\'un fichier ; `create` ajoute celles qui manquent, aux deux endroits, et rend leur numéro', async () => {
@@ -653,10 +653,10 @@ test('une table vue qui change de nom ou disparaît : la liste fait foi, la lect
   const { port } = fakeGrist(tables);
   const store = new Rangement({ port, consent: accept() });
   assert.equal((await store.read()).exists, true);
-  tables.gfs_rangement = tables[TABLE]; // Grist rend la table sous un autre nom (la casse)
+  tables.gfs_filing = tables[TABLE]; // Grist rend la table sous un autre nom (la casse)
   delete tables[TABLE];
   assert.deepEqual((await store.read()).raw, { a: 1 }, 'lue sous son nouveau nom');
-  delete tables.gfs_rangement;
+  delete tables.gfs_filing;
   assert.equal((await store.read()).exists, false, 'disparue : rien n\'existe, sans erreur ni lecture en suspens');
 });
 

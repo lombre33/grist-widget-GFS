@@ -67,11 +67,11 @@ try {
     const pass = async () => {
       await source.frame.evaluate(() => window.__s.catchUp());
       await target.frame.evaluate(() => window.__s.consolidateAll({ reread: true }));
-      return target.rest.rows('GFS_Recus');
+      return target.rest.rows('GFS_Received');
     };
     let received = [];
     for (let i = 0; i < 40 && !received.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i += 1) { await delay(source.page, 1500); received = await pass(); }
-    check('Facture.pdf est arrivé dans GFS_Recus (le partage marche avant toute règle)', received.some(row => row.Nom === 'Facture.pdf' && row.Contenu), received.map(row => row.Nom));
+    check('Facture.pdf est arrivé dans GFS_Received (le partage marche avant toute règle)', received.some(row => row.Nom === 'Facture.pdf' && row.Contenu), received.map(row => row.Nom));
     const journal = await journalOf(target.page, target.docId);
     check('aucune règle des tables du partage n\'est posée (le document d\'avant)', (await aclOf(source.page, source.docId)).length === 0 && (await aclOf(target.page, target.docId)).length === 0);
     say('partage de la source :', await shareWithEditorAndViewer(source.page, source.docId), '; de la cible :', await shareWithEditorAndViewer(target.page, target.docId));
@@ -107,8 +107,8 @@ try {
         check('APRÈS : modifier une ligne du journal est refusé', touched.status !== 200, touched.text);
         const removed = await apply(page, state.target.id, [['BulkRemoveRecord', state.journal, [state.journalRow]]]);
         check('APRÈS : effacer une ligne du journal est refusé', removed.status !== 200, removed.text);
-        const received = await rows(page, state.target.id, 'GFS_Recus');
-        say('GFS_Recus (non fermée : « Partagés avec moi », carte 4c) :', JSON.stringify(readable(received) ? received.map(row => row.Nom) : received));
+        const received = await rows(page, state.target.id, 'GFS_Received');
+        say('GFS_Received (non fermée : « Partagés avec moi », carte 4c) :', JSON.stringify(readable(received) ? received.map(row => row.Nom) : received));
         say(`--- ${who} ouvre GFS sur la cible : aucun bruit ni boucle du moteur ---`);
         const opened = await reopen(context, state.target.path);
         const frame = await gfsFrame(opened.page);
@@ -136,12 +136,12 @@ try {
       check('un second passage ne pose rien et ne recharge rien (les règles sont les mêmes, la page est restée)', JSON.stringify(again) === JSON.stringify(acl) && kept.every(Boolean), { kept, again });
       check('le propriétaire lit toujours les tables techniques', readable(await rows(admin, state.source.id, 'GFS_Synchro')) && readable(await rows(admin, state.target.id, state.journal)));
       say('--- le partage continue sous les règles ---');
-      const sourceRow = (await rows(admin, state.source.id, 'GFS_Fichiers')).find(row => row.Identifiant === state.fileId);
+      const sourceRow = (await rows(admin, state.source.id, 'GFS_Files')).find(row => row.Identifiant === state.fileId);
       const newName = `Facture-${Date.now() % 100000}.pdf`;
-      const renamed = await apply(admin, state.source.id, [['UpdateRecord', 'GFS_Fichiers', sourceRow.id, { Nom: newName }]]);
+      const renamed = await apply(admin, state.source.id, [['UpdateRecord', 'GFS_Files', sourceRow.id, { Nom: newName }]]);
       check('le propriétaire renomme le fichier à la source', renamed.status === 200, renamed.text);
       let landed = [];
-      for (let i = 0; i < 60 && !landed.some(row => row.Nom === newName); i += 1) { await delay(admin, 1500); landed = await rows(admin, state.target.id, 'GFS_Recus'); }
+      for (let i = 0; i < 60 && !landed.some(row => row.Nom === newName); i += 1) { await delay(admin, 1500); landed = await rows(admin, state.target.id, 'GFS_Received'); }
       check('le nouveau nom arrive à la cible par le webhook et le formulaire (création ouverte sous -RUD), recopié par la boucle du propriétaire', Array.isArray(landed) && landed.some(row => row.Nom === newName && row.Contenu), Array.isArray(landed) ? landed.map(row => row.Nom) : landed);
       check('aucune erreur de GFS dans la console du propriétaire', [target, source].every(each => each.unexpected().length === 0), [target, source].map(each => each.unexpected()));
     } else if (phase === 'arret') { // essai@, après les passages `apres` : la table disparaît, les règles restent
@@ -159,7 +159,7 @@ try {
       say('tables de la source après l\'arrêt :', tablesAfter.filter(name => /^GFS_/.test(name)).join(', '), '; règles restées sur une table disparue :', JSON.stringify(leftover));
       const reopened = await reopen(context, state.source.path);
       const frame = await gfsFrame(reopened.page);
-      check('la source s\'ouvre encore après l\'arrêt du partage, GFS prêt (des règles sur une table disparue ne bloquent rien)', (await frame.evaluate(() => document.body.dataset.gfs)) === 'ready' && (await rows(admin, state.source.id, 'GFS_Fichiers')).length > 0, leftover);
+      check('la source s\'ouvre encore après l\'arrêt du partage, GFS prêt (des règles sur une table disparue ne bloquent rien)', (await frame.evaluate(() => document.body.dataset.gfs)) === 'ready' && (await rows(admin, state.source.id, 'GFS_Files')).length > 0, leftover);
       check('aucune erreur de GFS dans la console du propriétaire', [source, reopened].every(each => each.unexpected().filter(text => !/KeyError 'GFS_Synchro'/.test(text)).length === 0), [source, reopened].map(each => each.unexpected()));
     }
   }

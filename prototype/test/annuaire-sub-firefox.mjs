@@ -7,7 +7,7 @@
 import { delay } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
 
-const SUB_ROW = 3; // la ligne de « Pôle Ressources » dans `GFS_Annuaires` : `?sub=1` crée les deux annuaires, puis le sous-annuaire
+const SUB_ROW = 3; // la ligne de « Pôle Ressources » dans `GFS_Directories` : `?sub=1` crée les deux annuaires, puis le sous-annuaire
 const PROBES = { 'le titre': ['.an-sub h2', '.an-sub'], 'le nom de l\'origine': ['.an-sub-of', '.an-sub'], 'un libellé': ['.an-sub .an-set-label', '.an-sub'],
   'un mot': ['.an-sub-w', '.an-sub'], 'une valeur': ['.an-sub-val', '.an-sub-val'], 'le nombre': ['.an-sub-count', '.an-sub-row'], 'le verrou': ['.an-sub-lock', '.an-sub-lock'],
   'une aide': ['.an-sub .an-set-hint', '.an-sub'] };
@@ -216,7 +216,7 @@ async function adminMenuProblems(page, t, note, click, { width, mode }, { date }
   await page.click(...centered(again.items[0].box));
   await delay(500);
   const done = (await page.run(writes)).slice(before);
-  if (done.length !== 1 || done[0][0] !== 'UpdateRecord' || done[0][1] !== 'GFS_Annuaires' || done[0][2] !== SUB_ROW ||
+  if (done.length !== 1 || done[0][0] !== 'UpdateRecord' || done[0][1] !== 'GFS_Directories' || done[0][2] !== SUB_ROW ||
     Object.keys(done[0][3]).sort().join(',') !== 'Config,Fiches,Table') note('sous-annuaires', `${where} : « Actualiser » écrit ${JSON.stringify(done).slice(0, 200)} (une mise à jour de Config, Fiches et Table de la ligne ${SUB_ROW})`);
   const snap = await page.run(barSnap);
   if (!snap.foot.includes(t('an.sub.refreshed', { n: 4 }))) note('sous-annuaires', `${where} : après « Actualiser », le pied dit « ${snap.foot} » (« ${t('an.sub.refreshed', { n: 4 })} » attendu)`);
@@ -329,7 +329,7 @@ async function createProblems(page, t, note, click, { width, mode }) {
   await delay(700);
   const made = (await page.run(writes)).slice(before);
   const add = made.filter(each => each[0] === 'AddRecord');
-  if (made.length !== 1 || add.length !== 1 || add[0][1] !== 'GFS_Annuaires') note('sous-annuaires', `${where} : la création écrit ${JSON.stringify(made).slice(0, 200)} (un seul AddRecord dans GFS_Annuaires)`);
+  if (made.length !== 1 || add.length !== 1 || add[0][1] !== 'GFS_Directories') note('sous-annuaires', `${where} : la création écrit ${JSON.stringify(made).slice(0, 200)} (un seul AddRecord dans GFS_Directories)`);
   else {
     const record = add[0][3];
     const keys = Object.keys(record).sort().join(',');
@@ -357,7 +357,7 @@ async function removeProblems(page, t, note, click, { width }) {
   await delay(600);
   const done = (await page.run(writes)).slice(before);
   const remove = done.filter(each => each[0] === 'RemoveRecord');
-  if (remove.length !== 1 || remove[0][1] !== 'GFS_Annuaires' || done.some(each => !['RemoveRecord', 'BulkRemoveRecord'].includes(each[0]))) {
+  if (remove.length !== 1 || remove[0][1] !== 'GFS_Directories' || done.some(each => !['RemoveRecord', 'BulkRemoveRecord'].includes(each[0]))) {
     note('sous-annuaires', `${where} : la suppression écrit ${JSON.stringify(done).slice(0, 200)} (la ligne du sous-annuaire seulement, avec ce qui en parlait)`);
   }
   const snap = await page.run(barSnap);

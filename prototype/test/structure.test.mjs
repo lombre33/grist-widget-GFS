@@ -1,4 +1,4 @@
-// Le numéro de structure du document (contrats 6.4, point 16) : GFS le note après un geste qui écrit dans `GFS_Rangement`, et une version plus ancienne que lui
+// Le numéro de structure du document (contrats 6.4, point 16) : GFS le note après un geste qui écrit dans `GFS_Filing`, et une version plus ancienne que lui
 // lit le document sans y écrire. Le port est le faux Grist en mémoire (fake-grist.mjs) ; ce que Grist rend vraiment (la ligne réservée relue, la règle d'accès
 // qui ne laisse écrire les lignes `@document` qu'aux propriétaires) se mesure dans le labo (labo/run-structure.mjs).
 import { test } from 'node:test';

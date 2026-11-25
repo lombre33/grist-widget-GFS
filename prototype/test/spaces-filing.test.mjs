@@ -188,6 +188,6 @@ test('retirer un dossier gardé dans un espace : seul le placement s\'écrit, le
   const { filing, log } = harness();
   await filing.deleteFolder('Espaces/Achats/Contrats/Sous');
   assert.deepEqual(log.placements, [['RemoveRecord', 'GFS_Placement', 3]]);
-  assert.deepEqual(log.filings, [], 'rien à écrire dans GFS_Rangement : pas d\'écriture à vide');
+  assert.deepEqual(log.filings, [], 'rien à écrire dans GFS_Filing : pas d\'écriture à vide');
   assert.deepEqual(log.notices.filter(text => text !== t('ex.folderDeleted', { name: 'Sous' })), []);
 });

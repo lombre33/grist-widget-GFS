@@ -1,5 +1,5 @@
 // Les espaces partagés dans l'explorateur (contrats 11.7, point 13, lot 4b) : un espace est un dossier de plus, sous « Espaces » à côté de « Moi ». Le fichier
-// y est placé par une ligne de `GFS_Placement` (partagée, lue par ceux qui ont accès à l'espace), jamais par le rangement de la personne (`GFS_Rangement`, à
+// y est placé par une ligne de `GFS_Placement` (partagée, lue par ceux qui ont accès à l'espace), jamais par le rangement de la personne (`GFS_Filing`, à
 // elle seule). Le chemin que l'explorateur montre est « Espaces / <espace> / <dossier> » : tout ce qu'il sait faire d'un dossier (arbre, fil d'Ariane,
 // déplacer, couper-coller, glisser) marche donc sans rien savoir des espaces ; seule l'écriture passe ici, qui sépare ce qui va au rangement de la personne de
 // ce qui va au placement. Un dossier vide d'un espace tient à une ligne de placement sans fichier (`Cible` vide). Seuls les propriétaires écrivent les espaces
@@ -25,7 +25,7 @@ export const isInsideSpace = path => isSpacePath(path) && path.split('/').length
 // Le nom d'un chemin pour l'écran : la racine « Espaces » se dit dans la langue de la personne, les autres noms restent ceux que la personne a donnés.
 export const folderLabel = (t, path, name = path.split('/').pop()) => (path === SPACES_ROOT ? t('ex.spaces') : name);
 
-// Ce que disent `GFS_Espaces` et `GFS_Placement` (tables telles que `fetchTable` les rend, ou null) : { spaces: [{ key, name, path }], placed: Map(cible -> {
+// Ce que disent `GFS_Spaces` et `GFS_Placement` (tables telles que `fetchTable` les rend, ou null) : { spaces: [{ key, name, path }], placed: Map(cible -> {
 // space, folder }), folders: [chemins montrés même sans fichier], links: [{ id, source, space, folder, groups, path }] (les liens, contrats 11.7, point 13.o)
 // }. Un espace que la personne ne lit pas n'est pas dans sa table : ses fichiers restent là où le rangement de la personne les met.
 export function readSpaces(spacesData, placeData) {

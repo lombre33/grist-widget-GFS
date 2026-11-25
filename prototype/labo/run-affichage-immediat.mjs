@@ -11,7 +11,7 @@
 //   7. La corbeille (choix du porteur, 24/11 : « oui, sauf si l'app doit répondre ») : le premier fichier attend l'accord de la personne pour la table (il reste dans la
 //      liste) ; les suivants partent en moins de 250 ms, ne reviennent à aucune image des trois secondes qui suivent, et Grist les garde (une entrée à la corbeille,
 //      la ligne de l'app retirée) ; Ctrl+Z tout de suite après les rend (il attend l'écriture), dans la liste et dans Grist.
-//   8. Un refus de Grist pour la corbeille (injecté : l'ajout à `GFS_Corbeille` lève quand le drapeau `__refuseTrash` est levé) : le fichier part, puis revient avec la phrase
+//   8. Un refus de Grist pour la corbeille (injecté : l'ajout à `GFS_Trash` lève quand le drapeau `__refuseTrash` est levé) : le fichier part, puis revient avec la phrase
 //      qui dit pourquoi ; Grist n'a rien changé.
 //   9. Aucune erreur ni avertissement de GFS dans la console (les refus injectés exceptés).
 // Le relais : `/mnt/project-files/gfs/audits/ouverture-fichiers-2026-11-23/banc/relay.sh 20`, puis le serveur sur 8485 (voir le LISEZ-MOI de ce dossier).
@@ -27,7 +27,7 @@ import { createI18n } from '../js/i18n/i18n.js';
 const lang = process.env.LAB_LANG || 'fr';
 const { t } = createI18n(lang);
 const MODEL = 'Contrat de prestation';
-const FILING = 'GFS_Rangement';
+const FILING = 'GFS_Filing';
 const REFUSAL = 'Refus de Grist (essai)';
 const FORBIDDEN = 'Interdit';
 
@@ -40,7 +40,7 @@ const patches = [
     if (key !== 'applyUserActions') return value;
     return (...args) => {
       const text = JSON.stringify(args);
-      const trash = globalThis.__refuseTrash && text.includes('AddRecord') && text.includes('GFS_Corbeille');
+      const trash = globalThis.__refuseTrash && text.includes('AddRecord') && text.includes('GFS_Trash');
       return text.includes('${FORBIDDEN}') || trash ? Promise.reject(new Error('${REFUSAL}')) : value.apply(target, args);
     };
   } });
@@ -172,7 +172,7 @@ try {
   check('Grist retire sa ligne', !(await stateRows()).includes('À jeter'), await stateRows());
 
   say('--- 7. la corbeille ---');
-  const binRows = async () => (await run.rest.rows('GFS_Corbeille')).map(each => each.Nom).sort();
+  const binRows = async () => (await run.rest.rows('GFS_Trash')).map(each => each.Nom).sort();
   const binState = async () => ({ corbeille: await binRows(), modeles: (await modelNames()).length });
   // les images où le fichier est dans la liste pendant `ms` : le fichier qui revient (clignotement)
   const shownFor = async (name, ms) => frame.evaluate(([n, duration]) => new Promise(resolve => {

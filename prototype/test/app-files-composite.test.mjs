@@ -65,7 +65,7 @@ test('un fichier dont la recette n\'a pas `appel` n\'attend jamais l\'app, ouver
   assert.equal(run.files.waitsForApp({ app: 'inconnue', table: 'X' }, 'trash'), null);
 });
 
-test('mettre à la corbeille : l\'accord de la table d\'abord, puis l\'app ferme ce qui est lié, puis UN SEUL lot copie la ligne dans GFS_Corbeille et la retire ; l\'app reçoit le fichier et la raison', async () => {
+test('mettre à la corbeille : l\'accord de la table d\'abord, puis l\'app ferme ce qui est lié, puis UN SEUL lot copie la ligne dans GFS_Trash et la retire ; l\'app reçoit le fichier et la raison', async () => {
   const run = setup();
   assert.equal(await run.files.trash(await run.fileOf(1)), true);
   assert.deepEqual(run.log.order, ['accord', 'supprimer'], 'un lien n\'est jamais fermé pour un fichier que GFS ne pourrait pas mettre à la corbeille');

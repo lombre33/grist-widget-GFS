@@ -64,16 +64,16 @@ async function playOld(run) {
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   const tables = ((await call(page, 'GET', `/api/docs/${run.docId}/tables`)).json.tables || []).map(table => table.id);
   // OLD_LOT=4 : la version d'avant est celle des espaces (avant l'administration par un groupe et les dossiers de « Moi », 13/11) ; OLD_LOT=5 : celle d'avant les liens entre espaces (13/11, `c7cc1e4`) ; sinon celle des groupes (lot 3).
-  if (OLD_LOT === '4' || OLD_LOT === '5') check('la version d\'avant a les espaces et le placement', tables.includes('GFS_Espaces') && tables.includes('GFS_Placement') && tables.includes('GFS_Groupes'), tables);
-  else check('la version d\'avant n\'a ni espaces ni placement', !tables.includes('GFS_Espaces') && !tables.includes('GFS_Placement') && tables.includes('GFS_Groupes'), tables);
+  if (OLD_LOT === '4' || OLD_LOT === '5') check('la version d\'avant a les espaces et le placement', tables.includes('GFS_Spaces') && tables.includes('GFS_Placement') && tables.includes('GFS_Groups'), tables);
+  else check('la version d\'avant n\'a ni espaces ni placement', !tables.includes('GFS_Spaces') && !tables.includes('GFS_Placement') && tables.includes('GFS_Groups'), tables);
   await frame.locator('[data-fk="share-close"]').click();
   const now = Math.floor(Date.now() / 1000);
   let answer = await apply(run, [['BulkAddRecord', MODELS, [null, null, null], { Nom: [A, B, PRIVATE], TypeModele: ['document', 'document', 'document'], DateModif: [now, now, now] }]]);
   check('trois fichiers créés', answer.status === 200, answer.text);
   const models = await byName(run);
   answer = await apply(run, [
-    ['AddRecord', 'GFS_Groupes', null, { Nom: 'Achats', PersonnesIci: EDITOR }],
-    ['BulkAddRecord', 'GFS_Partages', [null, null], { Cible: [`publipostage:${models[A].id}`, `publipostage:${models[B].id}`], Personne: [EDITOR, '#Achats'], Droit: ['lecture', 'lecture'] }],
+    ['AddRecord', 'GFS_Groups', null, { Nom: 'Achats', PersonnesIci: EDITOR }],
+    ['BulkAddRecord', 'GFS_Shares', [null, null], { Cible: [`publipostage:${models[A].id}`, `publipostage:${models[B].id}`], Personne: [EDITOR, '#Achats'], Droit: ['lecture', 'lecture'] }],
   ]);
   check('A partagé à l\'éditeur, B au groupe Achats', answer.status === 200, answer.text);
   const after = await byName(run);
@@ -87,7 +87,7 @@ async function playOld(run) {
     const rules = (await rows(run, '_grist_ACLRules')) || [];
     check('avant : le rangement n\'a pas encore ses règles « GFS : Partagé »', !rules.some(rule => /^GFS : Partagé/.test(rule.memo || '')), rules.map(rule => rule.memo));
   } else check('avant : la table de l\'app n\'a pas GFS_Calc', !('GFS_Calc' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
-  const shares = await rows(run, 'GFS_Partages');
+  const shares = await rows(run, 'GFS_Shares');
   writeFileSync(STATE, JSON.stringify({ path: run.path, docId: run.docId, shares: shares.length }));
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
 }
@@ -110,8 +110,8 @@ async function playNew(run) {
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   check('la fenêtre du même fichier revient, active', (await frame.locator('[data-fk="share-add"]').count()) === 1 && (await frame.locator('#share-title').innerText()).includes(A));
   const tables = ((await call(page, 'GET', `/api/docs/${run.docId}/tables`)).json.tables || []).map(table => table.id);
-  check('GFS_Espaces et GFS_Placement sont nées', tables.includes('GFS_Espaces') && tables.includes('GFS_Placement'), tables);
-  const shares = await rows(run, 'GFS_Partages');
+  check('GFS_Spaces et GFS_Placement sont nées', tables.includes('GFS_Spaces') && tables.includes('GFS_Placement'), tables);
+  const shares = await rows(run, 'GFS_Shares');
   check('rien n\'est repartagé : le même nombre de lignes de partage', shares.length === before, [before, shares.length]);
   const models = await byName(run);
   check('GFS_Directs est là : A a été donné à l\'éditeur par son adresse (par le propriétaire), B par un groupe (non compté)', has(models[A].GFS_Directs, `${EDITOR}>${OWNER}`) && !has(models[B].GFS_Directs, EDITOR), [models[A].GFS_Directs, models[B].GFS_Directs]);

@@ -1,6 +1,6 @@
 // Épingler, ranger et renommer depuis l'explorateur de GFS (contrats 6.4 ; choix du porteur du 21/10 : GFS le fait, le nom seul dans la table de l'app), dans un vrai
 // Grist, à 700 × 400, à la vraie souris et au vrai clavier (Playwright : événements du pointeur et du clavier du navigateur, jamais dispatchEvent).
-//   1. L'étoile sans la table : la question ; « Annuler » ne crée rien ; « Créer la table » crée `GFS_Rangement` et la ligne du fichier ; le rangement de l'app ne bouge pas.
+//   1. L'étoile sans la table : la question ; « Annuler » ne crée rien ; « Créer la table » crée `GFS_Filing` et la ligne du fichier ; le rangement de l'app ne bouge pas.
 //   2. Retirer le favori au clavier, par le menu de la ligne : le clavier reste sur la ligne.
 //   3. Déplacer un fichier vers un nouveau dossier (la recherche, Entrée), puis vers un dossier existant (la souris).
 //   4. Renommer un dossier (un nom vide, ou celui d'un dossier voisin, est refusé dans la fenêtre), puis le déplacer : ni lui ni ses sous-dossiers ne sont proposés.
@@ -48,7 +48,7 @@ const contract = 'Contrat de prestation';
 const contractId = await idOf(contract);
 const prefsBefore = JSON.stringify(await table('Publipostage_PreferencesModeles'));
 const start = await lab.rangement(frame);
-check('au départ, le document n\'a pas de table GFS_Rangement', start.table === false, start);
+check('au départ, le document n\'a pas de table GFS_Filing', start.table === false, start);
 const hint = (await frame.locator('.ex-info').innerText()).replace(/\s+/g, ' ');
 check('la barre du bas dit le rangement commun au document (GFS ne sait pas encore qui est la personne)', /commun au document|shared by the whole document/.test(hint), hint);
 const favStart = await favCount();
@@ -57,7 +57,7 @@ await row(contract).locator('.rb.pin').click();
 await frame.locator('.ask').waitFor({ timeout: 5000 });
 const question = (await frame.locator('.ask').innerText()).replace(/\s+/g, ' ');
 await shot('1-question-table');
-check('l\'étoile demande d\'abord de créer la table, et dit qu\'elle sert au rangement', /GFS_Rangement/.test(question) && /rangement de ses fichiers|how its files are filed/.test(question), question);
+check('l\'étoile demande d\'abord de créer la table, et dit qu\'elle sert au rangement', /GFS_Filing/.test(question) && /rangement de ses fichiers|how its files are filed/.test(question), question);
 await frame.locator('[data-fk="ask-no"]').click();
 await page.waitForTimeout(400);
 const declined = await toast();

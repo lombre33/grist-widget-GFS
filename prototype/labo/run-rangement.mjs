@@ -1,4 +1,4 @@
-// La table du document quand elle n'est pas née de GFS (contrats 6.1 point 3, 6.5 point 4, 7.4 points 3 et 6), dans un vrai Grist : une table `GFS_Rangement` d'une version plus
+// La table du document quand elle n'est pas née de GFS (contrats 6.1 point 3, 6.5 point 4, 7.4 points 3 et 6), dans un vrai Grist : une table `GFS_Filing` d'une version plus
 // ancienne (sans la colonne `Valeur`) avec une ligne qui n'est pas à GFS ; puis une valeur qui porte une app et un champ que cette version ne connaît pas ; puis une autre section
 // qui écrit la ligne entre deux gestes. GFS ne pose aucune question (la table existe), ajoute la colonne absente (une seule colonne inconnue dans un lot annulerait tout), garde
 // tout ce qu'il ne connaît pas et relit la ligne juste avant d'écrire. LAB_LANG=fr|en.
@@ -18,7 +18,7 @@ const state = f => lab.rangement(f);
 // Une autre section (ou la personne dans Grist) écrit la ligne : GFS n'en est pas prévenu (7.4 point 3).
 const writeValue = async (f, value) => {
   const { reservedId } = await lab.rangement(f);
-  await f.evaluate(([id, json]) => grist.docApi.applyUserActions([['UpdateRecord', 'GFS_Rangement', id, { Valeur: json }]]), [reservedId, JSON.stringify(value)]);
+  await f.evaluate(([id, json]) => grist.docApi.applyUserActions([['UpdateRecord', 'GFS_Filing', id, { Valeur: json }]]), [reservedId, JSON.stringify(value)]);
 };
 const reload = async () => {
   await page.keyboard.press('Escape');
@@ -45,11 +45,11 @@ const same = (a, b, keys) => keys.every(key => a[key] === b[key]);
 // 1. Une table d'une version plus ancienne : six colonnes, sans `Valeur`, et une ligne qui n'est pas à GFS. À l'ouverture, GFS lit l'adresse de la personne : la colonne `Adresse`
 // (et sa ligne-sonde, ajoutée puis retirée) est la seule chose qu'il pose seul ; `Valeur` attend un geste.
 await frame.evaluate(async () => {
-  await grist.docApi.applyUserActions([['AddTable', 'GFS_Rangement', [
+  await grist.docApi.applyUserActions([['AddTable', 'GFS_Filing', [
     { id: 'Utilisateur', type: 'Text' }, { id: 'App', type: 'Text' }, { id: 'Fichier', type: 'Text' },
     { id: 'Favori', type: 'Bool' }, { id: 'Dossier', type: 'Text' }, { id: 'Replie', type: 'Bool' },
   ]]]);
-  await grist.docApi.applyUserActions([['AddRecord', 'GFS_Rangement', null, { Utilisateur: 'a@exemple.org', App: 'publipostage', Fichier: '3', Favori: true, Dossier: 'Formation' }]]);
+  await grist.docApi.applyUserActions([['AddRecord', 'GFS_Filing', null, { Utilisateur: 'a@exemple.org', App: 'publipostage', Fichier: '3', Favori: true, Dossier: 'Formation' }]]);
 });
 await reload();
 const start = await state(frame);

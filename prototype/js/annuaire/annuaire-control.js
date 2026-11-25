@@ -1,7 +1,7 @@
 // Le module Annuaire de GFS (demande du porteur du 25/11) : il tient la lecture des annuaires du document (js/annuaire/annuaire-store.js), la fenêtre qui les
 // montre (js/annuaire/annuaire-window.js) et le réglage (js/annuaire/annuaire-setup.js). Le module ne se charge qu'au premier clic sur son bouton
 // (js/shell/annuaire-entry.js) : GFS ne paie rien tant que la personne n'ouvre pas l'annuaire. Lire ne crée rien ; créer un annuaire écrit une ligne dans
-// `GFS_Annuaires`, que GFS crée alors avec l'accord de la personne. Les personnes restent dans leur table : GFS la lit, ne l'écrit pas.
+// `GFS_Directories`, que GFS crée alors avec l'accord de la personne. Les personnes restent dans leur table : GFS la lit, ne l'écrit pas.
 
 import { AnnuaireStore, MissingTable, NameTaken, TableDeclined } from './annuaire-store.js';
 import { AnnuaireWindow } from './annuaire-window.js';
@@ -349,7 +349,7 @@ export class AnnuaireControl {
     await this.#read();
   }
 
-  // Un nouvel annuaire : le réglage, puis l'écriture (la table `GFS_Annuaires` naît avec l'accord de la personne).
+  // Un nouvel annuaire : le réglage, puis l'écriture (la table `GFS_Directories` naît avec l'accord de la personne).
   async #create() {
     const t = this.#o.t;
     const blocked = this.#o.writeBlock();

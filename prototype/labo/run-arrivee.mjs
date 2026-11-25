@@ -145,7 +145,7 @@ check('la table du rangement n\'a pas été créée ni touchée', JSON.stringify
 check('les réglages de la section sont intacts, aucune clé de GFS n\'y est ajoutée', JSON.stringify(await options()) === JSON.stringify(optionsBefore), { avant: optionsBefore, apres: await options() });
 const actions = await lab.actions();
 say('ce que le moteur a reçu pendant l\'arrivée :', JSON.stringify([...new Set(actions)]));
-check('aucune action de structure ni d\'écriture de GFS (pas d\'AddTable, ni d\'écriture dans GFS_Rangement)', !actions.some(action => /^AddTable|GFS_Rangement|^RemoveTable|^RenameTable/.test(action)), actions);
+check('aucune action de structure ni d\'écriture de GFS (pas d\'AddTable, ni d\'écriture dans GFS_Filing)', !actions.some(action => /^AddTable|GFS_Filing|^RemoveTable|^RenameTable/.test(action)), actions);
 await lab.shotPanel(run, '2-modele-de-la-vue', frame);
 
 // La barre de GFS et l'explorateur : « Fichiers » ouvre l'explorateur, Échap ramène à la même app, restée vivante.
@@ -277,8 +277,8 @@ if (!readonly) {
   const written = await lab.actions();
   say('ce que le moteur a reçu pendant l\'arrivée :', JSON.stringify([...new Set(written)]));
   // La table du rangement existe depuis la partie 4 : GFS y pose, au démarrage, sa ligne de sonde (pour apprendre l'adresse de la personne, contrats 6.4, point 6), puis la retire. Ce n'est pas l'arrivée.
-  const probeOnly = action => /^AddRecord GFS_Rangement \[@sonde\]$|^RemoveRecord GFS_Rangement$/.test(action);
-  check('l\'arrivée n\'écrit ni table, ni réglage de la vue, ni rangement (hors la sonde d\'identité de GFS)', !written.some(action => !probeOnly(action) && /^AddTable|^RemoveTable|^RenameTable|GFS_Rangement|_grist_Views_section/.test(action)) && !written.some(action => /Automation/.test(action) && !/^AddRecord Automation|^UpdateRecord Automation/.test(action)), written);
+  const probeOnly = action => /^AddRecord GFS_Filing \[@sonde\]$|^RemoveRecord GFS_Filing$/.test(action);
+  check('l\'arrivée n\'écrit ni table, ni réglage de la vue, ni rangement (hors la sonde d\'identité de GFS)', !written.some(action => !probeOnly(action) && /^AddTable|^RemoveTable|^RenameTable|GFS_Filing|_grist_Views_section/.test(action)) && !written.some(action => /Automation/.test(action) && !/^AddRecord Automation|^UpdateRecord Automation/.test(action)), written);
   check('les réglages de la section et la liste des tables sont intacts', JSON.stringify({ options: await options(), tables: await frame.evaluate(() => grist.docApi.listTables()) }) === beforeTable);
   await lab.shotPanel(run, '6-automation-par-sa-table', frame);
 

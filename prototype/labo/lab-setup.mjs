@@ -151,12 +151,12 @@ export async function startLab(options = {}) {
     await target.locator(`[data-open="${id}"]`).click();
     return appFrame(pattern);
   };
-  // Ce que le document retient : la table `GFS_Rangement` (si elle existe) et la valeur de sa ligne réservée `@document` / `gfs` / `apps` (contrats 7.4).
+  // Ce que le document retient : la table `GFS_Filing` (si elle existe) et la valeur de sa ligne réservée `@document` / `gfs` / `apps` (contrats 7.4).
   const rangement = (target = frame) => target.evaluate(async () => {
     const tables = await grist.docApi.listTables();
     const pages = (await grist.docApi.fetchTable('_grist_Pages')).id.length;
-    if (!tables.includes('GFS_Rangement')) return { table: false, pages, tables: tables.length };
-    const data = await grist.docApi.fetchTable('GFS_Rangement');
+    if (!tables.includes('GFS_Filing')) return { table: false, pages, tables: tables.length };
+    const data = await grist.docApi.fetchTable('GFS_Filing');
     const at = data.id.findIndex((id, i) => data.Utilisateur[i] === '@document' && data.App[i] === 'gfs' && data.Fichier[i] === 'apps');
     const columns = Object.keys(data).filter(name => /^[A-Z]/.test(name));
     // `lines` : toutes les lignes, avec leurs colonnes (celles d'un autre auteur comprises), pour vérifier qu'une écriture n'y a pas touché.

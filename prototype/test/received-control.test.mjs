@@ -9,7 +9,7 @@ import { KeptFiles } from '../js/files/kept-files.js';
 
 const FR = createI18n('fr');
 const EN = createI18n('en');
-const file = (state = PENDING, extra = {}) => ({ key: 'gfs-recus:GFS_Recus:f1', app: 'gfs-recus', id: 'f1', name: 'Contrat.pdf', type: 'pdf', by: 'Compta <compta@exemple.fr>', weight: 2150, received: { table: 'GFS_Recus', row: 4, state, gone: false, ...extra } });
+const file = (state = PENDING, extra = {}) => ({ key: 'gfs-recus:GFS_Received:f1', app: 'gfs-recus', id: 'f1', name: 'Contrat.pdf', type: 'pdf', by: 'Compta <compta@exemple.fr>', weight: 2150, received: { table: 'GFS_Received', row: 4, state, gone: false, ...extra } });
 
 function setup({ i18n = FR, blocked = null, answers = 'accept', written = true } = {}) {
   const log = { notices: [], windows: [], written: [], refreshed: 0, opened: [] };
@@ -54,7 +54,7 @@ test('GFS lit une arrivée acceptée comme un PDF qu\'il garde, sans en devenir 
 test('Entrée sur une arrivée acceptée la lit ; sur une arrivée en attente, la question est posée', async () => {
   const { control, log } = setup({ answers: 'escape' });
   control.activate(file(ACCEPTED));
-  assert.deepEqual(log.opened, ['gfs-recus:GFS_Recus:f1']);
+  assert.deepEqual(log.opened, ['gfs-recus:GFS_Received:f1']);
   control.activate(file());
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(log.windows.length, 1);
@@ -68,7 +68,7 @@ test('la question dit le nom, qui partage et le poids ; « Accepter » écrit la
   assert.equal(ctx.sub, 'Partagé par Compta');
   assert.equal(ctx.who, 'Compta');
   assert.match(ctx.size, /Ko/);
-  assert.deepEqual(log.written, [['gfs-recus:GFS_Recus:f1', true]]);
+  assert.deepEqual(log.written, [['gfs-recus:GFS_Received:f1', true]]);
   assert.deepEqual(log.notices, ['« Contrat.pdf » est accepté.']);
   assert.equal(log.refreshed, 1);
 });
@@ -76,7 +76,7 @@ test('la question dit le nom, qui partage et le poids ; « Accepter » écrit la
 test('« Refuser » écrit la marque de refus et le dit', async () => {
   const { control, log } = setup({ answers: 'refuse' });
   assert.equal(await control.ask(file()), 'refuse');
-  assert.deepEqual(log.written, [['gfs-recus:GFS_Recus:f1', false]]);
+  assert.deepEqual(log.written, [['gfs-recus:GFS_Received:f1', false]]);
   assert.match(log.notices[0], /refusé : il ne reviendra pas/);
 });
 
@@ -103,8 +103,8 @@ test('une ligne qui n\'est plus dans la table : la réponse échoue avec la phra
 });
 
 test('la question d\'un dossier : une écriture pour tous ses fichiers à accepter, les phrases du dossier, la phrase du résultat, la liste relue ; Échap n\'écrit rien', async () => {
-  const waiting = (n, state = PENDING) => ({ ...file(state), key: `gfs-recus:GFS_Recus:f${n}`, id: `f${n}`, weight: 1000, received: { table: 'GFS_Recus', row: n, state, folder: 'Contrats' } });
-  const folder = { id: 'GFS_Recus:Contrats', name: 'Contrats', table: 'GFS_Recus', by: 'Compta <compta@exemple.fr>', files: [waiting(1), waiting(2), waiting(3, ACCEPTED)] };
+  const waiting = (n, state = PENDING) => ({ ...file(state), key: `gfs-recus:GFS_Received:f${n}`, id: `f${n}`, weight: 1000, received: { table: 'GFS_Received', row: n, state, folder: 'Contrats' } });
+  const folder = { id: 'GFS_Received:Contrats', name: 'Contrats', table: 'GFS_Received', by: 'Compta <compta@exemple.fr>', files: [waiting(1), waiting(2), waiting(3, ACCEPTED)] };
   const written = [];
   const make = answers => {
     const log = { notices: [], windows: [], refreshed: 0 };

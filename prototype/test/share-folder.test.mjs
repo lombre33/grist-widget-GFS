@@ -9,7 +9,7 @@ import { fakeGrist } from './fake-grist.mjs';
 const file = (id, extra = {}) => ({ app: FILES_APP, id, row: Number(id.slice(1)), name: `${id}.pdf`, folder: 'Contrats', trashed: null, ...extra });
 
 test('les fichiers d\'un dossier qui partent : les PDF de GFS rangés dans ce dossier même, ni à la corbeille, ni reçus, ni donnés par une adresse ; ceux d\'une app restent, et se comptent', () => {
-  const files = [file('p1'), file('p2', { folder: 'Contrats/Sous' }), file('p3', { folder: '' }), file('p4', { trashed: { ts: 1 } }), file('p5', { received: { table: 'GFS_Recus' } }), file('p6', { direct: { url: 'x' } }), file('p7', { app: 'publipostage' }), file('p8')];
+  const files = [file('p1'), file('p2', { folder: 'Contrats/Sous' }), file('p3', { folder: '' }), file('p4', { trashed: { ts: 1 } }), file('p5', { received: { table: 'GFS_Received' } }), file('p6', { direct: { url: 'x' } }), file('p7', { app: 'publipostage' }), file('p8')];
   const sent = filesOfFolder(files, 'Contrats');
   assert.deepEqual(sent.map(each => each.id), ['p1', 'p8'], 'le niveau du dossier seulement : un sous-dossier est un autre dossier');
   assert.equal(skippedInFolder(files, 'Contrats'), 1, 'le fichier d\'une app ne part pas : il se compte, pour le dire');

@@ -1,6 +1,6 @@
 // Les fichiers reçus d'un autre document Grist (« Partagés avec moi », contrats 6.6, point 17) : ce que GFS en sait sans toucher à Grist. Ils arrivent dans des
-// tables `GFS_Recus`, `GFS_Recus_2`… (une par partage : le moteur de Sync+ ne remplit une destination que pour un seul partage, faits vérifiés 71), avec les
-// colonnes des fichiers de GFS ; chaque arrivée attend la réponse de la personne :
+// tables `GFS_Received`, `GFS_Received_2`… (une par partage : le moteur de Sync+ ne remplit une destination que pour un seul partage, faits vérifiés 71), avec
+// les colonnes des fichiers de GFS ; chaque arrivée attend la réponse de la personne :
 //   à accepter  ni `Accepte` ni `Refuse` : le fichier est dans ce document, grisé, et nulle app ne le voit (l'explorateur de GFS seul le montre) ;
 //   accepté     `Accepte` vrai : la ligne se lit comme un PDF de GFS ;
 //   refusé      `Refuse` vrai : la ligne reste dans la table, mais n'est plus montrée.
@@ -14,17 +14,17 @@ import { OwnTable } from '../files/own-table.js';
 import { PENDING, ACCEPTED, REFUSED, stateOf } from './received-state.js';
 
 export const RECEIVED_APP = 'gfs-recus';
-export const RECEIVED_TABLE = 'GFS_Recus';
+export const RECEIVED_TABLE = 'GFS_Received';
 export const ACCEPTED_COLUMN = 'Accepte';
 export const REFUSED_COLUMN = 'Refuse';
 // le moteur de Sync+ (kit/js/synchro/logic/common.js, ARCHIVE_COL) : le fichier n'est plus chez l'envoyeur
 export const ARCHIVE_COLUMN = 'Supprimee_a_la_source';
 export const MARK_COLUMNS = Object.freeze([{ id: ACCEPTED_COLUMN, type: 'Bool' }, { id: REFUSED_COLUMN, type: 'Bool' }].map(column => Object.freeze(column)));
 
-// `GFS_Recus`, `GFS_Recus_2`, `GFS_Recus_3`… (casse ignorée, comme Grist) : jamais une autre table, même si son nom commence pareil.
+// `GFS_Received`, `GFS_Received_2`, `GFS_Received_3`… (casse ignorée, comme Grist) : jamais une autre table, même si son nom commence pareil.
 export const isReceivedTable = name => new RegExp(`^${RECEIVED_TABLE}(_[0-9]+)?$`, 'i').test(String(name));
 
-// Les tables reçues d'une liste de noms, dans l'ordre de leur numéro (`GFS_Recus` d'abord).
+// Les tables reçues d'une liste de noms, dans l'ordre de leur numéro (`GFS_Received` d'abord).
 export function receivedTables(names) {
   const number = name => Number(String(name).split('_')[2] || 1);
   return (names || []).map(String).filter(isReceivedTable).sort((a, b) => number(a) - number(b));

@@ -68,7 +68,7 @@ test('sans l\'accord de la personne, la table n\'est pas créée et rien n\'est 
   assert.deepEqual(run.batches, []);
 });
 
-test('mettre à la corbeille : la table naît avec l\'accord, puis UN SEUL lot copie la ligne dans GFS_Corbeille et la retire de la table de l\'app', async () => {
+test('mettre à la corbeille : la table naît avec l\'accord, puis UN SEUL lot copie la ligne dans GFS_Trash et la retire de la table de l\'app', async () => {
   const run = setup();
   const entry = await trashed(run, 2);
   assert.deepEqual(run.asked, ['consent']);
@@ -366,13 +366,13 @@ test('le fichier peut partir de la liste avant d\'être écrit à la corbeille s
   const run = setup();
   const { files } = await run.load();
   assert.equal(run.trash.instant(files[0]), false, 'la table de la corbeille n\'a jamais été vue : la créer demande l\'accord de la personne');
-  run.trash.noteBin('GFS_Corbeille');
+  run.trash.noteBin('GFS_Trash');
   assert.equal(run.trash.instant(files[0]), true);
   run.trash.noteBin(null);
   assert.equal(run.trash.instant(files[0]), false, 'la dernière lecture dit qu\'elle n\'existe pas');
-  run.trash.noteBin('GFS_Corbeille');
+  run.trash.noteBin('GFS_Trash');
   assert.equal(run.trash.instant({ ...files[0], table: 'Autre' }), false, 'un fichier que le gardien ne gère pas');
   const composite = setup({ over: { apps: () => [{ manifest: form() }] } });
-  composite.trash.noteBin('GFS_Corbeille');
+  composite.trash.noteBin('GFS_Trash');
   assert.equal(composite.trash.instant({ app: 'form', table: 'FormPlus_Formulaires', id: '1' }), false, 'un formulaire se ferme par l\'app ouverte, qui peut refuser : on attend sa réponse');
 });

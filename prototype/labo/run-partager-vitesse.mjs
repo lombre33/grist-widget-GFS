@@ -1,7 +1,7 @@
 // Combien de temps « Lecture des partages… » reste-t-elle à l'écran, au clic sur « Partager… » ? Mesuré dans GFS lui-même, dans un VRAI Grist (`bash vrai-serveur.sh`), à 700 × 400, à la vraie souris, sur un document dont le
 // partage est activé (une ligne « tous » par fichier, comme à l'activation). Chaque `fetchTable` du cadre est chronométré (le nom de la table, la durée, le nombre de lignes), ainsi que chaque requête réseau du
 // navigateur pendant l'attente : on voit d'où vient le temps (la preuve de propriété, les lectures de tables, la fenêtre).
-//   FILES=n     nombre de fichiers de plus dans GFS_Fichiers avant l'activation (300 par défaut ; 0 = les deux fichiers d'essai) ;
+//   FILES=n     nombre de fichiers de plus dans GFS_Files avant l'activation (300 par défaut ; 0 = les deux fichiers d'essai) ;
 //   LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 // REPO_DIR="$(realpath ../..)" FILES=2000 node run-partager-vitesse.mjs
 import { createServer } from 'node:http';
@@ -23,7 +23,7 @@ async function addFiles(run, count) {
   for (let from = 0; from < count; from += 500) {
     const records = Array.from({ length: Math.min(500, count - from) }, (_, i) => ({ fields: {
       Identifiant: `lab-${from + i}`, Nom: `Zz Essai ${String(from + i).padStart(5, "0")}.pdf`, Type: 'application/pdf', Auteur: 'owner@example.com', Taille: 1000, Origine: 'import' } }));
-    const status = await run.page.evaluate(async ([doc, rows]) => (await fetch(`/api/docs/${doc}/tables/GFS_Fichiers/records`, { method: 'POST',
+    const status = await run.page.evaluate(async ([doc, rows]) => (await fetch(`/api/docs/${doc}/tables/GFS_Files/records`, { method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ records: rows }) })).status, [run.docId, records]);
     if (status !== 200) throw new Error(`ajout de fichiers refusé : ${status}`);
   }
@@ -98,7 +98,7 @@ try {
   frame = reloaded;
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 120000 });
   await closeShare(frame);
-  const partages = (await run.rest.rows('GFS_Partages')).length;
+  const partages = (await run.rest.rows('GFS_Shares')).length;
   check('le partage est activé, une ligne de partage par fichier', partages >= FILES + 2, partages);
 
   say('--- 1. première ouverture de « Partager… » après le chargement de la page ---');

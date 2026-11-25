@@ -7,7 +7,7 @@ import { levelOfNote } from './rights.js';
 import { isGfsNote, isSharingNote, planSharing, planUnsharing, sharedRules, RANGEMENT_NEEDED } from '../sharing/sharing-model.js';
 import { FILES_COLUMNS } from '../files/gfs-files.js';
 
-export const RANGEMENT = 'GFS_Rangement';
+export const RANGEMENT = 'GFS_Filing';
 export const NEEDED_COLUMNS = RANGEMENT_NEEDED;
 const STRUCTURE_NOTE = 'GFS : Structure fermée · seul un propriétaire change les tables, les colonnes et les pages';
 const STRUCTURE_ANY = /^\s*GFS\s*:\s*Structure/i;

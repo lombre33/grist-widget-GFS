@@ -62,7 +62,7 @@ test('les colonnes de la vue : sans manualSort ni colonnes d\'aide, la Référen
 
 test('les tables qu\'on peut choisir : ni Grist, ni GFS, ni les tables des apps', () => {
   const manifests = [{ tables: { prefixe: 'Publipostage_' }, fichiers: [{ table: 'Publipostage_Modeles' }] }, { tables: { prefixe: 'Automation_' } }, { fichiers: [{ table: 'Modeles' }] }];
-  assert.deepEqual(workTables(['Clients', '_grist_Tables', 'GFS_Rangement', 'Publipostage_LiensTables', 'Automation', 'Automation_Log', 'Modeles', 'Participants'], manifests), ['Clients', 'Participants']);
+  assert.deepEqual(workTables(['Clients', '_grist_Tables', 'GFS_Filing', 'Publipostage_LiensTables', 'Automation', 'Automation_Log', 'Modeles', 'Participants'], manifests), ['Clients', 'Participants']);
 });
 
 test('le texte d\'une ligne : ses quatre premières valeurs, une date en jour, la recherche sur toutes ; sans valeur, son numéro', () => {

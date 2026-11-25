@@ -1,4 +1,4 @@
-// Les apps installées et leurs extensions (contrats 7.3, 7.4) : ce que le document retient dans la table `GFS_Rangement`, borné par les manifestes.
+// Les apps installées et leurs extensions (contrats 7.3, 7.4) : ce que le document retient dans la table `GFS_Filing`, borné par les manifestes.
 // La fenêtre répond tout de suite : l'état change d'abord, l'écriture suit (une à la fois, relue juste avant d'écrire), et si elle échoue l'état revient
 // à ce que la table a dit en dernier. Une écriture n'a lieu que sur un geste de la personne (7.3, point 2) : `load` ne fait que lire.
 

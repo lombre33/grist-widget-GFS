@@ -72,7 +72,7 @@ const docWith = (names, applied) => ({
 
 test('la fermeture de la fenêtre de liaison ferme les tables techniques ET la structure, en une seule écriture, pour un propriétaire prouvé', async () => {
   const applied = [];
-  await closeTechnicalTables({ transfer: { isOwner: async () => true }, docApi: () => docWith(['GFS_Fichiers', 'GFS_Synchro'], applied) });
+  await closeTechnicalTables({ transfer: { isOwner: async () => true }, docApi: () => docWith(['GFS_Files', 'GFS_Synchro'], applied) });
   assert.equal(applied.length, 1, 'une seule écriture : Grist ne recharge qu\'une fois');
   assert.ok(applied[0].some(action => action[1] === '_grist_ACLRules' && action[3].permissionsText === '-CRUD'), 'la table technique est réservée aux propriétaires');
   assert.ok(applied[0].some(action => action[1] === '_grist_ACLRules' && action[3].aclFormula === 'user.Access != OWNER' && action[3].permissionsText === '-S'), 'la structure est fermée');
@@ -85,6 +85,6 @@ test('sans la preuve d\'être propriétaire, ou sans table technique (fenêtre f
     assert.deepEqual(applied, [], `propriétaire : ${owner}`);
   }
   const applied = [];
-  await closeTechnicalTables({ transfer: { isOwner: async () => true }, docApi: () => docWith(['GFS_Fichiers', 'Clients'], applied) });
+  await closeTechnicalTables({ transfer: { isOwner: async () => true }, docApi: () => docWith(['GFS_Files', 'Clients'], applied) });
   assert.deepEqual(applied, [], 'rien n\'a été créé : la structure reste comme elle est');
 });

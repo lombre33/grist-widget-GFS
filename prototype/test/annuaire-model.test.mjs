@@ -62,7 +62,7 @@ test('config : les annuaires d\'une table lue ; une ligne sans nom ou sans table
   assert.deepEqual(found[0].config.levels.map(level => level.label), ['Pôle', 'Direction', 'Service']);
   assert.deepEqual(annuairesOf(null), []);
   assert.deepEqual(ANNUAIRES_COLUMNS.map(column => column.id), ['Nom', 'Table', 'Config', 'Parent', 'Fiches']);
-  assert.deepEqual(addAction('GFS_Annuaires', newRecord(' A ', 'Personnes', configFixture())).slice(0, 3), ['AddRecord', 'GFS_Annuaires', null]);
+  assert.deepEqual(addAction('GFS_Directories', newRecord(' A ', 'Personnes', configFixture())).slice(0, 3), ['AddRecord', 'GFS_Directories', null]);
 });
 
 test('schéma : les colonnes de chaque table, leur genre et la table visée ; les colonnes de Grist sont ignorées', () => {
@@ -80,12 +80,12 @@ test('schéma : les colonnes de chaque table, leur genre et la table visée ; le
   assert.deepEqual(columnOf(schema, 'Personnes', 'Structure'), { id: 'Structure', type: 'Ref:Structures', genre: 'ref', ref: 'Structures', visible: 'Nom', formula: false, choices: [] });
   assert.equal(columnOf(schema, 'Personnes', 'Absente'), null);
   assert.equal(isPeopleTable('Personnes'), true);
-  assert.equal(isPeopleTable('GFS_Annuaires'), false);
+  assert.equal(isPeopleTable('GFS_Directories'), false);
   assert.equal(isPeopleTable('_grist_Tables'), false);
 });
 
 test('schéma : une table de synthèse n\'est pas proposée', () => {
-  const tables = { ...metaTables(), id: [1, 2, 3, 9], tableId: ['Personnes', 'Structures', 'GFS_Annuaires', 'Personnes_summary_Pole'], summarySourceTable: [0, 0, 0, 1] };
+  const tables = { ...metaTables(), id: [1, 2, 3, 9], tableId: ['Personnes', 'Structures', 'GFS_Directories', 'Personnes_summary_Pole'], summarySourceTable: [0, 0, 0, 1] };
   assert.equal('Personnes_summary_Pole' in schemaOf(tables, metaColumns()), false);
 });
 

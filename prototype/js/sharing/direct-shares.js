@@ -16,7 +16,7 @@ export function listOf(value) {
 
 // L'adresse d'une personne qui n'a pas pu l'apprendre par la sonde du rangement (un lecteur n'écrit rien dans le document) : les lignes de partage qu'elle lit
 // sont celles qui la visent (« chacun lit les partages qui le concernent », js/sharing/sharing-model.js, `shareRules`) ; si une seule adresse de personne y
-// figure, c'est la sienne. Plusieurs (elle administre un fichier d'autres personnes) ou aucune : on ne devine pas. `rows` : les lignes de `GFS_Partages`.
+// figure, c'est la sienne. Plusieurs (elle administre un fichier d'autres personnes) ou aucune : on ne devine pas. `rows` : les lignes de `GFS_Shares`.
 export function addressFromShares(rows) {
   const found = new Set((rows || []).map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@') && !who.startsWith('#')));
   return found.size === 1 ? [...found][0] : '';

@@ -1,6 +1,6 @@
 // L'identité d'un dossier de « Moi » (contrats 11.7, point 13.n.g ; choix du porteur, 18/11 : « l'id de ligne de Grist ») : un dossier n'existe que par le
 // texte du chemin que portent ses fichiers, donc un partage écrit avec ce texte se perdait au premier renommage. Un dossier partagé a désormais sa propre ligne
-// d'état dans `GFS_Rangement` (ni app ni fichier, le chemin en `Dossier`), et c'est le **numéro de cette ligne** que le partage et le lien portent :
+// d'état dans `GFS_Filing` (ni app ni fichier, le chemin en `Dossier`), et c'est le **numéro de cette ligne** que le partage et le lien portent :
 // `dossier:moi:<adresse>//<numéro>` (deux « / » de suite : un chemin n'en a jamais, aucun nom de dossier ne peut donc s'y confondre). Renommer ou déplacer le
 // dossier change le texte de sa ligne, sur place ; le numéro, lui, reste. Du code pur : il lit les lignes que les appelants ont relues et rend les actions à
 // écrire dans le même lot que le rangement.
@@ -52,7 +52,7 @@ function fusedRows(rows, from, to, known) {
 const linkIn = (places, keys) => places.some(row => keys.includes(row.Lien));
 
 // Ce que le dossier `from` qui devient `to` change aux partages et aux liens, dans le même lot que le rangement. Rend { refuse, extra, lost } :
-// - `extra` : les actions sur `GFS_Partages` et `GFS_Placement` (les partages et liens à l'ancienne mode passent au numéro de leur ligne ; ceux d'un dossier
+// - `extra` : les actions sur `GFS_Shares` et `GFS_Placement` (les partages et liens à l'ancienne mode passent au numéro de leur ligne ; ceux d'un dossier
 //   fondu dans un autre sont retirés) ;
 // - `lost` : le nombre de partages retirés ;
 // - `refuse` : la clé de la phrase quand un lien empêche le geste (un lien se change par un propriétaire : un dossier fondu qui en porte un, ou un lien à

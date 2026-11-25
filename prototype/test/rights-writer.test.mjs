@@ -119,7 +119,7 @@ test('la question d\u2019activation dit que la structure se ferme, et ce que les
 test('activer le partage : les PDF déjà rangés restent lisibles de tous (un partage « tout le document » par fichier), les nouveaux ne le sont pas', async () => {
   const { writer, sent } = setup({ raw: { ...RAW(), fileIds: ['a1', 'b2'] } });
   await writer.apply('sharing');
-  const bulk = sent[0].find(action => action[0] === 'BulkAddRecord' && action[1] === 'GFS_Partages');
+  const bulk = sent[0].find(action => action[0] === 'BulkAddRecord' && action[1] === 'GFS_Shares');
   assert.deepEqual(bulk[3].Cible, ['gfs-fichiers:a1', 'gfs-fichiers:b2']);
   assert.deepEqual(bulk[3].Personne, ['@tous', '@tous']);
   assert.deepEqual(bulk[3].Droit, ['lecture', 'lecture']);

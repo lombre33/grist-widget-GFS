@@ -4,7 +4,7 @@
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-ranger-pdf.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
 //   LAB_KIT=1 : la même mesure avec la sonde Z kit (`kit.html`), qui parle à GFS par le VRAI client du kit (`GfsLink.deposit`, le sous-module `prototype/kit`) au lieu d'une enveloppe écrite à la main.
 //   0. La sonde Z est installée (fenêtre « Apps ») et ouverte par « Nouveau > Document ».
-//   1. La table GFS_Fichiers n'existe pas : GFS demande l'accord ; refusée, rien n'est créé et l'app reçoit GFS_ANNULE ; dans un lot, la question n'est posée qu'une fois.
+//   1. La table GFS_Files n'existe pas : GFS demande l'accord ; refusée, rien n'est créé et l'app reçoit GFS_ANNULE ; dans un lot, la question n'est posée qu'une fois.
 //   2. Accordée : le PDF est rangé (le File vient d'un cadre isolé : même empreinte), l'app reçoit { statut, id, nom }, GFS ne dit rien par-dessus l'app, la liste de l'explorateur le montre.
 //   3. Le dossier que l'app donne : un fichier nouveau y entre (la table du rangement est celle de l'installation de l'app), un fichier remplacé garde sa place.
 //   4. Un nom pris : la fenêtre nomme l'app, décrit le fichier existant, tient dans le panneau ; Remplacer, Garder les deux, Annuler, Échap ; un clic à côté ne ferme rien.
@@ -44,8 +44,8 @@ const probeSays = page => { const frame = probeFrame(page); return frame ? frame
 // Une demande de l'app, sans l'attendre : la fenêtre de GFS s'ouvre pendant ce temps et la personne y répond ; la promesse rend la réponse de GFS.
 const ask = (page, method, ...args) => probeFrame(page).evaluate(([name, params]) => window.sondeZ[name](...params), [method, args]);
 const settled = (promise, ms = FIVE_SECONDS) => Promise.race([promise, new Promise(resolve => setTimeout(() => resolve('attente'), ms))]);
-const snapshot = async rest => ({ tables: await rest.tables(), rows: (await rest.rows('GFS_Fichiers')).length, attachments: (await rest.attachments()).length });
-const rowNamed = async (rest, name) => (await rest.rows('GFS_Fichiers')).find(row => row.Nom === name);
+const snapshot = async rest => ({ tables: await rest.tables(), rows: (await rest.rows('GFS_Files')).length, attachments: (await rest.attachments()).length });
+const rowNamed = async (rest, name) => (await rest.rows('GFS_Files')).find(row => row.Nom === name);
 const hashOf = async (rest, name) => { const row = await rowNamed(rest, name); return row ? (await rest.attachment(row.Contenu[1])).hash : null; };
 
 // La fenêtre du nom pris, vue par la personne.
@@ -90,14 +90,14 @@ async function installProbe(run) {
 // ----- 1. La table refusée.
 async function playDeclined(run) {
   const { page, frame, rest } = run;
-  say('--- 1. la table GFS_Fichiers refusée ---');
+  say('--- 1. la table GFS_Files refusée ---');
   const before = await snapshot(rest);
-  check('le document n\'a pas encore la table des fichiers', !before.tables.includes('GFS_Fichiers'), before.tables);
+  check('le document n\'a pas encore la table des fichiers', !before.tables.includes('GFS_Files'), before.tables);
   const pending = ask(page, 'ranger', run.items.facture);
   await frame.locator('.mod.ask').waitFor();
   const title = await frame.locator('#ask-title').textContent();
   const text = await frame.locator('.mod.ask').textContent();
-  check('GFS demande l\'accord avant tout, et dit que les apps y rangent aussi', title === t('files.table.title') && text.includes(t('files.table.text')) && !(await rest.tables()).includes('GFS_Fichiers'), title);
+  check('GFS demande l\'accord avant tout, et dit que les apps y rangent aussi', title === t('files.table.title') && text.includes(t('files.table.text')) && !(await rest.tables()).includes('GFS_Files'), title);
   check('la fenêtre tient dans le panneau et ses textes sont lisibles (4,5:1)', (await contrastProblems(frame, '.mod')).length === 0 && JSON.stringify(await windowFits(frame)) === '{"shown":true,"inPanel":true,"overflowing":[]}', await windowFits(frame));
   await shot(frame, 'ranger-1-accord');
   await frame.locator('[data-fk="ask-no"]').click();
@@ -108,7 +108,7 @@ async function playDeclined(run) {
   await frame.locator('[data-fk="ask-no"]').click();
   const answers = await settled(batch);
   check('dans un lot, la table refusée n\'est pas redemandée : les trois fichiers sont refusés (GFS_ANNULE), sans autre fenêtre', Array.isArray(answers) && answers.length === 3 && answers.every(each => each.code === 'GFS_ANNULE') && (await frame.locator('.mod').count()) === 0, answers);
-  check('rien n\'a été créé', !(await rest.tables()).includes('GFS_Fichiers') && (await rest.attachments()).length === 0);
+  check('rien n\'a été créé', !(await rest.tables()).includes('GFS_Files') && (await rest.attachments()).length === 0);
 }
 
 // ----- 2. La table accordée : le premier PDF est rangé.
@@ -121,7 +121,7 @@ async function playFirst(run) {
   const answer = await settled(pending);
   check('l\'app reçoit { statut: « ajoute », id, nom }', answer.ok === true && answer.data.statut === 'ajoute' && /^[0-9a-f]{12}$/.test(answer.data.id) && answer.data.nom === 'Facture.pdf', answer);
   run.firstId = answer.data && answer.data.id;
-  const rows = await rest.rows('GFS_Fichiers');
+  const rows = await rest.rows('GFS_Files');
   const [row] = rows;
   check('une ligne : l\'identifiant rendu, le nom, le type, la taille, l\'app dans « Origine », la date du jour', rows.length === 1 && row.Identifiant === run.firstId && row.Nom === 'Facture.pdf' && row.Type === 'pdf' && row.Taille === run.items.facture.size && row.Origine === ID && Math.abs(row.Date - Date.now() / 1000) < 600, row);
   const stored = await rest.attachment(row.Contenu[1]);
@@ -142,7 +142,7 @@ async function playFolder(run) {
   const pending = ask(page, 'ranger', { ...run.items.contrat, dossier: ' Factures // 2026/ ' });
   const answer = await settled(pending);
   check('le fichier est rangé', answer.ok === true && answer.data.statut === 'ajoute' && answer.data.nom === 'Contrat.pdf', answer);
-  const filing = (await rest.rows('GFS_Rangement')).filter(row => row.App === 'gfs-fichiers' && row.Fichier === (answer.data && answer.data.id));
+  const filing = (await rest.rows('GFS_Filing')).filter(row => row.App === 'gfs-fichiers' && row.Fichier === (answer.data && answer.data.id));
   check('le rangement de la personne le met dans « Factures/2026 » (chemin normalisé), sans favori', filing.length === 1 && filing[0].Dossier === 'Factures/2026' && filing[0].Favori === false, filing);
   await openExplorer(run);
   const names = await waitForNames(frame, ['Facture.pdf']);
@@ -209,7 +209,7 @@ async function playBatches(run) {
   const bilan = pdfItem('Bilan.pdf', 'Bilan un');
   const batchA = [devis, pdfItem('Facture.pdf', 'Lot A facture'), pdfItem('Facture (1).pdf', 'Lot A copie'), pdfItem('Contrat.pdf', 'Lot A contrat'), bilan];
   const before = await snapshot(rest);
-  const folderOf = async name => { const row = await rowNamed(rest, name); return ((await rest.rows('GFS_Rangement')).find(each => each.Fichier === row.Identifiant) || {}).Dossier; };
+  const folderOf = async name => { const row = await rowNamed(rest, name); return ((await rest.rows('GFS_Filing')).find(each => each.Fichier === row.Identifiant) || {}).Dossier; };
   const contract = await rowNamed(rest, 'Contrat.pdf');
   let pending = ask(page, 'exporter', 'export-A', batchA);
   await win.open();

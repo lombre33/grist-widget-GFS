@@ -1,5 +1,5 @@
 // « Partager » (contrats 11.7, point 13) : le vrai plan de js/sharing/sharing-model.js joué dans un VRAI Grist, à trois comptes, en trois temps (le serveur d'essai ne connaît qu'une personne à la fois, `GRIST_EMAIL`) :
-//   PHASE=proprietaire  essai@example.com : le plan crée `GFS_Partages` et `GFS_Fichiers`, ajoute les colonnes d'aide et pose les règles en une fois ; quatre fichiers, trois partages ;
+//   PHASE=proprietaire  essai@example.com : le plan crée `GFS_Shares` et `GFS_Files`, ajoute les colonnes d'aide et pose les règles en une fois ; quatre fichiers, trois partages ;
 //   PHASE=editeur       editor@example.com : il lit ses fichiers et ceux qu'on lui a partagés, partage le sien SANS propriétaire, ne peut ni se nommer auteur d'un autre ni valider un partage hors de ses fichiers ;
 //   PHASE=lecteur       viewer@example.com : il lit ce que l'éditeur et le propriétaire lui ont partagé, rien d'autre ; PHASE=retrait : le propriétaire retire les règles.
 import { chromium, say, check } from './lab-common.mjs';
@@ -41,12 +41,12 @@ try {
     say('partage au document :', await shareWithEditorAndViewer(page, id));
     const existing = await existingOf(page, id);
     const plan = planSharing(existing, FILES_COLUMNS);
-    check('le plan est possible, sans règle d\'un autre auteur, pour un document neuf', plan.ok && plan.firstRule && [SHARES_TABLE, 'GFS_Rangement', 'GFS_Fichiers'].every(name => plan.creates.includes(name)), plan.creates);
+    check('le plan est possible, sans règle d\'un autre auteur, pour un document neuf', plan.ok && plan.firstRule && [SHARES_TABLE, 'GFS_Filing', 'GFS_Files'].every(name => plan.creates.includes(name)), plan.creates);
     let answer = await apply(page, id, plan.actions);
     check('les deux tables, les colonnes d\'aide et les règles s\'écrivent en UNE liasse', answer.status === 200, answer.text);
     const again = planSharing(await existingOf(page, id), FILES_COLUMNS);
     check('le plan suivant dit « déjà posé »', !again.ok && again.reason === 'already', again);
-    answer = await apply(page, id, [['BulkAddRecord', 'GFS_Fichiers', [null, null, null, null], {
+    answer = await apply(page, id, [['BulkAddRecord', 'GFS_Files', [null, null, null, null], {
       Identifiant: ['f1', 'f2', 'f3', 'f4'], Nom: ['Devis.pdf', 'Secret.pdf', 'Public.pdf', 'Equipe.pdf'], Auteur: [EDITOR, OWNER, OWNER, OWNER], GFS_Auteur: [EDITOR, OWNER, OWNER, OWNER] }]]);
     check('quatre fichiers (f1 est à l\'éditeur : le propriétaire écrit GFS_Auteur, il le peut)', answer.status === 200, answer.text);
     answer = await apply(page, id, [['BulkAddRecord', SHARES_TABLE, [null, null], [shareRecord({ target: 'gfs-fichiers:f3', who: '@tous', right: 'lecture' }), shareRecord({ target: 'gfs-fichiers:f4', who: '@editeurs', right: 'lecture' })]
@@ -55,7 +55,7 @@ try {
     const shares = await records(page, id, SHARES_TABLE);
     say('partages :', JSON.stringify(shares.map(row => [row.Cible, row.Personne, row.Auteur, row.AuteurAcces, row.Valide1, row.Valide])));
     check('l\'auteur et son rôle sont écrits par Grist ; un partage du propriétaire est valide', shares.every(row => row.Auteur === OWNER && row.Valide1 === true && row.Valide === true), shares.map(row => [row.AuteurAcces, row.Valide1, row.Valide]));
-    const files = await records(page, id, 'GFS_Fichiers');
+    const files = await records(page, id, 'GFS_Files');
     say('lecteurs :', JSON.stringify(files.map(row => [row.Identifiant, strip(row.GFS_Lecteurs), strip(row.GFS_Cats)])));
     check('le propriétaire lit les quatre', ids(files) === 'f1,f2,f3,f4');
     check('GFS_Cats de f3 = tous, de f4 = editeurs', JSON.stringify(strip(files.find(row => row.Identifiant === 'f3').GFS_Cats)) === '["tous"]' && JSON.stringify(strip(files.find(row => row.Identifiant === 'f4').GFS_Cats)) === '["editeurs"]');
@@ -75,17 +75,17 @@ try {
     await page.goto(`${GRIST}/`, { waitUntil: 'load' }); await page.waitForTimeout(2500);
     if (phase === 'editeur') {
       say('--- editor@ : auteur de f1 ---');
-      let seen = await records(page, id, 'GFS_Fichiers');
+      let seen = await records(page, id, 'GFS_Files');
       check('il lit f1 (le sien), f3 (« tous ») et f4 (« les éditeurs »), pas f2', ids(seen) === 'f1,f3,f4', ids(seen));
       let answer = await apply(page, id, [['AddRecord', SHARES_TABLE, null, shareRecord({ target: 'gfs-fichiers:f1', who: VIEWER, right: 'lecture' })]]);
       check('il partage son fichier avec viewer@ SANS propriétaire', answer.status === 200, answer.text);
       answer = await apply(page, id, [['AddRecord', SHARES_TABLE, null, shareRecord({ target: 'gfs-fichiers:f2', who: EDITOR, right: 'lecture' })]]);
       say('partage d\'un fichier qui n\'est pas le sien (f2) :', answer.status);
-      seen = await records(page, id, 'GFS_Fichiers');
+      seen = await records(page, id, 'GFS_Files');
       check('ce partage ne lui ouvre pas f2', ids(seen) === 'f1,f3,f4', ids(seen));
       answer = await apply(page, id, [['AddRecord', SHARES_TABLE, null, { ...shareRecord({ target: 'gfs-fichiers:f2', who: EDITOR, right: 'admin' }), Auteur: OWNER, AuteurAcces: 'owners' }]]);
       say('tentative de tricher sur l\'auteur et son rôle :', answer.status, answer.text.slice(0, 160));
-      seen = await records(page, id, 'GFS_Fichiers');
+      seen = await records(page, id, 'GFS_Files');
       check('tricher sur l\'auteur et son rôle à la création est REFUSÉ, et ne lui ouvre pas f2', answer.status !== 200 && ids(seen) === 'f1,f3,f4', { status: answer.status, seen: ids(seen) });
       const mine = await records(page, id, SHARES_TABLE);
       const valid = Array.isArray(mine) ? mine.filter(row => row.Cible === 'gfs-fichiers:f2').map(row => [row.Personne, row.Auteur, row.AuteurAcces, row.Valide]) : mine;
@@ -93,21 +93,21 @@ try {
       const own = Array.isArray(mine) ? mine.find(row => row.Cible === 'gfs-fichiers:f1') : null;
       answer = own ? await apply(page, id, [['UpdateRecord', SHARES_TABLE, own.id, { AuteurAcces: 'owners' }]]) : { status: 0 };
       check('il ne peut pas réécrire le rôle de l\'auteur de sa ligne', answer.status !== 200, answer);
-      answer = await apply(page, id, [['UpdateRecord', 'GFS_Fichiers', 1, { Nom: 'Devis (renommé).pdf' }]]);
+      answer = await apply(page, id, [['UpdateRecord', 'GFS_Files', 1, { Nom: 'Devis (renommé).pdf' }]]);
       check('il renomme son fichier', answer.status === 200, answer.text);
-      answer = await apply(page, id, [['UpdateRecord', 'GFS_Fichiers', 3, { Nom: 'Pirate.pdf' }]]);
+      answer = await apply(page, id, [['UpdateRecord', 'GFS_Files', 3, { Nom: 'Pirate.pdf' }]]);
       check('il ne renomme pas le fichier d\'un autre', answer.status !== 200, answer.text);
-      answer = await apply(page, id, [['AddRecord', 'GFS_Fichiers', null, { Identifiant: 'e1', Nom: 'Au nom d\'un autre', GFS_Auteur: OWNER }]]);
+      answer = await apply(page, id, [['AddRecord', 'GFS_Files', null, { Identifiant: 'e1', Nom: 'Au nom d\'un autre', GFS_Auteur: OWNER }]]);
       check('il ne crée pas de fichier au nom d\'un autre', answer.status !== 200, answer.text);
-      answer = await apply(page, id, [['AddRecord', 'GFS_Fichiers', null, { Identifiant: 'e2', Nom: 'A moi' }]]);
+      answer = await apply(page, id, [['AddRecord', 'GFS_Files', null, { Identifiant: 'e2', Nom: 'A moi' }]]);
       check('il crée un fichier à son nom', answer.status === 200, answer.text);
     } else {
       say('--- viewer@ ---');
-      const seen = await records(page, id, 'GFS_Fichiers');
+      const seen = await records(page, id, 'GFS_Files');
       check('il lit f1 (partagé par l\'éditeur) et f3 (« tous »), pas f2 ni f4 (éditeurs)', ids(seen) === 'f1,f3', ids(seen));
       const shares = await records(page, id, SHARES_TABLE);
       check('il ne lit que les partages qui le concernent (les siens et ceux de « tous », pas ceux des éditeurs)', Array.isArray(shares) && shares.every(row => String(row.PersonneL || row.Personne).toLowerCase() === VIEWER || row.Personne === '@tous') && !shares.some(row => row.Personne === '@editeurs'), shares);
-      const answer = await apply(page, id, [['UpdateRecord', 'GFS_Fichiers', 3, { Nom: 'x' }]]);
+      const answer = await apply(page, id, [['UpdateRecord', 'GFS_Files', 3, { Nom: 'x' }]]);
       check('lecteur du document : il n\'écrit rien', answer.status !== 200, answer.text);
     }
   }

@@ -216,7 +216,7 @@ async function playDirect(run) {
   check('GFS rechargé montre les mêmes modèles, les mêmes dossiers', same(sorted(await fileNames(run.frame)), names) && same(await run.frame.locator('.ls-row.folder .t').allInnerTexts(), folders), sorted(await fileNames(run.frame)));
   const pagesAfter = (await rowsOf(run, '_grist_Views')).map(row => row.name).filter(name => /^Publipostage_/.test(name || ''));
   constat('les pages de Grist (volet de gauche) portent les noms des tables après le renommage', pagesAfter.every(name => !/Modeles|PreferencesModeles|Commentaires|Abreviations/.test(name)), pagesAfter);
-  check('GFS_Rangement ne garde rien de l\'app (le rangement de l\'app fait foi)', (await rowsOf(run, 'GFS_Rangement') || []).filter(row => row.App === 'publipostage').length === 0);
+  check('GFS_Filing ne garde rien de l\'app (le rangement de l\'app fait foi)', (await rowsOf(run, 'GFS_Filing') || []).filter(row => row.App === 'publipostage').length === 0);
   if (!ppFrame()) say('   (le cadre de l\'app a été rechargé)');
 }
 
@@ -253,11 +253,11 @@ async function playShare(run) {
   const columnsBefore = (await run.rest.columns(OLD_MODELS)).map(column => column.id);
   check('« Partager » est actif : la table de l\'app porte les colonnes d\'aide de GFS', ['GFS_Auteur', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins'].every(id => columnsBefore.includes(id)), columnsBefore);
   const aclBefore = await aclOf(run);
-  const sharesColumns = await call(run.page, 'GET', `/api/docs/${run.docId}/tables/GFS_Partages/columns`);
+  const sharesColumns = await call(run.page, 'GET', `/api/docs/${run.docId}/tables/GFS_Shares/columns`);
   const formulaBefore = JSON.stringify((sharesColumns.json.columns || []).map(column => column.fields.formula || '')).includes(OLD_MODELS);
   say('   règles d\'accès avant :', aclBefore.length, ', ressources :', JSON.stringify([...new Set(aclBefore.map(rule => rule.ressource))]));
   check('avant : les règles et la formule des partages nomment la table de l\'app d\'avant', aclBefore.some(rule => String(rule.ressource).startsWith(OLD_MODELS)) && formulaBefore, [aclBefore.length, formulaBefore]);
-  const sharedBefore = await rowsOf(run, 'GFS_Partages');
+  const sharedBefore = await rowsOf(run, 'GFS_Shares');
   const authorBefore = (await rowsOf(run, OLD_MODELS)).map(row => [row.id, row.GFS_Auteur]);
 
   const batch = await appBatch(run, registry);
@@ -268,7 +268,7 @@ async function playShare(run) {
   say('   ressources après :', JSON.stringify([...new Set(aclAfter.map(rule => rule.ressource))]));
   check('les règles d\'accès suivent la table (Grist met à jour ses ressources) : plus aucune ne nomme « Publipostage_Modeles »', aclAfter.length === aclBefore.length && !aclAfter.some(rule => String(rule.ressource).startsWith(OLD_MODELS)) &&
     aclAfter.some(rule => String(rule.ressource).startsWith(MODELS)), aclAfter.slice(0, 6));
-  const formulas = await call(run.page, 'GET', `/api/docs/${run.docId}/tables/GFS_Partages/columns`);
+  const formulas = await call(run.page, 'GET', `/api/docs/${run.docId}/tables/GFS_Shares/columns`);
   const formulaText = JSON.stringify((formulas.json.columns || []).map(column => column.fields.formula || ''));
   check('la formule de la table des partages suit le renommage (elle appelle la table renommée)', formulaText.includes(MODELS) && !formulaText.includes(OLD_MODELS), formulaText.slice(0, 300));
   const conditions = JSON.stringify(aclAfter.map(rule => rule.formule));
@@ -277,7 +277,7 @@ async function playShare(run) {
   check('les colonnes d\'aide de GFS sont toujours sur la table renommée', ['GFS_Auteur', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins'].every(id => helpers.includes(id)), helpers.filter(id => /^GFS_/.test(id)));
   const authorAfter = (await rowsOf(run, MODELS)).map(row => [row.id, row.GFS_Auteur]);
   check('les auteurs des lignes (GFS_Auteur) sont intacts', same(authorBefore, authorAfter), [authorBefore.slice(0, 2), authorAfter.slice(0, 2)]);
-  const sharedAfter = await rowsOf(run, 'GFS_Partages');
+  const sharedAfter = await rowsOf(run, 'GFS_Shares');
   check('les partages posés avant sont intacts et valides', sharedAfter.length === sharedBefore.length && same(sharedBefore.map(row => row.Cible), sharedAfter.map(row => row.Cible)) && sharedAfter.every(row => row.Valide !== false), [sharedBefore.length, sharedAfter.length]);
   // Un modèle créé sous les noms anglais par le propriétaire : l'auteur est écrit par Grist, la lecture se calcule.
   const created = await apply(run, [['AddRecord', MODELS, null, { Name: 'Créé après le renommage', TemplateType: 'document', ModifiedAt: Math.floor(Date.now() / 1000) }]]);

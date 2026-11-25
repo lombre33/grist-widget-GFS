@@ -22,12 +22,12 @@ test('lire sans la table ne crée rien : aucun annuaire, aucune écriture', asyn
   const grist = world();
   assert.deepEqual(await store(grist).list(), []);
   assert.equal(grist.actions.length, 0);
-  assert.equal('GFS_Annuaires' in grist.tables, false);
+  assert.equal('GFS_Directories' in grist.tables, false);
 });
 
 test('le schéma vient des tables internes de Grist', async () => {
   const schema = await store(world()).schema();
-  assert.deepEqual(Object.keys(schema).sort(), ['GFS_Annuaires', 'Personnes', 'Structures']);
+  assert.deepEqual(Object.keys(schema).sort(), ['GFS_Directories', 'Personnes', 'Structures']);
   assert.equal(schema.Personnes.columns.find(column => column.id === 'Structure').ref, 'Structures');
 });
 
@@ -47,7 +47,7 @@ test('créer : la table naît avec l\'accord de la personne, puis la ligne s\'é
 test('créer : un refus ne laisse rien derrière lui', async () => {
   const grist = world();
   await assert.rejects(store(grist, async () => false).create({ name: 'A', table: 'Personnes', config: configFixture() }), TableDeclined);
-  assert.equal('GFS_Annuaires' in grist.tables, false);
+  assert.equal('GFS_Directories' in grist.tables, false);
 });
 
 test('créer : la table qui existe déjà ne redemande rien, et un nom pris est refusé', async () => {
@@ -91,7 +91,7 @@ test('enregistrer : la définition est réécrite, la table n\'est jamais créé
   assert.equal(grist.actions.at(-1)[0], 'UpdateRecord');
   const empty = world();
   await assert.rejects(store(empty).save({ row: 1, name: 'X', table: 'Personnes', config: configFixture() }, configFixture()), MissingTable);
-  assert.equal('GFS_Annuaires' in empty.tables, false);
+  assert.equal('GFS_Directories' in empty.tables, false);
 });
 
 test('lire un annuaire : l\'option « postes et hiérarchie » éteinte, l\'arbre n\'a que sa racine et le poste n\'est pas lu', async () => {

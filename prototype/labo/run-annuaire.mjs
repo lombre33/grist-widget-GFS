@@ -3,7 +3,7 @@
 // 2. « Nouvel annuaire » : le réglage en quatre onglets (Personnes : nom et adresse par défaut, les écritures du nom ; Hiérarchie : l'option, les niveaux créés par leur nom, leur place puis leur
 //    colonne, suivie pas à pas (avec retour arrière) ou trouvée d'un coup dans la table liée (« Structure › Direction »), avec ses exemples en direct ; Relations : le responsable direct,
 //    l'assistant·e, le référent·e ; Champs de la fiche : les champs, un chemin dans une table liée, une colonne créée (le seul geste qui écrit dans le document, avec l'accord de la
-//    personne) et leurs interrupteurs Liste / Filtre), la question de la table `GFS_Annuaires`, puis la lecture : la hiérarchie, la liste, la fiche en sections, les relations ;
+//    personne) et leurs interrupteurs Liste / Filtre), la question de la table `GFS_Directories`, puis la lecture : la hiérarchie, la liste, la fiche en sections, les relations ;
 // 3. la recherche, les filtres, les cartes de contact ;
 // 4. l'organigramme des structures et celui des responsables : les cartes, le repli d'une branche, le zoom, « Tout voir », la fiche d'une structure.
 // Seule la colonne créée à la demande s'écrit dans la table des personnes. LAB_LANG=fr|en, LAB_SCHEME=light|dark.
@@ -45,13 +45,13 @@ const inside = async locator => { const box = await locator.boundingBox(); const
 
 // 1. L'ouverture sans annuaire.
 const tables = () => frame.evaluate(() => grist.docApi.listTables());
-check('le document n’a pas encore la table GFS_Annuaires', !(await tables()).includes('GFS_Annuaires'));
+check('le document n’a pas encore la table GFS_Directories', !(await tables()).includes('GFS_Directories'));
 await frame.locator('.ex-title-row button', { has: frame.locator('use[href="#i-annuaire"]') }).click();
 await win.waitFor({ state: 'visible' });
 await settleUi();
 check('la fenêtre s’ouvre dans la page de 700 × 400', await inside(win), await win.boundingBox());
 check('sans annuaire, elle le dit et propose d’en créer un', (await win.innerText()).includes(T.none) && (await win.locator('.an-state .btn.primary').count()) === 1);
-check('ouvrir ne crée aucune table', !(await tables()).includes('GFS_Annuaires'));
+check('ouvrir ne crée aucune table', !(await tables()).includes('GFS_Directories'));
 await lab.shotPanel(run, '1-vide');
 
 // 2. Le réglage : à la vraie souris et au vrai clavier.
@@ -213,12 +213,12 @@ check('un champ qui ne se prête pas à un filtre garde son interrupteur, grisé
   && noFilter.some(([text, disabled]) => text.includes('Contrat') && disabled !== 'true'), noFilter);
 await setup.locator('[data-fk="set-save"]').click();
 await frame.locator('.ask').waitFor({ state: 'visible' });
-check('créer l’annuaire pose la question de la table GFS_Annuaires', (await frame.locator('.ask').innerText()).includes('GFS_Annuaires'));
+check('créer l’annuaire pose la question de la table GFS_Directories', (await frame.locator('.ask').innerText()).includes('GFS_Directories'));
 await lab.shotPanel(run, '5-question');
 await frame.locator('[data-fk="ask-yes"]').click();
 await frame.locator('.an-tree-list').waitFor({ state: 'visible', timeout: 20000 });
 await settleUi();
-check('la table GFS_Annuaires existe maintenant', (await tables()).includes('GFS_Annuaires'));
+check('la table GFS_Directories existe maintenant', (await tables()).includes('GFS_Directories'));
 check('la hiérarchie montre le nom de l’annuaire et ses trois pôles', (await frame.locator('.an-tn-name').allInnerTexts()).slice(0, 4).join('|') === `${T.name}|Pôle Numérique|Pôle Ressources|Pôle Vie de campus`,
   await frame.locator('.an-tn-name').allInnerTexts());
 await lab.shotPanel(run, '6-liste');
@@ -452,11 +452,11 @@ check('Échap ferme la fenêtre et rend le clavier', true);
 // Ce que le module a écrit : la colonne créée à la demande, la table de ses annuaires et leurs lignes ; rien dans les tables de la personne, ni dans les structures.
 const actions = await lab.actions();
 check('deux colonnes ajoutées (« Suppleant » et « Matricule », avec l’accord de la personne), la table des annuaires et sa ligne, la fiche de Camille écrite par « Modifier », rien d’autre',
-  actions.filter(action => /^AddColumn Personnes/.test(action)).length === 2 && actions.some(action => /^AddTable GFS_Annuaires/.test(action))
+  actions.filter(action => /^AddColumn Personnes/.test(action)).length === 2 && actions.some(action => /^AddTable GFS_Directories/.test(action))
   && actions.filter(action => /^SetDisplayFormula Personnes/.test(action)).length === 1
   && !actions.some(action => /^(Update|BulkUpdate|Remove|BulkRemove|AddRecord|BulkAddRecord|RenameColumn|ModifyColumn|RemoveColumn).* (Personnes|Structures)/.test(action) && action !== 'UpdateRecord Personnes')
   && actions.filter(action => action === 'UpdateRecord Personnes').length === 1
   && !actions.some(action => / Structures/.test(action)), actions);
-check('le changement du poste ne réécrit que la ligne de l’annuaire', actions.filter(action => /^UpdateRecord GFS_Annuaires/.test(action)).length === 1, actions.filter(action => /GFS_Annuaires/.test(action)).map(action => action.slice(0, 60)));
+check('le changement du poste ne réécrit que la ligne de l’annuaire', actions.filter(action => /^UpdateRecord GFS_Directories/.test(action)).length === 1, actions.filter(action => /GFS_Directories/.test(action)).map(action => action.slice(0, 60)));
 check('aucun avertissement ni erreur de GFS ou de politique de sécurité', problems.length === 0, problems);
 await lab.browser.close();

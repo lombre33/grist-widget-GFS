@@ -5,7 +5,7 @@
 //   0. Form+ n'est pas ouverte : les deux gestes sont grisés et disent d'ouvrir l'app, rien n'est écrit.
 //   1. Form+ ouverte sur un formulaire publié : « Dupliquer » → la copie est un formulaire de la liste (nouveau nom libre, nouvelle section, SA table de réponses vide, lien fermé), l'original n'a pas bougé,
 //      GFS n'a rien écrit dans FormPlus_Formulaires, la copie prend le clavier.
-//   2. « Mettre à la corbeille » → la question de la table de la corbeille passe avant l'appel ; puis Form+ ferme le lien public, la ligne part à GFS_Corbeille en un seul lot ; la section du formulaire reste.
+//   2. « Mettre à la corbeille » → la question de la table de la corbeille passe avant l'appel ; puis Form+ ferme le lien public, la ligne part à GFS_Trash en un seul lot ; la section du formulaire reste.
 //   3. Restaurer → la ligne revient à son numéro, la définition identique, le lien reste fermé (Form+ ne le rouvre pas).
 import { startLab } from './lab-setup.mjs';
 import { seedFormDesigner } from './seed.mjs';
@@ -87,7 +87,7 @@ const sectionOptions = id => frame.evaluate(async sectionId => {
   return at < 0 ? null : data.shareOptions[at];
 }, id);
 const forms = async () => (await table('FormPlus_Formulaires')) || [];
-const bin = () => table('GFS_Corbeille');
+const bin = () => table('GFS_Trash');
 const closed = options => options === null || options === '' || options === '{}' || (() => { try { const parsed = JSON.parse(options); return !parsed.publish && !parsed.form; } catch { return false; } })();
 const shown = app => app.evaluate(() => {
   const title = document.getElementById('opt-title');
@@ -176,10 +176,10 @@ const moved = `${t('trash.moved', { name: FIRST.title })} ${SAID.closed}`;
 check('la phrase de GFS et celle de Form+, bout à bout', await said(moved) === moved);
 check('le lien public du formulaire est fermé', closed(await sectionOptions(first.form)), await sectionOptions(first.form));
 const stored = (await bin()) || [];
-check('GFS_Corbeille garde la ligne (app, table, fichier, nom, instantané) ; FormPlus_Formulaires garde la copie et le second', stored.length === 1 && stored[0].App === 'form' && stored[0].Table === 'FormPlus_Formulaires' && stored[0].FichierId === String(original.id)
+check('GFS_Trash garde la ligne (app, table, fichier, nom, instantané) ; FormPlus_Formulaires garde la copie et le second', stored.length === 1 && stored[0].App === 'form' && stored[0].Table === 'FormPlus_Formulaires' && stored[0].FichierId === String(original.id)
   && stored[0].Nom === FIRST.title && JSON.parse(stored[0].Instantane).valeurs.Nom === FIRST.title && JSON.stringify((await forms()).map(each => each.Nom).sort()) === JSON.stringify([SECOND.title, copyName].sort()), { stockee: stored, formulaires: (await forms()).map(each => each.Nom) });
 const moves = (await lab.actions()).filter(each => /^(AddRecord|RemoveRecord) /.test(each));
-check('la ligne a été copiée puis retirée dans le même lot (AddRecord GFS_Corbeille, RemoveRecord FormPlus_Formulaires)', JSON.stringify(moves) === JSON.stringify(['AddRecord GFS_Corbeille', 'RemoveRecord FormPlus_Formulaires']), moves);
+check('la ligne a été copiée puis retirée dans le même lot (AddRecord GFS_Trash, RemoveRecord FormPlus_Formulaires)', JSON.stringify(moves) === JSON.stringify(['AddRecord GFS_Trash', 'RemoveRecord FormPlus_Formulaires']), moves);
 check('la section du formulaire et sa table de réponses sont toujours là (GFS ne les suit pas : restaurer remet la ligne)', (await sectionOptions(first.form)) !== null && JSON.stringify(await table('Clients')) === JSON.stringify(clientsBefore));
 check('la liste ne montre plus le formulaire', !(await names()).includes(FIRST.title) && (await names()).includes(copyName), await names());
 await lab.shotPanel(run, '2-a-la-corbeille', frame);

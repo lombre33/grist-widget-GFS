@@ -1,6 +1,6 @@
-// La définition d'un annuaire (module Annuaire, demande du porteur du 25/11) : une ligne de la table `GFS_Annuaires` que GFS crée avec l'accord de la personne
-// (js/files/own-table.js). Ce module ne parle ni à Grist ni à la page : il dit ce que la table contient et lit, sans jamais échouer, ce qu'une personne ou une
-// version plus ancienne y a écrit.
+// La définition d'un annuaire (module Annuaire, demande du porteur du 25/11) : une ligne de la table `GFS_Directories` que GFS crée avec l'accord de la
+// personne (js/files/own-table.js). Ce module ne parle ni à Grist ni à la page : il dit ce que la table contient et lit, sans jamais échouer, ce qu'une
+// personne ou une version plus ancienne y a écrit.
 //
 // Une ligne : `Nom` (le nom de l'annuaire), `Table` (la table des personnes, celle du document), `Config` (le reste, en JSON : voir `readConfig`) et `Parent`
 // (le numéro de ligne de l'annuaire d'origine pour un sous-annuaire, vide pour un annuaire principal) et `Fiches` (la copie des personnes d'un sous-annuaire,

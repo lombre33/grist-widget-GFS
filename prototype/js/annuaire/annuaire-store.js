@@ -1,5 +1,5 @@
-// La lecture et l'écriture d'un annuaire dans le document (module Annuaire, demande du porteur du 25/11). La définition vit dans `GFS_Annuaires` (une table de
-// GFS, créée avec l'accord de la personne : js/files/own-table.js et js/annuaire/annuaire-config.js) ; les personnes restent dans la table que la définition
+// La lecture et l'écriture d'un annuaire dans le document (module Annuaire, demande du porteur du 25/11). La définition vit dans `GFS_Directories` (une table
+// de GFS, créée avec l'accord de la personne : js/files/own-table.js et js/annuaire/annuaire-config.js) ; les personnes restent dans la table que la définition
 // désigne : GFS la lit et n'en garde aucune copie (cahier 2, « deux zones ») ; elle ne l'écrit que sur le geste « Enregistrer » de la fenêtre « Modifier »
 // (`update`). Lire ne crée rien ; seule la création d'un annuaire, qui écrit
 // une ligne, peut demander à la personne de créer la table. Les gestes s'enchaînent l'un après l'autre.
@@ -36,7 +36,7 @@ export class AnnuaireStore {
   #own;
   #queue = Promise.resolve();
 
-  // opts : { port ({ doc }), consent() -> Promise<boolean> (créer `GFS_Annuaires` ?) }
+  // opts : { port ({ doc }), consent() -> Promise<boolean> (créer `GFS_Directories` ?) }
   constructor({ port, consent }) {
     this.#port = port;
     this.#own = new OwnTable({ port, name: ANNUAIRES_TABLE, columns: ANNUAIRES_COLUMNS, consent });
@@ -48,7 +48,7 @@ export class AnnuaireStore {
     return schemaOf(tables, columns);
   }
 
-  // Les annuaires du document : [] quand `GFS_Annuaires` n'existe pas (lire ne la crée jamais).
+  // Les annuaires du document : [] quand `GFS_Directories` n'existe pas (lire ne la crée jamais).
   async list() {
     const state = await this.#own.load();
     return state.exists ? annuairesOf(state.data) : [];
@@ -127,7 +127,7 @@ export class AnnuaireStore {
     return run;
   }
 
-  // Crée l'annuaire `name` sur la table `table` : { annuaire } ; `TableDeclined` quand la personne refuse de créer `GFS_Annuaires`, `NameTaken` quand le nom
+  // Crée l'annuaire `name` sur la table `table` : { annuaire } ; `TableDeclined` quand la personne refuse de créer `GFS_Directories`, `NameTaken` quand le nom
   // est pris.
   create({ name, table, config }) {
     return this.#then(async () => {
@@ -140,7 +140,7 @@ export class AnnuaireStore {
     });
   }
 
-  // Crée le sous-annuaire `name` : une ligne de `GFS_Annuaires` qui porte sa copie des personnes. `parent` : l'annuaire d'origine ; `sub` : { key, label,
+  // Crée le sous-annuaire `name` : une ligne de `GFS_Directories` qui porte sa copie des personnes. `parent` : l'annuaire d'origine ; `sub` : { key, label,
   // values } ;
   // `read` : la lecture de l'annuaire d'origine. Rend { annuaire } (la ligne relue) ; `TableDeclined` quand la personne refuse de créer la table, `NameTaken`
   //   quand le nom est pris. La ligne n'est écrite qu'une fois les règles du partage en place (js/annuaire/annuaire-control.js : le verrou d'abord, la copie
@@ -181,7 +181,7 @@ export class AnnuaireStore {
     });
   }
 
-  // Réécrit la définition d'un annuaire qui existe déjà (ses niveaux, ses champs, et sa table quand elle a changé) : ne crée jamais la table `GFS_Annuaires`.
+  // Réécrit la définition d'un annuaire qui existe déjà (ses niveaux, ses champs, et sa table quand elle a changé) : ne crée jamais la table `GFS_Directories`.
   save(annuaire, config, table = annuaire.table) {
     return this.#then(async () => {
       const state = await this.#own.existing();

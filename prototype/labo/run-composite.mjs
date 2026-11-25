@@ -49,7 +49,7 @@ const table = name => frame.evaluate(async tableId => {
   return data.id.map((id, i) => ({ id, ...Object.fromEntries(columns.map(each => [each, data[each][i]])) }));
 }, name);
 const files = async () => ((await table('SondeZf_Fichiers')) || []).map(each => each.Nom);
-const bin = () => table('GFS_Corbeille');
+const bin = () => table('GFS_Trash');
 // La dernière phrase de GFS, mot pour mot, une fois dite.
 const said = async text => {
   await toast.filter({ hasText: exact(text) }).waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
@@ -123,10 +123,10 @@ check('la phrase de GFS et celle de l\'app, bout à bout', await said(moved) ===
 const received = (await readProbe(frameOf(ZF))).supprimer;
 check('l\'app a reçu le fichier et la raison, une fois', JSON.stringify(received) === JSON.stringify([{ fichier: { id: '1', type: 'formulaire' }, raison: 'corbeille' }]), received);
 const stored = (await bin()) || [];
-check('GFS_Corbeille garde la ligne (app, table, fichier, nom, instantané) et la table n\'a plus que deux formulaires', stored.length === 1 && stored[0].App === 'sonde-zf' && stored[0].Table === 'SondeZf_Fichiers' && stored[0].FichierId === '1'
+check('GFS_Trash garde la ligne (app, table, fichier, nom, instantané) et la table n\'a plus que deux formulaires', stored.length === 1 && stored[0].App === 'sonde-zf' && stored[0].Table === 'SondeZf_Fichiers' && stored[0].FichierId === '1'
   && stored[0].Nom === 'Inscription atelier' && JSON.parse(stored[0].Instantane).valeurs.Nom === 'Inscription atelier' && JSON.stringify((await files()).sort()) === JSON.stringify(['Bilan', 'Enquête']), { stored, fichiers: await files() });
 const verbs = (await lab.actions()).filter(each => /^(AddRecord|RemoveRecord) /.test(each));
-check('la ligne a été copiée puis retirée dans le même lot (AddRecord GFS_Corbeille, RemoveRecord SondeZf_Fichiers)', JSON.stringify(verbs) === JSON.stringify(['AddRecord GFS_Corbeille', 'RemoveRecord SondeZf_Fichiers']), verbs);
+check('la ligne a été copiée puis retirée dans le même lot (AddRecord GFS_Trash, RemoveRecord SondeZf_Fichiers)', JSON.stringify(verbs) === JSON.stringify(['AddRecord GFS_Trash', 'RemoveRecord SondeZf_Fichiers']), verbs);
 check('la liste ne montre plus le formulaire', !(await names()).includes('Inscription atelier') && (await row('Enquête').count()) === 1, await names());
 const phrase = await fits();
 check('la phrase, la plus longue, tient dans le panneau de 700 × 400 sans être coupée', phrase.inPanel && !phrase.clipped, phrase);

@@ -88,7 +88,7 @@ async function playOwner(run) {
   const columns = await call(page, 'GET', `/api/docs/${run.docId}/tables/${MODELS}/columns`);
   const ids = (columns.json.columns || []).map(column => column.id);
   check('la table de l\'app porte GFS_Auteur et les cinq colonnes d\'aide', ['GFS_Auteur', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Cats', 'GFS_CatsEcrit'].every(id => ids.includes(id)), ids);
-  const shares = await rows(run, 'GFS_Partages');
+  const shares = await rows(run, 'GFS_Shares');
   say('   partages :', shares.length, 'dont tous :', shares.filter(row => row.Personne === '@tous').length);
   check('les modèles d\'avant restent lisibles de tous : un partage « tous » par ligne de la table', shares.filter(row => row.Personne === '@tous' && /^publipostage:/.test(row.Cible)).length >= 18, shares.length);
   const before = (await rows(run, MODELS)).find(row => row.Nom === FIRST);
@@ -114,7 +114,7 @@ async function playOwner(run) {
   await frame.getByRole('menuitemradio', { name: new RegExp(t('share.right.ecriture')) }).first().click();
   await page.waitForTimeout(1500);
   const writableKey = `publipostage:${await idOf(run, WRITABLE)}`;
-  const given = (await rows(run, 'GFS_Partages')).find(row => row.Cible === writableKey && row.Personne === EDITOR);
+  const given = (await rows(run, 'GFS_Shares')).find(row => row.Cible === writableKey && row.Personne === EDITOR);
   check('l\'éditeur a l\'écriture sur ce modèle dans la table des partages', given && given.Droit === 'ecriture' && given.Valide === true, given);
   await shot(frame, '3-partage');
   await closeShare(frame);
@@ -178,7 +178,7 @@ async function playEditor(run) {
   await openShareFor(refreshed, 'Modèle de l\'éditeur');
   check('auteur de son modèle : il peut ajouter quelqu\'un', (await refreshed.locator('[data-fk="share-add"]').count()) === 1 && (await refreshed.locator('[data-fixed="author"]').count()) === 1, await panel(refreshed));
   await addPerson(refreshed, VIEWER);
-  const shared = (await rows(run, 'GFS_Partages')).find(row => row.Personne === VIEWER && row.Auteur === EDITOR);
+  const shared = (await rows(run, 'GFS_Shares')).find(row => row.Personne === VIEWER && row.Auteur === EDITOR);
   check('son partage est écrit sans propriétaire, valide', shared && shared.Valide === true, shared);
   await shot(refreshed, '4-editeur');
   await closeShare(refreshed);

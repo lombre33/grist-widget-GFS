@@ -1,4 +1,4 @@
-// Le numéro de structure du document (contrats 6.4, point 16) : un entier que GFS note dans une ligne réservée de `GFS_Rangement` (`@document` / `gfs` /
+// Le numéro de structure du document (contrats 6.4, point 16) : un entier que GFS note dans une ligne réservée de `GFS_Filing` (`@document` / `gfs` /
 // `structure`, la valeur en JSON dans `Valeur` : `{ "structure": 1 }`) quand la personne fait un geste qui écrit dans cette table. Il dit quelle forme GFS a
 // donnée à ses tables dans CE document ; une version de GFS plus ancienne que ce numéro ne l'écrit plus (« document plus récent ») au lieu de le défaire.
 //

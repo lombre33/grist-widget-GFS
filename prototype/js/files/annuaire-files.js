@@ -1,11 +1,11 @@
 // Les annuaires, vus comme des fichiers de l'explorateur (module Annuaire, demande du porteur du 25/11 : « l'annuaire comme nouveau type de fichier à la racine
-// de l'explorateur, des sous-annuaires rangeables dans des dossiers ou des espaces »). Ils vivent dans la table `GFS_Annuaires` que GFS crée avec l'accord de
+// de l'explorateur, des sous-annuaires rangeables dans des dossiers ou des espaces »). Ils vivent dans la table `GFS_Directories` que GFS crée avec l'accord de
 // la personne (js/annuaire/annuaire-store.js) ; ce module est tout ce que le reste de GFS en sait, sans charger le module Annuaire (qui ne se charge qu'au
 // premier clic) : le manifeste « intégré » qui les fait lister par l'explorateur comme les fichiers d'une app, et la cible du partage. Du code sans effet de
 // bord.
 
 export const ANNUAIRES_APP = 'gfs-annuaires';
-export const ANNUAIRES_TABLE = 'GFS_Annuaires';
+export const ANNUAIRES_TABLE = 'GFS_Directories';
 export const ANNUAIRE_TYPE = 'annuaire';
 // La colonne que Grist écrit à la création d'une ligne, quand le partage a étendu la table (`STAMP`, js/sharing/sharing-model.js, qui importe ce module : la
 // valeur est redite ici plutôt qu'importée).

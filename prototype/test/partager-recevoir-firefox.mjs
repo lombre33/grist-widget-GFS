@@ -1,7 +1,7 @@
 // La fenêtre « Recevoir d'un autre document Grist » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; « Nouveau > Importer > D'un autre document Grist… », 09/11).
 // La vraie fenêtre (js/sharing/share-receive-window.js) sur un parcours dont les réponses sont des doublures (test/pages/explorateur.js, `window.__receive`) : le moteur et Grist se mesurent dans un vrai Grist (labo/run-partager-recevoir.mjs) ;
 // ici, la mise en page et les gestes, à la vraie souris et au vrai clavier. À chaque écran (le code à coller, l'accord, le lien du formulaire, la réponse) : la fenêtre tient dans la page, son titre et ses boutons restent en place,
-// rien n'en sort, le clavier est sur le bon bouton ; « Continuer » reste grisé tant que rien n'est collé et un refus est dit sans quitter l'écran ; l'accord dit ce que GFS ajoute dans la table libre (GFS_Recus, puis GFS_Recus_2) et
+// rien n'en sort, le clavier est sur le bon bouton ; « Continuer » reste grisé tant que rien n'est collé et un refus est dit sans quitter l'écran ; l'accord dit ce que GFS ajoute dans la table libre (GFS_Received, puis GFS_Received_2) et
 // n'écrit rien (Échap) ; une réception déjà là dit qu'elle reprend ; le lien refusé laisse la fenêtre où elle est ; la réponse et son code de contrôle s'affichent ; fermer avant la réponse défait ce qui a été créé, après elle non.
 import { createI18n } from '../js/i18n/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
@@ -53,7 +53,7 @@ async function accordFlow(page, tools, t, flow, table) {
   tools.fits(kind, now, 'l\'accord');
   // La structure du document se ferme avec le journal (choix du porteur, 18/11) : l'accord le dit avec les mots de la question d'activation du partage.
   for (const part of [LONG_DOC, t('sr.accord.adds'), table, t('sr.accord.keep'), t('sr.accord.rules'), t('rights.ask.sharing.structure'), t('rights.ask.close.item2')]) if (!now.modal.body.toLowerCase().includes(part.toLowerCase())) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 200)} »)`);
-  if (flow === 'second' && now.modal.body.includes('GFS_Recus ')) tools.run.note(kind, 'l\'accord du second partage ne devait pas annoncer la table du premier');
+  if (flow === 'second' && now.modal.body.includes('GFS_Received ')) tools.run.note(kind, 'l\'accord du second partage ne devait pas annoncer la table du premier');
   for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const inside = await tools.snap(); if (!inside.modal || !inside.modal.inside) tools.run.note(kind, 'Tab devait rester dans la fenêtre'); }
   await page.press('Escape');
   const closed = await tools.expect(kind, 'Échap devait fermer la fenêtre', s => s.modal === null);
@@ -90,7 +90,7 @@ async function replyFlow(page, tools, t) {
   await tools.press(kind, 'sr-check');
   const reply = await tools.expect(kind, 'la réponse devait s\'afficher avec son code de contrôle, le clavier sur le code', s => s.modal && s.modal.keys.includes('sr-code') && s.modal.control === 'N5H-2AH' && s.modal.focus === 'sr-code');
   tools.fits(kind, reply, 'la réponse');
-  if (reply.modal && !reply.modal.body.includes(t('sr.reply.after', { table: 'GFS_Recus' }))) tools.run.note(kind, `la fenêtre devait dire où les fichiers arriveront (« ${t('sr.reply.after', { table: 'GFS_Recus' })} »)`);
+  if (reply.modal && !reply.modal.body.includes(t('sr.reply.after', { table: 'GFS_Received' }))) tools.run.note(kind, `la fenêtre devait dire où les fichiers arriveront (« ${t('sr.reply.after', { table: 'GFS_Received' })} »)`);
   await tools.press(kind, 'sr-copy');
   await tools.expect(kind, 'copier devait dire « copié » ou « sélectionné »', s => s.modal && [t('so.code.copied'), t('so.code.select')].includes(s.modal.note));
   await tools.press(kind, 'so-close');
@@ -144,8 +144,8 @@ export async function partagerRecevoirProblems(page, language, tag) {
   const t = createI18n(language).t;
   const tools = toolsFor(page, tag, found);
   try {
-    await accordFlow(page, tools, t, 'ok', 'GFS_Recus');
-    await accordFlow(page, tools, t, 'second', 'GFS_Recus_2');
+    await accordFlow(page, tools, t, 'ok', 'GFS_Received');
+    await accordFlow(page, tools, t, 'second', 'GFS_Received_2');
     await knownFlow(page, tools, t);
     await replyFlow(page, tools, t);
     await abortFlow(page, tools, t);

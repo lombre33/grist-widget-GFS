@@ -27,7 +27,7 @@ const phase = process.env.PHASE || 'proprietaire';
 const STATE = process.env.LIENS_ESPACES_ETAT || '/tmp/liens-espaces-etat.json';
 const { t } = createI18n(lang);
 const OWNER = 'essai@example.com', EDITOR = 'editor@example.com', VIEWER = 'viewer@example.com';
-const FILES = 'GFS_Fichiers', SHARES = 'GFS_Partages', PLACE = 'GFS_Placement';
+const FILES = 'GFS_Files', SHARES = 'GFS_Shares', PLACE = 'GFS_Placement';
 const SOURCE = 'dossier:achats/Contrats';
 const LINK = 'Contrats achats';
 const shot = (frame, name) => pdfShot(frame, `liens-espaces-${lang}-${scheme}-${name}`);
@@ -114,8 +114,8 @@ async function playOwner(run) {
   const interne = await addFile(run, 'Interne.pdf', 204); const memo = await addFile(run, 'Memo.pdf', 205);
   await addFile(run, 'Libre.pdf', 206);
   const placed = (row, folder) => ['AddRecord', PLACE, null, { Cible: keyOf(row), Espace: 'achats', Dossier: folder }];
-  const set = await apply(run, [['AddRecord', 'GFS_Groupes', null, { Nom: 'Ventes', PersonnesIci: EDITOR }], ['AddRecord', 'GFS_Espaces', null, { Cle: 'achats', Nom: 'Achats' }],
-    ['AddRecord', 'GFS_Espaces', null, { Cle: 'ventes', Nom: 'Ventes' }],
+  const set = await apply(run, [['AddRecord', 'GFS_Groups', null, { Nom: 'Ventes', PersonnesIci: EDITOR }], ['AddRecord', 'GFS_Spaces', null, { Cle: 'achats', Nom: 'Achats' }],
+    ['AddRecord', 'GFS_Spaces', null, { Cle: 'ventes', Nom: 'Ventes' }],
     ['AddRecord', SHARES, null, { Cible: 'espace:achats', Personne: OWNER, Droit: 'ecriture' }], ['AddRecord', SHARES, null, { Cible: 'espace:ventes', Personne: '#Ventes', Droit: 'lecture' }],
     placed(plan, 'Contrats'), placed(notes, 'Contrats'), placed(sous, 'Contrats/Sous'), placed(interne, 'Interne'), placed(memo, '')]);
   check('le décor est écrit', set.status === 200, set.text);

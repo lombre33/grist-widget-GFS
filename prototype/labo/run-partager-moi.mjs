@@ -1,7 +1,7 @@
 // Un dossier de « Moi » partagé dans ce document, et « Administrer » donné à un groupe (choix du porteur, 13/11 : « le dossier et ses futurs fichiers » ; « personnes et groupes, sans catégories »), dans un VRAI Grist
 // (`bash vrai-serveur.sh`), à 700 × 400, à la vraie souris pour ce que la personne fait, et par l'API REST de Grist pour ce qu'une personne MALVEILLANTE ferait sans passer par GFS (le verrou est dans Grist, pas dans
 // l'écran). Trois comptes un à la fois (GRIST_EMAIL ; l'état passe par /tmp/partager-moi-etat.json), quatre passages :
-//   PHASE=proprietaire  active le partage (la question dit que le rangement de chacun est protégé : six règles « GFS : Partagé » sur GFS_Rangement) ; rangement du propriétaire dans « Contrats » ; « Partager… » sur le dossier :
+//   PHASE=proprietaire  active le partage (la question dit que le rangement de chacun est protégé : six règles « GFS : Partagé » sur GFS_Filing) ; rangement du propriétaire dans « Contrats » ; « Partager… » sur le dossier :
 //                       une personne en lecture (la ligne vise `dossier:moi:<adresse>/Contrats`), les fichiers du dossier et du sous-dossier la lisent, un fichier rangé PLUS TARD aussi, un fichier sorti du dossier non ;
 //                       un groupe « Administrer » un fichier (le menu n'est pas grisé), une catégorie non (grisé, dit pourquoi) ;
 //   PHASE=editeur       editor@ : « Partagés avec moi » montre les fichiers du dossier ; ne peut PAS écrire le rangement d'une autre personne ni le lire ; un faux partage sur le dossier d'un autre est sans effet ; son propre dossier se
@@ -53,7 +53,7 @@ async function playOwner(run) {
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   await closeShare(frame);
   const rules = (await rows(run, '_grist_ACLRules')) || [];
-  check('six règles « GFS : Partagé » sont posées sur GFS_Rangement (le rangement de chacun est à lui seul)', rules.filter(rule => /^GFS : Partagé/.test(rule.memo || '')).length === 6, rules.map(rule => rule.memo));
+  check('six règles « GFS : Partagé » sont posées sur GFS_Filing (le rangement de chacun est à lui seul)', rules.filter(rule => /^GFS : Partagé/.test(rule.memo || '')).length === 6, rules.map(rule => rule.memo));
   check('l\'activation a fermé la structure, par UNE règle « GFS : Structure fermée » (sans « Gérer les partages… »)', (await closingRules(run)).length === 1 && rules.filter(rule => /^GFS : Structure fermée/.test(rule.memo || '')).length === 1, rules.map(rule => rule.memo));
   const columns = (await run.rest.columns(FILES)).map(column => column.id);
   check('la colonne d\'aide GFS_Dossier est dans la table des fichiers', columns.includes('GFS_Dossier'), columns);
@@ -121,7 +121,7 @@ async function playOwner(run) {
   check('le propriétaire donne le dossier au lecteur (ligne écrite par l\'API)', answer.status === 200, answer.text);
 
   say('--- 6. « Administrer » : un groupe oui, une catégorie non ---');
-  answer = await apply(run, [['AddRecord', 'GFS_Groupes', null, { Nom: 'Equipe', PersonnesIci: EDITOR }], ['AddRecord', 'GFS_Groupes', null, { Nom: 'Autres', PersonnesIci: VIEWER }]]);
+  answer = await apply(run, [['AddRecord', 'GFS_Groups', null, { Nom: 'Equipe', PersonnesIci: EDITOR }], ['AddRecord', 'GFS_Groups', null, { Nom: 'Autres', PersonnesIci: VIEWER }]]);
   check('deux groupes : Equipe (l\'éditeur) et Autres (le lecteur)', answer.status === 200, answer.text);
   await page.reload();
   frame = await gfsFrame(page);

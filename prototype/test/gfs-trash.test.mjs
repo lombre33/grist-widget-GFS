@@ -1,4 +1,4 @@
-// La corbeille des fichiers des apps, sans Grist (js/files/gfs-trash.js, contrats 2.4 `suppression` et 6.7) : la recette du manifeste, l'instantané d'une ligne, l'entrée de `GFS_Corbeille`, sa lecture
+// La corbeille des fichiers des apps, sans Grist (js/files/gfs-trash.js, contrats 2.4 `suppression` et 6.7) : la recette du manifeste, l'instantané d'une ligne, l'entrée de `GFS_Trash`, sa lecture
 // pour l'explorateur et ce que la restauration remet. Ce que Grist fait de ces écritures se mesure dans le labo (labo/run-corbeille-apps.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -60,7 +60,7 @@ test('l\'entrée de la corbeille : ce que l\'explorateur montre, le geste (la da
   assert.deepEqual([bare.Date, bare.Auteur, bare.SupprimePar, bare.Type], [null, '', '', '']);
 });
 
-// `GFS_Corbeille` telle que `fetchTable` la rend, avec deux fichiers de Publipostage+, un d'une autre app et un d'une autre table.
+// `GFS_Trash` telle que `fetchTable` la rend, avec deux fichiers de Publipostage+, un d'une autre app et un d'une autre table.
 const bin = () => ({
   id: [7, 8, 9, 10], App: ['publipostage', 'publipostage', 'automation', 'publipostage'], Table: ['Publipostage_Modeles', 'Publipostage_Modeles', 'Publipostage_Modeles', 'Publipostage_Autre'],
   FichierId: ['1', '5', '1', '1'], Nom: ['Convocation', 'Bilan', 'Autre app', 'Autre table'], Type: ['document', 'grille', '', ''], Date: [100, 500, null, null], Auteur: ['ana@exemple.org', '', '', ''],

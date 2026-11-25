@@ -6,7 +6,7 @@
 //   3. la barre de GFS au-dessus d'une app : 36 px par bouton, et la zone que l'app doit laisser libre (`contexte.barre`) dit exactement la barre mesurée et 4 px autour ;
 //   4. la page est sans mouvement ; la ligne choisie a sa barre de 6 px en vraie bordure ; éteint, tout est comme avant (ligne de 28 px, barre d'ombre) ;
 //   5. le contraste forcé du système (Chromium : `forcedColors: 'active'`) : la ligne choisie se lit sans couleur ni ombre (une bordure).
-// Rien de tout cela n'écrit dans le document (ni table, ni ligne de GFS_Rangement) : seule la clé `gfs.acces` du navigateur.
+// Rien de tout cela n'écrit dans le document (ni table, ni ligne de GFS_Filing) : seule la clé `gfs.acces` du navigateur.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';

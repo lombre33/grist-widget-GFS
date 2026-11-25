@@ -26,7 +26,7 @@ const ME = 'essai@example.com';
 const OTHER = 'autre@example.com';
 const MODELS = 'Publipostage_Modeles';
 const PREFS = 'Publipostage_PreferencesModeles';
-const FILING = 'GFS_Rangement';
+const FILING = 'GFS_Filing';
 const IN_PANEL = '{"shown":true,"inPanel":true,"overflowing":[]}';
 const sorted = list => [...list].sort();
 const exact = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
@@ -64,7 +64,7 @@ const emptyText = async frame => {
   await frame.waitForFunction(loading => { const node = document.querySelector('.ex-scroll .empty'); return node && !node.hidden && node.textContent.trim() && node.textContent.trim() !== loading; }, t('ex.loading'), { timeout: 8000 }).catch(() => {});
   return (await frame.locator('.ex-scroll .empty').isVisible()) ? (await frame.locator('.ex-scroll .empty').textContent()).trim() : null;
 };
-// Les lignes d'état de dossier d'une personne dans GFS_Rangement : ni app ni fichier, un chemin ; ce que la personne garde sans fichier.
+// Les lignes d'état de dossier d'une personne dans GFS_Filing : ni app ni fichier, un chemin ; ce que la personne garde sans fichier.
 const stateRows = async (run, who = ME) => (await run.rest.rows(FILING)).filter(row => row.Utilisateur === who && !row.App && !row.Fichier && row.Dossier).map(row => row.Dossier).sort();
 const stateLines = async (run, who = ME) => (await run.rest.rows(FILING)).filter(row => row.Utilisateur === who && !row.App && !row.Fichier && row.Dossier);
 const filingOf = async (run, app, id) => (await run.rest.rows(FILING)).filter(row => row.App === app && String(row.Fichier) === String(id));
@@ -117,7 +117,7 @@ async function playQuiet(run) {
   await rowOf(frame, 'Facture / devis multi-TVA').click();
   await page.keyboard.press('Delete');
   await frame.locator('#ask-title').waitFor();
-  check('la seule question est celle de la table de la corbeille (GFS_Corbeille), pas celle du rangement', (await frame.locator('#ask-title').textContent()) === t('trash.table.title'), await frame.locator('#ask-title').textContent());
+  check('la seule question est celle de la table de la corbeille (GFS_Trash), pas celle du rangement', (await frame.locator('#ask-title').textContent()) === t('trash.table.title'), await frame.locator('#ask-title').textContent());
   await frame.locator('[data-fk="ask-yes"]').click();
   const moved = await said(frame, 'trash.moved', { name: 'Facture / devis multi-TVA' });
   await goHome(frame);

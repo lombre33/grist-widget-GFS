@@ -81,12 +81,12 @@ try {
   await startEngine(target.frame);
   const pass = async () => {
     await target.frame.evaluate(() => window.__s.consolidateAll({ reread: true }));
-    return target.rest.rows('GFS_Recus');
+    return target.rest.rows('GFS_Received');
   };
   const until = async (test, tries = 60) => { let rows = []; for (let i = 0; i < tries; i += 1) { rows = await pass(); if (test(rows)) return rows; await page.waitForTimeout(1500); } return rows; };
   const has = (rows, name) => rows.some(row => row.Nom === name && row.Contenu);
   const folderOf = (rows, name) => (rows.find(row => row.Nom === name) || {})[FOLDER];
-  const sourceFolders = async () => Object.fromEntries((await source.rest.rows('GFS_Fichiers')).map(row => [row.Nom, row[FOLDER]]));
+  const sourceFolders = async () => Object.fromEntries((await source.rest.rows('GFS_Files')).map(row => [row.Nom, row[FOLDER]]));
   const waitSource = async (test, tries = 40) => { let now = {}; for (let i = 0; i < tries; i += 1) { now = await sourceFolders(); if (test(now)) return now; await page.waitForTimeout(1000); } return now; };
 
   say('--- 0. un dossier « Contrats » et un premier lien ---');
@@ -107,7 +107,7 @@ try {
   await goHome(frame);
   await folderRow(frame, 'Contrats').waitFor();
   check('le dossier « Contrats » est dans « Moi » avec ses deux PDF, Facture et Devis restent à la racine', (await folderRow(frame, 'Contrats').locator('.pill').innerText()).includes('2') && (await rowOf(frame, 'Facture.pdf').count()) === 1, await folderRow(frame, 'Contrats').innerText());
-  check('la table des fichiers n\'a pas encore la colonne du nom de dossier', !(await source.rest.columns('GFS_Fichiers')).some(each => each.id === FOLDER), (await source.rest.columns('GFS_Fichiers')).map(each => each.id));
+  check('la table des fichiers n\'a pas encore la colonne du nom de dossier', !(await source.rest.columns('GFS_Files')).some(each => each.id === FOLDER), (await source.rest.columns('GFS_Files')).map(each => each.id));
 
   await openFileTab(frame, 'Facture.pdf');
   await frame.locator('[data-fk="other-new"]').click();
@@ -117,7 +117,7 @@ try {
   const code = await frame.locator('[data-fk="so-code"]').inputValue();
   const invitation = await target.frame.evaluate(value => window.__try(() => window.__s.readInvitation(value)), code);
   const made = await target.frame.evaluate(invite => window.__try(async () => {
-    const reception = await window.__s.createReception(invite, invite.tables.map(tb => ({ tb, dest: 'GFS_Recus' })), { reserve: true, options: { archive: true } });
+    const reception = await window.__s.createReception(invite, invite.tables.map(tb => ({ tb, dest: 'GFS_Received' })), { reserve: true, options: { archive: true } });
     return { journal: reception.journal, note: reception.note };
   }), invitation.value);
   check('l\'autre document lit l\'invitation et crée sa réception (en archive)', invitation.ok && made.ok, { invitation, made });
@@ -158,12 +158,12 @@ try {
   await frame.locator('.mod.sh .rr[data-link]').waitFor();
 
   say('--- 2. « Copie à jour » : le dossier arrive chez l\'autre ---');
-  const before = await source.rest.rows('GFS_Fichiers');
+  const before = await source.rest.rows('GFS_Files');
   await pickLevel(frame, t('so.level.live'));
   await waitLevel(frame, 'live');
   check('aucune fenêtre d\'envoi (pas de nouveau code)', (await frame.locator('.mod.so').count()) === 0);
-  const columns = await source.rest.columns('GFS_Fichiers');
-  check('la colonne « Dossier_partage » est née dans la table des fichiers (une colonne de plus, rien d\'autre)', columns.some(each => each.id === FOLDER) && before.length === (await source.rest.rows('GFS_Fichiers')).length, columns.map(each => each.id));
+  const columns = await source.rest.columns('GFS_Files');
+  check('la colonne « Dossier_partage » est née dans la table des fichiers (une colonne de plus, rien d\'autre)', columns.some(each => each.id === FOLDER) && before.length === (await source.rest.rows('GFS_Files')).length, columns.map(each => each.id));
   const labeled = await waitSource(now => now['Contrat.pdf'] === 'Contrats' && now['Avenant.pdf'] === 'Contrats');
   check('« Contrats » est écrit sur les deux PDF du dossier, et rien sur Facture ni Devis', labeled['Contrat.pdf'] === 'Contrats' && labeled['Avenant.pdf'] === 'Contrats' && !labeled['Facture.pdf'] && !labeled['Devis.pdf'], labeled);
   check('la condition du lien porte les trois fichiers (Facture et les deux du dossier)', (await text(frame, '.mod.sh .rr[data-link]')).includes(t('so.link.sub', { n: 3 })), await text(frame, '.mod.sh .rr[data-link]'));
@@ -214,7 +214,7 @@ try {
   await closeAll(page, frame);
 
   say('--- 4 bis. le dossier est suivi ---');
-  const follows = async () => (await source.rest.rows('GFS_Rangement')).filter(row => row.App === 'gfs-suivi');
+  const follows = async () => (await source.rest.rows('GFS_Filing')).filter(row => row.App === 'gfs-suivi');
   check('« Copie à jour » sur le dossier a retenu qu\'il est suivi (une ligne du rangement, ses deux fichiers)', (await follows()).length === 1 && (await follows())[0].Dossier === 'Contrats' && JSON.parse((await follows())[0].Valeur).length === 2, await follows());
   await importPdf(page, frame, pdfFile('Annexe.pdf', 1, 'Annexe').file);
   await waitForNames(frame, ['Annexe.pdf', 'Devis.pdf', 'Facture.pdf']);
@@ -274,7 +274,7 @@ try {
 
   say('--- 6. la console ---');
   check('aucune erreur de GFS dans la console', unexpected(source).length === 0 && unexpected(target).length === 0, [...unexpected(source), ...unexpected(target)]);
-  check('rien d\'autre n\'a bougé chez l\'envoyeur : les cinq PDF sont là (Annexe à la corbeille), un seul lien', (await source.rest.rows('GFS_Fichiers')).map(row => row.Nom).sort().join() === 'Annexe.pdf,Avenant.pdf,Contrat.pdf,Devis.pdf,Facture.pdf' && (await webhooks(source)) === 1);
+  check('rien d\'autre n\'a bougé chez l\'envoyeur : les cinq PDF sont là (Annexe à la corbeille), un seul lien', (await source.rest.rows('GFS_Files')).map(row => row.Nom).sort().join() === 'Annexe.pdf,Avenant.pdf,Contrat.pdf,Devis.pdf,Facture.pdf' && (await webhooks(source)) === 1);
   if (races.length) say(`(courses connues, faits vérifiés 71 : ${races.length})`);
 } finally {
   await browser.close();

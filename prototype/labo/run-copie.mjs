@@ -25,8 +25,8 @@ const { t } = createI18n(lang);
 const TAG = `copie-${lang}-${scheme}`;
 const ME = 'essai@example.com';
 const MODELS = 'Publipostage_Modeles';
-const FILES = 'GFS_Fichiers';
-const FILING = 'GFS_Rangement';
+const FILES = 'GFS_Files';
+const FILING = 'GFS_Filing';
 const APP_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/apps/publipostage/`;
 const sorted = list => [...list].sort();
 const exact = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
@@ -51,7 +51,7 @@ const selectedName = frame => textOf(frame.locator('.ls-row[aria-selected="true"
 const goHome = frame => goTo(frame, new RegExp(`^\\s*${t('ex.me')}\\s*\\d*\\s*$`));
 const folderRow = (frame, name) => frame.locator('.ls-row.folder', { has: frame.locator('.t', { hasText: new RegExp(`^${name}$`) }) });
 const enterFolder = async (frame, name) => { await goHome(frame); await folderRow(frame, name).dblclick(); };
-// Le rangement de la personne pour un fichier d'une app : ses lignes de GFS_Rangement.
+// Le rangement de la personne pour un fichier d'une app : ses lignes de GFS_Filing.
 const filingOf = async (run, app, id) => (await run.rest.rows(FILING)).filter(row => row.App === app && String(row.Fichier) === String(id));
 const duplicateItem = frame => frame.getByRole('menuitem', { name: new RegExp(`^${t('ex.duplicate')}`) });
 async function duplicate(run, name) {

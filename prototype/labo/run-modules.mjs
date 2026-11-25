@@ -1,5 +1,5 @@
 // V0.2 et V0.3 : la fenêtre « Apps et extensions » dans un vrai Grist (grist-static), à 700 × 400, à la vraie souris et au vrai clavier (Playwright :
-// événements du pointeur et du clavier du navigateur, jamais dispatchEvent). Les apps installées se retiennent dans la table `GFS_Rangement` du document
+// événements du pointeur et du clavier du navigateur, jamais dispatchEvent). Les apps installées se retiennent dans la table `GFS_Filing` du document
 // (contrats 7.4) : la question de la création, le refus, l'accord, l'écriture, le rechargement du cadre de GFS.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_W (largeur du panneau), LAB_READONLY=1 (la vue est ouverte en lecture seule : la fenêtre se grise).
 // Depuis le 17/11 la fenêtre est une vitrine (« A · Vitrine ») : une carte par app (« Installer » ou « Ouvrir »), une fiche (un clic sur le nom, « A · Page produit ») pour ses extensions
@@ -91,14 +91,14 @@ if (readonly) {
 
 // ----- Installer une app : un geste, la table du document naît avec l'accord de la personne, l'installation s'enregistre tout de suite.
 const before = await rangement();
-check('rien n\'est écrit avant un geste : pas de table GFS_Rangement', before.table === false, before);
+check('rien n\'est écrit avant un geste : pas de table GFS_Filing', before.table === false, before);
 check('la fenêtre dit que les choix s\'enregistrent tout de suite', /tout de suite|right away/.test(await text(frame.locator('.mod-note'))), await text(frame.locator('.mod-note')));
 
 // Le refus : rien ne s'installe, rien n'est créé, la case revient, la personne en est avertie.
 await frame.locator('[data-fk="app:automation"]').click();
 await frame.locator('.ask').waitFor();
 say('question :', await text(frame.locator('.ask')));
-check('la question nomme la table et dit ce qui est ajouté', /GFS_Rangement/.test(await text(frame.locator('.ask'))) && /page/.test(await text(frame.locator('.ask-body'))));
+check('la question nomme la table et dit ce qui est ajouté', /GFS_Filing/.test(await text(frame.locator('.ask'))) && /page/.test(await text(frame.locator('.ask-body'))));
 check('la fenêtre des apps est inerte derrière la question', await frame.locator('.mod-scrim').first().evaluate(node => node.inert));
 check('le clavier est sur le bouton principal', await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'ask-yes'));
 let askKept = true;
@@ -112,7 +112,7 @@ check('Échap refuse : la question est partie, la fenêtre des apps reste', (awa
 check('refusé : la carte propose encore « Installer », 1 actif', (await frame.locator('[data-fk="app:automation"]').count()) === 1 && /^1 /.test(await count()), await count());
 const refused = await rangement();
 check('refusé : aucune table créée, aucune page de plus', refused.table === false && refused.pages === before.pages && refused.tables === before.tables, refused);
-check('refusé : la personne est avertie', /GFS_Rangement/.test(await text(frame.locator('#toast'))), await text(frame.locator('#toast')));
+check('refusé : la personne est avertie', /GFS_Filing/.test(await text(frame.locator('#toast'))), await text(frame.locator('#toast')));
 check('refusé : le clavier est revenu sur « Installer »', await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'app:automation'));
 await shot('3b-apres-refus');
 
@@ -124,7 +124,7 @@ await frame.waitForFunction(() => document.body.dataset.registry === 'idle' && d
 check('Automation+ installée : 2 actifs sur 5', /^2 /.test(await count()), await count());
 const made = await rangement();
 say('table du document :', made);
-check('la table GFS_Rangement existe avec ses sept colonnes', made.table && ['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie', 'Valeur'].every(name => made.columns.includes(name)), made.columns);
+check('la table GFS_Filing existe avec ses sept colonnes', made.table && ['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie', 'Valeur'].every(name => made.columns.includes(name)), made.columns);
 check('Grist a ajouté une page pour elle', made.pages === before.pages + 1 && made.tables === before.tables + 1, made);
 check('deux lignes réservées : les apps, et le numéro de structure noté après le geste (contrats 6.4, point 16)', made.rows === 2
   && JSON.stringify(made.value) === JSON.stringify({ publipostage: { extensions: [] }, automation: { extensions: [] } })

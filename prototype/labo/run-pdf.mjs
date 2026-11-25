@@ -1,4 +1,4 @@
-// GFS garde les PDF (contrats 6.6), joué dans un VRAI serveur Grist (l'image officielle, `bash vrai-serveur.sh`) : « Nouveau > Importer > PDF » à la vraie souris, la table `GFS_Fichiers` créée avec l'accord
+// GFS garde les PDF (contrats 6.6), joué dans un VRAI serveur Grist (l'image officielle, `bash vrai-serveur.sh`) : « Nouveau > Importer > PDF » à la vraie souris, la table `GFS_Files` créée avec l'accord
 // de la personne, le fichier envoyé par le cadre d'envoi isolé, le nom déjà pris (« Remplacer » / « Garder les deux »), le téléchargement, renommer, ranger, supprimer. Ce que ni grist-static (pas
 // d'API REST, pas de pièces jointes) ni un faux Grist ne peuvent dire. Le panneau est à 700 × 400. Chromium seulement : le Firefox de la personne reste à elle.
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-pdf.mjs
@@ -31,10 +31,10 @@ async function playFirstImport(run) {
   run.first = first;
   await importPdf(page, frame, first.file);
   await frame.locator('.mod.ask').waitFor();
-  check('la table n\'existe pas : GFS demande l\'accord avant tout', /GFS_Fichiers/.test(await frame.locator('#ask-title').textContent()) && !(await rest.tables()).includes('GFS_Fichiers'));
+  check('la table n\'existe pas : GFS demande l\'accord avant tout', /GFS_Files/.test(await frame.locator('#ask-title').textContent()) && !(await rest.tables()).includes('GFS_Files'));
   await shot(frame, '2-accord-table');
   await frame.locator('[data-fk="ask-no"]').click();
-  check('refusée : rien n\'est créé ni envoyé, la phrase le dit', /GFS_Fichiers n’a pas été créée/.test(await waitForToast(frame, /pas été créée/)) && !(await rest.tables()).includes('GFS_Fichiers') && (await rest.attachments()).length === 0);
+  check('refusée : rien n\'est créé ni envoyé, la phrase le dit', /GFS_Files n’a pas été créée/.test(await waitForToast(frame, /pas été créée/)) && !(await rest.tables()).includes('GFS_Files') && (await rest.attachments()).length === 0);
 
   await importPdf(page, frame, first.file);
   await frame.locator('.mod.ask').waitFor();
@@ -46,10 +46,10 @@ async function playFirstImport(run) {
 
 async function checkFirstStored(run) {
   const { rest } = run;
-  const columns = await rest.columns('GFS_Fichiers');
-  check('Grist ajoute une page pour la table (le texte de l\'accord le promet)', (await rest.pages()).includes('GFS_Fichiers'), await rest.pages());
+  const columns = await rest.columns('GFS_Files');
+  check('Grist ajoute une page pour la table (le texte de l\'accord le promet)', (await rest.pages()).includes('GFS_Files'), await rest.pages());
   check('la table naît avec ses colonnes et leurs types', JSON.stringify(columns.map(column => [column.id, column.type])) === JSON.stringify([['Identifiant', 'Text'], ['Nom', 'Text'], ['Type', 'Text'], ['Date', 'DateTime:UTC'], ['Auteur', 'Text'], ['Contenu', 'Attachments'], ['Taille', 'Int'], ['Origine', 'Text'], ['SupprimeLe', 'DateTime:UTC'], ['SupprimePar', 'Text']]), columns);
-  const rows = await rest.rows('GFS_Fichiers');
+  const rows = await rest.rows('GFS_Files');
   const [row] = rows;
   check('une ligne : nom, type, taille, origine, date du jour, pièce jointe citée', rows.length === 1 && row.Nom === 'Facture.pdf' && row.Type === 'pdf' && row.Taille === run.first.size && row.Origine === 'import' && Math.abs(row.Date - Date.now() / 1000) < 600 && Array.isArray(row.Contenu) && row.Contenu[0] === 'L', row);
   const stored = await rest.attachment(row.Contenu[1]);
@@ -77,12 +77,12 @@ async function playConflict(run) {
   await shot(frame, '4-nom-pris');
   await page.keyboard.press('Escape');
   await frame.locator('.mod.ask').waitFor({ state: 'detached' });
-  check('Échap : ni envoi ni écriture', (await rest.rows('GFS_Fichiers')).length === 1 && (await rest.attachments()).length === 1 && JSON.stringify(await names(frame)) === '["Facture.pdf"]');
+  check('Échap : ni envoi ni écriture', (await rest.rows('GFS_Files')).length === 1 && (await rest.attachments()).length === 1 && JSON.stringify(await names(frame)) === '["Facture.pdf"]');
 
   await importPdf(page, frame, second.file);
   await frame.locator('[data-fk="conflict-both"]').click();
   check('« Garder les deux » : le nouveau s\'appelle « Facture (1).pdf », l\'ancien ne bouge pas', JSON.stringify(await waitForNames(frame, ['Facture (1).pdf', 'Facture.pdf'])) === '["Facture (1).pdf","Facture.pdf"]', await toast(frame));
-  const rows = await rest.rows('GFS_Fichiers');
+  const rows = await rest.rows('GFS_Files');
   const copy = rows.find(row => row.Nom === 'Facture (1).pdf');
   const copyStored = copy ? await rest.attachment(copy.Contenu[1]) : null;
   check('la copie porte le contenu du nouveau fichier ; l\'ancien garde le sien', Boolean(copy) && copyStored.hash === second.hash && (await rest.attachment(rows.find(row => row.Nom === 'Facture.pdf').Contenu[1])).hash === run.first.hash);
@@ -92,7 +92,7 @@ async function playConflict(run) {
 
 async function playReplace(run) {
   const { page, frame, rest } = run;
-  const before = await rest.rows('GFS_Fichiers');
+  const before = await rest.rows('GFS_Files');
   const original = before.find(row => row.Nom === 'Facture.pdf');
   const third = pdfFile('facture.PDF', 'facture remplacée');
   await importPdf(page, frame, third.file);
@@ -100,7 +100,7 @@ async function playReplace(run) {
   check('le nom est pris sans tenir compte de la casse ; « (1) » est pris, la copie proposée prend « (2) » et garde la casse du nouveau nom', /facture \(2\)\.PDF/.test(await frame.locator('.ask-items').textContent()), await frame.locator('.ask-items').textContent());
   await frame.locator('[data-fk="conflict-replace"]').click();
   await waitForToast(frame, /remplacé/);
-  const rows = await rest.rows('GFS_Fichiers');
+  const rows = await rest.rows('GFS_Files');
   const replaced = rows.find(row => row.id === original.id);
   check('« Remplacer » : même ligne, même identifiant, même nom ; le contenu est celui du nouveau ; aucune ligne de plus', rows.length === before.length && replaced.Identifiant === original.Identifiant && replaced.Nom === 'Facture.pdf' && (await rest.attachment(replaced.Contenu[1])).hash === third.hash, replaced);
   check('l\'ancienne pièce jointe reste sur le serveur (Grist l\'efface seul au bout de 7 jours)', (await rest.attachments()).length === 3);
@@ -138,7 +138,7 @@ async function playMenuAndRename(run) {
   // « Dupliquer » copie le PDF sous un nouvel identifiant, avec la même pièce jointe (rien n'est envoyé) ; la copie est ensuite supprimée pour de bon, pour que la suite de l'essai parte de deux fichiers.
   await frame.getByRole('menuitem', { name: 'Dupliquer' }).click();
   const copies = await waitForNames(frame, ['Facture (1).pdf', 'Facture (2).pdf', 'Facture.pdf']);
-  const both = await rest.rows('GFS_Fichiers');
+  const both = await rest.rows('GFS_Files');
   const source = both.find(row => row.Nom === 'Facture.pdf');
   const made = both.find(row => row.Nom === 'Facture (2).pdf');
   check('« Dupliquer » ajoute « Facture (2).pdf » (le premier nom libre) : un autre identifiant, la même pièce jointe, la même taille et la même origine', JSON.stringify([...copies].sort()) === JSON.stringify(['Facture (1).pdf', 'Facture (2).pdf', 'Facture.pdf'])
@@ -154,7 +154,7 @@ async function playMenuAndRename(run) {
   await frame.locator('[data-fk="ask-yes"]').click();
   await frame.locator('.mod.ask').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
   await goTo(frame, /^\s*(Moi|Me)\s*$/);
-  check('la copie est supprimée pour de bon : deux fichiers, deux lignes', (await rest.rows('GFS_Fichiers')).length === 2 && JSON.stringify(await waitForNames(frame, ['Facture (1).pdf', 'Facture.pdf'])) === '["Facture (1).pdf","Facture.pdf"]');
+  check('la copie est supprimée pour de bon : deux fichiers, deux lignes', (await rest.rows('GFS_Files')).length === 2 && JSON.stringify(await waitForNames(frame, ['Facture (1).pdf', 'Facture.pdf'])) === '["Facture (1).pdf","Facture.pdf"]');
 
   await openRowMenu(frame, 'Facture.pdf');
   await frame.getByRole('menuitem', { name: 'Renommer' }).click();
@@ -167,7 +167,7 @@ async function playMenuAndRename(run) {
   await input.fill('Devis');
   await page.keyboard.press('Enter');
   check('« Devis » devient « Devis.pdf » : même ligne, même identifiant', JSON.stringify(await waitForNames(frame, ['Devis.pdf', 'Facture (1).pdf'])) === '["Devis.pdf","Facture (1).pdf"]');
-  const renamed = (await rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Devis.pdf');
+  const renamed = (await rest.rows('GFS_Files')).find(row => row.Nom === 'Devis.pdf');
   check('la table le dit, l\'identifiant n\'a pas changé', renamed && renamed.Identifiant === run.firstId, renamed);
 }
 
@@ -177,10 +177,10 @@ async function playPin(run) {
   await rowOf(frame, 'Devis.pdf').hover();
   await rowOf(frame, 'Devis.pdf').locator('.rb.pin').click();
   await frame.locator('.mod.ask').waitFor();
-  check('épingler demande l\'accord pour la table du rangement de GFS (une seule fois)', /GFS_Rangement/.test(await frame.locator('#ask-title').textContent()));
+  check('épingler demande l\'accord pour la table du rangement de GFS (une seule fois)', /GFS_Filing/.test(await frame.locator('#ask-title').textContent()));
   await frame.locator('[data-fk="ask-yes"]').click();
   await frame.waitForFunction(() => document.querySelector('.ls-row .rb.pin.on'), null, { timeout: 20000 });
-  const lines = (await rest.rows('GFS_Rangement')).filter(row => row.App === 'gfs-fichiers');
+  const lines = (await rest.rows('GFS_Filing')).filter(row => row.App === 'gfs-fichiers');
   check('le favori est rangé sous « gfs-fichiers » et l\'identifiant du fichier, à la personne que Grist connaît', lines.length === 1 && lines[0].Fichier === run.firstId && lines[0].Favori === true && lines[0].Utilisateur === 'essai@example.com', lines);
   await goTo(frame, /Favoris|Favorites/);
   check('Favoris montre le PDF', JSON.stringify(await waitForNames(frame, ['Devis.pdf'])) === '["Devis.pdf"]');
@@ -193,7 +193,7 @@ async function playPin(run) {
   await frame.locator('.wk-item.is-fresh').click();
   await frame.waitForFunction(() => [...document.querySelectorAll('.ls-row.folder .nm .t')].some(node => node.textContent === 'Archives'), null, { timeout: 20000 });
   check('le PDF part dans un nouveau dossier « Archives » (rangement de la personne)', JSON.stringify(await folders(frame)) === '["Archives"]' && JSON.stringify(await names(frame)) === '["Devis.pdf"]');
-  const moved = (await rest.rows('GFS_Rangement')).find(row => row.App === 'gfs-fichiers' && row.Dossier === 'Archives');
+  const moved = (await rest.rows('GFS_Filing')).find(row => row.App === 'gfs-fichiers' && row.Dossier === 'Archives');
   check('la ligne du rangement porte le dossier', Boolean(moved), moved);
 }
 
@@ -206,8 +206,8 @@ async function playFolderAndDelete(run) {
   const contract = pdfFile('Contrat.pdf', 'contrat');
   await importPdf(page, frame, contract.file);
   check('le PDF arrive dans le dossier ouvert', JSON.stringify(await waitForNames(frame, ['Contrat.pdf', 'Facture (1).pdf'])) === '["Contrat.pdf","Facture (1).pdf"]', await toast(frame));
-  const filing = (await rest.rows('GFS_Rangement')).filter(row => row.App === 'gfs-fichiers' && row.Dossier === 'Archives');
-  const stored = (await rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Contrat.pdf');
+  const filing = (await rest.rows('GFS_Filing')).filter(row => row.App === 'gfs-fichiers' && row.Dossier === 'Archives');
+  const stored = (await rest.rows('GFS_Files')).find(row => row.Nom === 'Contrat.pdf');
   check('son rangement est dans le dossier ; l\'auteur est l\'adresse que Grist donne à la personne', filing.length === 2 && stored.Auteur === 'essai@example.com', [filing.length, stored && stored.Auteur]);
   check('l\'explorateur montre les initiales de l\'auteur', await rowOf(frame, 'Contrat.pdf').locator('.who').count() === 1);
   await shot(frame, '9-dossier');
@@ -218,7 +218,7 @@ async function playFolderAndDelete(run) {
   await frame.getByRole('menuitem', { name: 'Mettre à la corbeille' }).click();
   check('« Mettre à la corbeille » retire le fichier de la liste, sans question', JSON.stringify(await waitForNames(frame, ['Facture (1).pdf'])) === '["Facture (1).pdf"]' && await frame.locator('.mod.ask').count() === 0);
   check('la phrase le dit', /« Contrat\.pdf » est à la corbeille/.test(await waitForToast(frame, /est à la corbeille/)));
-  const binned = (await rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Contrat.pdf');
+  const binned = (await rest.rows('GFS_Files')).find(row => row.Nom === 'Contrat.pdf');
   check('la ligne reste dans la table, marquée (date, personne), sa pièce jointe toujours citée', Boolean(binned) && binned.SupprimeLe > 0 && binned.SupprimePar === 'essai@example.com' && binned.Contenu.length === 2, binned);
   await shot(frame, '10-corbeille');
   await goTo(frame, /^\s*(Moi|Me)\s*$/);
@@ -228,7 +228,7 @@ async function playFolderAndDelete(run) {
 async function playProblems(run) {
   const { page, frame, rest } = run;
   say('--- 8. ce qui ne va pas ---');
-  const count = async () => [(await rest.rows('GFS_Fichiers')).length, (await rest.attachments()).length];
+  const count = async () => [(await rest.rows('GFS_Files')).length, (await rest.attachments()).length];
   const before = await count();
   await importPdf(page, frame, { name: 'Classeur.pdf', mimeType: 'application/pdf', buffer: Buffer.from('PK\u0003\u0004 un classeur renommé en .pdf') });
   check('un fichier qui n\'est pas un PDF est dit, rien n\'est envoyé', /n’est pas un PDF/.test(await waitForToast(frame, /pas un PDF/)));
@@ -243,12 +243,12 @@ async function playProblems(run) {
   await page.context().route(/\/attachments\?auth=/, answer(413, '{"error":"Payload Too Large"}'));
   await importPdf(page, frame, pdfFile('Gros.pdf', 'gros').file);
   const refused = await waitForToast(frame, /n’a pas pu être ajouté/);
-  check('le serveur refuse (413) : la raison est dite en mots, aucune ligne n\'est ajoutée', /trop gros pour lui/.test(refused) && (await rest.rows('GFS_Fichiers')).length === before[0], refused);
+  check('le serveur refuse (413) : la raison est dite en mots, aucune ligne n\'est ajoutée', /trop gros pour lui/.test(refused) && (await rest.rows('GFS_Files')).length === before[0], refused);
   await page.context().unroute(/\/attachments\?auth=/);
   await page.context().route(/\/attachments\?auth=/, route => (route.request().method() === 'POST' ? route.abort('failed') : route.continue()));
   await importPdf(page, frame, pdfFile('Gros.pdf', 'gros').file);
   const down = await waitForToast(frame, /pas répondu/);
-  check('le serveur ne répond pas : la phrase le dit', /n’a pas répondu/.test(down) && (await rest.rows('GFS_Fichiers')).length === before[0], down);
+  check('le serveur ne répond pas : la phrase le dit', /n’a pas répondu/.test(down) && (await rest.rows('GFS_Files')).length === before[0], down);
   await page.context().unroute(/\/attachments\?auth=/);
   await shot(frame, '11-erreur');
 }
@@ -260,7 +260,7 @@ async function playBigFile(run) {
   const started = Date.now();
   await importPdf(page, frame, { name: 'Gros.pdf', mimeType: 'application/pdf', buffer });
   await waitForToast(frame, /est dans GFS/, 120000);
-  const row = (await rest.rows('GFS_Fichiers')).find(each => each.Nom === 'Gros.pdf');
+  const row = (await rest.rows('GFS_Files')).find(each => each.Nom === 'Gros.pdf');
   const stored = row ? await rest.attachment(row.Contenu[1]) : null;
   check('un PDF de 12 Mo part et revient identique', Boolean(row) && stored.hash === sha256(buffer) && stored.size === buffer.length, [stored && stored.size, `${Date.now() - started} ms`]);
 }
@@ -269,7 +269,7 @@ async function playBigFile(run) {
 async function playKeyboard(run) {
   const { page, frame, rest } = run;
   say('--- 9. au clavier, les contrastes ---');
-  const before = (await rest.rows('GFS_Fichiers')).length;
+  const before = (await rest.rows('GFS_Files')).length;
   await importPdf(page, frame, pdfFile('devis.pdf', 'devis-clavier').file);
   await frame.locator('.mod.ask').waitFor();
   const count = await frame.locator('.mod.ask button').count();
@@ -288,7 +288,7 @@ async function playKeyboard(run) {
   await page.keyboard.press('Enter');
   await frame.waitForFunction(() => document.querySelectorAll('.ls-row:not(.folder)').length === 2, null, { timeout: 20000 }).catch(() => {});
   const found = await names(frame);
-  check('Entrée sur « Garder les deux » garde les deux : « devis (1).pdf » à côté de « Devis.pdf »', JSON.stringify([...found].sort()) === JSON.stringify(['Devis.pdf', 'devis (1).pdf'].sort()) && (await rest.rows('GFS_Fichiers')).length === before + 1, found);
+  check('Entrée sur « Garder les deux » garde les deux : « devis (1).pdf » à côté de « Devis.pdf »', JSON.stringify([...found].sort()) === JSON.stringify(['Devis.pdf', 'devis (1).pdf'].sort()) && (await rest.rows('GFS_Files')).length === before + 1, found);
 }
 
 // ----- 8. Une autre personne, une autre langue : l'anglais, en sombre, avec les mêmes gestes.
@@ -343,7 +343,7 @@ async function playEnglishDark(browser, server) {
     const refused = await waitForToast(frame, /could not be added/);
     check('le refus du serveur est dit en anglais', refused === t('files.failed', { name: 'Big.pdf', reason: t('files.err.tooBig') }), refused);
     run.allow.push(/le fichier n’a pas pu être traité/);
-    check('rien n\'a été ajouté', (await rest.rows('GFS_Fichiers')).length === 1);
+    check('rien n\'a été ajouté', (await rest.rows('GFS_Files')).length === 1);
     const unexpected = run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
     check('aucune erreur de GFS dans la console (anglais, sombre)', unexpected.length === 0, unexpected);
   } finally {
@@ -363,7 +363,7 @@ try {
   await playConflict(run);
   await playReplace(run);
   await playDownload(run);
-  run.firstId = (await run.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Facture.pdf').Identifiant;
+  run.firstId = (await run.rest.rows('GFS_Files')).find(row => row.Nom === 'Facture.pdf').Identifiant;
   await playMenuAndRename(run);
   await playPin(run);
   await playFolderAndDelete(run);

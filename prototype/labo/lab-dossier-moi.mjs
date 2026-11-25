@@ -7,7 +7,7 @@ import { gfsFrame } from './lab-droits.mjs';
 import { call, rowsOf } from './lab-rest.mjs';
 
 const { t } = createI18n(process.env.LAB_LANG || 'fr');
-export const FILES = 'GFS_Fichiers', SHARES = 'GFS_Partages', FILING = 'GFS_Rangement';
+export const FILES = 'GFS_Files', SHARES = 'GFS_Shares', FILING = 'GFS_Filing';
 
 export const has = (value, who) => JSON.stringify(value ?? null).toLowerCase().includes(who);
 export const fileRow = async (run, name) => ((await rowsOf(run, FILES)) || []).find(row => row.Nom === name);
@@ -54,7 +54,7 @@ export async function waitReload(page, old) {
   return gfsFrame(page, { keep: true });
 }
 
-// Les lignes d'état de dossier d'une personne dans `GFS_Rangement` (ni app ni fichier, un chemin) : [{ id, Dossier }], dans l'ordre des numéros.
+// Les lignes d'état de dossier d'une personne dans `GFS_Filing` (ni app ni fichier, un chemin) : [{ id, Dossier }], dans l'ordre des numéros.
 export const stateRows = async (run, who) => ((await rowsOf(run, FILING)) || []).filter(row => String(row.Utilisateur).toLowerCase() === who && !row.App && !row.Fichier && row.Dossier);
 // Le numéro de la ligne d'état du dossier `path` de `who`, ou null.
 export const folderId = async (run, who, path) => (await stateRows(run, who)).find(row => row.Dossier === path)?.id ?? null;

@@ -5,12 +5,12 @@ import assert from 'node:assert/strict';
 import { NONE, SEND_MAX, SENT_COLUMNS, applyLevel, carriesFolder, docOf, filesOf, idsWith, isTooBig, levelOf, linksFrom, maxText, selectionFor, setCondition, settle, sizeOf, stopLink } from '../js/sharing/share-links.js';
 import { FILE_MAX } from '../kit/js/synchro/logic/files.js';
 
-const tablesWith = values => [{ table: 'GFS_Fichiers', columns: [], filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values }] } }];
+const tablesWith = values => [{ table: 'GFS_Files', columns: [], filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values }] } }];
 const hook = (id, memo = 'ami@exemple.fr · abcdef123456 · Equipe/Compta') => ({ id, fields: { memo, enabled: true } });
 
 test('la sélection nomme les fichiers par leur identifiant ; sans fichier elle nomme un identifiant qui n\'existe pas (une condition vide enverrait tous les fichiers : mesuré)', () => {
   const [one] = selectionFor(['a', 'b']);
-  assert.equal(one.table, 'GFS_Fichiers');
+  assert.equal(one.table, 'GFS_Files');
   assert.deepEqual(one.filter.conds, [{ id: 'Identifiant', op: 'in', values: ['a', 'b'] }]);
   assert.ok(SENT_COLUMNS.includes('Contenu') && !SENT_COLUMNS.includes('SupprimeLe'));
   assert.ok(!SENT_COLUMNS.includes('Dossier_partage') && !one.columns.includes('Dossier_partage'), 'le nom d\'un dossier ne part pas avec un lien qui ne reçoit que des fichiers seuls');
@@ -23,9 +23,9 @@ test('la sélection nomme les fichiers par leur identifiant ; sans fichier elle 
 // Un moteur qui note les colonnes de chaque enregistrement.
 const columnsSeen = () => {
   const seen = [];
-  return { seen, saveChosenExport: async args => { seen.push(args.selection[0].columns); return { changed: ['GFS_Fichiers'] }; }, finishEdit: async () => {} };
+  return { seen, saveChosenExport: async args => { seen.push(args.selection[0].columns); return { changed: ['GFS_Files'] }; }, finishEdit: async () => {} };
 };
-const withColumns = (...columns) => ({ id: 'e1', name: 'Compta', files: ['a'], exp: { id: 'e1', name: 'Compta', tables: [{ table: 'GFS_Fichiers', columns: columns.map(id => ({ id, type: 'Text' })) }] } });
+const withColumns = (...columns) => ({ id: 'e1', name: 'Compta', files: ['a'], exp: { id: 'e1', name: 'Compta', tables: [{ table: 'GFS_Files', columns: columns.map(id => ({ id, type: 'Text' })) }] } });
 
 test('carriesFolder : un lien envoie le nom du dossier quand sa colonne est dans son export, sinon non (audit « contournement » du 11/11)', () => {
   assert.equal(carriesFolder(withColumns('Identifiant', 'Dossier_partage')), true);
@@ -58,8 +58,8 @@ test('filesOf : seule la condition de GFS compte ; tout autre export est laissé
   assert.equal(filesOf(null), null);
   assert.equal(filesOf([]), null);
   assert.equal(filesOf([{ table: 'Clients', columns: [], filter: null }]), null, 'une autre table');
-  assert.equal(filesOf([{ table: 'GFS_Fichiers', columns: [], filter: null }]), null, 'sans condition : tous les fichiers, pas un lien de GFS');
-  assert.equal(filesOf([{ table: 'GFS_Fichiers', columns: [], filter: { mode: 'all', conds: [{ id: 'Nom', op: 'in', values: ['x'] }] } }]), null, 'une autre colonne');
+  assert.equal(filesOf([{ table: 'GFS_Files', columns: [], filter: null }]), null, 'sans condition : tous les fichiers, pas un lien de GFS');
+  assert.equal(filesOf([{ table: 'GFS_Files', columns: [], filter: { mode: 'all', conds: [{ id: 'Nom', op: 'in', values: ['x'] }] } }]), null, 'une autre colonne');
 });
 
 test('le document se lit dans le mémo du webhook : le nom après l\'équipe, l\'identifiant ensuite', () => {
@@ -126,7 +126,7 @@ function fakeEngine({ links = [], passes = [{ why: 'sent' }, { why: 'idle' }], p
   let at = -1;
   return {
     calls,
-    saveChosenExport: async args => { calls.push(['save', args.selection[0].filter.conds[0].values]); return { changed: ['GFS_Fichiers'] }; },
+    saveChosenExport: async args => { calls.push(['save', args.selection[0].filter.conds[0].values]); return { changed: ['GFS_Files'] }; },
     finishEdit: async () => { calls.push(['finish']); },
     catchUp: async () => { at += 1; calls.push(['catchUp']); },
     catchState: () => ({ why: (passes[Math.min(at, passes.length - 1)] || {}).why, running: Boolean((passes[Math.min(at, passes.length - 1)] || {}).running) }),

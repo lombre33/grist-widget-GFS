@@ -49,11 +49,11 @@ test('role : { proprietaire, responsableDe } ; null tant que la preuve manque, m
 });
 
 test('raw : avec files:false, les tables de fichiers ne sont pas lues (« Gérer les partages » n\'en a pas besoin) ; par défaut elles le sont, pour l\'activation', async () => {
-  const tables = { _grist_Tables: [{ id: 1, tableId: 'GFS_Fichiers' }], GFS_Fichiers: [{ id: 1, Identifiant: 'a' }, { id: 2, Identifiant: 'b' }] };
+  const tables = { _grist_Tables: [{ id: 1, tableId: 'GFS_Files' }], GFS_Files: [{ id: 1, Identifiant: 'a' }, { id: 2, Identifiant: 'b' }] };
   const light = setup({ tables });
   const lite = await light.reader.raw({ files: false });
-  assert.deepEqual([lite.fileIds, lite.files, light.asked.includes('GFS_Fichiers')], [[], {}, false]);
+  assert.deepEqual([lite.fileIds, lite.files, light.asked.includes('GFS_Files')], [[], {}, false]);
   const full = setup({ tables });
   const whole = await full.reader.raw();
-  assert.deepEqual([whole.fileIds, full.asked.includes('GFS_Fichiers')], [['a', 'b'], true]);
+  assert.deepEqual([whole.fileIds, full.asked.includes('GFS_Files')], [['a', 'b'], true]);
 });

@@ -11,7 +11,7 @@
 // `window.__ambiance(id)` et `window.__theme.chooseAccess(on)` posent l'ambiance et l'accessibilité renforcée comme GFS (test/annuaire-ambiances-firefox.mjs).
 // `?links=1` : les apps du menu « Insérer dans… » (voir `FAKE_TARGETS`) ; sans lui aucune app n'accepte de personne.
 //
-// `?sub=1` : les sous-annuaires (test/annuaire-sub-firefox.mjs) : `GFS_Annuaires` porte les colonnes que le moteur de partage y pose (lecteurs, écrivains, administrateurs,
+// `?sub=1` : les sous-annuaires (test/annuaire-sub-firefox.mjs) : `GFS_Directories` porte les colonnes que le moteur de partage y pose (lecteurs, écrivains, administrateurs,
 // refus), un faux « Partager » (`window.__annuaireShared` garde le fichier demandé ; `window.__annuaireShareWhy` : un texte qui le grise), et un sous-annuaire déjà là, « Pôle
 // Ressources » (copie du 20/11), dont `ecrivain@exemple.fr` est écrivain (`&me=`). Le vrai verrou de Grist se mesure dans le labo (labo/run-annuaire-sous.mjs).
 import { createI18n } from '/js/i18n/i18n.js';
@@ -82,14 +82,14 @@ function tablesOf(document) {
   }));
 }
 
-// Le faux « droits » des sous-annuaires : les règles du partage couvrent déjà `GFS_Annuaires` (le verrou lui-même se mesure dans un vrai Grist), et « Partager » note ce qu'on lui
+// Le faux « droits » des sous-annuaires : les règles du partage couvrent déjà `GFS_Directories` (le verrou lui-même se mesure dans un vrai Grist), et « Partager » note ce qu'on lui
 // demande.
 function fakeRights() {
   return { writer: { plans: async () => ({ sharing: { ok: false, reason: 'already' } }) },
     sharing: { whyNot: () => window.__annuaireShareWhy || null, open: async file => { window.__annuaireShared = file; } } };
 }
 
-// Les colonnes que le moteur de partage pose dans `GFS_Annuaires`, et le sous-annuaire « Pôle Ressources » déjà là (copie du 20/11 ; un écrivain, aucun administrateur).
+// Les colonnes que le moteur de partage pose dans `GFS_Directories`, et le sous-annuaire « Pôle Ressources » déjà là (copie du 20/11 ; un écrivain, aucun administrateur).
 async function seedSub(grist, seed) {
   const { applyUserActions } = grist.port.doc;
   const list = await seed.list();

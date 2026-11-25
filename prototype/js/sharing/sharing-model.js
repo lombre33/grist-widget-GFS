@@ -1,9 +1,9 @@
-// Partager un fichier (contrats 11.7, point 13 ; maquettes du 06/11) : le modèle de données et les règles, en code pur. Une table `GFS_Partages` dit qui a quel
+// Partager un fichier (contrats 11.7, point 13 ; maquettes du 06/11) : le modèle de données et les règles, en code pur. Une table `GFS_Shares` dit qui a quel
 // droit sur quelle cible (un fichier : sa clé d'explorateur, `app:identifiant` ; `*` : tout le document) ; des colonnes-formules d'aide, sur chaque table de
 // fichiers, en tirent les listes que lisent les règles (une règle ne lit que `rec` et `newRec` : faits vérifiés, 46 et 55). Ce module ne touche pas à Grist :
 // il rend les actions à envoyer en UNE `applyUserActions` et les lignes à écrire.
 //
-// Le premier lot couvre les fichiers que GFS garde (`GFS_Fichiers`, les PDF : une table de GFS, sans app) : « lecture » et « écriture » et « administration ».
+// Le premier lot couvre les fichiers que GFS garde (`GFS_Files`, les PDF : une table de GFS, sans app) : « lecture » et « écriture » et « administration ».
 // « Commentaires » (ceux des apps) et « dépôt seul » attendent leurs tables ; « peut télécharger » est un confort de GFS (le bouton), jamais une protection :
 // qui lit la pièce jointe peut la copier (contrats 11.1, point 8).
 
@@ -11,7 +11,7 @@ import { FILES_TABLE } from '../files/gfs-files.js';
 import { ANNUAIRES_APP, ANNUAIRES_TABLE } from '../files/annuaire-files.js';
 import { TABLE as FILING_TABLE, COLUMNS as FILING_COLUMNS } from '../files/rangement.js';
 
-export const SHARES_TABLE = 'GFS_Partages';
+export const SHARES_TABLE = 'GFS_Shares';
 // Le dossier d'une personne dans « Moi » se partage par la cible `dossier:moi:<adresse en minuscules>/<chemin>` : le droit vaut pour les fichiers de cette
 // personne rangés dans ce dossier (ou dessous), et pour ceux qu'elle y rangera.
 export const PERSONAL_PREFIX = 'dossier:moi:';
@@ -108,11 +108,11 @@ const adminsOf = indent => [
   'elif p.PersonneL and not p.PersonneL.startswith("@"):',
   '  out.add(p.PersonneL)'].map(line => indent + line).join('\n');
 
-// Les groupes (contrats 11.7, point 13, lot 3) : `GFS_Groupes`, une ligne par groupe. Un groupe créé dans GFS garde ses adresses dans `PersonnesIci` (une par
+// Les groupes (contrats 11.7, point 13, lot 3) : `GFS_Groups`, une ligne par groupe. Un groupe créé dans GFS garde ses adresses dans `PersonnesIci` (une par
 // ligne) ; un groupe lu dans une table du document porte la table et les deux colonnes (`Source`, `SourceEmail`, `SourceGroupe`) et `Membres` les relit
 // (formule : une règle de Grist ne lit pas une autre table, les colonnes d'aide de chaque fichier lisent `Membres`). Un partage cible un groupe par `#nom`. Les
 // noms de table et de colonne sont des identifiants Grist, vérifiés avant d'entrer dans une formule.
-export const GROUPS_TABLE = 'GFS_Groupes';
+export const GROUPS_TABLE = 'GFS_Groups';
 export const GROUP_PREFIX = '#';
 export const isGroup = who => String(who ?? '').startsWith(GROUP_PREFIX);
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -150,13 +150,13 @@ export const groupPublicRules = () => [rule('user.Access in [EDITOR]', '+R', 'un
 // Le plan d'un changement de sources : la formule de `Membres` relue avec `sources`.
 export const planGroupSources = sources => ({ ok: true, actions: [['ModifyColumn', GROUPS_TABLE, 'Membres', { formula: membersFormula(sources) }]] });
 
-// Les espaces (contrats 11.7, point 13, lot 4 ; décision du porteur du 09/11, comme Google Drive) : `GFS_Espaces` (une ligne par espace partagé ; l'accès à
+// Les espaces (contrats 11.7, point 13, lot 4 ; décision du porteur du 09/11, comme Google Drive) : `GFS_Spaces` (une ligne par espace partagé ; l'accès à
 // l'espace passe par des groupes, des lignes de partage dont la cible est `espace:<clé>`) et `GFS_Placement` (quel fichier est dans quel espace, et dans quel
 // dossier de l'espace). Un dossier se partage par la cible `dossier:<clé>/<chemin>`. Le droit qui s'applique est **le plus précis** : le fichier avant son
 // dossier, le dossier avant l'espace, l'espace avant le document entier (`*`) ; à précision égale, la personne avant le groupe, le groupe avant la catégorie ;
 // à égalité, le droit le plus large. « Aucun accès » retire tout droit à cette personne (ou à ce groupe) à ce niveau et en dessous : c'est ainsi qu'on cache un
 // fichier à un membre de l'espace.
-export const SPACES_TABLE = 'GFS_Espaces';
+export const SPACES_TABLE = 'GFS_Spaces';
 export const PLACE_TABLE = 'GFS_Placement';
 export const spaceTarget = key => `espace:${key}`;
 // La cible d'un dossier de « Moi » : l'adresse de la personne en minuscules, puis le chemin nettoyé (`dossier:moi:<adresse>/<chemin>`).
@@ -182,7 +182,7 @@ export const PLACE_LINK_COLUMNS = Object.freeze(['Lien', 'Partages']);
 export const placeColumns = () => [column('Cible', 'Text'), column('Espace', 'Text'), column('Dossier', 'Text'),
   formula('Voit', 'Any', `${SPACES_TABLE}.lookupOne(Cle=$Espace).Voit or ()`), ...PLACE_LINK_COLUMNS.map(id => column(id, 'Text'))];
 
-// Le dossier que l'auteur du fichier lui a donné dans « Moi » (une ligne de `GFS_Rangement` à son adresse, pour ce fichier ; rien si le fichier n'y est pas
+// Le dossier que l'auteur du fichier lui a donné dans « Moi » (une ligne de `GFS_Filing` à son adresse, pour ce fichier ; rien si le fichier n'y est pas
 // rangé) : le calcul des droits le lit, et c'est aussi ce qui dit à GFS qu'un document partagé avant ce lot est à mettre à jour.
 function folderFormula(target) {
   const app = target.prefix.slice(0, -1);
@@ -360,7 +360,7 @@ export function shareRules() {
 export const stampRules = (memo = 'l’auteur d’un partage est écrit par Grist, personne ne le change') => [rule('user.Access not in [OWNER]', '-U', memo)];
 
 // Les six règles de « Partagé » pour une table de lignes par personne (contrats 11.4, point 2), de la première à la dernière ; chacune porte sa note, que Grist
-// joint à son refus. Le partage les pose sur `GFS_Rangement` : le dossier qu'une personne donne à un fichier dans « Moi » ouvre des droits (`GFS_Dossier`), et
+// joint à son refus. Le partage les pose sur `GFS_Filing` : le dossier qu'une personne donne à un fichier dans « Moi » ouvre des droits (`GFS_Dossier`), et
 // n'importe quel éditeur pourrait sinon écrire la ligne de rangement d'une autre personne pour y ranger son fichier dans un dossier partagé.
 export function sharedRules() {
   const own = 'user.Email and rec.Utilisateur and rec.Utilisateur.lower() == user.Email.lower()';
@@ -409,7 +409,7 @@ function dropRules(existing, items) {
   return [['BulkRemoveRecord', '_grist_ACLRules', [...dropped]], ...(emptied.length ? [['BulkRemoveRecord', '_grist_ACLResources', emptied]] : [])];
 }
 
-// Activer le partage : crée `GFS_Partages` (et `GFS_Fichiers`, `GFS_Rangement` s'ils manquent), ajoute les colonnes d'aide aux tables de fichiers (celles que
+// Activer le partage : crée `GFS_Shares` (et `GFS_Files`, `GFS_Filing` s'ils manquent), ajoute les colonnes d'aide aux tables de fichiers (celles que
 // GFS garde et celles des apps : `GFS_Auteur`, que Grist écrit à la création, en plus pour les apps), pose les règles. Rejoué quand une app a été ajoutée
 // depuis (ou après un retrait), il ne complète que ce qui manque. `existing` : { resources, rules, tables, columns, targets, files: { table: [identifiants] }
 // } ; `targets` : les tables de fichiers (`targetsOf`, js/sharing/sharing-model.js), celles des apps seulement si elles sont dans le document. Rend { ok: true,
@@ -502,7 +502,7 @@ function structureActions(existing, view, filesColumns, { shared, here, hadRules
   if (!shared) { actions.push(['AddTable', SHARES_TABLE, shareColumns(here)]); creates.push(SHARES_TABLE); }
   else if (todo.length) actions.push(['ModifyColumn', SHARES_TABLE, 'AdminsBase',
     { formula: shareColumns(here).find(item => item.id === 'AdminsBase').formula }]);
-  // Une fois le partage actif, un éditeur n'ajoute un fichier qu'à son nom : GFS doit connaître son adresse, qu'il ne lit que par la sonde de `GFS_Rangement`
+  // Une fois le partage actif, un éditeur n'ajoute un fichier qu'à son nom : GFS doit connaître son adresse, qu'il ne lit que par la sonde de `GFS_Filing`
   // (js/files/rangement.js). Sans cette table, son PDF serait refusé (mesuré, labo/run-partager-fenetre.mjs) : le partage la crée avec le reste, et la question
   // le dit.
   if (!view.hasTable(FILING_TABLE)) { actions.unshift(['AddTable', FILING_TABLE, FILING_COLUMNS.map(column => ({ ...column }))]); creates.push(FILING_TABLE); }
@@ -665,7 +665,7 @@ export function spaceKey(name, taken = []) {
 }
 
 // Les espaces pour la fenêtre : { id, key, name, people (qui y a accès), groups: [{ id (la ligne de partage), group, right }] }, triés par nom. `shares` : les
-// lignes de GFS_Partages.
+// lignes de GFS_Shares.
 export function spacesOf(spaceRows, shareRows) {
   return (spaceRows || []).filter(row => row.Cle && row.Nom).map(row => ({
     id: row.id, key: String(row.Cle), name: String(row.Nom), people: Array.isArray(row.Voit) ? row.Voit.filter(item => typeof item === 'string').length : 0,

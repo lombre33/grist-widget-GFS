@@ -77,20 +77,20 @@ test('activer le partage sur un document neuf : les deux tables, les règles, la
   const plan = planSharing(base(), FILES_COLUMNS);
   assert.equal(plan.ok, true);
   assert.equal(plan.firstRule, true);
-  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Fichiers', 'GFS_Groupes', 'GFS_Espaces', 'GFS_Placement']);
-  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddTable').map(action => action[1]), ['GFS_Groupes', 'GFS_Espaces', 'GFS_Placement', 'GFS_Fichiers', 'GFS_Rangement', SHARES_TABLE], 'groupes, espaces et placement d\'abord : les colonnes d\'aide les lisent');
-  const created = plan.actions.find(action => action[1] === 'GFS_Fichiers')[2];
+  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Filing', 'GFS_Files', 'GFS_Groups', 'GFS_Spaces', 'GFS_Placement']);
+  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddTable').map(action => action[1]), ['GFS_Groups', 'GFS_Spaces', 'GFS_Placement', 'GFS_Files', 'GFS_Filing', SHARES_TABLE], 'groupes, espaces et placement d\'abord : les colonnes d\'aide les lisent');
+  const created = plan.actions.find(action => action[1] === 'GFS_Files')[2];
   assert.deepEqual(created.map(column => column.id), [...FILES_COLUMNS.map(column => column.id), 'GFS_Auteur', ...HELPERS]);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => action[3]);
-  assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*', 'GFS_Rangement/*']);
+  assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groups/Nom,NomL,Nb,Source', 'GFS_Groups/*', 'GFS_Spaces/*', 'GFS_Placement/*', 'GFS_Files/GFS_Auteur', 'GFS_Files/*', 'GFS_Filing/*']);
   assert.ok(plan.actions.findIndex(action => action[0] === 'AddTable') < plan.actions.findIndex(action => action[1] === '_grist_ACLResources'), 'les tables avant les règles');
 });
 
 test('le rangement naît avec le partage s\'il manque (sans lui, GFS ne connaît pas l\'adresse d\'un éditeur et son PDF serait refusé), et n\'est pas recréé s\'il est là', () => {
   const without = planSharing(base(), FILES_COLUMNS);
-  assert.ok(without.actions.some(action => action[0] === 'AddTable' && action[1] === 'GFS_Rangement' && action[2].some(column => column.id === 'Adresse')));
-  const there = planSharing({ ...base(), tables: [{ id: 3, tableId: 'GFS_Rangement' }] }, FILES_COLUMNS);
-  assert.ok(!there.creates.includes('GFS_Rangement') && !there.actions.some(action => action[0] === 'AddTable' && action[1] === 'GFS_Rangement'));
+  assert.ok(without.actions.some(action => action[0] === 'AddTable' && action[1] === 'GFS_Filing' && action[2].some(column => column.id === 'Adresse')));
+  const there = planSharing({ ...base(), tables: [{ id: 3, tableId: 'GFS_Filing' }] }, FILES_COLUMNS);
+  assert.ok(!there.creates.includes('GFS_Filing') && !there.actions.some(action => action[0] === 'AddTable' && action[1] === 'GFS_Filing'));
 });
 
 test('les règles se posent aux numéros qui suivent ceux en place, dans l\'ordre, sur la bonne ressource', () => {
@@ -106,10 +106,10 @@ test('les règles se posent aux numéros qui suivent ceux en place, dans l\'ordr
 
 test('une table de fichiers déjà là : seules les colonnes d\'aide manquantes sont ajoutées, jamais la table recréée', () => {
   const plan = planSharing(withFiles(), FILES_COLUMNS);
-  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Groupes', 'GFS_Espaces', 'GFS_Placement']);
+  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Filing', 'GFS_Groups', 'GFS_Spaces', 'GFS_Placement']);
   assert.deepEqual(plan.actions.filter(action => action[0] === 'AddColumn').map(action => action[2]), ['GFS_Auteur', ...HELPERS]);
   // Les PDF d'avant : l'auteur est repris de « Auteur » (colonne à formule rendue ordinaire : elle garde ses valeurs), puis la formule de création reprend pour les nouvelles lignes.
-  const kept = plan.actions.filter(action => action[2] === 'GFS_Auteur' && action[1] === 'GFS_Fichiers');
+  const kept = plan.actions.filter(action => action[2] === 'GFS_Auteur' && action[1] === 'GFS_Files');
   assert.deepEqual(kept.map(action => action[0]), ['AddColumn', 'ModifyColumn']);
   assert.deepEqual([kept[0][3].isFormula, kept[0][3].formula], [true, '$Auteur']);
   assert.deepEqual([kept[1][3].isFormula, kept[1][3].formula, kept[1][3].recalcWhen], [false, 'user.Email', 0]);
@@ -121,7 +121,7 @@ test('une table de fichiers déjà là : seules les colonnes d\'aide manquantes 
 test('refus : déjà activé ; une règle d\'un autre auteur sur une de ces tables', () => {
   const done = applied(base(), planSharing(base(), FILES_COLUMNS).actions);
   assert.deepEqual(planSharing(done, FILES_COLUMNS), { ok: false, reason: 'already' });
-  const foreign = { ...withFiles(), resources: [{ id: 1, tableId: '', colIds: '' }, { id: 2, tableId: 'GFS_Fichiers', colIds: '*' }], rules: [{ ...BUILT_IN }, { id: 2, resource: 2, aclFormula: '', permissionsText: '-D', memo: 'écrite à la main' }] };
+  const foreign = { ...withFiles(), resources: [{ id: 1, tableId: '', colIds: '' }, { id: 2, tableId: 'GFS_Files', colIds: '*' }], rules: [{ ...BUILT_IN }, { id: 2, resource: 2, aclFormula: '', permissionsText: '-D', memo: 'écrite à la main' }] };
   assert.deepEqual(planSharing(foreign, FILES_COLUMNS), { ok: false, reason: 'foreign' });
 });
 
@@ -164,8 +164,8 @@ const withApp = (extra = {}) => ({ ...base(), tables: [{ id: 7, tableId: 'Publip
 
 test('les cibles des apps : une par table de fichiers du manifeste, le numéro de ligne quand l\'identifiant est « id », les lignes exclues ouvertes', () => {
   const [files, annuaires, pp, other] = targetsOf([PP, ids]);
-  assert.equal(files.table, 'GFS_Fichiers');
-  assert.deepEqual([annuaires.table, annuaires.prefix, annuaires.author, annuaires.stamped], ['GFS_Annuaires', 'gfs-annuaires:', 'GFS_Auteur', true]); // le verrou des sous-annuaires
+  assert.equal(files.table, 'GFS_Files');
+  assert.deepEqual([annuaires.table, annuaires.prefix, annuaires.author, annuaires.stamped], ['GFS_Directories', 'gfs-annuaires:', 'GFS_Auteur', true]); // le verrou des sous-annuaires
   assert.deepEqual([pp.table, pp.prefix, pp.id, pp.author, pp.stamped], ['Publipostage_Modeles', 'publipostage:', null, 'GFS_Auteur', true]);
   assert.equal(pp.open, 'rec.TypeModele in ("reglages",)');
   assert.deepEqual([other.id, other.open], ['Jeton', '']);
@@ -201,7 +201,7 @@ test('activer avec une app : ses colonnes, ses règles (la colonne d\'auteur gar
   const legacy = plan.actions.find(action => action[0] === 'BulkAddRecord');
   assert.deepEqual(legacy[3].Cible, ['publipostage:3', 'publipostage:5']);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => `${action[3].tableId}/${action[3].colIds}`);
-  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*', 'GFS_Rangement/*']);
+  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groups/Nom,NomL,Nb,Source', 'GFS_Groups/*', 'GFS_Spaces/*', 'GFS_Placement/*', 'GFS_Files/GFS_Auteur', 'GFS_Files/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*', 'GFS_Filing/*']);
   assert.ok(!plan.actions.some(action => action[0] === 'AddTable' && action[1] === 'Autre_Fichiers'));
 });
 
@@ -220,7 +220,7 @@ test('une règle d\'un autre auteur sur la table d\'une app : cette table est la
   assert.deepEqual(extension.appTables, ['Publipostage_Modeles']);
   assert.ok(!extension.actions.some(action => action[0] === 'AddTable'));
   assert.ok(extension.actions.some(action => action[0] === 'ModifyColumn' && action[2] === 'AdminsBase' && /publipostage:/.test(action[3].formula)), 'la formule des administrateurs apprend la table');
-  assert.ok(!extension.actions.some(action => action[1] === '_grist_ACLResources' && /^GFS_Partages/.test(action[3].tableId)), 'les règles des partages ne sont pas reposées');
+  assert.ok(!extension.actions.some(action => action[1] === '_grist_ACLResources' && /^GFS_Shares/.test(action[3].tableId)), 'les règles des partages ne sont pas reposées');
   assert.equal(planSharing(applied(later, extension.actions), FILES_COLUMNS).reason, 'already');
 });
 
@@ -247,7 +247,7 @@ test('les colonnes d\'un groupe : nom, nom minuscule, adresses tapées, source, 
 
 test('un groupe lu d\'une table : la formule des membres relit la table et la colonne, jamais un identifiant douteux', () => {
   const one = model.planGroupSources([{ table: 'Contacts', email: 'Mail', group: 'Equipe' }]).actions[0];
-  assert.deepEqual(one.slice(0, 3), ['ModifyColumn', 'GFS_Groupes', 'Membres']);
+  assert.deepEqual(one.slice(0, 3), ['ModifyColumn', 'GFS_Groups', 'Membres']);
   assert.match(one[3].formula, /Contacts\.lookupRecords\(Equipe=\$Nom\)/);
   assert.match(one[3].formula, /r\.Mail/);
   const bad = model.planGroupSources([{ table: 'Contacts"; import os', email: 'Mail', group: 'Equipe' }]).actions[0][3].formula;
@@ -257,7 +257,7 @@ test('un groupe lu d\'une table : la formule des membres relit la table et la co
 
 test('le calcul des droits développe un groupe par ses membres (une règle ne lit pas une autre table)', () => {
   const calc = model.helperColumns(TARGETS[0]).find(item => item.id === 'GFS_Calc').formula;
-  assert.match(calc, /GFS_Groupes\.lookupOne\(NomL=p\.PersonneL\[1:\]\)/);
+  assert.match(calc, /GFS_Groups\.lookupOne\(NomL=p\.PersonneL\[1:\]\)/);
   assert.match(calc, /g\.Membres/);
 });
 
@@ -272,7 +272,7 @@ test('un document partagé avant les espaces : les tables naissent, GFS_Calc s\'
   const first = planSharing(withFiles(), FILES_COLUMNS);
   const done = applied(withFiles(), first.actions);
   // l'état d'avant : sans espaces ni placement, sans GFS_Calc ni GFS_Refus, et des règles de fichiers sans la règle des refus
-  const gone = new Set(['GFS_Espaces', 'GFS_Placement']);
+  const gone = new Set(['GFS_Spaces', 'GFS_Placement']);
   const old = { ...done, tables: done.tables.filter(row => !gone.has(row.tableId)) };
   const goneResources = done.resources.filter(row => gone.has(row.tableId)).map(row => row.id);
   old.resources = done.resources.filter(row => !goneResources.includes(row.id));
@@ -280,7 +280,7 @@ test('un document partagé avant les espaces : les tables naissent, GFS_Calc s\'
   old.columns = done.columns.filter(col => !['GFS_Calc', 'GFS_Refus'].includes(col.colId));
   const plan = planSharing(old, FILES_COLUMNS);
   assert.equal(plan.ok, true);
-  assert.deepEqual(plan.creates, ['GFS_Espaces', 'GFS_Placement']);
+  assert.deepEqual(plan.creates, ['GFS_Spaces', 'GFS_Placement']);
   assert.equal(plan.actions[0][0], 'AddTable');
   assert.ok(plan.actions.some(action => action[0] === 'ModifyColumn' && action[2] === 'GFS_Lecteurs'), 'les colonnes d\'aide d\'avant sont reprises');
   assert.ok(plan.actions.findIndex(action => action[0] === 'AddColumn' && action[2] === 'GFS_Calc') < plan.actions.findIndex(action => action[0] === 'ModifyColumn' && action[2] === 'GFS_Lecteurs'), 'GFS_Calc d\'abord');
@@ -311,8 +311,8 @@ test('un document partagé avant les liens : les deux colonnes du placement et G
   assert.equal(plan.ok, true);
   assert.deepEqual(plan.creates, []);
   const adds = plan.actions.filter(action => action[0] === 'AddColumn').map(action => `${action[1]}.${action[2]}`);
-  assert.ok(adds.includes('GFS_Placement.Lien') && adds.includes('GFS_Placement.Partages') && adds.includes('GFS_Fichiers.GFS_Vus'), adds.join(', '));
-  assert.ok(adds.indexOf('GFS_Placement.Lien') < adds.indexOf('GFS_Fichiers.GFS_Vus'), 'les colonnes du placement avant la formule qui les lit');
+  assert.ok(adds.includes('GFS_Placement.Lien') && adds.includes('GFS_Placement.Partages') && adds.includes('GFS_Files.GFS_Vus'), adds.join(', '));
+  assert.ok(adds.indexOf('GFS_Placement.Lien') < adds.indexOf('GFS_Files.GFS_Vus'), 'les colonnes du placement avant la formule qui les lit');
   assert.equal(plan.actions.some(action => action[0] === 'AddTable'), false);
   assert.equal(planSharing(applied(old, plan.actions), FILES_COLUMNS).reason, 'already');
 });
@@ -397,21 +397,21 @@ test('créer, lire, vider un espace : la clé sans accent ni doublon, le nom ref
   assert.equal(model.spaceKey('Achats', ['achats', 'achats-2']), 'achats-3');
   assert.equal(model.spaceKey('!!!'), '');
   const add = model.planSpaceAdd([{ Cle: 'achats', Nom: 'Achats' }], ' Ventes  Nord ');
-  assert.deepEqual([add.ok, add.key, add.actions[0].slice(0, 2), add.actions[0][3]], [true, 'ventes-nord', ['AddRecord', 'GFS_Espaces'], { Cle: 'ventes-nord', Nom: 'Ventes Nord' }]);
+  assert.deepEqual([add.ok, add.key, add.actions[0].slice(0, 2), add.actions[0][3]], [true, 'ventes-nord', ['AddRecord', 'GFS_Spaces'], { Cle: 'ventes-nord', Nom: 'Ventes Nord' }]);
   assert.equal(model.planSpaceAdd([{ Cle: 'achats', Nom: 'Achats' }], 'achats').reason, 'exists');
   assert.equal(model.planSpaceAdd([], '  ').reason, 'invalid');
   const shares = [{ id: 1, Cible: 'espace:achats', Personne: '#Achats', Droit: 'lecture' }, { id: 2, Cible: 'dossier:achats/Contrats', Personne: 'a@x.fr', Droit: 'ecriture' }, { id: 3, Cible: 'dossier:achats-2/X', Personne: 'a@x.fr', Droit: 'lecture' }, { id: 4, Cible: 'espace:achats', Personne: 'b@x.fr', Droit: 'lecture' }];
   const spaces = model.spacesOf([{ id: 7, Cle: 'achats', Nom: 'Achats', Voit: ['a@x.fr', 'b@x.fr'] }, { id: 8, Cle: '', Nom: 'vide' }], shares);
   assert.deepEqual(spaces, [{ id: 7, key: 'achats', name: 'Achats', people: 2, groups: [{ id: 1, group: 'Achats', right: 'lecture' }] }]);
   const gone = model.planSpaceRemove(spaces[0], shares, [{ id: 10, Espace: 'achats' }, { id: 11, Espace: 'autre' }]);
-  assert.deepEqual(gone.actions, [['BulkRemoveRecord', 'GFS_Partages', [1, 2, 4]], ['BulkRemoveRecord', 'GFS_Placement', [10]], ['RemoveRecord', 'GFS_Espaces', 7]]);
+  assert.deepEqual(gone.actions, [['BulkRemoveRecord', 'GFS_Shares', [1, 2, 4]], ['BulkRemoveRecord', 'GFS_Placement', [10]], ['RemoveRecord', 'GFS_Spaces', 7]]);
 });
 
 test('le rôle d\'un groupe dans un espace : ajouté, changé, retiré ; lecture ou écriture seulement', () => {
   const space = { key: 'achats' };
   const shares = [{ id: 1, Cible: 'espace:achats', Personne: '#Achats', Droit: 'lecture' }];
-  assert.deepEqual(model.planSpaceGroup(space, shares, 'Achats', 'ecriture').actions, [['UpdateRecord', 'GFS_Partages', 1, { Droit: 'ecriture' }]]);
-  assert.deepEqual(model.planSpaceGroup(space, shares, 'Achats', null).actions, [['RemoveRecord', 'GFS_Partages', 1]]);
+  assert.deepEqual(model.planSpaceGroup(space, shares, 'Achats', 'ecriture').actions, [['UpdateRecord', 'GFS_Shares', 1, { Droit: 'ecriture' }]]);
+  assert.deepEqual(model.planSpaceGroup(space, shares, 'Achats', null).actions, [['RemoveRecord', 'GFS_Shares', 1]]);
   const added = model.planSpaceGroup(space, shares, 'Compta', 'lecture').actions[0];
   assert.deepEqual([added[0], added[3].Cible, added[3].Personne, added[3].Droit], ['AddRecord', 'espace:achats', '#Compta', 'lecture']);
   assert.equal(model.planSpaceGroup(space, shares, 'Compta', 'admin').reason, 'invalid');
@@ -420,7 +420,7 @@ test('le rôle d\'un groupe dans un espace : ajouté, changé, retiré ; lecture
 
 test('créer un espace : la personne qui le crée y entre (écriture, en minuscules) dans la même écriture ; sans adresse, seulement l\'espace', () => {
   const added = model.planSpaceAdd([], 'Équipe UI', ' Moi@X.fr ');
-  assert.deepEqual(added.actions.map(action => action.slice(0, 2)), [['AddRecord', 'GFS_Espaces'], ['AddRecord', 'GFS_Partages']]);
+  assert.deepEqual(added.actions.map(action => action.slice(0, 2)), [['AddRecord', 'GFS_Spaces'], ['AddRecord', 'GFS_Shares']]);
   assert.deepEqual([added.actions[1][3].Cible, added.actions[1][3].Personne, added.actions[1][3].Droit], ['espace:equipe-ui', 'moi@x.fr', 'ecriture']);
   assert.equal(model.planSpaceAdd([], 'Équipe UI').actions.length, 1);
   assert.equal(model.planSpaceAdd([], 'Équipe UI', '  ').actions.length, 1);
@@ -429,16 +429,16 @@ test('créer un espace : la personne qui le crée y entre (écriture, en minuscu
 test('« Administrer » : une personne ou un groupe (ses membres), jamais une catégorie ; le calcul des droits plafonne une catégorie à l\'écriture', () => {
   for (const id of ['AdminsBase', 'AdminsCible']) {
     const formula = model.shareColumns().find(column => column.id === id).formula;
-    assert.match(formula, /if p\.PersonneL\.startswith\("#"\):\n *g = GFS_Groupes\.lookupOne\(NomL=p\.PersonneL\[1:\]\)\n *out\.update\(list\(g\.Membres or \(\)\) if g else \[\]\)/, `${id} développe un groupe`);
+    assert.match(formula, /if p\.PersonneL\.startswith\("#"\):\n *g = GFS_Groups\.lookupOne\(NomL=p\.PersonneL\[1:\]\)\n *out\.update\(list\(g\.Membres or \(\)\) if g else \[\]\)/, `${id} développe un groupe`);
     assert.match(formula, /elif p\.PersonneL and not p\.PersonneL\.startswith\("@"\):\n *out\.add\(p\.PersonneL\)/, `${id} ne compte aucune catégorie`);
   }
   const calc = model.helperColumns().find(column => column.id === 'GFS_Calc').formula;
   assert.match(calc, /put\(cats, p\.PersonneL\[1:\], lvl, 0, min\(rank, 2\)\)/);
 });
 
-test('le dossier de « Moi » : l\'auteur du fichier le donne par GFS_Rangement, la chaîne des droits l\'ajoute hors d\'un espace, sa clé porte l\'adresse de l\'auteur', () => {
+test('le dossier de « Moi » : l\'auteur du fichier le donne par GFS_Filing, la chaîne des droits l\'ajoute hors d\'un espace, sa clé porte l\'adresse de l\'auteur', () => {
   const dossier = model.helperColumns().find(column => column.id === 'GFS_Dossier').formula;
-  assert.match(dossier, /GFS_Rangement\.lookupRecords\(App="gfs-fichiers", Fichier=str\(\$Identifiant\)\)/);
+  assert.match(dossier, /GFS_Filing\.lookupRecords\(App="gfs-fichiers", Fichier=str\(\$Identifiant\)\)/);
   assert.match(dossier, /str\(r\.Utilisateur or ""\)\.strip\(\)\.lower\(\) == author/);
   const calc = model.helperColumns().find(column => column.id === 'GFS_Calc').formula;
   assert.match(calc, /elif author:\n {2}mine = \[x for x in str\(\$GFS_Dossier or ""\)\.split\("\/"\) if x\]/, 'seulement quand le fichier n\'est pas dans un espace');
@@ -467,22 +467,22 @@ test('les règles du rangement : le partage les pose avec le reste (sinon une li
   const done = applied(base(), plan.actions);
   assert.equal(planSharing(done, FILES_COLUMNS).reason, 'already');
   const foreignRule = { id: 91, resource: 91, aclFormula: 'user.Access in [OWNER]', permissionsText: '+CRUD', memo: 'écrite à la main' };
-  const hand = { ...base(), tables: [{ id: 3, tableId: 'GFS_Rangement' }], resources: [{ id: 1, tableId: '', colIds: '' }, { id: 91, tableId: 'GFS_Rangement', colIds: '*' }],
+  const hand = { ...base(), tables: [{ id: 3, tableId: 'GFS_Filing' }], resources: [{ id: 1, tableId: '', colIds: '' }, { id: 91, tableId: 'GFS_Filing', colIds: '*' }],
     rules: [{ ...BUILT_IN }, foreignRule] };
   assert.equal(planSharing(hand, FILES_COLUMNS).reason, 'foreign');
   // Un rangement d'avant la sonde : la colonne `Adresse` que nomme une règle est ajoutée d'abord.
-  const old = { ...base(), tables: [{ id: 3, tableId: 'GFS_Rangement' }], columns: [{ parentId: 3, colId: 'Utilisateur' }] };
+  const old = { ...base(), tables: [{ id: 3, tableId: 'GFS_Filing' }], columns: [{ parentId: 3, colId: 'Utilisateur' }] };
   const added = planSharing(old, FILES_COLUMNS);
-  const at = added.actions.findIndex(action => action[0] === 'AddColumn' && action[1] === 'GFS_Rangement' && action[2] === 'Adresse');
+  const at = added.actions.findIndex(action => action[0] === 'AddColumn' && action[1] === 'GFS_Filing' && action[2] === 'Adresse');
   assert.ok(at >= 0 && at < added.actions.findIndex(action => action[1] === '_grist_ACLResources'), 'la colonne avant les règles');
-  assert.ok(added.adds.includes('GFS_Rangement.Adresse'));
+  assert.ok(added.adds.includes('GFS_Filing.Adresse'));
 });
 
 // Un dossier de « Moi » se désigne par le numéro de sa ligne d'état (contrats 11.7, point 13.n.g) : renommer le dossier ne perd plus ses partages.
 test('GFS_Ids : les lignes d\'état des dossiers de l\'AUTEUR du fichier, du plus haut au plus bas ; la chaîne les ajoute à côté des chemins (deux « / » : jamais un nom de dossier)', () => {
   const ids = model.helperColumns().find(column => column.id === 'GFS_Ids');
   assert.equal(ids.type, 'Any');
-  assert.match(ids.formula, /GFS_Rangement\.lookupRecords\(App="", Fichier="", Dossier="\/"\.join\(mine\[:i \+ 1\]\)\)/, 'une ligne d\'état : ni app ni fichier');
+  assert.match(ids.formula, /GFS_Filing\.lookupRecords\(App="", Fichier="", Dossier="\/"\.join\(mine\[:i \+ 1\]\)\)/, 'une ligne d\'état : ni app ni fichier');
   assert.match(ids.formula, /if str\(r\.Utilisateur or ""\)\.strip\(\)\.lower\(\) == author:\n {8}out\.append\(\[r\.id, i\]\)/, 'seules les lignes de l\'auteur comptent');
   assert.ok(ids.formula.indexOf('author = ') < ids.formula.indexOf('lookupRecords'));
   for (const id of ['GFS_Calc', 'GFS_Vus']) {
@@ -499,7 +499,7 @@ test('un partage d\'avant GFS_Ids : la colonne s\'ajoute (additif) et les formul
   const old = { ...done, columns: done.columns.filter(col => col.colId !== 'GFS_Ids') };
   const plan = planSharing(old, FILES_COLUMNS);
   assert.equal(plan.ok, true, 'le partage est à compléter');
-  assert.deepEqual(plan.adds, ['GFS_Fichiers.GFS_Ids']);
+  assert.deepEqual(plan.adds, ['GFS_Files.GFS_Ids']);
   const modified = plan.actions.filter(action => action[0] === 'ModifyColumn').map(action => action[2]);
   assert.ok(modified.includes('GFS_Calc') && modified.includes('GFS_Vus'), `les formules qui la lisent sont reprises : ${modified.join(', ')}`);
   assert.equal(planSharing(applied(old, plan.actions), FILES_COLUMNS).reason, 'already');

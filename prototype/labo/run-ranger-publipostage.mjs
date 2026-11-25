@@ -1,6 +1,6 @@
 // Ranger les exports PDF de la vraie Publipostage+ dans GFS (consigne 043 ; contrats 2.7 point 6, 5.4 point 9), celle que GFS référence, dans un VRAI serveur Grist (l'image officielle,
 // `bash vrai-serveur.sh`) : un modèle de l'app est ouvert dans son éditeur, la personne choisit « Destination du PDF » dans le menu « Exporter », puis exporte. GFS garde le PDF (la table
-// `GFS_Fichiers` naît avec l'accord de la personne), pose la question du nom pris et rend à l'app ce qu'il a fait ; l'app le dit dans son coin d'état. Tout se joue à 700 × 400, à la vraie souris
+// `GFS_Files` naît avec l'accord de la personne), pose la question du nom pris et rend à l'app ce qu'il a fait ; l'app le dit dans son coin d'état. Tout se joue à 700 × 400, à la vraie souris
 // et au vrai clavier. Chromium seulement. Les bibliothèques de l'app (pdfmake et ses polices comprises) viennent du miroir (`bash build-mirror.sh`).
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-ranger-publipostage.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
 //   1. Le menu : « Destination du PDF » offre ses trois lignes, vivantes (le manifeste de GFS déclare `actions.ranger`) ; un clic coche « Ranger dans GFS » et GFS garde le choix de la personne.
@@ -42,7 +42,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const appFrame = page => page.frames().find(frame => frame.url().startsWith(APP_URL) && !frame.isDetached());
 const statusOf = app => app.evaluate(() => { const el = document.getElementById('status-msg'); return { text: el.textContent, error: el.className === 'error-msg' }; });
-const files = async rest => (await rest.rows('GFS_Fichiers')).sort((a, b) => a.id - b.id);
+const files = async rest => (await rest.rows('GFS_Files')).sort((a, b) => a.id - b.id);
 const hashOfRow = async (rest, row) => (await rest.attachment(row.Contenu[1])).hash;
 const center = (app, selector) => app.evaluate(sel => { const el = document.querySelector(sel); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; }, selector);
 // La fenêtre du nom pris, vue par la personne (js/files/conflict-window.js).
@@ -162,7 +162,7 @@ async function playMenu(run) {
 async function playFirstExport(run) {
   const { page, frame, rest, app } = run;
   say('--- 2. un premier export ---');
-  check('au départ, GFS n\'a pas de table de fichiers (elle naît avec l\'accord de la personne)', (await files(rest)).length === 0 && !(await rest.tables()).includes('GFS_Fichiers'));
+  check('au départ, GFS n\'a pas de table de fichiers (elle naît avec l\'accord de la personne)', (await files(rest)).length === 0 && !(await rest.tables()).includes('GFS_Files'));
   const asked = () => frame.locator('.mod.ask').count().then(count => count > 0);
   const first = await exportOne(run, asked);
   check('c\'est GFS qui demande l\'accord pour sa table (l\'app n\'en pose aucune), devant le panneau', first.finished && await asked(), first);

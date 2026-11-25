@@ -1,7 +1,8 @@
 // Les gestes d'un sous-annuaire (module Annuaire, demande du porteur du 25/11) : le créer, actualiser sa copie, le partager, le supprimer. Ils vivent à part du
 // contrôle de l'annuaire (js/annuaire/annuaire-control.js), qui ne fait que les lancer. Le verrou est celui de Grist : avant d'écrire la copie, ce module
-// vérifie que les règles du partage couvrent `GFS_Annuaires` (sinon il les pose, avec la question qui dit le prix : js/rights/rights-actions.js), car une copie
-// écrite avant ses règles serait lisible de tous le temps qu'elles arrivent. Seul un propriétaire du document crée ou supprime un sous-annuaire (preuve de GFS,
+// vérifie que les règles du partage couvrent `GFS_Directories` (sinon il les pose, avec la question qui dit le prix : js/rights/rights-actions.js), car une
+// copie écrite avant ses règles serait lisible de tous le temps qu'elles arrivent. Seul un propriétaire du document crée ou supprime un sous-annuaire (preuve
+// de GFS,
 // js/broker/transfer.js : jamais devinée) ; qui actualise ou partage, c'est Grist qui le dit (`access`).
 
 import { SubWindow } from './annuaire-sub-window.js';
@@ -34,8 +35,8 @@ export class SubControl {
     return { refresh: admin || isAdmin || (me !== '' && writers.includes(me)), share: admin || isAdmin, remove: admin };
   }
 
-  // Les règles du partage couvrent-elles `GFS_Annuaires` ? Sinon elles se posent (la question dit le prix) et Grist recharge la page : GFS rouvre l'annuaire au
-  // retour. Rend vrai quand le verrou est en place et que la copie peut s'écrire.
+  // Les règles du partage couvrent-elles `GFS_Directories` ? Sinon elles se posent (la question dit le prix) et Grist recharge la page : GFS rouvre l'annuaire
+  // au retour. Rend vrai quand le verrou est en place et que la copie peut s'écrire.
   async #locked(again = true) {
     const { t, rights } = this.#o;
     const plans = await rights.writer.plans();

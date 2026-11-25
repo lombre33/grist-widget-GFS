@@ -21,7 +21,7 @@ const rowsAddresses = (rows, ...columns) => (rows || []).flatMap(row => columns.
 
 // Les adresses que GFS connaît déjà dans ce document : celle de la personne, les personnes des partages et leurs auteurs, les membres des groupes tapés dans
 // GFS et les personnes qui ont rangé un fichier (une ligne de rangement porte leur adresse, écrite par Grist). Triées, sans doublon.
-// `known` : { me, shares (GFS_Partages), groups (GFS_Groupes), filing (GFS_Rangement) }.
+// `known` : { me, shares (GFS_Shares), groups (GFS_Groups), filing (GFS_Filing) }.
 export function knownAddresses({ me = '', shares = [], groups = [], filing = [] } = {}) {
   const all = [personOf(me), ...rowsAddresses(shares, 'PersonneL', 'Personne', 'Auteur'), ...(groups || []).flatMap(group => addressesIn(group.PersonnesIci)),
     ...rowsAddresses(filing, 'Utilisateur')].filter(who => ADDRESS.test(who));

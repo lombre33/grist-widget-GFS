@@ -1,6 +1,6 @@
 // La lecture des fichiers pour l'explorateur (contrats 2.4) : GFS lit les tables de fichiers que les manifestes déclarent, par sa propre
 // connexion à Grist, et n'en garde que les colonnes déclarées. Une table que l'app n'a pas encore créée n'est pas un problème (aucun fichier) ;
-// une table présente mais illisible est dite, app par app. Le rangement de GFS (`GFS_Rangement`, 6.4) passe devant celui de chaque app.
+// une table présente mais illisible est dite, app par app. Le rangement de GFS (`GFS_Filing`, 6.4) passe devant celui de chaque app.
 
 import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling } from './explorer-model.js';
 import { TABLE } from '../files/rangement.js';
@@ -177,7 +177,7 @@ function readAppFiles({ identity, address, spaces, bin, gfsFiling }, { manifest,
   return { found, folders, binned: binnedFiles(manifest, spec, bin, { filing, gfsFiling, appFirst }) };
 }
 
-// Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Corbeille` (js/files/gfs-trash.js), et gardent
+// Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Trash` (js/files/gfs-trash.js), et gardent
 // leur dossier, que le rangement n'a pas quitté.
 function binnedFiles(manifest, spec, bin, { filing, gfsFiling, appFirst }) {
   if (!recipeOf(spec) || !bin.data) return [];

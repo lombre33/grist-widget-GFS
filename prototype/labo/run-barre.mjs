@@ -10,7 +10,7 @@
 //   5. `barre.masquer` : la barre disparaît et revient, la réponse dit l'état, un argument hors règle est refusé (réponse ou avertissement), un nouveau contexte remet la barre ;
 //   6. l'explorateur : la barre s'efface, l'app l'apprend (`barre: null`), une demande de masquer pendant ce temps ne tient pas, la barre revient à la fermeture ;
 //   7. le choix tient au rechargement de GFS (c'est le navigateur qui le garde), une valeur inconnue y est ignorée, et une autre section de GFS qui change la clé est suivie sans rechargement ;
-//   rien de tout cela n'écrit dans le document (ni table, ni ligne de GFS_Rangement).
+//   rien de tout cela n'écrit dans le document (ni table, ni ligne de GFS_Filing).
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
 import { collectWarnings, waiter } from './lab-gestes.mjs';
@@ -330,7 +330,7 @@ seen = await probe(app);
 check('le cadre de l\'app rechargé alors que la barre était masquée : la barre est revenue, et le contexte dit la zone', (await dockState()).visible && flat(seen.contextes[0].barre) === zoneBefore, { contexte: seen.contextes[0].barre, etat: await dockState() });
 
 const documentAfter = await lab.rangement(frame);
-check('la barre n\'écrit rien dans le document : ni table, ni ligne de GFS_Rangement, ni page', JSON.stringify(documentAfter) === JSON.stringify(documentBefore), { avant: [documentBefore.tables, documentBefore.rows], apres: [documentAfter.tables, documentAfter.rows] });
+check('la barre n\'écrit rien dans le document : ni table, ni ligne de GFS_Filing, ni page', JSON.stringify(documentAfter) === JSON.stringify(documentBefore), { avant: [documentBefore.tables, documentBefore.rows], apres: [documentAfter.tables, documentAfter.rows] });
 
 // ---------- 7. le choix tient au rechargement de GFS ; une autre section le suit ----------
 await frame.locator('#floater-place').click();

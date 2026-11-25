@@ -1,5 +1,5 @@
 // Audit « contournement » du 11/11 : un ENVOYEUR peut-il écrire lui-même les marques « accepté » / « refusé » dans la table reçue ? (js/sharing/received-files.js lit `Accepte` et `Refuse` dans la
-// table `GFS_Recus*`, une table que le moteur de Sync+ remplit avec les colonnes que l'envoyeur déclare.) Joué dans un VRAI Grist (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`) :
+// table `GFS_Received*`, une table que le moteur de Sync+ remplit avec les colonnes que l'envoyeur déclare.) Joué dans un VRAI Grist (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`) :
 // l'envoyeur est ici un document « méchant » qui range une colonne `Accepte` dans les colonnes de son export, avec le moteur lui-même (un envoyeur qui n'est pas GFS peut le faire avec le widget de Sync+).
 //   SCENARIO=invitation  la colonne `Accepte` fait partie de l'export dès l'invitation ;
 //   SCENARIO=apres       elle est ajoutée à l'export après le premier envoi, avant toute réponse de la personne ;
@@ -22,7 +22,7 @@ const MARKS = upper ? ['ACCEPTE', 'REFUSE'] : ['Accepte', 'Refuse'];
 
 // Le premier partage, comme `handshake` de lab-partage.mjs, mais le côté qui reçoit passe par le parcours de GFS (le correctif : marques posées d'emblée, colonnes de même nom renommées).
 async function handshakeGfs(source, target, { name, ids, columns }) {
-  const selection = [{ table: 'GFS_Fichiers', columns, filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: ids }] } }];
+  const selection = [{ table: 'GFS_Files', columns, filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: ids }] } }];
   const saved = await source.frame.evaluate(args => window.__s.saveChosenExport({ name: args.name, selection: args.selection }).then(done => ({ id: done.id, created: done.created })), { name, selection });
   const invited = await source.frame.evaluate(exp => window.__s.startInvitation(exp).then(async ({ entry, secret }) => ({ entry, code: (await window.__s.invitationCode(exp, entry, secret)).code })), saved.created);
   await target.frame.evaluate(async code => {
@@ -54,18 +54,18 @@ try {
   const target = await openGfs(context, { lang: 'fr' });
   await startEngine(source.frame);
   await startEngine(target.frame);
-  const files = await source.rest.rows('GFS_Fichiers');
+  const files = await source.rest.rows('GFS_Files');
   const idOf = name => files.find(row => row.Nom === name).Identifiant;
   const rowOf = name => files.find(row => row.Nom === name).id;
   const patch = (run, table, id, fields) => run.page.evaluate(async ([doc, name, row, values]) => (await fetch(`/api/docs/${doc}/tables/${name}/records`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ records: [{ id: row, fields: values }] }) })).status, [run.docId, table, id, fields]);
-  const addMarks = () => source.frame.evaluate(names => grist.docApi.applyUserActions(names.map(name => ['AddColumn', 'GFS_Fichiers', name, { type: 'Bool', isFormula: false }])), MARKS);
+  const addMarks = () => source.frame.evaluate(names => grist.docApi.applyUserActions(names.map(name => ['AddColumn', 'GFS_Files', name, { type: 'Bool', isFormula: false }])), MARKS);
   const pass = async () => {
     await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
     await target.frame.evaluate(() => window.__try(() => window.__s.consolidateAll({ reread: true })));
-    return target.rest.rows('GFS_Recus');
+    return target.rest.rows('GFS_Received');
   };
   const until = async (test, tries = 40) => { let rows = []; for (let i = 0; i < tries; i += 1) { rows = await pass(); if (test(rows)) return rows; await source.page.waitForTimeout(1500); } return rows; };
-  const selection = (columns, ids) => [{ table: 'GFS_Fichiers', columns, filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: ids }] } }];
+  const selection = (columns, ids) => [{ table: 'GFS_Files', columns, filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: ids }] } }];
   const editExport = (exp, columns, ids) => source.frame.evaluate(args => window.__try(async () => {
     const done = await window.__s.saveChosenExport({ exp: args.exp, name: args.exp.name, selection: args.selection });
     await window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
@@ -76,7 +76,7 @@ try {
   say(`--- scénario « ${scenario} » ---`);
   if (scenario === 'invitation' || scenario === 'casse') {
     await addMarks();
-    await Promise.all([patch(source, 'GFS_Fichiers', rowOf('Devis.pdf'), { [MARKS[0]]: true }), patch(source, 'GFS_Fichiers', rowOf('Facture.pdf'), { [MARKS[0]]: true, [MARKS[1]]: false })]);
+    await Promise.all([patch(source, 'GFS_Files', rowOf('Devis.pdf'), { [MARKS[0]]: true }), patch(source, 'GFS_Files', rowOf('Facture.pdf'), { [MARKS[0]]: true, [MARKS[1]]: false })]);
     await handshake(source, target, { name: 'Lot', ids: [idOf('Facture.pdf'), idOf('Devis.pdf')], columns: [...COLUMNS, ...MARKS], options: { archive: true } });
     const rows = await until(list => list.length === 2 && list.every(row => row.Contenu));
     check('les deux fichiers sont arrivés', rows.length === 2, marks(rows));
@@ -87,7 +87,7 @@ try {
     check(viaGfs ? 'le premier fichier est arrivé, les colonnes de marque existent déjà et sont vides' : 'le premier fichier est arrivé, sans colonne de marque',
       rows.length === 1 && (viaGfs ? 'Accepte' in rows[0] && !rows[0].Accepte : !('Accepte' in rows[0])), Object.keys(rows[0] || {}));
     await addMarks();
-    await patch(source, 'GFS_Fichiers', rowOf('Facture.pdf'), { Accepte: true });
+    await patch(source, 'GFS_Files', rowOf('Facture.pdf'), { Accepte: true });
     const edited = await editExport(first.exp, [...COLUMNS, ...MARKS], [idOf('Facture.pdf')]);
     check('l\'export gagne les colonnes de marque', edited.ok, edited);
     rows = await until(list => list.some(row => 'Accepte' in row), 30);
@@ -97,13 +97,13 @@ try {
     const first = await handshake(source, target, { name: 'Lot', ids: [idOf('Facture.pdf'), idOf('Devis.pdf')], columns: COLUMNS, options: { archive: true } });
     let rows = await until(list => list.length === 2 && list.every(row => row.Contenu));
     // la personne répond comme GFS le fait (js/sharing/received-files.js) : « Facture » acceptée, « Devis » refusée
-    await target.frame.evaluate(() => grist.docApi.applyUserActions([['AddColumn', 'GFS_Recus', 'Accepte', { type: 'Bool', isFormula: false }], ['AddColumn', 'GFS_Recus', 'Refuse', { type: 'Bool', isFormula: false }]]));
+    await target.frame.evaluate(() => grist.docApi.applyUserActions([['AddColumn', 'GFS_Received', 'Accepte', { type: 'Bool', isFormula: false }], ['AddColumn', 'GFS_Received', 'Refuse', { type: 'Bool', isFormula: false }]]));
     const idFacture = rows.find(row => row.Nom === 'Facture.pdf').id;
     const idDevis = rows.find(row => row.Nom === 'Devis.pdf').id;
-    await patch(target, 'GFS_Recus', idFacture, { Accepte: true, Refuse: false });
-    await patch(target, 'GFS_Recus', idDevis, { Accepte: false, Refuse: true });
+    await patch(target, 'GFS_Received', idFacture, { Accepte: true, Refuse: false });
+    await patch(target, 'GFS_Received', idDevis, { Accepte: false, Refuse: true });
     await addMarks();
-    await Promise.all([patch(source, 'GFS_Fichiers', rowOf('Facture.pdf'), { Accepte: false, Refuse: true }), patch(source, 'GFS_Fichiers', rowOf('Devis.pdf'), { Accepte: true, Refuse: false })]);
+    await Promise.all([patch(source, 'GFS_Files', rowOf('Facture.pdf'), { Accepte: false, Refuse: true }), patch(source, 'GFS_Files', rowOf('Devis.pdf'), { Accepte: true, Refuse: false })]);
     const edited = await editExport(first.exp, [...COLUMNS, ...MARKS], [idOf('Facture.pdf'), idOf('Devis.pdf')]);
     check('l\'export gagne les colonnes de marque', edited.ok, edited);
     await source.page.waitForTimeout(4000);

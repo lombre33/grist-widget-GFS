@@ -110,7 +110,7 @@ async function folderFlow(run, t) {
   await right.press('lecture', 'pick-lecture');
   const done = await right.expect('le lien écrit', 'le lien devait s\'écrire (le partage, puis le lien), la phrase dite', s => s.modal === null && s.actions.length === 2 && s.notices.some(note => note.includes('Ventes') && note.includes('Contrats')));
   const verbs = done.actions.map(action => `${action[0]}:${action[1]}`).join();
-  if (verbs !== 'AddRecord:GFS_Partages,AddRecord:GFS_Placement') run.note('le lien écrit', `deux lignes devaient s'écrire, le partage puis le lien (écrit : ${verbs})`);
+  if (verbs !== 'AddRecord:GFS_Shares,AddRecord:GFS_Placement') run.note('le lien écrit', `deux lignes devaient s'écrire, le partage puis le lien (écrit : ${verbs})`);
   await run.page.press('Backspace');
   await run.expect('retour à « Espaces »', 'Retour arrière devait revenir à la racine des espaces', state => names(state).includes('Ventes'));
   await run.click('Ventes');
@@ -169,7 +169,7 @@ async function fileFlow(run, t) {
   const done = await pick.expect('le lien du fichier écrit', 'le lien devait s\'écrire', s => s.modal === null && s.actions.length === 2);
   const place = done.actions.find(action => action[1] === 'GFS_Placement');
   if (!place || place[3].Dossier !== '' || place[3].Cible !== '') run.note('le lien du fichier écrit', `le lien devait être à la racine de l'espace, sans cible (écrit : ${JSON.stringify(place && place[3])})`);
-  const share = done.actions.find(action => action[1] === 'GFS_Partages');
+  const share = done.actions.find(action => action[1] === 'GFS_Shares');
   if (!share || share[3].Droit !== 'ecriture') run.note('le lien du fichier écrit', `le droit devait être l'écriture (écrit : ${JSON.stringify(share && share[3])})`);
 }
 
@@ -218,7 +218,7 @@ async function linkMenu(run, t) {
   await ask.press('Retirer', 'ask-yes');
   const gone = await ask.expect('le retrait écrit', 'le retrait devait s\'écrire : la ligne du lien et le droit qu\'il avait posé', s => s.modal === null && s.actions.length === 2);
   const verbs = gone.actions.map(action => `${action[0]}:${action[1]}`).join();
-  if (verbs !== 'BulkRemoveRecord:GFS_Partages,RemoveRecord:GFS_Placement') run.note('le retrait écrit', `deux lignes devaient partir, le droit et le lien, aucun fichier (écrit : ${verbs})`);
+  if (verbs !== 'BulkRemoveRecord:GFS_Shares,RemoveRecord:GFS_Placement') run.note('le retrait écrit', `deux lignes devaient partir, le droit et le lien, aucun fichier (écrit : ${verbs})`);
 }
 
 // Les mesures des liens entre espaces, dans la langue de la page ; rend les écarts { kind, text }.

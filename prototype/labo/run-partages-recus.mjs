@@ -43,7 +43,7 @@ try {
   const target = await openGfs(context, { lang });
   await startEngine(source.frame);
   await startEngine(target.frame);
-  const files = await source.rest.rows('GFS_Fichiers');
+  const files = await source.rest.rows('GFS_Files');
   const idOf = name => files.find(row => row.Nom === name).Identifiant;
   const first = await handshake(source, target, { name: 'Lot', ids: [idOf('Facture.pdf'), idOf('Devis.pdf')], columns: COLUMNS, options: { archive: true } });
   // Un document dont les règles d'accès viennent de changer (les tables techniques du partage, réservées aux propriétaires : faits vérifiés 76) fait recharger sa page : le cadre de l'essai est perdu, il est rouvert et le moteur y est remis.
@@ -61,7 +61,7 @@ try {
     await alive(target);
     await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
     await target.frame.evaluate(() => window.__try(() => window.__s.consolidateAll({ reread: true })));
-    return target.rest.rows('GFS_Recus');
+    return target.rest.rows('GFS_Received');
   };
   const until = async (test, tries = 40) => { let rows = []; for (let i = 0; i < tries; i += 1) { rows = await pass(); if (test(rows)) return rows; await source.page.waitForTimeout(1500); } return rows; };
   // GFS relit sa liste à l'ouverture de l'explorateur : une page neuve sur le document qui reçoit.
@@ -73,7 +73,7 @@ try {
     return run;
   };
   const rows = await until(list => list.length === 2 && list.every(row => row.Contenu));
-  check('deux fichiers arrivés dans GFS_Recus, avec leur contenu', rows.length === 2, rows.map(row => row.Nom));
+  check('deux fichiers arrivés dans GFS_Received, avec leur contenu', rows.length === 2, rows.map(row => row.Nom));
 
   say('--- 1. deux arrivées à accepter ---');
   let ui = await view();
@@ -117,7 +117,7 @@ try {
   await shot(frame, '2-question');
   await page.keyboard.press('Escape');
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
-  const bare = await target.rest.rows('GFS_Recus');
+  const bare = await target.rest.rows('GFS_Received');
   check('Échap n\'écrit rien : aucune marque, aucune colonne de GFS ajoutée', bare.every(row => !row.Accepte && !row.Refuse) && !(Object.keys(bare[0]).some(key => /^(Accepte|Refuse)$/.test(key))), Object.keys(bare[0]));
   check('les deux arrivées sont toujours à accepter', (await badge(frame)) === '2');
 
@@ -139,7 +139,7 @@ try {
   await waitForNames(frame, ['Facture.pdf']);
   check('« Devis.pdf » refusé n\'est plus montré, le nombre est vide', JSON.stringify(await names(frame)) === '["Facture.pdf"]' && (await badge(frame)) === '', { names: await names(frame), badge: await badge(frame) });
   check('la cloche reste là sans nombre quand plus rien n\'attend', (await bellBadge(frame)) === '' && (await frame.locator('.tb-bell').getAttribute('aria-label')) === t('nt.tip'), await frame.locator('.tb-bell').getAttribute('aria-label'));
-  const marked = await target.rest.rows('GFS_Recus');
+  const marked = await target.rest.rows('GFS_Received');
   const row = name => marked.find(each => each.Nom === name);
   check('les marques sont sur leurs lignes (Facture acceptée, Devis refusé), les deux lignes sont là', marked.length === 2 && row('Facture.pdf').Accepte === true && row('Facture.pdf').Refuse === false && row('Devis.pdf').Refuse === true && row('Devis.pdf').Accepte === false, marked.map(each => [each.Nom, each.Accepte, each.Refuse]));
   const tables = await target.rest.tables();
@@ -147,8 +147,8 @@ try {
 
   say('--- 4. l\'envoyeur renomme : l\'accepté reste accepté, le refusé ne revient pas ---');
   const rename = async (from, to) => {
-    const found = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === from);
-    return source.page.evaluate(async ([id, docId, name]) => (await fetch(`/api/docs/${docId}/tables/GFS_Fichiers/records`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ records: [{ id, fields: { Nom: name } }] }) })).status, [found.id, source.docId, to]);
+    const found = (await source.rest.rows('GFS_Files')).find(each => each.Nom === from);
+    return source.page.evaluate(async ([id, docId, name]) => (await fetch(`/api/docs/${docId}/tables/GFS_Files/records`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ records: [{ id, fields: { Nom: name } }] }) })).status, [found.id, source.docId, to]);
   };
   await rename('Facture.pdf', 'Facture v2.pdf');
   await rename('Devis.pdf', 'Devis v2.pdf');
@@ -156,13 +156,13 @@ try {
   ui = await view();
   ({ page, frame } = ui);
   await waitForNames(frame, ['Facture v2.pdf']);
-  check('« Facture v2.pdf » reste acceptée (ni grisée ni comptée), « Devis v2.pdf » ne revient pas, aucun doublon', JSON.stringify(await names(frame)) === '["Facture v2.pdf"]' && !(await greyed(frame, 'Facture v2.pdf')) && (await badge(frame)) === '' && (await target.rest.rows('GFS_Recus')).length === 2, { names: await names(frame), badge: await badge(frame) });
+  check('« Facture v2.pdf » reste acceptée (ni grisée ni comptée), « Devis v2.pdf » ne revient pas, aucun doublon', JSON.stringify(await names(frame)) === '["Facture v2.pdf"]' && !(await greyed(frame, 'Facture v2.pdf')) && (await badge(frame)) === '' && (await target.rest.rows('GFS_Received')).length === 2, { names: await names(frame), badge: await badge(frame) });
 
   say('--- 5. un fichier de plus : lui seul est à accepter ---');
   await alive(source);
   await importPdf(source.page, source.frame, pdfFile('Contrat.pdf', 2, 'Contrat').file);
   await waitForNames(source.frame, ['Contrat.pdf', 'Devis v2.pdf', 'Facture v2.pdf'].sort((a, b) => a.localeCompare(b)));
-  const contract = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === 'Contrat.pdf').Identifiant;
+  const contract = (await source.rest.rows('GFS_Files')).find(each => each.Nom === 'Contrat.pdf').Identifiant;
   await source.frame.evaluate(args => window.__try(async () => {
     const done = await window.__s.saveChosenExport({ exp: args.exp, name: args.exp.name, selection: args.selection });
     return window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
@@ -179,7 +179,7 @@ try {
   await alive(source);
   await importPdf(source.page, source.frame, pdfFile('Avenant.pdf', 1, 'Avenant').file);
   await waitForNames(source.frame, ['Avenant.pdf', 'Contrat.pdf', 'Devis v2.pdf', 'Facture v2.pdf'].sort((a, b) => a.localeCompare(b)));
-  const amendment = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === 'Avenant.pdf').Identifiant;
+  const amendment = (await source.rest.rows('GFS_Files')).find(each => each.Nom === 'Avenant.pdf').Identifiant;
   await source.frame.evaluate(args => window.__try(async () => {
     const done = await window.__s.saveChosenExport({ exp: args.exp, name: args.exp.name, selection: args.selection });
     return window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
@@ -202,7 +202,7 @@ try {
     const [download] = await Promise.all([page.waitForEvent('download'), wanted.first().click()]);
     const chunks = [];
     for await (const chunk of await download.createReadStream()) chunks.push(chunk);
-    const was = await source.rest.attachment((await source.rest.rows('GFS_Fichiers')).find(each => each.Identifiant === idOf('Facture.pdf')).Contenu[1]);
+    const was = await source.rest.attachment((await source.rest.rows('GFS_Files')).find(each => each.Identifiant === idOf('Facture.pdf')).Contenu[1]);
     check('« Télécharger » donne les mêmes octets que l\'envoyeur, sous le nom reçu', sha256(Buffer.concat(chunks)) === was.hash && download.suggestedFilename() === 'Facture v2.pdf', { name: download.suggestedFilename() });
   } else {
     say(`(le bouton dit « ${readLabel} » : une app lit les PDF dans ce document d'essai)`);

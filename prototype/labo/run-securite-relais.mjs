@@ -6,7 +6,7 @@
 //   2. GFS n'en garde que l'hôte : ni le chemin, ni `token`, ni `user`, ni le fragment n'apparaissent nulle part dans son interface ; GFS dit le nom d'hôte et « le code de l'app » ;
 //   3. l'avis (« sa politique de sécurité a bloqué un appel ») est dit une fois par alerte nouvelle, trois au plus par app ;
 //   4. la fenêtre « Dépendances » > « Sécurité » : les alertes de la session, le relais actif de l'app (« Relais actif depuis l'ouverture »), le compte du bouton « Sécurité » ;
-//   5. rien n'est écrit dans le document (la table `GFS_Rangement` n'est pas touchée) et rien ne survit au rechargement de GFS (session seulement : la fenêtre dit « Aucun appel bloqué ») ;
+//   5. rien n'est écrit dans le document (la table `GFS_Filing` n'est pas touchée) et rien ne survit au rechargement de GFS (session seulement : la fenêtre dit « Aucun appel bloqué ») ;
 //   6. l'app qui ne relaie pas (une autre sonde) est vue « sans signal » : GFS n'invente ni alerte ni relais.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
@@ -89,7 +89,7 @@ check('le compte du bouton « Sécurité » compte les alertes', Number(await te
 check('le relais de la sonde est toujours dit actif ; l\'app qui n\'a pas de relais n\'est pas là (ou « sans signal »)', WORDS.on.test(await text(frame.locator('.dp-sec-app[data-app="sonde-zv"]'))), '');
 await shot('1-alertes');
 await closeWindow();
-check('rien n\'est écrit dans le document (GFS_Rangement et le nombre de tables ne bougent pas)', JSON.stringify(await lab.rangement(frame)) === JSON.stringify(before), await lab.rangement(frame));
+check('rien n\'est écrit dans le document (GFS_Filing et le nombre de tables ne bougent pas)', JSON.stringify(await lab.rangement(frame)) === JSON.stringify(before), await lab.rangement(frame));
 
 // ----- 4. La même violation ne refait pas une alerte ni un avis ; une nouvelle en fait une.
 await app.evaluate(() => window.trigger());

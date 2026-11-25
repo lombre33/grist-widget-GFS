@@ -91,7 +91,7 @@ if (readonly) {
   await labelOf('word', 'vendorise').click();
   await lab.settle(frame);
   const wrote = await frame.waitForFunction(async () => {
-    const data = await grist.docApi.fetchTable('GFS_Rangement');
+    const data = await grist.docApi.fetchTable('GFS_Filing');
     const at = data.id.findIndex((id, i) => data.Utilisateur[i] === '@document' && data.App[i] === 'gfs' && data.Fichier[i] === 'apps');
     return at >= 0 && JSON.parse(data.Valeur[at]).publipostage.modes;
   }, null, { timeout: 15000 }).then(handle => handle.jsonValue()).catch(() => null);

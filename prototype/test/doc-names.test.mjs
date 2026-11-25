@@ -6,6 +6,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { adaptManifest, schemaOf, DocNames, isTable, canonicalTable, documentColumn, canonicalColumn } from '../js/apps/doc-names.js';
 import { countRows } from '../js/apps/row-count.js';
+import { createSqlGate } from '../js/broker/sql-gate.js';
+import { TransferError } from '../js/broker/transfer.js';
 import { validateManifest } from '../js/apps/manifest.js';
 import { loadFiles } from '../js/explorer/explorer-data.js';
 import { AppFiles } from '../js/files/app-files.js';
@@ -356,6 +358,19 @@ test('DocNames : sans lecture du nombre de lignes, ou quand elle échoue, l\'aut
   const item = { manifest };
   await names.refresh([item]);
   assert.equal(names.adapt(manifest).fichiers[0].table, 'Publipostage_Templates');
+});
+
+test('DocNames : un serveur qui refuse la lecture SQL (la DINUM) n\'est interrogé qu\'une fois ; la table entière donne le même choix, à chaque affichage de l\'explorateur', async () => {
+  const run = docOf(bothDocument(0, 2));
+  const sent = [];
+  const gate = createSqlGate({ docId: async () => 'mcXUUuqh7qz1', sql: async statement => { sent.push(statement); throw new TransferError('http', 'refusé', 403); } });
+  const names = new DocNames({ doc: run.doc, count: table => countRows(table, { sql: statement => gate.read(statement), doc: run.doc }) });
+  const item = { app: { id: 'publipostage' }, manifest, ok: true };
+  await names.refresh([item]);
+  assert.equal(names.adaptItem(item).manifest.fichiers[0].table, 'Publipostage_Templates', 'l\'anglaise a des lignes, l\'ancienne est vide');
+  for (let i = 0; i < 3; i++) await names.refresh([item]); // l'explorateur se redessine
+  assert.equal(sent.length, 1, 'une requête refusée, pas une par table et par affichage (avant : deux par affichage, quatre tables comptées)');
+  assert.equal(names.adaptItem(item).manifest.fichiers[0].table, 'Publipostage_Templates');
 });
 
 test('countRows : le SQL d\'abord, puis la table entière, puis null ; un nom qui n\'est pas un identifiant ne part jamais en SQL', async () => {

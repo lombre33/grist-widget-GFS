@@ -26,6 +26,7 @@ import { extensionsOf } from './apps/extensions.js';
 import { AppsState } from './apps/apps-state.js';
 import { DocNames } from './apps/doc-names.js';
 import { countRows } from './apps/row-count.js';
+import { createSqlGate } from './broker/sql-gate.js';
 import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
@@ -122,9 +123,8 @@ export class GfsController {
     });
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
-    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
-    // d'une table n'est lu que si le document la porte sous deux noms.
-    this.names = new DocNames({ doc: this.port.doc, count: table => countRows(table, { sql: statement => this.transfer.sql(statement), doc: this.port.doc }) });
+    const docId = docKey(() => this.port.doc.getDocName()); // demandé une fois à Grist, pour ce qui se garde par document sur le navigateur
+    this.#buildLightReads(docId);
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste de la
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
     // reste inconnue.
@@ -142,10 +142,6 @@ export class GfsController {
     // Le cadre d'envoi (js/broker/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire
     // (js/rights/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
-    // la lecture des fichiers sans leurs cellules lourdes, d'abord et tant que le document n'est pas connu léger (js/explorer/explorer-sql.js) : jeton en
-    // lecture seule, éteinte au premier refus
-    this.fileReader = createLightReader({ sql: statement => this.transfer.sql(statement),
-      warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) });
     this.player = new Player({ container: this.$('frames') }); // le lecteur de vidéos posé par-dessus l'app (contrats 5.2, point 11)
     // `joindre` (contrats 5.4, point 12)
     this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly });
@@ -153,7 +149,6 @@ export class GfsController {
     this.relay = new SecurityRelay({ appName: this.appName, t: this.t, notice: text => this.notice(text), now: () => new Date() });
     this.#buildSharing();
     this.pending = new Pending(); // les gestes de rangement affichés avant d'être écrits (js/explorer/pending.js) ; l'explorateur se redessine à chacun
-    const docId = docKey(() => this.port.doc.getDocName()); // demandé une fois à Grist, pour ce qui se garde par document sur le navigateur
     this.#reading = new FilesReading({
       pending: this.pending, noteBin: id => { if (this.appFiles) this.appFiles.noteBin(id); }, port: this.port,
         apps: () => this.validApps(), fullAccess: () => this.fullAccess,
@@ -176,6 +171,19 @@ export class GfsController {
       container: this.$('stage'), i18n: this.i18n, inertTargets: this.inertTargets, manifests: this.manifests, entries: entries.templates, readJson,
       unlock: lock => this.unlock(lock), onCreate: entry => this.openings.openTemplate(entry),
     });
+  }
+
+  // Les lectures SQL que GFS fait sans geste de la personne, avec le jeton en lecture seule : le nombre de lignes d'une table que le document porte sous deux
+  // noms, et la lecture des fichiers sans leurs cellules lourdes (js/explorer/explorer-sql.js : d'abord, et tant que le document n'est pas connu léger). Le
+  // premier refus du serveur les ferme toutes les deux, sur la page et sur l'onglet (js/broker/sql-gate.js) : la console de la personne ne reçoit pas la
+  // même requête refusée à chaque affichage, et l'explorateur relit les tables en entier.
+  #buildLightReads(docId) {
+    this.sqlGate = createSqlGate({ sql: statement => this.transfer.sql(statement), docId, store: key => keyStore(window, key, 'sessionStorage') });
+    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
+    // d'une table n'est lu que si le document la porte sous deux noms.
+    this.names = new DocNames({ doc: this.port.doc, count: table => countRows(table, { sql: statement => this.sqlGate.read(statement), doc: this.port.doc }) });
+    this.fileReader = createLightReader({ sql: statement => this.sqlGate.read(statement),
+      warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) });
   }
 
   // Le partage entre documents, les droits et le poids : ce que les fenêtres du widget lisent du document (js/sharing/, js/rights/, js/weight/).

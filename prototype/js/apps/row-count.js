@@ -15,8 +15,8 @@ export async function countRows(table, { sql = null, doc }) {
     }
   }
   try {
-    const data = await doc.fetchTable(table);
-    return Array.isArray(data.id) ? data.id.length : null;
+    const columns = await doc.fetchTable(table);
+    return Array.isArray(columns.id) ? columns.id.length : null;
   } catch {
     return null;
   }

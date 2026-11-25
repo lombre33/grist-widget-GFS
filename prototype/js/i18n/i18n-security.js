@@ -4,14 +4,17 @@
 
 export const SECURITY_STRINGS = Object.freeze({
   fr: {
+    // Les deux vues de la fenêtre : bibliothèques et sécurité.
     'dep.views': 'Vue de la fenêtre',
     'dep.view.libs': 'Bibliothèques',
     'dep.view.security': 'Sécurité',
     'sec.view.tip': 'Où en est chaque app des règles de sécurité de la suite, vérifié par GFS à chaque contrôle',
+    // L'introduction de la vue Sécurité et le tableau des appels bloqués depuis l'ouverture.
     'sec.intro.none': 'Le contrôle de sécurité des apps n’a pas encore été fait : le fichier de GFS est absent ou illisible. Les appels bloqués signalés par les apps se montrent quand même, ci-dessous.',
     'sec.alerts.title': 'Appels bloqués depuis l’ouverture',
     'sec.alerts.none': 'Aucun appel bloqué n’a été signalé depuis l’ouverture du document. Seules les apps qui relaient les signalements du kit (règle S8) peuvent en signaler : un code piraté peut aussi se taire, et un appel permis par la politique n’est jamais signalé.',
     'sec.alerts.count': '{n} {n|signalée|signalées}',
+    // Une ligne d'appel bloqué : qui l'a demandé et ce que la politique de la page a bloqué.
     'sec.alert.chip': 'Appel bloqué',
     'sec.alert.line': '{directive} a bloqué {target}{by}.',
     'sec.alert.line.report': '{directive} a seulement signalé {target}{by} (rien n’est bloqué).',
@@ -28,20 +31,24 @@ export const SECURITY_STRINGS = Object.freeze({
     'sec.alert.kw.filesystem': 'un fichier du système',
     'sec.alert.kw.autre': 'une adresse que GFS n’a pas pu lire',
     'sec.alert.notice': '{app} : sa politique de sécurité a bloqué un appel ({directive}, {target}). Détail : Réglages, Dépendances, Sécurité.',
+    // Le relais des signalements du kit : actif ou non depuis l'ouverture.
     'sec.relay.on': 'Relais actif depuis l’ouverture (kit {kit}, à {time}).',
     'sec.relay.on.nokit': 'Relais actif depuis l’ouverture (à {time}).',
     'sec.relay.off': 'Aucun signal de relais reçu depuis l’ouverture du document (l’app n’a peut-être pas été ouverte).',
     'sec.none': 'Le contrôle de sécurité n’a pas encore été fait : le fichier de GFS est absent ou illisible.',
+    // Le dernier contrôle de sécurité : sa date et d'où il vient.
     'sec.intro': 'Dernier contrôle : {date}, {origin}. Ce que GFS a lu lui-même est marqué « Vérifié par GFS » ; ce que l’app dit d’elle-même, « Déclaré par l’app ».',
     'sec.origin.actions': 'par la tâche hebdomadaire de GitHub',
     'sec.origin.local': 'sur la machine de développement',
     'sec.problems': '{n} {n|règle non tenue|règles non tenues} au total',
+    // Ce que le tableau ne voit pas.
     'sec.limits': 'Ce que ce tableau ne voit pas',
     'sec.limits.1': 'La politique de sécurité d’une app est appliquée par le navigateur, jamais par GFS, qui ne peut en imposer aucune à une app. GFS lit ce que la page dit.',
     'sec.limits.2': 'Pendant l’usage, GFS ne voit ni un appel vers une adresse que la politique autorise, ni un appel bloqué que l’app ne lui signale pas. Un code piraté peut aussi taire son propre signalement : une alerte informe, elle ne protège pas.',
     'sec.limits.3': 'Aucune app n’impose d’empreinte à ses bibliothèques. GFS peut dire « identique à la dernière fois que GFS a regardé », jamais « conforme à ce que l’app attend ».',
     'sec.limits.4': 'Le contrôle lit la page que GFS ouvre, à la référence qu’il a relue, et le code de l’app. Il ne voit pas ce qu’une app construirait à l’exécution.',
     'sec.noaddr': 'aucune adresse extérieure',
+    // L'en-tête de chaque app : sa référence, la politique de sa page et son site en ligne.
     'sec.app.ref': 'Référence {ref}',
     'sec.app.unchecked': 'Pas encore contrôlée',
     'sec.app.on': 'Installée',
@@ -52,6 +59,7 @@ export const SECURITY_STRINGS = Object.freeze({
     'sec.live.differe': 'Le site en ligne n’a pas la même politique que la référence : {state}.',
     'sec.live.non-lue': 'Le site en ligne n’a pas été lu à ce contrôle.',
     'sec.state.tenue': 'Tenue',
+    // Les états d'une règle, au long puis en minuscules dans une phrase.
     'sec.state.a-noter': 'À noter',
     'sec.state.non-tenue': 'Non tenue',
     'sec.state.non-verifiable': 'Non vérifiable',
@@ -60,10 +68,12 @@ export const SECURITY_STRINGS = Object.freeze({
     'sec.state.low.non-tenue': 'non tenue',
     'sec.state.low.non-verifiable': 'non vérifiable',
     'sec.source.gfs': 'Vérifié par GFS',
+    // Qui a vérifié la règle : l'app ou GFS.
     'sec.source.declared': 'Déclaré par l’app',
     'sec.source.none': 'Pas vérifié',
     'sec.says': 'L’app dit : {text}',
     'sec.rule.S1': 'Une politique de sécurité dans la page',
+    // Les règles de sécurité de la suite et leur explication.
     'sec.rule.S2': 'Aucune directive laissée ouverte',
     'sec.rule.S3': 'Appels sortants fermés',
     'sec.rule.S4': 'Scripts nommés',
@@ -72,12 +82,14 @@ export const SECURITY_STRINGS = Object.freeze({
     'sec.rule.S7': 'Dépendances suivies',
     'sec.rule.S8': 'Appels bloqués relayés à GFS',
     'sec.rule.S9': 'Où signaler une faille',
+    // Les notes et les appels permis par la politique de la page.
     'sec.note.unsafe-eval': 'Le code construit à la volée est permis (le script d’API de Grist l’exige).',
     'sec.note.wasm-unsafe-eval': 'Le WebAssembly est permis.',
     'sec.permis.open': 'Appels sans limite : {directives}.',
     'sec.permis.hosts': 'Adresses que la politique laisse joindre : {hosts}.',
     'sec.permis.none': 'La politique ne laisse joindre aucune adresse extérieure.',
     'sec.m.aucune-politique': 'La page n’a aucune politique de sécurité : rien n’y limite ce que le code peut charger ou appeler.',
+    // Les motifs d'une règle non tenue (codes de outils/controle-securite.mjs).
     'sec.m.page-illisible': 'La page de l’app n’a pas pu être lue à ce contrôle.',
     'sec.m.directives-ouvertes': 'Rien ne limite : {directives}.',
     'sec.m.directive-absente': '{directive} n’est pas écrite (elle ne se replie pas sur « default-src »).',
@@ -108,6 +120,7 @@ export const SECURITY_STRINGS = Object.freeze({
     'sec.m.declaree': 'GFS ne peut pas le vérifier : c’est la parole de l’app.',
     'sec.m.relais-a-lusage': 'GFS ne voit pas, dans la page, que l’app démarre le relais des appels bloqués (kit 0.25.0). Il l’apprend à l’usage : voir ci-dessous.',
     'sec.m.sans-relais': 'Le code de l’app ne démarre pas le relais des appels bloqués du kit (0.25.0 ou après) : un appel bloqué ne serait pas signalé à GFS.',
+    // Les lignes de la section « Portées par l'app » et ce que GFS a vérifié pour chacune.
     'dep.c.row.found': 'Adresse retrouvée par GFS',
     'dep.c.row.notfound': 'Adresse non retrouvée par GFS',
     'dep.c.row.unread': 'App pas lue par GFS',
@@ -126,6 +139,7 @@ export const SECURITY_STRINGS = Object.freeze({
     'dep.c.origin.text.checked': 'Déclarée par l’app elle-même. GFS ne la sert pas et ne peut pas en changer la source ; il vérifie à chaque contrôle l’adresse (retrouvée ou non dans le code), les avis et les empreintes. La version reste celle que l’app déclare.',
   },
   en: {
+    // Les mêmes clés qu'en français, dans le même ordre.
     'dep.views': 'Window view',
     'dep.view.libs': 'Libraries',
     'dep.view.security': 'Security',

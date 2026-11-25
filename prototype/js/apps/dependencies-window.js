@@ -34,13 +34,13 @@ function buildHead(t, rows, state, { onFilter, onSearch, onView }) {
   const views = ['libs', 'security'].map(view => h('button', { type: 'button', class: 'dp-tab', 'aria-pressed': String(view === 'libs'),
     dataset: { view, fk: `dep-view-${view}` },
     title: view === 'security' ? t('sec.view.tip') : null, on: { click: () => onView(view) } }, t(`dep.view.${view}`), h('span', { class: 'dp-count' })));
-  const bar = h('div', { class: 'dp-bar' }, h('label', { class: 'inp-search dp-search' }, icon('search'), search),
+  const searchBar = h('div', { class: 'dp-bar' }, h('label', { class: 'inp-search dp-search' }, icon('search'), search),
     h('div', { class: 'dp-filters', role: 'group', 'aria-label': t('dep.filters') }, ...chips));
   const node = h('header', { class: 'mod-head dp-head' }, h('h2', { id: 'dp-title' }, t('dep.title')),
     h('p', { class: 'mod-count' }, t('dep.count', { n: rows.length, size: formatBytes(bytes, state.locale, t) }),
       declared ? ` · ${t('dep.count.carried', { n: declared })}` : ''),
-    h('div', { class: 'dp-views', role: 'group', 'aria-label': t('dep.views') }, ...views), bar);
-  return { node, search, chips, views, bar };
+    h('div', { class: 'dp-views', role: 'group', 'aria-label': t('dep.views') }, ...views), searchBar);
+  return { node, search, chips, views, searchBar };
 }
 
 // opts : { container, inertTargets(), t, locale, lang, rows() (js/apps/dependencies-model.js : relues à chaque changement), surveyed (la date du relevé en
@@ -97,7 +97,7 @@ export function openDependencies(opts) {
     const onSecurity = state.view === 'security';
     for (const button of head.views) button.setAttribute('aria-pressed', String(button.dataset.view === state.view));
     head.views[1].querySelector('.dp-count').textContent = state.security ? String(state.security.attention) : '—';
-    for (const node of [head.bar, cols, list.node, appsNote]) node.hidden = onSecurity;
+    for (const node of [head.searchBar, cols, list.node, appsNote]) node.hidden = onSecurity;
     security.node.hidden = !onSecurity;
     if (onSecurity) { empty.hidden = true; security.render(state.security); return; }
     list.render();

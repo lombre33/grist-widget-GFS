@@ -43,8 +43,8 @@ export const missingMarks = columnIds => MARK_COLUMNS.filter(mark => !(columnIds
 // Les colonnes de chaque table du document, lues dans les tables internes de Grist (petites : jamais le contenu des fichiers) : { nom de table: [colonnes] }.
 async function columnsByTable(docApi, wanted) {
   const [tables, columns] = await Promise.all(['_grist_Tables', '_grist_Tables_column'].map(async name => {
-    const data = await docApi.fetchTable(name);
-    return (data.id || []).map((id, i) => Object.fromEntries(Object.keys(data).map(key => [key, data[key][i]])));
+    const internal = await docApi.fetchTable(name);
+    return (internal.id || []).map((id, i) => Object.fromEntries(Object.keys(internal).map(key => [key, internal[key][i]])));
   }));
   const byRef = new Map(tables.filter(table => wanted.includes(String(table.tableId))).map(table => [table.id, String(table.tableId)]));
   const found = Object.fromEntries([...byRef.values()].map(name => [name, []]));

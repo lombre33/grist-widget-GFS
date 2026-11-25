@@ -61,8 +61,8 @@ export function mainButton(ctx, item, reason, { prefix = '', size = 'sm', solid 
   const { t, lang, key } = ctx;
   if (item.installed && item.ok) {
     // `data-open` est le repère des essais du labo : le double de la barre du haut ne le porte pas, pour qu'il n'y ait qu'un bouton par app.
-    const data = { act: 'open', id: item.id, fk: `${prefix}open:${item.id}`, ...(prefix ? {} : { open: item.id }) };
-    return h('button', { type: 'button', class: `btn${solid ? ' primary' : ''} ${size}`, title: t('mod.openTip', { app: nameOf(item, lang) }), dataset: data },
+    const dataset = { act: 'open', id: item.id, fk: `${prefix}open:${item.id}`, ...(prefix ? {} : { open: item.id }) };
+    return h('button', { type: 'button', class: `btn${solid ? ' primary' : ''} ${size}`, title: t('mod.openTip', { app: nameOf(item, lang) }), dataset },
       icon('open'), t('mod.open'));
   }
   return h('button', { type: 'button', class: `btn primary ${size}`, 'aria-disabled': reason ? 'true' : null, title: reason,

@@ -65,10 +65,10 @@ function decodeList(value) {
 
 // Les lignes de la lecture, dans la forme de `fetchTable` ({ id: [..], <colonne>: [..] }), et le poids de chacune.
 export function readRows(records, keep, wanted) {
-  const data = { id: records.map(row => row.id) };
-  for (const { colId, type } of keep) data[colId] = records.map(row => (wanted.has(colId) && isList(type) ? decodeList(row[colId]) : row[colId]));
+  const byColumn = { id: records.map(row => row.id) };
+  for (const { colId, type } of keep) byColumn[colId] = records.map(row => (wanted.has(colId) && isList(type) ? decodeList(row[colId]) : row[colId]));
   const weights = records.map(row => keep.reduce((sum, { colId }) => sum + cellBytes(row[colId]), Number(row.gfs_octets) || 0));
-  return { data, weights };
+  return { data: byColumn, weights };
 }
 
 // Les lectures d'un même passage sont demandées ensemble : le jeton d'une requête est demandé à Grist à chaque fois (js/broker/transfer.js), et deux lectures

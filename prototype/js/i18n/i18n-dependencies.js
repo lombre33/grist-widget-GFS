@@ -4,26 +4,31 @@
 
 export const DEPENDENCIES_STRINGS = Object.freeze({
   fr: {
+    // Le menu « Réglages » et l'en-tête de la fenêtre : titre, compte et recherche.
     'dep.menu': 'Dépendances…',
     'dep.menu.tip': 'Les bibliothèques que GFS sert : versions, dernières versions stables, avis de sécurité, licences',
     'dep.title': 'Dépendances',
     'dep.count': '{n} {n|bibliothèque servie|bibliothèques servies} par GFS · {size} de copies figées',
     'dep.search': 'Rechercher une bibliothèque…',
     'dep.filters': 'Filtrer la liste',
+    // Les filtres de la liste.
     'dep.filter.all': 'Toutes',
     'dep.filter.active': 'Actives',
     'dep.filter.updates': 'Mises à jour',
     'dep.filter.advisories': 'Avis',
+    // Les colonnes de la liste.
     'dep.col.lib': 'Bibliothèque',
     'dep.col.users': 'Aussi utilisée par',
     'dep.col.gfs': 'Dans GFS',
     'dep.col.latest': 'Dernière stable',
+    // L'état d'une bibliothèque (active, prête) et ses marques (copie figée).
     'dep.state.active': 'Active',
     'dep.state.installed': 'Installée, non utilisée',
     'dep.state.ready': 'Prête, pas encore servie',
     'dep.state.unused': 'Au catalogue, demandée par aucune app',
     'dep.tag.copy': 'copie figée',
     'dep.tag.cdn': 'CDN',
+    // L'écart de version avec le registre : les mots du relevé.
     'dep.gap.a-jour': 'À jour',
     'dep.gap.correctif': 'Correctif',
     'dep.gap.mineure': 'Version mineure',
@@ -32,16 +37,19 @@ export const DEPENDENCIES_STRINGS = Object.freeze({
     'dep.gap.inconnu': 'Inconnue',
     'dep.gap.avis': 'Avis {level}',
     'dep.level.critical': 'critique',
+    // Le niveau d'un avis de sécurité.
     'dep.level.high': 'élevé',
     'dep.level.moderate': 'moyen',
     'dep.level.low': 'faible',
     'dep.latest': 'Dernière stable : {version}',
+    // Le détail d'une bibliothèque : qui l'utilise et d'où elle vient.
     'dep.d.users': 'Utilisée par',
     'dep.d.users.none': 'Aucune app ne la demande aujourd’hui.',
     'dep.d.use': '{app} · {what} ({state}) · {source}',
     'dep.d.files': 'Fichiers servis',
     'dep.d.file': '{name} {version} · {size}',
     'dep.d.integrity': 'Intégrité',
+    // La vérification de la copie par son empreinte.
     'dep.d.verify': 'Vérifier la copie',
     'dep.d.verifying': 'Vérification…',
     'dep.d.ok': 'Copie intacte : l’empreinte SHA-384 recalculée ici est celle du catalogue.',
@@ -54,12 +62,14 @@ export const DEPENDENCIES_STRINGS = Object.freeze({
     'dep.d.addresses': 'Adresses contactées',
     'dep.d.addresses.cdn': 'En mode CDN : {hosts}. En copie figée : aucune.',
     'dep.d.addresses.none': 'Aucune : GFS n’a pas d’adresse publique pour cette copie, elle est son seul mode.',
+    // Les avis de sécurité publiés sur la bibliothèque.
     'dep.d.advisories': 'Avis de sécurité',
     'dep.d.advisories.none': 'Aucun avis publié pour cette version (relevé du {date}).',
     'dep.d.advisory': 'Avis {level} · {title}',
     'dep.d.advisory.fixed': 'corrigé en {version}',
     'dep.d.advisory.nofix': 'aucun correctif indiqué',
     'dep.d.stale': 'Le relevé a été fait pour la version {version} : les avis et la dernière stable sont à refaire pour celle-ci.',
+    // La licence et les liens.
     'dep.d.licence': 'Licence',
     'dep.d.licence.compatible': '{licence} : compatible avec la GPL 3.0 de GFS',
     'dep.d.licence.verifier': '{licence} : à vérifier avec la GPL 3.0 de GFS',
@@ -68,6 +78,7 @@ export const DEPENDENCIES_STRINGS = Object.freeze({
     'dep.d.site': 'Site',
     'dep.d.repo': 'Dépôt',
     'dep.d.link.label': '{what} de {name} (s’ouvre dans un nouvel onglet)',
+    // La liste vide, les groupes d'apps et le pied de la fenêtre.
     'dep.none': 'Aucune bibliothèque ne correspond.',
     'dep.none.installed': 'Aucune dépendance d’une app installée ne correspond. Dépliez le panneau ci-dessous pour voir les autres.',
     'dep.group.on': 'Installée',
@@ -77,6 +88,7 @@ export const DEPENDENCIES_STRINGS = Object.freeze({
     'dep.more': 'Montrer également les dépendances des apps non installées et celles sans app ({n})',
     'dep.foot': 'Relevé du {date} · votre navigateur n’appelle aucun service.',
     'dep.foot.none': 'Relevé indisponible : les dernières versions et les avis ne sont pas connus.',
+    // La section « Portées par l'app » : ce que chaque app déclare charger elle-même.
     'dep.apps': 'Sous « Portées par l’app » : ce que l’app déclare charger elle-même, que GFS ne sert pas et ne vérifie pas. Une app sans cette partie n’a encore rien déclaré.',
     'dep.count.carried': '{n} {n|bibliothèque déclarée|bibliothèques déclarées} par les apps',
     'dep.c.title': 'Portées par l’app',
@@ -84,6 +96,7 @@ export const DEPENDENCIES_STRINGS = Object.freeze({
     'dep.c.note.top': 'Ce que l’app dit charger elle-même. GFS ne la sert pas et n’a rien vérifié : ni la version, ni l’adresse, ni l’empreinte.',
     'dep.c.none': 'L’app déclare ne charger aucune bibliothèque elle-même.',
     'dep.c.allserved': 'Toutes les bibliothèques que l’app déclare sont servies par GFS : elles figurent dans la liste ci-dessus.',
+    // Ses colonnes et le moment où l'app charge la bibliothèque.
     'dep.c.col.lib': 'Bibliothèque',
     'dep.c.col.version': 'Version déclarée',
     'dep.c.col.address': 'Adresse contactée',
@@ -104,6 +117,7 @@ export const DEPENDENCIES_STRINGS = Object.freeze({
     'dep.c.note': 'Précision de l’app',
     'dep.c.gfs': 'Aussi chez GFS',
     'dep.c.gfs.text': 'GFS garde aussi une copie figée de {name} (version {version}), que cette app n’utilise pas aujourd’hui : voir sa ligne dans la liste.',
+    // Le choix de la source d'une bibliothèque (CDN ou copie figée) et ce qui le limite.
     'dep.tag.on': 'source retenue',
     'dep.d.source': 'Source',
     'dep.src.legend': 'Source de {name}',
@@ -116,6 +130,7 @@ export const DEPENDENCIES_STRINGS = Object.freeze({
     'dep.src.why.app': 'Une app qui l’utilise n’est pas installée : son choix se fait après l’installation.',
     'dep.src.why.off': 'Une extension qui l’utilise n’est pas ajoutée : son choix se fait après l’ajout.',
     'dep.src.why.missing': 'Une extension qui l’utilise est grisée : une bibliothèque manque à GFS.',
+    // « Tout en copie figée » : le bouton, sa confirmation et son résultat.
     'dep.all.copy': 'Tout en copie figée',
     'dep.all.cdn': 'Tout en CDN',
     'dep.all.tip.copy': 'Servir toutes les bibliothèques par GFS, sans adresse externe : pour les réseaux fermés',
@@ -132,6 +147,7 @@ export const DEPENDENCIES_STRINGS = Object.freeze({
     'dep.all.nofn': 'Aucune app installée n’utilise de bibliothèque que GFS sert.',
     'dep.all.done.copy': 'C’est fait : {n} {n|fonction passe|fonctions passent} en copie figée.',
     'dep.all.done.cdn': 'C’est fait : {n} {n|fonction passe|fonctions passent} en CDN.',
+    // L'export du rapport et la fermeture de la fenêtre.
     'dep.export': 'Exporter',
     'dep.export.tip': 'Exporter le rapport de cette fenêtre',
     'dep.export.label': 'Format du rapport',
@@ -144,6 +160,7 @@ export const DEPENDENCIES_STRINGS = Object.freeze({
     'dep.close': 'Fermer',
   },
   en: {
+    // Les mêmes clés qu'en français, dans le même ordre.
     'dep.menu': 'Dependencies…',
     'dep.menu.tip': 'The libraries GFS serves: versions, latest stable versions, security advisories, licences',
     'dep.title': 'Dependencies',

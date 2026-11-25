@@ -104,7 +104,7 @@ export class AnnuaireControl {
     const schema = await this.#schema();
     if (!schema) return;
     const made = await new AnnuaireSetup({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, schema, annuaire: null,
-      taken: this.#list.map(each => each.name) }).run();
+      taken: this.#list.map(each => each.name), read: (draft, cache) => this.#store.read(draft, schema, cache) }).run();
     if (!made) return;
     try {
       const annuaire = await this.#store.create(made);
@@ -126,7 +126,8 @@ export class AnnuaireControl {
     if (blocked) { this.#o.notice(blocked); return; }
     const schema = await this.#schema();
     if (!schema) return;
-    const done = await new AnnuaireSetup({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, schema, annuaire: current, taken: [] }).run();
+    const done = await new AnnuaireSetup({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, schema, annuaire: current, taken: [],
+      read: (draft, cache) => this.#store.read({ ...current, ...draft }, schema, cache) }).run();
     if (!done) return;
     try {
       const saved = await this.#store.save(current, done.config, done.table);

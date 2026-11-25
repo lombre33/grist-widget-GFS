@@ -46,11 +46,17 @@ function enterKey(event, active, { search, list, quick }) {
   return true;
 }
 
+// Le chemin parcouru : une pastille par étape, des flèches entre elles ; la dernière, celle où l'on est, prend la couleur d'accent.
+function crumbBar(crumbs, t) {
+  return h('div', { class: 'wk-crumbs', role: 'list', 'aria-label': t('pick.path') }, h('span', { class: 'wk-crumbs-l' }, t('pick.path')),
+    ...crumbs.flatMap((text, i) => [i ? icon('chev-right') : null, h('span', { class: 'wk-crumb', role: 'listitem' }, text)]));
+}
+
 // opts : { container, inertTargets, t, title, text, items: [{ value, label, glyph, hint }], current, none (le texte quand rien ne correspond),
 //   alt : { icon, label(item) } (un second geste sur le même choix : un bouton à icône seule au bout de chaque ligne), quick (Entrée dans la recherche choisit
-//   le premier) }.
+//   le premier), crumbs : [textes] (le chemin déjà parcouru, en pastilles sous le titre : la dernière est celle qu'on choisit, `pick.path` le nomme) }.
 // Rend la valeur choisie, ou null quand la personne renonce ; avec `alt`, { value, alt } (`alt` vrai quand elle a pris le second geste).
-export function pickFrom({ container, inertTargets, t, title, text = '', items, current = null, none = '', alt = null, quick = false }) {
+export function pickFrom({ container, inertTargets, t, title, text = '', items, current = null, none = '', alt = null, quick = false, crumbs = [] }) {
   const search = h('input', { type: 'search', autocomplete: 'off', placeholder: t('pick.search'), 'aria-label': t('pick.search'),
     dataset: { fk: 'pick-search' } });
   const list = h('ul', { class: 'wk-list', 'aria-labelledby': 'pk-title' });
@@ -58,7 +64,8 @@ export function pickFrom({ container, inertTargets, t, title, text = '', items, 
   const cancel = h('button', { type: 'button', class: 'btn', dataset: { fk: 'pick-cancel' } }, t('table.cancel'));
   const section = h('section', { class: 'mod wk pk', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pk-title' },
     h('header', { class: 'mod-head wk-head' }, h('div', { class: 'wk-title-row' }, h('h2', { id: 'pk-title' }, title)),
-      text ? h('p', { class: 'mod-count wk-text' }, text) : null, h('label', { class: 'inp-search wk-search' }, icon('search'), search)),
+      crumbs.length ? crumbBar(crumbs, t) : null, text ? h('p', { class: 'mod-count wk-text' }, text) : null,
+      h('label', { class: 'inp-search wk-search' }, icon('search'), search)),
     h('div', { class: 'mod-body' }, list), h('footer', { class: 'mod-foot' }, note, cancel));
   const { done, result } = openModal({ container, section, inertTargets, first: search, cancel: null });
   let shown = [];

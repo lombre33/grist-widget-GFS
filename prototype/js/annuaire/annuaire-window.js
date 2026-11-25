@@ -8,7 +8,7 @@ import { icon } from '../ui/icons.js';
 import { mountWindow, giveBackFocus, tabStops, LIST_SHOWN } from '../ui/modal.js';
 import { findNode, peopleIn, filterPeople, filterOptions, managerTree } from './annuaire-model.js';
 import { structureItems, managerItems, pathIds, levelLabel } from './annuaire-items.js';
-import { treeList, personRow, personCard, fiche, nodeFiche, filterBar } from './annuaire-panes.js';
+import { treeList, personRow, personCard, fiche, nodeFiche, filterBar, shown } from './annuaire-panes.js';
 import { OrgView } from './annuaire-org-view.js';
 import { copyText } from './annuaire-copy.js';
 
@@ -74,7 +74,14 @@ export class AnnuaireWindow {
     const other = !this.#show.current || !next.current || this.#show.current.row !== next.current.row;
     this.#show = { ...this.#show, ...next };
     if (other) this.#reset();
+    if (this.#view === 'org' && this.#show.state === 'ready' && !this.#orgPossible()) this.#view = 'list'; // le réglage vient d'éteindre la hiérarchie
     this.#paint();
+  }
+
+  // L'organigramme a de quoi se dessiner : des niveaux (par structures) ou une colonne de responsable direct (par responsables).
+  #orgPossible() {
+    const { data } = this.#show;
+    return Boolean(data && (data.config.levels.length > 0 || data.config.manager));
   }
 
   #reset() {
@@ -138,8 +145,10 @@ export class AnnuaireWindow {
     search.placeholder = t('an.search');
     search.setAttribute('aria-label', t('an.searchLabel'));
     views.setAttribute('aria-label', t('an.views'));
+    const greyed = id => id === 'org' && this.#show.state === 'ready' && !this.#orgPossible(); // grisé, jamais masqué : un clic dit comment l'allumer
     views.replaceChildren(...VIEWS.map(([id, glyph, key]) => h('button', { type: 'button', class: 'an-seg-b', 'aria-pressed': String(this.#view === id),
-      title: t(key), 'aria-label': t(key), dataset: { act: 'view', view: id, fk: `v:${id}` } }, icon(glyph), h('span', { class: 'an-seg-t' }, t(key)))));
+      'aria-disabled': greyed(id) ? 'true' : null, title: greyed(id) ? t('an.org.noHierarchy') : t(key), 'aria-label': t(key),
+      dataset: { act: 'view', view: id, fk: `v:${id}` } }, icon(glyph), h('span', { class: 'an-seg-t' }, t(key)))));
     config.title = t('an.configure');
     config.setAttribute('aria-label', t('an.configure'));
     close.textContent = t('an.close');
@@ -159,7 +168,7 @@ export class AnnuaireWindow {
     const refs = this.#refs;
     const ready = state === 'ready' && data;
     refs.state.hidden = Boolean(ready);
-    refs.tree.hidden = !ready || this.#view === 'org';
+    refs.tree.hidden = !ready || this.#view === 'org' || data.config.levels.length === 0;
     refs.main.hidden = !ready;
     refs.side.hidden = !ready || (this.#person === null && this.#struct === null);
     refs.body.dataset.side = String(!refs.side.hidden);
@@ -187,8 +196,8 @@ export class AnnuaireWindow {
   }
 
   #paintTree() {
-    const { tree } = this.#show.data;
-    const levels = this.#show.current.config.levels;
+    const { tree, config } = this.#show.data;
+    const levels = config.levels;
     this.#refs.tree.setAttribute('aria-label', this.#o.t('an.tree.label'));
     this.#refs.tree.replaceChildren(treeList(tree, { t: this.#o.t, selected: this.#node, open: this.#open, levels }));
   }
@@ -209,10 +218,10 @@ export class AnnuaireWindow {
     const t = this.#o.t;
     const { current, data } = this.#show;
     const { node, base, found } = this.#scope();
-    const levels = current.config.levels;
+    const levels = data.config.levels;
     const searching = this.#query.trim() !== '';
     const level = !searching && node.level >= 0 ? levelLabel(levels[node.level]) : '';
-    const options = filterOptions(base, current.config, data.schema, current.table).filter(option => option.values.length);
+    const options = filterOptions(base, data.config, data.schema, current.table).filter(option => option.values.length);
     const active = Object.values(this.#filters).reduce((sum, set) => sum + (set ? set.size : 0), 0);
     this.#refs.crumb.replaceChildren(...[h('h3', null, searching ? t('an.results') : node.name), level ? h('span', { class: 'an-pill' }, level) : null,
       h('span', { class: 'an-count' }, t('an.count', { n: found.length })),
@@ -224,23 +233,34 @@ export class AnnuaireWindow {
     this.#refs.filters.replaceChildren(filterBar(options, this.#filters, ctx));
     const rows = found.slice(0, LIST_SHOWN);
     const make = this.#view === 'cards' ? personCard : personRow;
+    const extraOf = this.#listedValues(data, current.table, ctx);
     const at = Math.max(0, rows.findIndex(person => person.row === this.#person));
     this.#refs.list.className = this.#view === 'cards' ? 'an-list an-grid' : 'an-list';
-    this.#refs.list.replaceChildren(...rows.map((person, i) => make(person, { selected: person.row === this.#person, tabStop: i === at })),
+    this.#refs.list.replaceChildren(...rows.map((person, i) => make(person, { selected: person.row === this.#person, tabStop: i === at,
+      extra: extraOf(person) })),
       ...(found.length > rows.length ? [h('p', { class: 'an-note' }, t('work.more', { n: LIST_SHOWN, total: found.length }))] : []),
       ...(found.length ? [] : [h('p', { class: 'an-note' }, t(data.people.length ? 'an.list.none' : 'an.list.empty'))]));
+  }
+
+  // Les champs que le réglage met en liste (« Liste » de la fenêtre « Champs de la fiche ») : de la personne aux textes de ses pastilles.
+  #listedValues(data, table, ctx) {
+    const listed = data.config.fields.filter(field => field.list);
+    if (!listed.length) return () => [];
+    const genres = Object.fromEntries(((data.schema[table] && data.schema[table].columns) || []).map(col => [col.id, col.genre]));
+    return person => listed.flatMap(field => (person.fields[field.col] || []).map(value => shown(value, genres[field.col], ctx)));
   }
 
   // L'organigramme : celui des structures (l'arbre des niveaux), ou celui des responsables quand l'annuaire dit qui est le responsable de chacun.
   #paintOrg() {
     const t = this.#o.t;
     const { current, data } = this.#show;
-    const hasManager = Boolean(current.config.manager);
-    const mode = this.#mode === 'managers' && hasManager ? 'managers' : 'structures';
-    const roots = mode === 'managers' ? managerItems(managerTree(data.people)) : structureItems(data.tree, current.config.levels);
+    const hasManager = Boolean(data.config.manager);
+    const hasLevels = data.config.levels.length > 0;
+    const mode = hasManager && (this.#mode === 'managers' || !hasLevels) ? 'managers' : 'structures';
+    const roots = mode === 'managers' ? managerItems(managerTree(data.people)) : structureItems(data.tree, data.config.levels);
     const selected = mode === 'managers' ? (this.#person === null ? '' : `p${this.#person}`) : (this.#struct === null ? '' : (this.#struct || 'root'));
     this.#org.show(roots, { key: `${current.row}:${mode}`, selected, mode, modes: [
-      { id: 'structures', label: t('an.org.structures') },
+      { id: 'structures', label: t('an.org.structures'), greyed: !hasLevels, why: t('an.org.noLevels') },
       { id: 'managers', label: t('an.org.managers'), greyed: !hasManager, why: t('an.org.noManager') }] });
   }
 
@@ -248,7 +268,7 @@ export class AnnuaireWindow {
     const { current, data } = this.#show;
     const t = this.#o.t;
     const genres = Object.fromEntries((data.schema[current.table] ? data.schema[current.table].columns : []).map(col => [col.id, col.genre]));
-    const ctx = { t, locale: this.#o.locale(), levels: current.config.levels, config: current.config, genres };
+    const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres };
     const person = this.#person === null ? null : data.people.find(each => each.row === this.#person);
     const node = this.#struct === null ? null : findNode(data.tree, this.#struct);
     const body = person ? fiche(person, ctx) : (node ? nodeFiche(node, ctx) : null);
@@ -288,8 +308,9 @@ export class AnnuaireWindow {
   }
 
   #orgMode(id) {
-    const { current } = this.#show;
-    if (id === 'managers' && !current.config.manager) { this.#say(this.#o.t('an.org.noManager')); return; }
+    const { data } = this.#show;
+    if (id === 'managers' && !data.config.manager) { this.#say(this.#o.t('an.org.noManager')); return; }
+    if (id === 'structures' && !data.config.levels.length) { this.#say(this.#o.t('an.org.noLevels')); return; }
     this.#note = '';
     this.#mode = id;
     this.#person = null;
@@ -324,6 +345,7 @@ export class AnnuaireWindow {
   }
 
   setView(view) {
+    if (view === 'org' && this.#show.state === 'ready' && !this.#orgPossible()) { this.#say(this.#o.t('an.org.noHierarchy')); return; }
     this.#view = view;
     this.#note = '';
     this.#paint();
@@ -364,7 +386,7 @@ export class AnnuaireWindow {
   // Les valeurs d'un filtre au-delà des pastilles : la liste avec recherche (js/ui/pick-window.js), ouverte par le contrôle.
   moreFilter(col) {
     const { current, data } = this.#show;
-    const option = filterOptions(this.#scope().base, current.config, data.schema, current.table).find(each => each.col === col);
+    const option = filterOptions(this.#scope().base, data.config, data.schema, current.table).find(each => each.col === col);
     if (option) void this.#o.onFilterMore(col, option).then(value => { if (value !== null) this.toggleFilter(col, value); });
   }
 
@@ -392,7 +414,17 @@ export class AnnuaireWindow {
 
   // ---------- le clavier ----------
 
+  // Une fenêtre posée au-dessus (le réglage, une liste avec recherche) : le clavier est à elle, l'annuaire derrière n'écoute pas (sans cela, Échap dans la
+  // liste le fermait).
+  #covered() {
+    const host = this.#root.parentElement;
+    const later = node => node !== this.#root && node.classList.contains('mod-scrim') &&
+      Boolean(this.#root.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return Boolean(host) && [...host.children].some(later);
+  }
+
   #keydown(event) {
+    if (this.#covered()) return;
     const doc = this.#root.ownerDocument;
     if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); this.close(); return; }
     if (event.key === 'Tab') { this.#tab(event, doc); return; }

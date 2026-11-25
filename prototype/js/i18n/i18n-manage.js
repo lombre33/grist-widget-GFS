@@ -4,6 +4,7 @@
 export const MANAGE_STRINGS = Object.freeze({
   fr: {
     'pick.search': 'Chercher…',
+    'pick.path': 'Chemin',
     'manage.open': 'Gérer les partages…',
     'manage.open.hint': 'Les groupes de personnes, les droits de tout le document et la structure.',
     'manage.title': 'Gérer les partages',
@@ -89,6 +90,7 @@ export const MANAGE_STRINGS = Object.freeze({
   },
   en: {
     'pick.search': 'Search…',
+    'pick.path': 'Path',
     'manage.open': 'Manage sharing…',
     'manage.open.hint': 'Groups of people, rights for the whole document and its structure.',
     'manage.title': 'Manage sharing',

@@ -1,6 +1,7 @@
 // Le module Annuaire (demande du porteur du 25/11 ; style des maquettes de l'Université Paris Cité), dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier :
 // 1. le bouton de l'en-tête de l'explorateur ouvre la fenêtre, qui dit « aucun annuaire » sans rien écrire ;
-// 2. « Nouvel annuaire » : le réglage (la table, les colonnes, les niveaux par chemin « Structure › Pôle », les champs et leurs filtres), la question de la table `GFS_Annuaires`, puis la
+// 2. « Nouvel annuaire » : le réglage en trois onglets (Personnes : nom et adresse par défaut ; Hiérarchie : l'option, les niveaux créés par leur nom, leur place puis leur colonne, par
+//    chemin « Structure › Pôle » ; Champs de la fiche : le responsable direct, les champs et leurs interrupteurs Liste / Filtre), la question de la table `GFS_Annuaires`, puis la
 //    lecture : la hiérarchie, la liste, la fiche ;
 // 3. la recherche, les filtres, les cartes de contact ;
 // 4. l'organigramme des structures et celui des responsables : les cartes, le repli d'une branche, le zoom, « Tout voir », la fiche d'une structure.
@@ -52,39 +53,66 @@ await setup.waitFor({ state: 'visible' });
 await settleUi();
 check('le réglage est dans la page', await inside(setup), await setup.boundingBox());
 await lab.shotPanel(run, '2-reglage-vide');
+// Onglet « Personnes » : par défaut le nom et l'adresse seulement ; le téléphone et le prénom se demandent.
 await setup.locator('[data-fk="set-name"]').click();
 await page.keyboard.type(T.name);
 await setup.locator('[data-fk="pc:name"]').click({ force: true });
 check('sans table, un choix de colonne reste grisé et ne s’ouvre pas', (await frame.locator('.pk').count()) === 0);
 await setup.locator('[data-fk="pt"]').click();
 await pick('Personnes');
-for (const [fk, column] of [['pc:name', 'Nom'], ['pc:title', 'Poste'], ['pc:email', 'Email'], ['pc:phone', 'Tel'], ['pc:lead', 'Chef'], ['pc:manager', 'Responsable']]) {
-  await setup.locator(`[data-fk="${fk}"]`).click();
-  await pick(column);
-}
-// Les niveaux : « Structure › Pole », « Structure › Direction », « Service ».
+await setup.locator('[data-fk="pc:name"]').click();
+await pick('Nom');
+await setup.locator('[data-fk="pc:email"]').click();
+await pick('Email');
+check('par défaut : le nom et l’adresse seulement (ni prénom ni téléphone ni poste)', (await setup.locator('[data-fk="pc:first"], [data-fk="pc:phone"], [data-fk="pc:title"]').count()) === 0);
+await setup.locator('[data-fk="toggle-split"]').click();
+check('« séparer le nom et le prénom » déplie le prénom et l’ordre', (await setup.locator('[data-fk="pc:first"]').count()) === 1 && (await setup.locator('.an-seg-b').count()) === 2);
+await setup.locator('[data-fk="toggle-split"]').click();
+check('refermer le volet oublie le prénom', (await setup.locator('[data-fk="pc:first"]').count()) === 0);
+await setup.locator('[data-fk="add-phone"]').click();
+await pick('Tel');
+check('le téléphone se demande, puis se lit', (await setup.locator('[data-fk="pc:phone"]').innerText()).includes('Tel'), await setup.locator('[data-fk="pc:phone"]').innerText());
+await lab.shotPanel(run, '3a-personnes');
+// Onglet « Hiérarchie » : l'option est éteinte, tout est grisé ; elle s'allume, les niveaux se créent (nom, place, colonne).
+await setup.locator('[data-fk="tab:hier"]').click();
+check('« postes et hiérarchie » est éteinte au départ, ce qu’elle débloque est grisé', (await setup.locator('[data-fk="hier-toggle"]').getAttribute('aria-checked')) === 'false'
+  && (await setup.locator('.an-hier-body').getAttribute('inert')) !== null);
+await lab.shotPanel(run, '3b-hierarchie-eteinte');
+await setup.locator('[data-fk="hier-toggle"]').click();
+check('allumée, les niveaux se débloquent et l’onglet réclame un niveau', (await setup.locator('.an-hier-body').getAttribute('inert')) === null && (await setup.locator('.an-tab-dot').count()) === 1);
+// Un niveau : d'abord son nom (et sa place), puis sa colonne ; « Structure › Pole » suit une référence.
 const level = async (steps, label) => {
   await setup.locator('[data-fk="level-add"]').click();
-  for (const step of steps) await pick(step);
-  const inputs = setup.locator('.an-set-lvl input');
-  await inputs.last().click();
+  await frame.locator('[data-fk="nl-name"]').waitFor({ state: 'visible' });
   await page.keyboard.type(label);
+  await frame.locator('[data-fk="nl-ok"]').click();
+  for (const step of steps) await pick(step);
 };
 await level(['Structure ›', 'Pole'], T.pole);
 await level(['Structure ›', 'Direction'], T.direction);
 await level(['Service'], T.service);
+check('chaque niveau garde son nom et sa colonne (chemin « Structure › Pole »)', (await setup.locator('.an-lv-path').allInnerTexts()).join('|').includes('Structure')
+  && (await setup.locator('.an-lv-name').evaluateAll(nodes => nodes.map(node => node.value))).join('|') === [T.pole, T.direction, T.service].join('|'),
+await setup.locator('.an-lv-path').allInnerTexts());
+await setup.locator('[data-fk="pc:title"]').click();
+await pick('Poste');
+await setup.locator('[data-fk="toggle-more"]').click();
+await setup.locator('[data-fk="pc:lead"]').click();
+await pick('Chef');
+await lab.shotPanel(run, '3c-hierarchie');
+// Onglet « Champs de la fiche » : le responsable direct (suggéré), puis des champs libres avec leur « Liste » et leur « Filtre ».
+await setup.locator('[data-fk="tab:fields"]').click();
+await setup.locator('[data-fk="sug-manager"]').click();
+await pick('Responsable');
+check('le responsable direct a sa ligne, verrouillée', (await setup.locator('.an-frow.is-locked').count()) === 2 && (await setup.locator('.an-frow.is-locked', { hasText: 'Responsable' }).count()) === 1);
 for (const field of ['Contrat', 'Competences', 'Teletravail', 'Arrivee']) {
   await setup.locator('[data-fk="field-add"]').click();
   await pick(field);
 }
-await setup.locator('.an-set-body').evaluate(node => { node.scrollTop = 0; });
-await lab.shotPanel(run, '3-reglage-rempli');
-await setup.locator('.an-set-body').evaluate(node => { node.scrollTop = node.scrollHeight; });
-await lab.shotPanel(run, '4-reglage-bas');
-const levels = await setup.locator('.an-pickbtn').allInnerTexts();
-check('les niveaux gardent leur chemin', levels.some(text => text.includes('Structure › Pole')) && levels.some(text => text.includes('Structure › Direction')), levels);
-const noFilter = await setup.locator('.an-set-fld').evaluateAll(rows => rows.map(row => [row.innerText.trim(), row.querySelector('input').disabled]));
-check('un champ qui ne se prête pas à un filtre garde sa case, grisée (la date)', noFilter.some(([text, disabled]) => text.includes('Arrivee') && disabled), noFilter);
+await lab.shotPanel(run, '4-champs');
+const noFilter = await setup.locator('.an-frow:not(.is-head):not(.is-locked)').evaluateAll(rows => rows.map(row => [row.innerText.trim(), row.querySelector('[data-act="fld-filter"]').getAttribute('aria-disabled')]));
+check('un champ qui ne se prête pas à un filtre garde son interrupteur, grisé (la date)', noFilter.some(([text, disabled]) => text.includes('Arrivee') && disabled === 'true')
+  && noFilter.some(([text, disabled]) => text.includes('Contrat') && disabled !== 'true'), noFilter);
 await setup.locator('[data-fk="set-save"]').click();
 await frame.locator('.ask').waitFor({ state: 'visible' });
 check('créer l’annuaire pose la question de la table GFS_Annuaires', (await frame.locator('.ask').innerText()).includes('GFS_Annuaires'));
@@ -107,6 +135,7 @@ await rows().filter({ hasText: 'Camille Durand' }).click();
 await settleUi();
 check('la fiche s’ouvre à droite avec l’adresse et les champs', (await frame.locator('.an-side').isVisible()) && (await frame.locator('.an-side').innerText()).includes('camille.durand@exemple.fr')
   && (await frame.locator('.an-side').innerText()).includes('Budget'), await frame.locator('.an-side').innerText());
+check('le téléphone de la fiche est un lien d’appel (tel:)', (await frame.locator('.an-side a[href^="tel:"]').first().getAttribute('href')) === 'tel:0102030411');
 await lab.shotPanel(run, '7-fiche');
 await frame.locator('.an-side [data-act="copy"]').first().click();
 await settleUi();

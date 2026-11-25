@@ -3,7 +3,8 @@
 // fichiers suivants passent par js/sharing/share-links.js sans nouveau code), dans un seul sens. Sans fenêtre ni Grist : tout ce qu'il fait passe par `engine`,
 // les fonctions du moteur de partage du kit (kit/js/synchro/, voir js/sharing/sync-service.js), que les essais remplacent. La fenêtre
 // (js/sharing/share-other-window.js) ne fait que montrer l'étape et demander le geste suivant.
-//   prepare()  l'export d'un seul fichier (une condition sur son identifiant), l'invitation et son code (avec `strict`, l'invitation est en « sécurité
+//   prepare()  la table des fichiers si le document n'en a pas encore (`ensureFiles`, js/sharing/share-files-table.js : le moteur ne la crée pas), puis
+//              l'export d'un seul fichier (une condition sur son identifiant), l'invitation et son code (avec `strict`, l'invitation est en « sécurité
 //              renforcée » : le moteur refuse d'envoyer tant que le code
 //              de contrôle n'a pas été comparé, `compared`, voir send) ;
 //   check()    la réponse collée, contrôlée chez Grist (de quel document est la clé de son formulaire) : le moteur juge le lien, GFS n'en juge rien ;
@@ -33,11 +34,15 @@ const stuck = code => Object.assign(new Error(code), { share: code });
 
 // deps : { engine, file ({ id, name } ou null : relier les deux documents sans fichier, toujours « à jour »), mode ('once' : une copie, une fois ; 'live' : une
 //   copie qui se met à jour, le lien reste), strict (vrai : le code de contrôle doit être comparé avant l'envoi ; coché au départ dans la fenêtre, décision du
-//   porteur du 09/11), name (celui de l'export d'un lien qui reste : le nom de ce document), wait (ms) → promesse }.
-export function createSourceFlow({ engine, file, mode = 'once', strict = false, name = '', wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
+//   porteur du 09/11), name (celui de l'export d'un lien qui reste : le nom de ce document), ensureFiles () → promesse (la table des fichiers de GFS est là,
+//   créée vide
+//   quand le document n'en avait pas : sans PDF, elle manque et le moteur échoue), wait (ms) → promesse }.
+export function createSourceFlow({ engine, file, mode = 'once', strict = false, name = '', ensureFiles = async () => {},
+  wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
   const state = { exp: null, entry: null, reply: null, hook: null };
 
   async function prepare() {
+    await ensureFiles();
     const saved = await engine.saveChosenExport({ name: mode === 'live' && name ? name : exportName(file), selection: selectionOf(file) });
     state.exp = saved.created;
     const { entry, secret } = await engine.startInvitation(state.exp, strict ? { renforce: true } : {});

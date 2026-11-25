@@ -3016,3 +3016,19 @@ Suite du fait 173 : le pare-feu de la DINUM refusait la lecture du poids du fich
   de Grist, reste où elle est.
 - **Pas mesuré** : Firefox (aucune interface de GFS ici, seul le volet de Grist change) ; un compte sans droit de structure (le refus de Grist est attrapé et dit une fois en console, testé sur un faux Grist) ; plusieurs
   sections de GFS sur des pages différentes (GFS ne range que s'il reconnaît la sienne) ; l'instance de la DINUM ; une page déjà partagée (`shareRef`).
+
+## 177. « Relier un autre document Grist » échouait dans un document sans aucun PDF : le moteur de partage ne crée pas `GFS_Fichiers` et lisait des colonnes nulles (25/11 ; retour du porteur sur docs.getgrist.com, Firefox : « Failed: Error: can't access property "some", cols is null » ; Grist 1.7.19 officiel (Docker), Chromium 700 × 400 à la vraie souris, Firefox sans écran ; `labo/run-relier-document-neuf.mjs`, `js/sharing/share-files-table.js`, `test/share-files-table.test.mjs`, `test/share-other-flow.test.mjs`, `test/partager-autre-firefox.mjs`)
+
+- **Cause, reproduite** : « Gérer les partages > Autres documents > Relier un document… » nomme `GFS_Fichiers` dans la condition de l'export (`selectionFor`, même sans fichier : l'identifiant fictif). Le moteur du kit y
+  écrit ses colonnes d'aide (`missingSyncColumns(schema.columns(table))`, `source/export.js`) mais ne crée jamais la table : `schema.columns` rend `null` pour une table absente. Un document sans PDF de GFS (un
+  document de Publipostage+ ou de Form+ seulement, un document neuf) n'a pas cette table : « Continuer » échouait avec `cols is null` (Firefox) / `Cannot read properties of null (reading 'some')` (Chromium), rien d'écrit.
+  Le chemin fautif (lire les colonnes d'une table absente) ne passe par aucun des lots du 25/11 (pages rangées, lectures SQL réécrites) : il vient du premier lot du lien sans fichier. L'ancien essai
+  `run-relier-sans-fichier.mjs` importait toujours un PDF avant de relier, donc ne pouvait pas le voir.
+- **Correction** : au « Continuer », avant l'export, GFS crée `GFS_Fichiers` vide avec ses colonnes (`OwnTable.ready`, relue après `AddTable`, jamais une table qui existe déjà ni une colonne ajoutée à une
+  table d'avant). L'accord de la personne est la fenêtre elle-même : quand le document n'a pas la table, la liste de ce que GFS ajoute dit « une table « GFS_Fichiers » vide, où GFS range vos PDF, avec trois colonnes
+  d'aide (…) : elle reste » au lieu de « trois colonnes d'aide dans « GFS_Fichiers » » ; ouvrir le menu et l'accord n'écrivent rien (mesuré : aucune table avant « Continuer »).
+- **Mesuré dans un vrai Grist** (fr clair, en sombre : 17 vérifications chacun) : document sans PDF → l'accord dit que la table naît → « Continuer » donne le code (table créée vide, avec les dix colonnes et `id_sync`,
+  `MajLe`, `RecalculLe`) → l'autre document reçoit, même code de contrôle des deux côtés, documents reliés (un webhook, `GFS_Recus` vide chez l'autre) → un PDF importé ensuite entre sans nouvelle question
+  (la table existe) et arrive chez l'autre en « Copie à jour » sans nouveau code ; un document qui a déjà des PDF garde les mots d'avant ; console de GFS muette. **Firefox sans écran** : accord de la
+  fenêtre en fr/en, clair/sombre, 700 px : 0 écart (8 sur l'ancien code).
+- **Pas mesuré** : docs.getgrist.com lui-même (injoignable du cloud ; même code que le Grist 1.7.19 du labo) ; la DINUM ; un compte éditeur (seul un propriétaire relie).

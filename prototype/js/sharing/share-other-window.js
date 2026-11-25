@@ -27,7 +27,7 @@ function accordDetails(ctx) {
     h('div', { class: 'sec' }, t('so.accord.adds')),
     h('ul', { class: 'so-list' },
       h('li', null, t(live ? 'so.accord.table.live' : 'so.accord.table', { table: SYNC_TABLE_NAME })),
-      h('li', null, t('so.accord.columns', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') })),
+      h('li', null, t(ctx.filesTable ? 'so.accord.columns' : 'so.accord.files', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') })),
       h('li', null, t(live ? 'so.accord.hook.live' : 'so.accord.hook'))),
     h('p', { class: 'fine' }, t('so.accord.rules')),
     ...structureNotes(t),
@@ -143,15 +143,17 @@ function doneScreen(ctx, result) {
 }
 
 // La fenêtre d'un fichier. opts : { container, t, inertTargets, settled() (appelée quand elle est fermée et que plus rien n'est en route), file ({ id, name } ;
-// null : relier les deux documents sans fichier), createFlow(mode) (le parcours : createSourceFlow, `mode` : 'once' ou 'live'), errorText (le moteur), notice
-// (un avis hors fenêtre), now () → ms }. Rend la promesse de sa fermeture.
+// null : relier les deux documents sans fichier), filesTable (le document a déjà la table des fichiers ; faux : elle naît au « Continuer » et l'accord le dit),
+//   createFlow(mode) (le parcours : createSourceFlow, `mode` : 'once' ou 'live'), errorText (le moteur), notice (un avis hors fenêtre), now () → ms }. Rend la
+//   promesse de sa fermeture.
 export function openShareOther(opts) {
   const { t, file } = opts;
   const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets,
     title: file ? t('so.title', { name: file.name }) : t('so.title.link'), sub: file ? t('so.sub') : t('so.sub.link'), foot: t('so.foot'),
     errorText: opts.errorText });
   const { dialog, done, result, say, show } = steps;
-  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: file ? 'once' : 'live', strict: true, flow: null, go: steps.go,
+  const ctx = { t, file, filesTable: opts.filesTable !== false, now: opts.now || Date.now, closed: false, sending: false, mode: file ? 'once' : 'live',
+    strict: true, flow: null, go: steps.go,
     cancelButton: steps.cancelButton, copy: steps.copy };
   const settle = () => { if (opts.settled) void Promise.resolve(opts.settled()).catch(() => {}); };
   ctx.prepare = async () => {

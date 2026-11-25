@@ -121,6 +121,23 @@ test('escalating : lecture seule d\'abord ; refusée (403), un seul nouvel essai
   assert.deepEqual(calls, [['A', false], ['A', true], ['B', true]], 'le refus coûte un essai, une seule fois');
 });
 
+test('escalating : `startWritable` vrai (un refus déjà vu) part d\'emblée avec le jeton qui peut écrire ; faux ou en erreur, la lecture seule d\'abord', async () => {
+  const seen = [];
+  const sqlWith = async (statement, writable) => { seen.push(writable); if (!writable) throw http(403, 'insufficient document access'); return [{ octets: 7 }]; };
+  assert.deepEqual(await escalating(sqlWith, () => true)('A'), [{ octets: 7 }]);
+  assert.deepEqual(seen, [true], 'aucune requête en lecture seule : celle que la console écrirait en rouge');
+  seen.length = 0;
+  await escalating(sqlWith, async () => false)('A');
+  assert.deepEqual(seen, [false, true], 'faux : comme avant');
+  seen.length = 0;
+  await escalating(sqlWith, async () => { throw new Error('mémoire illisible'); })('A');
+  assert.deepEqual(seen, [false, true], 'une mémoire qui échoue ne change rien');
+  seen.length = 0;
+  const once = escalating(sqlWith, () => true);
+  await once('A'); await once('B');
+  assert.deepEqual(seen, [true, true]);
+});
+
 test('escalating : une lecture qui passe en lecture seule ne monte jamais ; un refus des deux jetons (éditeur, lecteur) reste un refus, une lecture coupée (400) ne change pas de jeton', async () => {
   const quiet = [];
   const fine = escalating(async (statement, writable) => { quiet.push(writable); return [{ octets: 1 }]; });

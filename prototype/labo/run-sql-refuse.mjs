@@ -113,6 +113,7 @@ try {
   check('l\'explorateur montre les trois modèles, à chaque chargement', first.every(each => JSON.stringify(each.shown) === JSON.stringify(NAMES)), first.map(each => each.shown));
   const count = each => Object.entries(each.sent).filter(([key]) => key.startsWith('compte')).reduce((sum, [, n]) => sum + n, 0);
   check(`au premier chargement : au plus un compte de lignes refusé (et pas un par table)`, count(first[0]) <= 1, first[0].sent);
+  check('le poids (jeton qui peut écrire, d\'emblée : Grist a déjà refusé le jeton en lecture seule) ne se fait refuser à aucun chargement', first.every(each => each.sent['poids 200'] === 1 && !Object.keys(each.sent).some(key => key.startsWith('poids') && key !== 'poids 200')), first.map(each => each.sent));
   check('aux chargements suivants (même onglet) : aucun compte de lignes, aucune lecture de la structure', first.slice(1).every(each => count(each) === 0 && !Object.keys(each.sent).some(key => key.startsWith('structure'))),
     first.slice(1).map(each => each.sent));
   const warns = ruled.problems.filter(problem => /lecture légère des fichiers est éteinte/.test(problem));

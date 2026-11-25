@@ -1,11 +1,12 @@
 // Les cas du renommage en anglais de Publipostage+ face à GFS, dans un VRAI serveur Grist (`bash vrai-serveur.sh`), avec la vraie app à son sommet de `main` (copie du sous-module) et la vraie GFS.
 // Un cas = un document neuf ; chaque ligne dit OK, ÉCHEC (une attente que le code ne tient pas) ou CONSTAT (un fait que l'essai mesure sans le juger : ce que la personne verrait).
-//   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" CAS=doublons node run-noms-cas.mjs        (CAS = doublons, atomique, direct, partage ; LAB_LANG=fr|en ;
+//   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" CAS=doublons node run-noms-cas.mjs        (CAS = doublons, atomique, direct, partage, annuler ; LAB_LANG=fr|en ;
 //   PP_DIR = la copie de Publipostage+ dont on charge `js/schema-columns.js`, quand celle du sous-module est plus ancienne que le sommet de l'app)
 //   doublons   un document qui porte les DEUX jeux de noms (une copie plus ancienne de l'app recrée ses tables vides sous les anciens noms) : qui lit quoi, GFS ou l'app ?
 //   atomique   le lot de renommage de l'app (celui que calcule SON `planRenames`) : tout ou rien, et deux renommages en même temps.
 //   direct     la VRAIE app ouverte seule dans le document (hors de GFS) : elle renomme, et GFS suit.
 //   partage    « Partager » activé sur les modèles, puis le lot de renommage de l'app : les règles d'accès, la formule des partages et les colonnes d'aide suivent-elles ?
+//   annuler    la vraie app renomme le document, puis la personne fait « Annuler » (Ctrl+Z) dans Grist : que reste-t-il, que voit GFS, que fait l'app au rechargement ?
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -322,7 +323,44 @@ async function playShare(run) {
 const server = await requireServer();
 const pages = createServer(serve(REPO, undefined, openConnectIn(/prototype[/\\]transfer[/\\]index\.html$/))).listen(PAGE_PORT, '127.0.0.1');
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
-const CASES = { doublons: playDoubles, atomique: playAtomic, direct: playDirect, partage: playShare };
+// ----- Cas « annuler » : la personne fait Ctrl+Z dans Grist après le renommage de l'app.
+async function playUndo(run) {
+  say('--- annuler : la vraie app a renommé le document, la personne fait « Annuler » dans Grist ---');
+  await seedLegacy(run);
+  await reload(run);
+  const before = await snapshot(run, [OLD_MODELS, OLD_PREFS]);
+  await addDirectApp(run);
+  const migrated = await waitUntil(run.page, async () => (await run.rest.tables()).includes(MODELS), 40000);
+  check('témoin : la vraie app a renommé le document', migrated, registryTables(await run.rest.tables()));
+  await run.page.waitForTimeout(4000);
+  const pointer = () => run.page.evaluate(() => window.gristDocPageModel.gristDoc.get()._undoStack._pointer);
+  const press = async () => { await run.page.evaluate(() => window.gristApp.allCommands.undo.run()); await run.page.waitForTimeout(1500); };
+  const start = await pointer();
+  let steps = 0;
+  while (steps < 40 && !(await run.rest.tables()).includes(OLD_MODELS) && (await pointer()) > 0) { await press(); steps++; }
+  const tables = await run.rest.tables();
+  const back = tables.includes(OLD_MODELS);
+  say(`   « Annuler » pressé ${steps} fois (pile de ${start} entrées) ; les tables reviennent aux noms d'avant : ${back ? 'oui' : 'non'}`);
+  constat('« Annuler » défait le renommage fait par l\'app (les tables reviennent aux noms d\'avant)', back, registryTables(tables));
+  const english = ['Publipostage_Templates', 'Publipostage_TemplatePreferences', 'Publipostage_Comments', 'Publipostage_Abbreviations'];
+  check('le lot est défait en entier : aucune table aux noms anglais ne reste à côté de celles d\'avant', back && !tables.some(name => english.includes(name)), registryTables(tables));
+  const rows = back ? await rowsOf(run, OLD_MODELS) : await rowsOf(run, MODELS);
+  check('aucune ligne perdue après « Annuler » : mêmes numéros et mêmes effectifs', rows.length === before[OLD_MODELS].length && before[OLD_MODELS].every((row, i) => rows[i].id === row.id), rows.length);
+  const labels = await call(run.page, 'GET', `/api/docs/${run.docId}/tables/${back ? OLD_MODELS : MODELS}/columns`);
+  constat('les libellés des colonnes suivent les identifiants après « Annuler »', (labels.json.columns || []).filter(column => ['Nom', 'Name'].includes(column.id)).every(column => column.fields.label === column.id), (labels.json.columns || []).map(column => [column.id, column.fields.label]).slice(0, 4));
+  await reload(run);
+  await goHome(run.frame);
+  await run.frame.locator('.ls-row').first().waitFor({ timeout: 20000 }).catch(() => {});
+  const shown = sorted(await fileNames(run.frame));
+  check('GFS rechargé liste les mêmes modèles, quel que soit le jeu de noms du document', shown.length >= 3, shown);
+  await run.page.waitForTimeout(8000);
+  const again = await run.rest.tables();
+  constat('l\'app rechargée renomme de nouveau le document (son renommage se refait au premier accès)', again.includes(MODELS) && !again.includes(OLD_MODELS), registryTables(again));
+  const after = await rowsOf(run, again.includes(MODELS) ? MODELS : OLD_MODELS);
+  check('aucune ligne perdue au bout du compte', after.length === before[OLD_MODELS].length && before[OLD_MODELS].every((row, i) => after[i].id === row.id), after.length);
+}
+
+const CASES = { doublons: playDoubles, atomique: playAtomic, direct: playDirect, partage: playShare, annuler: playUndo };
 try {
   for (const name of wanted) {
     if (!CASES[name]) continue;

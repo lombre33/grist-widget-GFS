@@ -12,6 +12,7 @@ import { createI18n } from '../js/i18n/i18n.js';
 import { Run, delay } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
 import { setupProblems, savedProblems } from './annuaire-setup-firefox.mjs';
+import { relationsReadProblems } from './annuaire-relations-firefox.mjs';
 
 const OTHER = { fr: 'en', en: 'fr' };
 const LONG_NAME = 'Jean-Baptiste de la Rochefoucauld-Montmorency';
@@ -193,6 +194,7 @@ export async function annuaireProblems(page, language, tag, { width, mode }) {
     await filtersProblems(page, t, note, click, inspectNow, { wide });
     await cardsProblems(page, t, note, click, inspectNow, { wide });
     await orgProblems(page, t, note, click, inspectNow, { wide, mode, width });
+    await relationsReadProblems(page, t, note, click);
     await switchProblems(page, t, note, click, { wide });
     await settingsProblems(page, t, note, click, { wide, width, mode });
     if (wide) await savedProblems(page, t, note, click);

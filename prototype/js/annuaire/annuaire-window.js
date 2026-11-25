@@ -9,6 +9,7 @@ import { mountWindow, giveBackFocus, tabStops, LIST_SHOWN } from '../ui/modal.js
 import { findNode, peopleIn, filterPeople, filterOptions, managerTree } from './annuaire-model.js';
 import { structureItems, managerItems, pathIds, levelLabel } from './annuaire-items.js';
 import { treeList, personRow, personCard, fiche, nodeFiche, filterBar, shown } from './annuaire-panes.js';
+import { relationsOf, relationIndex, cardLines, cardLineCount } from './annuaire-relations.js';
 import { OrgView } from './annuaire-org-view.js';
 import { copyText } from './annuaire-copy.js';
 
@@ -257,9 +258,13 @@ export class AnnuaireWindow {
     const hasManager = Boolean(data.config.manager);
     const hasLevels = data.config.levels.length > 0;
     const mode = hasManager && (this.#mode === 'managers' || !hasLevels) ? 'managers' : 'structures';
-    const roots = mode === 'managers' ? managerItems(managerTree(data.people)) : structureItems(data.tree, data.config.levels);
+    const relations = relationsOf(data.config, t);
+    const index = relationIndex(data.people, relations);
+    const lines = mode === 'managers' ? cardLineCount(relations) : 0;
+    const roots = mode === 'managers' ? managerItems(managerTree(data.people), person => cardLines(person, relations, index)) :
+      structureItems(data.tree, data.config.levels);
     const selected = mode === 'managers' ? (this.#person === null ? '' : `p${this.#person}`) : (this.#struct === null ? '' : (this.#struct || 'root'));
-    this.#org.show(roots, { key: `${current.row}:${mode}`, selected, mode, modes: [
+    this.#org.show(roots, { key: `${current.row}:${mode}`, selected, mode, lines, modes: [
       { id: 'structures', label: t('an.org.structures'), greyed: !hasLevels, why: t('an.org.noLevels') },
       { id: 'managers', label: t('an.org.managers'), greyed: !hasManager, why: t('an.org.noManager') }] });
   }
@@ -268,7 +273,9 @@ export class AnnuaireWindow {
     const { current, data } = this.#show;
     const t = this.#o.t;
     const genres = Object.fromEntries((data.schema[current.table] ? data.schema[current.table].columns : []).map(col => [col.id, col.genre]));
-    const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres };
+    const relations = relationsOf(data.config, t);
+    const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres, relations,
+      index: relationIndex(data.people, relations) };
     const person = this.#person === null ? null : data.people.find(each => each.row === this.#person);
     const node = this.#struct === null ? null : findNode(data.tree, this.#struct);
     const body = person ? fiche(person, ctx) : (node ? nodeFiche(node, ctx) : null);

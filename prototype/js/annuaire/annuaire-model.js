@@ -7,6 +7,7 @@
 
 import { columnOf } from './annuaire-schema.js';
 import { initials } from './annuaire-items.js';
+import { idsOf } from './annuaire-relations.js';
 import { normalize, words, matchesWords } from '../ui/search.js';
 
 const MAX_DEPTH = 4; // les références qu'on suit pour montrer une valeur (une colonne visible qui est elle-même une référence)
@@ -87,7 +88,8 @@ const bySort = (a, b) => (a.sort ?? a.name).localeCompare(b.sort ?? b.name, 'fr'
 // Les personnes de la table : [{ row, name, sort, initials, title, email, phone, levels: [texte ou ''], fields: { colonne: [textes] }, lead, manager }], triées
 // par nom (de famille d'abord quand le prénom est une colonne à part).
 // `lead` : la personne est responsable de sa structure (la colonne `lead` de la configuration est un oui/non, ou n'est pas vide) ; `manager` : le numéro de la
-// ligne de son responsable (la colonne `manager` est une référence à la même table), ou null.
+//   ligne de son responsable (la colonne `manager` est une référence à la même table), ou null ; `rel` : { colonne: [numéros de ligne] } pour chaque relation
+//   de la configuration (js/annuaire/annuaire-relations.js).
 export function buildPeople(config, tableId, data, schema) {
   const ctx = { ...lookup(data), schema };
   const table = data[tableId];
@@ -99,6 +101,7 @@ export function buildPeople(config, tableId, data, schema) {
     return { row, ...nameOf(one('first', i), one('name', i), config.order), title: one('title', i), email: one('email', i), phone: one('phone', i),
       levels: config.levels.map(level => followPath(ctx, tableId, i, level.path)[0] || ''),
       fields: Object.fromEntries(config.fields.map(field => [field.col, followPath(ctx, tableId, i, [field.col])])),
+      rel: Object.fromEntries((config.relations || []).map(rel => [rel.col, idsOf(Array.isArray(table[rel.col]) ? table[rel.col][i] : null)])),
       lead: lead.length > 0 && lead[0] !== 'false', manager: typeof managerCell === 'number' && managerCell > 0 ? managerCell : null };
   });
   return people.filter(person => person.name).sort(bySort);

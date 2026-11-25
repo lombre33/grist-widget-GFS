@@ -186,6 +186,7 @@
 .an-oc-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .an-oc-title { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: max(12.5px, var(--fs-min)); font-weight: 700; line-height: 1.2; }
 .an-oc-sub, .an-oc-head { font-size: max(11.5px, var(--fs-min)); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-oc-line { font-size: max(11px, var(--fs-min)); color: var(--accent-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .an-oc[aria-pressed="true"] .an-oc-sub, .an-oc[aria-pressed="true"] .an-oc-head { color: var(--text); }
 .an-oc[aria-pressed="true"] .an-pill { background: var(--surface); }
 .an-fold { position: absolute; left: 50%; bottom: -11px; display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 20px; padding: 0 6px; border: 1px solid var(--border-strong);
@@ -283,6 +284,15 @@
 .an-lv-acts { flex: none; display: inline-flex; margin: -2px -2px -2px 0; }
 .an-lv-acts .an-ib { width: 24px; height: 24px; }
 .an-lv-acts .an-ib .ic { width: 13px; height: 13px; }
+.an-relrow { gap: 2px; }
+.an-rel-fixed { flex: 1 1 auto; min-width: 0; padding: 1px 4px; font-size: max(12.5px, var(--fs-min)); font-weight: 700; }
+.an-rel-kind { padding: 0 7px; border-radius: 999px; background: var(--surface-sunken); font-size: max(11px, var(--fs-min)); color: var(--text-muted); }
+.an-rel-note { margin: 0; padding: 0 4px 2px; }
+.an-rel-rules { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 3px; padding: 4px 4px 1px; border-top: 1px dashed var(--border); }
+.an-rel-inv { flex: 1 1 210px; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.an-rel-inv .an-set-hint { flex: none; }
+.an-rel-inv .an-lv-name { border-color: var(--border); background: var(--surface); font-weight: 400; }
+.an-rel-card { display: inline-flex; align-items: center; gap: 8px; }
 .an-tag { flex: none; padding: 0 7px; border: 1px solid var(--accent-soft-border); border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: max(10.5px, var(--fs-min));
   font-weight: 700; }
 .an-ins { display: flex; align-items: center; gap: 8px; height: 14px; color: var(--accent-ink); font-size: max(11px, var(--fs-min)); font-weight: 600; }

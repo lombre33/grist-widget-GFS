@@ -39,14 +39,15 @@ export function structureItems(tree, levels) {
   return [one(tree)];
 }
 
-// L'organigramme des responsables : `roots` vient de `managerTree` ([{ person, ch }]). Le nombre d'une carte est celui de toutes les personnes dessous.
-export function managerItems(roots) {
+// L'organigramme des responsables : `roots` vient de `managerTree` ([{ person, ch }]). Le nombre d'une carte est celui de toutes les personnes dessous ;
+// `linesOf(personne)` donne les petites lignes de sa carte (ses relations : « Assistant·e : Camille », js/annuaire/annuaire-relations.js).
+export function managerItems(roots, linesOf = () => []) {
   const one = node => {
     const ch = node.ch.map(one);
     const below = ch.reduce((sum, child) => sum + child.card.count + 1, 0);
     const { person } = node;
     return { id: `p${person.row}`, ch, pick: { person: person.row }, card: { title: person.name, sub: person.title, count: below, head: '',
-      initials: person.initials ?? initials(person.name) } };
+      initials: person.initials ?? initials(person.name), lines: linesOf(person) } };
   };
   return roots.map(one);
 }

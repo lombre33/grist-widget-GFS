@@ -1,10 +1,11 @@
 // Le réglage d'un annuaire (module Annuaire, demande du porteur du 25/11) : une fenêtre à trois onglets, sur la maquette. « Personnes » : la table et les
 // colonnes lues (par défaut le nom et l'adresse e-mail) ; « Hiérarchie » : l'option « postes et hiérarchie » et les niveaux (un niveau = une colonne au choix,
-// éventuellement après des références : « Structure › Pôle »), avec l'aperçu de l'arbre ; « Champs de la fiche » : les champs libres, dont certains donnent des
-// filtres. Une fenêtre du widget sur la base commune (js/ui/modal.js) ; chaque choix de table ou de colonne passe par la liste avec recherche
-// (js/ui/pick-window.js, charte). Elle ne parle pas à Grist : l'aperçu lui vient de `read` (le contrôle lit les tables, une fois), et elle rend { name, table,
-// config }, ou null quand la personne renonce ; l'écriture est à js/annuaire/annuaire-store.js. Les onglets sont dans js/annuaire/annuaire-setup-people.js,
-// -levels.js et -fields.js : ils reçoivent l'hôte (cet objet vu de l'extérieur : l'état, de quoi redessiner, de quoi choisir dans une liste). Grisé, jamais
+// éventuellement après des références : « Structure › Pôle »), avec l'aperçu de l'arbre ; « Relations » : le responsable direct, l'assistant·e, le référent·e
+// et les autres (une colonne qui désigne une personne, avec ses règles) ; « Champs de la fiche » : les champs libres, dont certains donnent des filtres. Une
+// fenêtre du widget sur la base commune (js/ui/modal.js) ; chaque choix de table ou de colonne passe par la liste avec recherche (js/ui/pick-window.js,
+// charte). Elle ne parle pas à Grist : l'aperçu lui vient de `read` (le contrôle lit les tables, une fois), et elle rend { name, table, config }, ou null quand
+// la personne renonce ; l'écriture est à js/annuaire/annuaire-store.js. Les onglets sont dans js/annuaire/annuaire-setup-people.js, -levels.js, -relations.js
+// et -fields.js : ils reçoivent l'hôte (cet objet vu de l'extérieur : l'état, de quoi redessiner, de quoi choisir dans une liste). Grisé, jamais
 // masqué : ce qu'une option éteinte débloque reste visible, grisé, avec sa raison.
 
 import { h } from '../ui/dom.js';
@@ -13,9 +14,11 @@ import { pickFrom } from '../ui/pick-window.js';
 import { readConfig } from './annuaire-config.js';
 import { peopleTab, peopleAct } from './annuaire-setup-people.js';
 import { hierarchyTab, hierarchyAct, levelInput, paintPreview } from './annuaire-setup-levels.js';
+import { relationsTab, relationsAct, relationInput } from './annuaire-setup-relations.js';
 import { fieldsTab, fieldsAct } from './annuaire-setup-fields.js';
 
-const TABS = Object.freeze([['people', 'an.tab.people', peopleTab], ['hier', 'an.tab.hier', hierarchyTab], ['fields', 'an.tab.fields', fieldsTab]]);
+const TABS = Object.freeze([['people', 'an.tab.people', peopleTab], ['hier', 'an.tab.hier', hierarchyTab], ['relations', 'an.tab.relations', relationsTab],
+  ['fields', 'an.tab.fields', fieldsTab]]);
 const PREVIEW_DELAY = 120; // ms : le temps qu'une suite de choix se pose avant de relire l'aperçu
 
 export class AnnuaireSetup {
@@ -75,7 +78,8 @@ export class AnnuaireSetup {
   #result() {
     const { name, table, config } = this.#draft;
     const levels = config.levels.filter(level => level.path.length).map(level => ({ ...level, label: level.label.trim() || level.path.at(-1) }));
-    return { name: name.trim(), table, config: { ...config, levels } };
+    const relations = config.relations.filter(rel => rel.col).map(rel => ({ ...rel, label: rel.label.trim(), inverse: rel.inverse.trim() }));
+    return { name: name.trim(), table, config: { ...config, levels, relations } };
   }
 
   #firstFocus() {
@@ -100,10 +104,13 @@ export class AnnuaireSetup {
     if (!table) return ['people', 'an.set.errTable', 'pt'];
     if (!config.name) return ['people', 'an.set.errColumn', 'pc:name'];
     if ((this.#ui.split || config.first) && !config.first) return ['people', 'an.set.errFirst', 'pc:first'];
-    if (!config.hierarchy) return null;
-    const todo = config.levels.findIndex(level => !level.path.length);
-    if (!config.levels.length) return ['hier', 'an.set.errNoLevel', 'level-add'];
-    return todo >= 0 ? ['hier', 'an.set.errLevel', `lp:${todo}`] : null;
+    if (config.hierarchy) {
+      const todo = config.levels.findIndex(level => !level.path.length);
+      if (!config.levels.length) return ['hier', 'an.set.errNoLevel', 'level-add'];
+      if (todo >= 0) return ['hier', 'an.set.errLevel', `lp:${todo}`];
+    }
+    const lacking = config.relations.findIndex(rel => !rel.col);
+    return lacking >= 0 ? ['relations', 'an.set.errRelation', `rp:${lacking}`] : null;
   }
 
   // Ce qui empêche d'enregistrer, dit dans le pied ; l'onglet concerné s'ouvre et le repère se montre. Rend true quand tout va.
@@ -129,10 +136,12 @@ export class AnnuaireSetup {
     return pickFrom({ container: this.#o.container, inertTargets: this.#o.inertTargets, t: this.#o.t, ...opts });
   }
 
-  // L'onglet « Hiérarchie » a de quoi avertir : l'option est allumée et il manque un niveau ou une colonne.
-  #needsHierarchy() {
+  // Un onglet a de quoi avertir : « Hiérarchie » quand l'option est allumée et qu'il manque un niveau ou une colonne, « Relations » quand une relation n'a pas
+  // sa colonne.
+  #needsAttention(id) {
     const { config } = this.#draft;
-    return config.hierarchy && (!config.levels.length || config.levels.some(level => !level.path.length));
+    if (id === 'relations') return config.relations.some(rel => !rel.col);
+    return id === 'hier' && config.hierarchy && (!config.levels.length || config.levels.some(level => !level.path.length));
   }
 
   // Redessine l'onglet en gardant le clavier là où il était et le défilement (un autre onglet repart du haut).
@@ -146,7 +155,7 @@ export class AnnuaireSetup {
     tabs.replaceChildren(...TABS.map(([id, key]) => h('button', { type: 'button', role: 'tab', class: 'an-tab', 'aria-selected': String(this.#ui.tab === id),
       tabindex: this.#ui.tab === id ? '0' : '-1', 'aria-controls': 'an-set-panel', id: `an-tab-${id}`, dataset: { act: 'tab', tab: id, fk: `tab:${id}` } },
         t(key),
-      id === 'hier' && this.#needsHierarchy() ? h('span', { class: 'an-tab-dot', title: t('an.tab.todo'), role: 'img', 'aria-label': t('an.tab.todo') }) :
+      this.#needsAttention(id) ? h('span', { class: 'an-tab-dot', title: t('an.tab.todo'), role: 'img', 'aria-label': t('an.tab.todo') }) :
         null)));
     const [, , make] = TABS.find(([id]) => id === this.#ui.tab);
     const panel = make(this.#host);
@@ -182,7 +191,8 @@ export class AnnuaireSetup {
     const input = event.target.closest('[data-input]');
     if (!input) return;
     if (input.dataset.input === 'name') this.#draft.name = input.value;
-    else levelInput(this.#host, input);
+    else if (input.dataset.input === 'level') levelInput(this.#host, input);
+    else relationInput(this.#host, input);
   }
 
   #click(event) {
@@ -191,7 +201,7 @@ export class AnnuaireSetup {
     const { act } = button.dataset;
     if (act === 'tab') { this.#select(button.dataset.tab); return; }
     const host = this.#host;
-    [peopleAct, hierarchyAct, fieldsAct].some(run => run(host, act, button.dataset));
+    [peopleAct, hierarchyAct, relationsAct, fieldsAct].some(run => run(host, act, button.dataset));
   }
 
   // ---------- l'aperçu ----------

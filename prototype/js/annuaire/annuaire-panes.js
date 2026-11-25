@@ -75,7 +75,28 @@ function ficheRow(label, content, copy, t) {
       dataset: { act: 'copy', value: copy, fk: `cp:${label}` } }, icon('copy')) : null));
 }
 
-// La fiche d'une personne. `ctx` : { t, locale, levels, config, genres: { colonne: genre } }.
+// Les personnes d'une relation, en boutons (un clic ouvre la fiche de l'autre) ; au-delà de CHIPS_SHOWN, « +n ».
+function peopleLinks(list, key, t) {
+  const first = list.slice(0, CHIPS_SHOWN);
+  return h('span', { class: 'an-fr-vals' }, ...first.map(each => h('button', { type: 'button', class: 'an-link-b',
+    dataset: { act: 'person', row: String(each.row), fk: `${key}:${each.row}` } }, each.name)),
+  list.length > first.length ? h('span', { class: 'an-pill' }, t('an.rel.more', { n: list.length - first.length })) : null);
+}
+
+// Les lignes de la fiche que les relations donnent : ce que la personne désigne (« Assistant·e : Camille »), puis ce qui la désigne (« Assistant·e de : … »),
+// seulement quand la relation a un sens inverse. `ctx.relations` et `ctx.index` : voir js/annuaire/annuaire-relations.js.
+function relationRows(person, ctx) {
+  const { t, relations = [], index } = ctx;
+  if (!index) return [];
+  return relations.flatMap(rel => {
+    const to = index.direct(person, rel);
+    const from = rel.inverse ? index.inverse(person, rel) : [];
+    return [to.length ? ficheRow(rel.label, peopleLinks(to, `${rel.key}>`, t), '', t) : null,
+      from.length ? ficheRow(rel.inverse, peopleLinks(from, `${rel.key}<`, t), '', t) : null].filter(Boolean);
+  });
+}
+
+// La fiche d'une personne. `ctx` : { t, locale, levels, config, genres: { colonne: genre }, relations, index }.
 export function fiche(person, ctx) {
   const { t, config } = ctx;
   const levels = person.levels.map((value, i) => ({ value, label: levelLabel(ctx.levels[i]) })).filter(each => each.value);
@@ -85,6 +106,7 @@ export function fiche(person, ctx) {
   const call = telHref(person.phone);
   if (person.phone) rows.push(ficheRow(t('an.phone'), call ? h('a', { class: 'an-link', href: call, title: t('an.call', { what: person.phone }),
     target: '_blank', rel: 'noopener' }, person.phone) : person.phone, person.phone, t));
+  rows.push(...relationRows(person, ctx));
   for (const field of config.fields) {
     const values = (person.fields[field.col] || []).map(value => shown(value, ctx.genres[field.col], ctx));
     if (values.length) rows.push(ficheRow(field.col, h('span', { class: 'an-fr-vals' }, ...values.map(value => h('span', { class: 'an-pill' }, value))), '',

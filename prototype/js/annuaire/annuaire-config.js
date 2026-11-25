@@ -24,7 +24,10 @@ export const NAME_ORDERS = Object.freeze(['first-last', 'last-first']);
 
 // La configuration lue d'un texte JSON (ou d'un objet) : toujours complète, jamais d'exception. Ce que GFS ne connaît pas (une clé d'une version plus récente)
 // est ignoré à la lecture et perdu à la réécriture : `writeConfig` ne garde que ce qu'elle connaît ; une version plus récente écrit donc sa propre ligne.
-// { v, name, first, order, hierarchy, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], fields: [{ col, filter, list }] }
+// { v, name, first, order, hierarchy, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], relations: [{ col, label, inverse, card }],
+//   fields: [{ col, filter, list }] }
+// `relations` (demande du porteur, 25/11 : assistant·e, référent·e, suppléant·e) : voir js/annuaire/annuaire-relations.js ; une colonne ne sert qu'une fois (au
+// responsable direct, à une relation ou à un champ).
 // `hierarchy` : l'option « postes et hiérarchie » (décision du porteur, 25/11 : par défaut seulement le nom et l'adresse). Une ligne écrite avant elle, qui a
 // déjà un poste ou des niveaux, la garde allumée : rien ne change pour elle. Éteinte, elle garde ses niveaux écrits (on les retrouve en la rallumant) mais
 // la lecture ne s'en sert pas : voir `effectiveConfig`.
@@ -40,6 +43,11 @@ export function readConfig(source) {
   config.order = NAME_ORDERS.includes(input.order) ? input.order : NAME_ORDERS[0];
   config.levels = levels.map(level => ({ label: text(level && level.label), path: path(level && level.path) })).filter(level => level.path.length > 0);
   config.hierarchy = typeof input.hierarchy === 'boolean' ? input.hierarchy : Boolean(config.levels.length || config.title || config.lead);
+  const relations = Array.isArray(input.relations) ? input.relations : [];
+  const used = new Set([config.manager]);
+  config.relations = relations.map(rel => ({ col: text(rel && rel.col), label: text(rel && rel.label), inverse: text(rel && rel.inverse),
+    card: !(rel && rel.card === false) }))
+    .filter(rel => rel.col && !used.has(rel.col) && used.add(rel.col));
   const fields = Array.isArray(input.fields) ? input.fields : [];
   const seen = new Set();
   config.fields = fields.map(field => ({ col: text(field && field.col), filter: Boolean(field && field.filter), list: Boolean(field && field.list) }))

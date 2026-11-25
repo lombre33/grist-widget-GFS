@@ -1,6 +1,6 @@
 // La page d'essai de l'annuaire sous Firefox (test/annuaire-firefox.mjs, module Annuaire, demande du porteur du 25/11) : le vrai contrôle (js/annuaire/annuaire-control.js), la vraie
 // fenêtre, la vraie lecture (js/annuaire/annuaire-store.js) et les vraies feuilles de style de index.html, sur un faux Grist en mémoire (test/fake-grist.mjs) qui tient le document fictif
-// des essais (test/annuaire-fixtures.mjs) plus deux lignes qui poussent la mise en page : un nom, un poste, une adresse et une structure très longs. Aucun Grist : ce que l'essai
+// des essais (test/annuaire-fixtures.mjs) plus deux lignes qui poussent la mise en page : un nom, un poste, une adresse et une structure très longs (et le nom très long est l'assistant de quelqu'un). Aucun Grist : ce que l'essai
 // mesure est la mise en page, la souris et le clavier ; ce que Grist envoie vraiment se mesure dans le labo (labo/run-annuaire.mjs). La langue vient de `?lang=fr|en`.
 // `window.__annuaire` est le contrôle ; `window.__annuaireNotices` garde les phrases qu'il dit ; `window.__annuaireLanguage(lang)` change la langue fenêtre ouverte, comme le
 // contrôleur de GFS ; `window.__annuaireCopied` garde le dernier texte copié (le presse-papiers lui-même se mesure dans le labo).
@@ -23,8 +23,10 @@ function longDocument() {
     id: 7, Nom: 'Jean-Baptiste de la Rochefoucauld-Montmorency', Poste: 'Directeur adjoint chargé des relations internationales et de la coopération universitaire',
     Email: 'jean-baptiste.de-la-rochefoucauld-montmorency@universite-exemple.fr', Tel: '01 02 03 04 55', Structure: unit, Contrat: 'Contractuel',
     Competences: ['L', 'Droit international'], Teletravail: true, Responsable: 5, Chef: false, Arrivee: null, Service: '', Site: 'Siège',
+    Assistant: 0, Referents: null, Suppleant: 0,
   };
   for (const [key, value] of Object.entries(person)) people[key].push(value);
+  people.Assistant[3] = person.id; // la personne au nom très long est l'assistant de Louis Girard : une relation qui pousse la mise en page
   return document;
 }
 

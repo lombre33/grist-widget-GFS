@@ -7,8 +7,10 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { layoutOrg, defaultOpen, step, fitZoom } from './annuaire-org.js';
 
-// La carte (largeur, hauteur) et l'espace entre deux cartes d'un étage (gx) et entre deux étages (gy).
+// La carte (largeur, hauteur) et l'espace entre deux cartes d'un étage (gx) et entre deux étages (gy) ; chaque petite ligne de relation ajoute LINE à la
+// hauteur.
 export const BOX = Object.freeze({ w: 196, h: 66, gx: 12, gy: 34 });
+export const LINE = 15;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export class OrgView {
@@ -24,6 +26,7 @@ export class OrgView {
   #mode = '';
   #size = { width: 0, height: 0 };
   #layout = null;
+  #lines = 0;
 
   // opts : { t, onPick(item), onMode(id), onNote(texte) } ; `item` est l'élément dont la carte a reçu le clic.
   constructor(opts) {
@@ -56,9 +59,10 @@ export class OrgView {
 
   // Montre `roots` ([{ id, ch, card, pick }]). `key` : change quand ce sont d'autres éléments (un autre annuaire, l'autre organigramme) : les branches repliées
   // et le zoom repartent de zéro, sinon ils restent comme la personne les a laissés. `modes` : [{ id, label, greyed, why }] ; `selected` : l'identifiant de
-  // l'élément choisi.
-  show(roots, { key, selected = '', modes = [], mode = '' }) {
+  // l'élément choisi ; `lines` : combien de petites lignes de relation les cartes peuvent porter (elles gardent toutes la même hauteur).
+  show(roots, { key, selected = '', modes = [], mode = '', lines = 0 }) {
     const fresh = key !== this.#key;
+    this.#lines = lines;
     this.#roots = roots;
     this.#selected = selected;
     this.#modes = modes;
@@ -108,7 +112,9 @@ export class OrgView {
 
   #render() {
     const { canvas, empty } = this.#refs;
-    const layout = layoutOrg(this.#roots, { box: BOX, open: this.#open });
+    const box = { ...BOX, h: BOX.h + this.#lines * LINE };
+    canvas.style.setProperty('--oh', `${box.h}px`);
+    const layout = layoutOrg(this.#roots, { box, open: this.#open });
     this.#layout = layout;
     this.#size = { width: layout.width, height: layout.height };
     empty.hidden = layout.entries.length > 0;
@@ -134,11 +140,12 @@ export class OrgView {
     const { item } = entry;
     const { card } = item;
     const t = this.#t;
+    const extra = (card.lines || []).map(text => h('span', { class: 'an-oc-line', title: text }, text));
     const body = h('button', { type: 'button', class: 'an-oc', 'aria-pressed': String(item.id === this.#selected),
       dataset: { act: 'org-pick', id: item.id, fk: `oc:${item.id}` } },
       card.initials ? h('span', { class: 'an-av' }, card.initials) : null,
       h('span', { class: 'an-oc-text' }, h('span', { class: 'an-oc-title' }, card.title), card.head ||
-        card.sub ? h('span', { class: 'an-oc-sub' }, card.head || card.sub) : null),
+        card.sub ? h('span', { class: 'an-oc-sub' }, card.head || card.sub) : null, ...extra),
       card.count ? h('span', { class: 'an-pill' }, String(card.count)) : null);
     const opened = this.#open.has(item.id);
     const fold = item.ch.length

@@ -155,6 +155,17 @@ function checkSettings(m, errors) {
 
 const covered = (lit, pattern) => lit.includes('*') || lit.includes(pattern) || lit.some(p => p.endsWith('*') && pattern.startsWith(p.slice(0, -1)));
 
+// `arrivee.aussi` : les autres noms de la table de l'app (celui d'avant son passage à l'anglais), que GFS lit comme `table`.
+function checkArrivalNames(arrival, m, errors) {
+  const others = arrival.aussi;
+  if (!Array.isArray(others) || !others.length || !others.every(isText)) { errors.push('arrivee.aussi : liste de noms de tables attendue'); return; }
+  const lit = isObject(m.permissions) && Array.isArray(m.permissions.lit) ? m.permissions.lit : null;
+  for (const other of others) {
+    if (isText(arrival.table) && other.toLowerCase() === arrival.table.toLowerCase()) errors.push(`arrivee.aussi : ${other} est déjà la table de l'arrivée`);
+    else if (lit && !covered(lit, other)) errors.push(`arrivee.aussi ${other} : une table que l'app ne lit pas`);
+  }
+}
+
 // `arrivee` (facultatif, contrats 2.5, point 4) : où GFS lit, sans réglage de la vue, que la section est celle de l'app. { table, colonne, lignes } : la table
 // de l'app, la colonne qui dit la table de la vue, et les valeurs que doit porter la ligne (des textes, comparés tels quels). La table doit être de celles que
 // l'app lit.
@@ -165,6 +176,7 @@ function checkArrival(m, errors) {
   if (!isText(arrival.table)) errors.push('arrivee.table : chaîne attendue');
   else if (isObject(m.permissions) && Array.isArray(m.permissions.lit) && !covered(m.permissions.lit, arrival.table)) errors.push(
     `arrivee.table ${arrival.table} : une table que l'app ne lit pas`);
+  if (arrival.aussi !== undefined) checkArrivalNames(arrival, m, errors);
   if (!isText(arrival.colonne)) errors.push('arrivee.colonne : chaîne attendue');
   if (arrival.lignes !== undefined && (!isObject(arrival.lignes) || !Object.values(arrival.lignes).every(isText))) errors.push(
     'arrivee.lignes : un objet de chaînes attendu');

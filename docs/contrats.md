@@ -360,6 +360,10 @@ Une entrée de `fichiers` par table de fichiers :
    valeurs que doit porter la ligne (des textes, comparés tels quels, `Type` = `Workflow` : un `Log` ou un `Lock` ne désigne pas la
    vue). GFS ne s'en sert qu'à l'arrivée, aux conditions de 7.4, point 7 ; il ne fait que comparer, il ne lit jamais une valeur comme
    du code ni comme une adresse. L'app qui garde aussi une clé de réglage (`reglages`) reste reconnue par elle d'abord.
+   **`aussi`** (facultatif, 25/11, décision du porteur : « tout en anglais » et « GFS lit les deux jeux de noms, sans date de fin ») : les autres noms de la
+   table, celui d'avant le passage à l'anglais (Automation+ : `{ "table": "Automation_Store", "aussi": ["Automation"], … }`). Une liste non vide de noms, jamais
+   celui de `table`, que `permissions.lit` couvre ; ils peuvent être hors du préfixe de l'app (un nom d'avant sa règle de préfixe). GFS lit **la table qui a des lignes** ;
+   si plusieurs en ont, ou aucune, la première de la liste (`table`) : même règle que `noms` (2.4, point 6). La table d'avant n'est lue que si la nouvelle est absente ou vide.
 5. [T] **`reglagesArrivee`** (facultatif, décidé par le porteur le 12/11) : parmi les clés de `reglages`, celles dont **une valeur dit à GFS d'ouvrir l'app à
    l'arrivée** (7.4, point 7). Une clé de `reglages` qui n'y est pas se lit, s'écrit et se retire comme les autres, mais ne désigne pas l'app : une vue qui n'a
    que celle-là arrive sur l'explorateur, et non sur la page de départ de l'app. Publipostage+ : `["modeleDeLaVue", "modeleSelonLigne"]` (un modèle choisi pour la
@@ -654,7 +658,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    - `reglagesArrivee` (2.5, point 5) : autre chose qu'une liste de chaînes, une entrée qui n'est pas une clé de `reglages` de la même app ;
    - dans `ouverture` : autre chose qu'un objet, un genre (`fichier`, `nouveau`, `importer`, `lire`) qui n'est pas un booléen ; `permanente` qui n'est pas un booléen ;
    - dans `arrivee` (2.5, point 4) : autre chose qu'un objet, une `table` ou une `colonne` qui n'est pas une chaîne, une `table` que
-     `permissions.lit` ne couvre pas, des `lignes` qui ne sont pas un objet de chaînes ;
+     `permissions.lit` ne couvre pas, des `lignes` qui ne sont pas un objet de chaînes, des `aussi` qui ne sont pas une liste non vide de noms
+     que `lit` couvre et qui ne sont pas celui de `table` ;
    - dans `permissions` : une règle de la section 3 non tenue (un motif `ecrit` que `lit` ne couvre pas, un `pourquoi` absent,
      une table ou une colonne de la liste fermée 3.3, une entrée `gristInterne` qui lit `_grist_Shares` ou `_grist_Triggers`,
      qui écrit sans `lit: true` ou qui écrit plus d'une table, `lit`/`ecrit`/`gristInterne`/capacités avec un accès autre que

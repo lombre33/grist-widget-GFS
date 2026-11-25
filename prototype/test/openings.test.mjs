@@ -86,6 +86,30 @@ test('openNew : l\'article grisé dit sa raison (ou son rappel) ; sinon l\'app s
   assert.deepEqual(steps(fresh.c, 'activate'), [['activate', 'form', { fichier: null, type: 'formulaire', dossier: 'Dossier', raison: 'nouveau' }]]);
 });
 
+test('openNew : l\'article « Annuaire » passe par le module de GFS (aucune app n\'est activée) ; grisé, il dit sa raison ; un module qui plante se dit', async () => {
+  const entry = { kind: 'annuaire', app: 'gfs-annuaires', type: 'annuaire' };
+  const { c, openings } = host();
+  c.annuaire = { createNew: async () => { c.calls.push(['createNew']); } };
+  openings.openNew(entry);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(steps(c, 'createNew'), [['createNew']]);
+  assert.deepEqual(steps(c, 'activate'), [], 'l\'annuaire n\'est pas une app : aucune app n\'est ouverte');
+  const grey = host();
+  grey.c.annuaire = { createNew: async () => { grey.c.calls.push(['createNew']); } };
+  grey.openings.openNew({ ...entry, greyed: true, reason: 'Accès complet', focus: null });
+  assert.deepEqual(steps(grey.c, 'unlock'), [['unlock', { text: 'Accès complet', focus: null }]]);
+  assert.deepEqual(steps(grey.c, 'createNew'), [], 'grisé : rien ne se crée');
+  const broken = host();
+  broken.c.annuaire = { createNew: async () => { throw new Error('plante'); } };
+  const log = console.error;
+  console.error = () => {};
+  try {
+    broken.openings.openNew(entry);
+    await new Promise(resolve => setImmediate(resolve));
+  } finally { console.error = log; }
+  assert.deepEqual(broken.c.notes, ['an.loadFailed'], 'le module qui plante se dit à la personne');
+});
+
 test('openTemplate : l\'article grisé dit sa raison ; sinon l\'app s\'ouvre sur le modèle choisi, une seule fois, avec l\'identifiant du modèle ; une app qui ne sait pas l\'ouvrir le dit', async () => {
   const grey = host();
   grey.openings.openTemplate({ greyed: true, reason: 'Demande l\'extension Graphique', focus: 'ext:publipostage/graphique' });

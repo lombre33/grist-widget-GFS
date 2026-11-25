@@ -17,6 +17,21 @@ export async function openAnnuaire(c, row = null) {
   }
 }
 
+// « Nouveau > Annuaire » de l'explorateur (retour du porteur, 25/11) : le réglage du premier annuaire du document, ou un sous-annuaire de celui qu'on voit ;
+// même porte que l'ouverture (le module se charge au geste, une erreur se dit sans rien casser).
+export async function newAnnuaire(c) {
+  try {
+    if (!c.annuaire) {
+      const { createAnnuaire } = await import('../annuaire/annuaire-control.js');
+      c.annuaire ??= createAnnuaire(c);
+    }
+    await c.annuaire.createNew();
+  } catch (error) {
+    console.error('GFS : l\'annuaire ne se crée pas', error);
+    c.notice(c.t('an.loadFailed'));
+  }
+}
+
 // « Choisir une personne dans l'annuaire » pour une app (contrats 5.4, point 16) : la fenêtre de choix s'ouvre par-dessus l'app. Rend la personne choisie ({
 // nom, email, titre, telephone, annuaire }) ou `null` (annulé, ou le module ne se charge pas : la personne en est prévenue).
 export async function pickPerson(c, opts) {

@@ -8,7 +8,7 @@ import { readOpening } from './reading.js';
 import { leaveApp, leaveQuestion } from './leave.js';
 import { FILES_APP } from '../files/gfs-files.js';
 import { ANNUAIRES_APP } from '../files/annuaire-files.js';
-import { openAnnuaire } from '../shell/annuaire-entry.js';
+import { openAnnuaire, newAnnuaire } from '../shell/annuaire-entry.js';
 import { fileKey } from '../explorer/explorer-model.js';
 import { ERR } from './filter.js';
 
@@ -36,6 +36,7 @@ export class Openings {
   openNew(entry) {
     const { c } = this;
     if (entry.greyed) { void c.unlock({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
+    if (entry.kind === 'annuaire') { void newAnnuaire(c); return; } // l'annuaire : le module de GFS, aucune app n'est ouverte
     void this.openIn(entry.app, { fichier: null, type: entry.type, dossier: c.explorer.state.path, raison: 'nouveau' }, 'ex.notice.new');
   }
 

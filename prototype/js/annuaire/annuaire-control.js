@@ -14,6 +14,7 @@ import { CheckWindow } from './annuaire-check-window.js';
 import { MailWindow } from './annuaire-mail-window.js';
 import { runChecks, checkNeeds } from './annuaire-check.js';
 import { presenceView, presenceCol } from './annuaire-presence.js';
+import { editRight, editorRows, editWhy } from './annuaire-edit-rights.js';
 import { csvColumns } from './annuaire-mail.js';
 import { CHECK_KINDS, updateAction } from './annuaire-config.js';
 import { columnOf } from './annuaire-schema.js';
@@ -42,6 +43,7 @@ export class AnnuaireControl {
   #sub; // les gestes d'un sous-annuaire (js/annuaire/annuaire-sub-control.js)
   #merge = new MergedView(); // la vue « Tous mes annuaires » (js/annuaire/annuaire-merge-view.js)
   #picker = null; // la fenêtre « Choisir une personne » qu'une app a demandée (js/annuaire/annuaire-pick.js)
+  #loaded = false; // la liste des annuaires a été lue (sans erreur) à la dernière lecture
   #admin = null; // la preuve qu'a GFS que la personne administre le document (une promesse, demandée une fois : js/broker/transfer.js, `isOwner`)
 
   // opts : { port ({ doc }), container, t, locale(), inertTargets(), ask(opts) -> Promise<boolean>, notice(texte), writeBlock() -> texte ou null, fullAccess(),
@@ -87,6 +89,18 @@ export class AnnuaireControl {
   }
 
   close() { this.#window.close(); }
+
+  // « Nouveau > Annuaire » de l'explorateur (retour du porteur, 25/11 : « si c'est le premier, on bascule sur le réglage du premier, sinon c'est un
+  // sous-annuaire qui hérite des paramètres du premier ») : la fenêtre s'ouvre, puis le réglage d'un premier annuaire quand le document n'en a aucun, sinon un
+  // sous-annuaire de celui qu'on voit (il reprend sa définition ; seul un propriétaire en crée un, et la phrase le dit sinon). Une lecture qui a échoué se dit
+  // dans la fenêtre : rien n'est proposé.
+  async createNew() {
+    if (!this.#window.isOpen) await this.open(null);
+    if (!this.#loaded) return;
+    if (!this.#list.length) { await this.#create(); return; }
+    if (!(await this.#proof())) { this.#o.notice(this.#o.t('an.sub.newWhy')); return; }
+    await this.#newSub();
+  }
 
   // ---------- les liens avec les apps (contrats 5.4, point 16) ----------
 
@@ -150,6 +164,7 @@ export class AnnuaireControl {
   // Lit la liste des annuaires, puis celui qu'on montre (le dernier vu, sinon le premier).
   async #load() {
     const t = this.#o.t;
+    this.#loaded = false;
     if (!this.#o.fullAccess()) { this.#window.show({ state: 'error', error: t('an.needsAccess'), annuaires: [], current: null, data: null }); return; }
     try {
       this.#list = orderAnnuaires(await this.#store.list());
@@ -158,6 +173,7 @@ export class AnnuaireControl {
       this.#window.show({ state: 'error', error: t('an.readFailed', { reason: String(error && error.message) }), annuaires: [], current: null, data: null });
       return;
     }
+    this.#loaded = true;
     if (!this.#list.length) { this.#row = null; this.#window.show({ state: 'none', annuaires: [], current: null, data: null }); return; }
     if (!this.#current) this.#row = this.#row === null && canMerge(this.#list) ? MERGED_ROW : this.#list[0].row; // la première fois : tous les annuaires réunis
     await this.#read();
@@ -209,7 +225,7 @@ export class AnnuaireControl {
     }
     const on = CHECK_KINDS.some(kind => view.config.checks.includes(kind) && !checkNeeds(kind, view.config));
     const found = admin && on ? runChecks(view) : { issues: [], counts: {}, total: 0 };
-    return { ...view, admin, identity, found, checks: { admin, on, total: found.total } };
+    return { ...view, admin, identity, found, checks: { admin, on, total: found.total }, editors: editorRows(view) };
   }
 
   // « Modifier » une fiche : le formulaire des colonnes directes de la personne, la relecture, puis l'écriture (une ligne de la table des personnes, sur le
@@ -219,6 +235,8 @@ export class AnnuaireControl {
     const read = this.#data;
     const person = read && read.people.find(each => each.row === row);
     if (!person) return;
+    // la fenêtre grise déjà « Modifier » : une seconde garde
+    if (!editRight(person, read).can) { this.#o.notice(editWhy(read.config, t, this.#o.locale(), read.identity || '')); return false; }
     const table = read.annuaire.table;
     const { fields, locked } = editableFields(read.config, read.schema, table, t);
     const saved = await new EditWindow({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, locale: this.#o.locale(), person, table, fields,

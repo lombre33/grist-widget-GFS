@@ -84,7 +84,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 15. **Tout en anglais dès le départ** (décision du porteur, 25/11) : une app nouvelle écrit en anglais son code (variables, fonctions,
     fichiers), ses **tables** et leurs **colonnes** (`Tuesday_Projects`, `Name`, `ModifiedAt`), sans attendre une bascule. Seule l'interface
     reste en français et en anglais. Une app déjà sortie dont les noms sont encore en français bascule **sur place** (`RenameTable`,
-    `RenameColumn` et le libellé, dans **un seul lot**, tout ou rien : jamais une table de plus, jamais une ligne copiée) ; elle **lit
+    `RenameColumn` et le libellé, dans **un seul lot**, tout ou rien : jamais une table de plus, jamais une ligne copiée) **par la fenêtre commune du kit**
+    (`NamesUpdate.run({ port, plan, appName })`, kit 0.29.1, `css/names-update.css` à charger : bloquante, ouverte pour qui est propriétaire seulement, « quelques secondes »,
+    « vos données ne changent pas », vérifiée avant et après ; jamais en silence ; l'app lui donne son lot `plan(schema)` recalculé d'après les noms du document et un `port`
+    dont `isOwner` est `contexte.role.proprietaire` dans GFS, la preuve du moteur de partage seule ; faits vérifiés 162) ; elle **lit
     les deux jeux de noms dans la version même qui renomme** (décision du porteur, 25/11 : les gens sont toujours sur le dernier lien, pas de sortie en deux temps), ne crée jamais la table
     anglaise quand la française existe, ne renomme pas un document qui porte déjà les deux jeux, et annonce ses noms dans « Changements qui
     touchent GFS » **avant** de renommer (contrats 2.4, point 6 : `noms` du manifeste). Dans GFS, le courtier ne laisse renommer que l'app qui déclare la capacité

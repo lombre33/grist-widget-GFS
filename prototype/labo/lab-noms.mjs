@@ -32,3 +32,51 @@ export async function appBatch(run, registry) {
   return registry.planRenames(names, id => labels.get(id) || null);
 }
 
+
+// ----- Ce que l'app envoie et lit, depuis son cadre isolé, par le courtier de GFS (les essais du courtier et de la fenêtre de mise à jour partagent ces gestes).
+// Ce que l'app envoie : `try` / `catch` dans son cadre, la réponse du courtier telle quelle.
+export const frameSend = (frame, actions) => frame.evaluate(async list => {
+  try { await grist.docApi.applyUserActions(list); return { ok: true }; } catch (error) { return { ok: false, error: String((error && error.message) || error).slice(0, 220) }; }
+}, actions);
+export const frameTables = frame => frame.evaluate(async () => (await grist.docApi.fetchTable('_grist_Tables')).tableId.filter(id => !/^_?grist/i.test(id)).sort());
+export const frameRows = (frame, table) => frame.evaluate(async id => {
+  const data = await grist.docApi.fetchTable(id);
+  return data.id.map((rowId, i) => ({ id: rowId, ...Object.fromEntries(Object.keys(data).filter(key => key !== 'id' && key !== 'manualSort').map(key => [key, data[key][i]])) }));
+}, table);
+
+// Un document aux noms d'avant : les tables anglaises que l'app vient de créer sont retirées, celles d'avant posées avec quelques lignes (cinq modèles, deux préférences). `extra` : des
+// colonnes de plus sur la table des modèles (`id_sync` pour une table que Sync+ utilise). Rend ce que chaque envoi a répondu et les lignes posées.
+export async function legacyDocument(frame, extra = []) {
+  const english = ['Publipostage_Templates', 'Publipostage_TemplatePreferences', 'Publipostage_TableLinks'];
+  const gone = await frameSend(frame, english.map(name => ['RemoveTable', name]));
+  const columns = ['Nom', 'Contenu', 'Jeton', 'TypeModele', 'DateModif', 'ModifiePar', 'NomFichierPDF', ...extra].map(id => ({ id, type: 'Text' }));
+  const made = await frameSend(frame, [
+    ['AddTable', 'Publipostage_Modeles', columns],
+    ['AddTable', 'Publipostage_PreferencesModeles', [{ id: 'Utilisateur', type: 'Text' }, { id: 'ModeleId', type: 'Int' }, { id: 'Epingle', type: 'Bool' }, { id: 'Dossier', type: 'Text' }]],
+  ]);
+  const added = await frameSend(frame, [
+    ['BulkAddRecord', 'Publipostage_Modeles', [null, null, null, null, null], {
+      Nom: ['Facture', 'Devis', 'Contrat', 'Lettre', 'Bon'], Contenu: ['<p>a</p>', '<p>b</p>', '<p>c</p>', '<p>d</p>', '<p>e</p>'], Jeton: ['t1', 't2', 't3', 't4', 't5'],
+      TypeModele: ['document', 'document', 'grille', 'document', 'presentation'] }],
+    ['BulkAddRecord', 'Publipostage_PreferencesModeles', [null, null], { Utilisateur: ['a@x.test', 'b@x.test'], ModeleId: [1, 2], Epingle: [true, false], Dossier: ['', 'Clients'] }],
+  ]);
+  return { gone, made, added, before: { modeles: await frameRows(frame, 'Publipostage_Modeles'), prefs: await frameRows(frame, 'Publipostage_PreferencesModeles') } };
+}
+
+// Le lot que l'app calcule DANS son cadre, d'après ce qu'elle lit du document (les métadonnées de Grist) : son `planRenames`, les deux interrupteurs allumés. À donner à `frame.evaluate`.
+export async function planInFrame() {
+  const tables = await grist.docApi.fetchTable('_grist_Tables');
+  const columns = await grist.docApi.fetchTable('_grist_Tables_column');
+  const byRef = new Map(tables.id.map((id, i) => [id, tables.tableId[i]]));
+  const labels = new Map();
+  columns.id.forEach((id, i) => {
+    const table = byRef.get(columns.parentId[i]);
+    if (!table) return;
+    if (!labels.has(table)) labels.set(table, new Map());
+    labels.get(table).set(columns.colId[i], columns.label[i]);
+  });
+  SchemaColumns.setEnglishOnDisk(true);
+  SchemaColumns.setRenameDocuments(true);
+  const batch = SchemaColumns.planRenames(new Set(tables.tableId), id => labels.get(id) || null);
+  return batch && batch.actions ? batch.actions : batch;
+}

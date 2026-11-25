@@ -97,5 +97,8 @@ export const newRecord = (name, table, config) => ({ Nom: text(name), Table: tex
 export const addAction = (tableId, record) => ['AddRecord', tableId, null, record];
 export const updateAction = (tableId, row, record) => ['UpdateRecord', tableId, row, record];
 // L'action qui ajoute une colonne vide (retour du porteur, 25/11 : « le widget propose de la créer ») ; `type` : un type de Grist (« Text », « Ref:Personnes
-// »…).
-export const addColumnAction = (tableId, name, type) => ['AddColumn', tableId, text(name), { type, isFormula: false, label: text(name) }];
+// »…). `shown` : le numéro de la colonne que montre une référence (Grist écrit le nom de la personne plutôt que son numéro), 0 sans.
+export const addColumnAction = (tableId, name, type, shown = 0) => ['AddColumn', tableId, text(name),
+  { type, isFormula: false, label: text(name), ...(shown ? { visibleCol: shown } : {}) }];
+// L'action qui range dans une référence la formule de la colonne qu'elle montre (`$Assistant.Nom`) : la colonne d'aide que Grist lit pour l'écran.
+export const displayAction = (tableId, colRef, colId, shown) => ['SetDisplayFormula', tableId, null, colRef, `$${colId}.${shown}`];

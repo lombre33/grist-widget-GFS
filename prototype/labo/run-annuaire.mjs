@@ -1,11 +1,12 @@
 // Le module Annuaire (demande du porteur du 25/11 ; style des maquettes de l'Université Paris Cité), dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier :
 // 1. le bouton de l'en-tête de l'explorateur ouvre la fenêtre, qui dit « aucun annuaire » sans rien écrire ;
-// 2. « Nouvel annuaire » : le réglage en trois onglets (Personnes : nom et adresse par défaut ; Hiérarchie : l'option, les niveaux créés par leur nom, leur place puis leur colonne, par
-//    chemin « Structure › Pôle » ; Champs de la fiche : le responsable direct, les champs et leurs interrupteurs Liste / Filtre), la question de la table `GFS_Annuaires`, puis la
-//    lecture : la hiérarchie, la liste, la fiche ;
+// 2. « Nouvel annuaire » : le réglage en quatre onglets (Personnes : nom et adresse par défaut, les écritures du nom ; Hiérarchie : l'option, les niveaux créés par leur nom, leur place puis leur
+//    colonne, suivie pas à pas (avec retour arrière) ou trouvée d'un coup dans la table liée (« Structure › Direction »), avec ses exemples en direct ; Relations : le responsable direct,
+//    l'assistant·e, le référent·e ; Champs de la fiche : les champs, un chemin dans une table liée, une colonne créée (le seul geste qui écrit dans le document, avec l'accord de la
+//    personne) et leurs interrupteurs Liste / Filtre), la question de la table `GFS_Annuaires`, puis la lecture : la hiérarchie, la liste, la fiche en sections, les relations ;
 // 3. la recherche, les filtres, les cartes de contact ;
 // 4. l'organigramme des structures et celui des responsables : les cartes, le repli d'une branche, le zoom, « Tout voir », la fiche d'une structure.
-// Aucune écriture dans la table des personnes. LAB_LANG=fr|en, LAB_SCHEME=light|dark.
+// Seule la colonne créée à la demande s'écrit dans la table des personnes. LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { say, check, contrastAudit } from './lab-common.mjs';
 import { seedAnnuaire } from './jeu-annuaire.mjs';
@@ -16,9 +17,9 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const run = `annuaire-${lang}-${scheme}`;
 const T = lang === 'fr'
   ? { open: 'Annuaire', none: 'Aucun annuaire dans ce document', create: 'Nouvel annuaire', name: 'Annuaire de l’établissement', pole: 'Pôle', direction: 'Direction', service: 'Service',
-    structures: 'Structures', managers: 'Responsables', fit: 'Tout voir' }
+    structures: 'Structures', managers: 'Responsables', fit: 'Tout voir', assistant: 'Assistant·e', referent: 'Référent·e', contact: 'Coordonnées', attach: 'Rattachement', info: 'Informations' }
   : { open: 'Directory', none: 'No directory in this document', create: 'New directory', name: 'Staff directory', pole: 'Pole', direction: 'Direction', service: 'Service',
-    structures: 'Structures', managers: 'Managers', fit: 'Fit to view' };
+    structures: 'Structures', managers: 'Managers', fit: 'Fit to view', assistant: 'Assistant', referent: 'Referent', contact: 'Contact', attach: 'Placement', info: 'Details' };
 const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
 const problems = [];
@@ -30,8 +31,14 @@ await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', 
 await closeModules(page, frame);
 await seedAnnuaire(frame);
 await page.waitForTimeout(500);
+await lab.forgetActions(); // à partir d'ici, ce que le moteur reçoit est ce que le module écrit
 const win = frame.locator('.mod.an');
-const pick = async text => { await frame.locator('.wk-item', { hasText: text }).first().click(); await page.waitForTimeout(150); };
+// Une ligne de la liste : par sa clé (« use:Poste », « deep:Structure › Direction ») ; les lignes montrent aussi des exemples (« Cheffe du service »), un texte seul se tromperait de ligne.
+const pick = async text => {
+  const exact = frame.locator(`[data-fk="${text.includes(' › ') ? 'pick-deep:' : 'pick-use:'}${text}"]`);
+  await ((await exact.count()) ? exact : frame.locator('.wk-item', { hasText: text })).first().click();
+  await page.waitForTimeout(150);
+};
 const settleUi = () => page.waitForTimeout(250);
 const inside = async locator => { const box = await locator.boundingBox(); const panel = await (await frame.frameElement()).boundingBox(); return box && box.x >= panel.x - 1 && box.y >= panel.y - 1 && box.x + box.width <= panel.x + panel.width + 1 && box.y + box.height <= panel.y + panel.height + 1; };
 
@@ -66,7 +73,13 @@ await setup.locator('[data-fk="pc:email"]').click();
 await pick('Email');
 check('par défaut : le nom et l’adresse seulement (ni prénom ni téléphone ni poste)', (await setup.locator('[data-fk="pc:first"], [data-fk="pc:phone"], [data-fk="pc:title"]').count()) === 0);
 await setup.locator('[data-fk="toggle-split"]').click();
-check('« séparer le nom et le prénom » déplie le prénom et l’ordre', (await setup.locator('[data-fk="pc:first"]').count()) === 1 && (await setup.locator('.an-seg-b').count()) === 2);
+check('« séparer le nom et le prénom » déplie le prénom, les trois écritures du nom, les capitales et l’aperçu', (await setup.locator('[data-fk="pc:first"]').count()) === 1
+  && (await setup.locator('.an-seg-b').count()) === 3 && (await setup.locator('[data-fk="upper-toggle"]').count()) === 1 && (await setup.locator('[data-fk="name-example"]').count()) === 1);
+await setup.locator('[data-fk="order:last-comma"]').click();
+await setup.locator('[data-fk="upper-toggle"]').click();
+check('l’aperçu suit l’écriture choisie (« DURAND, Camille » avant que le prénom ait sa colonne)', (await setup.locator('[data-fk="name-example"]').innerText()).includes('DURAND, Camille'),
+  await setup.locator('[data-fk="name-example"]').innerText());
+await lab.shotPanel(run, '3a2-ecriture-du-nom');
 await setup.locator('[data-fk="toggle-split"]').click();
 check('refermer le volet oublie le prénom', (await setup.locator('[data-fk="pc:first"]').count()) === 0);
 await setup.locator('[data-fk="add-phone"]').click();
@@ -80,17 +93,42 @@ check('« postes et hiérarchie » est éteinte au départ, ce qu’elle débloq
 await lab.shotPanel(run, '3b-hierarchie-eteinte');
 await setup.locator('[data-fk="hier-toggle"]').click();
 check('allumée, les niveaux se débloquent et l’onglet réclame un niveau', (await setup.locator('.an-hier-body').getAttribute('inert')) === null && (await setup.locator('.an-tab-dot').count()) === 1);
-// Un niveau : d'abord son nom (et sa place), puis sa colonne ; « Structure › Pole » suit une référence.
-const level = async (steps, label) => {
+// Un niveau : d'abord son nom (et sa place), puis sa colonne : suivie pas à pas (avec retour arrière) ou trouvée d'un coup dans la table liée.
+const level = async (label, choose) => {
   await setup.locator('[data-fk="level-add"]').click();
   await frame.locator('[data-fk="nl-name"]').waitFor({ state: 'visible' });
   await page.keyboard.type(label);
   await frame.locator('[data-fk="nl-ok"]').click();
-  for (const step of steps) await pick(step);
+  await frame.locator('.mod.pk').waitFor({ state: 'visible' });
+  await choose();
 };
-await level(['Structure ›', 'Pole'], T.pole);
-await level(['Structure ›', 'Direction'], T.direction);
-await level(['Service'], T.service);
+await level(T.pole, async () => {
+  await page.waitForTimeout(700);
+  check('le choix de la colonne montre des exemples en direct, tirés d’une fiche de la table', (await frame.locator('.wk-example').innerText()).length > 10 && (await frame.locator('.wk-sample').count()) >= 3,
+    [await frame.locator('.wk-example').innerText(), await frame.locator('.wk-sample').allInnerTexts()]);
+  check('la création d’une colonne est la première ligne', (await frame.locator('.wk-item').first().getAttribute('data-fk')) === 'pick-new:');
+  await lab.shotPanel(run, '3b2-choix-colonne');
+  await frame.locator('[data-fk="pick-alt-use:Structure"]').click();
+  await settleUi();
+  check('suivre « Structure » : le fil dit où l’on est, « Retour » est là', (await frame.locator('.wk-crumb').allInnerTexts()).join('|') === 'Personnes|Structure' && (await frame.locator('[data-fk="pick-back"]').count()) === 1,
+    await frame.locator('.wk-crumb').allInnerTexts());
+  await lab.shotPanel(run, '3b3-suivre-une-reference');
+  await frame.locator('[data-fk="pick-back"]').click();
+  await settleUi();
+  check('« Retour » revient à la table des personnes', (await frame.locator('.wk-crumb').allInnerTexts()).join('|') === 'Personnes');
+  await frame.locator('[data-fk="pick-alt-use:Structure"]').click();
+  await settleUi();
+  await pick('Pole');
+});
+await level(T.direction, async () => {
+  await page.keyboard.type('direction');
+  await settleUi();
+  check('la recherche trouve « Structure › Direction » d’un coup, dans la table liée', (await frame.locator('.wk-item', { hasText: 'Structure › Direction' }).count()) === 1,
+    await frame.locator('.wk-name').allInnerTexts());
+  await lab.shotPanel(run, '3b4-recherche-table-liee');
+  await pick('Structure › Direction');
+});
+await level(T.service, async () => { await pick('Service'); });
 check('chaque niveau garde son nom et sa colonne (chemin « Structure › Pole »)', (await setup.locator('.an-lv-path').allInnerTexts()).join('|').includes('Structure')
   && (await setup.locator('.an-lv-name').evaluateAll(nodes => nodes.map(node => node.value))).join('|') === [T.pole, T.direction, T.service].join('|'),
 await setup.locator('.an-lv-path').allInnerTexts());
@@ -100,15 +138,67 @@ await setup.locator('[data-fk="toggle-more"]').click();
 await setup.locator('[data-fk="pc:lead"]').click();
 await pick('Chef');
 await lab.shotPanel(run, '3c-hierarchie');
-// Onglet « Champs de la fiche » : le responsable direct (suggéré), puis des champs libres avec leur « Liste » et leur « Filtre ».
-await setup.locator('[data-fk="tab:fields"]').click();
-await setup.locator('[data-fk="sug-manager"]').click();
+// Onglet « Relations » : le responsable direct, puis deux modèles prêts (assistant·e, référent·e) : leurs colonnes sont celles qui désignent une personne.
+await setup.locator('[data-fk="tab:relations"]').click();
+await setup.locator('[data-fk="rt:manager"]').click();
 await pick('Responsable');
-check('le responsable direct a sa ligne, verrouillée', (await setup.locator('.an-frow.is-locked').count()) === 2 && (await setup.locator('.an-frow.is-locked', { hasText: 'Responsable' }).count()) === 1);
+await setup.locator('[data-fk="rt:assistant"]').click();
+check('pour une relation, la liste ne propose que les colonnes qui désignent une personne (pas « Nom », pas « Poste »)', (await frame.locator('.wk-item:not([data-fk="pick-new:"]) .wk-name').allInnerTexts()).sort().join('|') === 'Assistant|Referents',
+  await frame.locator('.wk-name').allInnerTexts());
+await pick('Assistant');
+await setup.locator('[data-fk="rt:referent"]').click();
+await pick('Referents');
+check('les relations : le responsable direct, l’assistant·e et le référent·e ont chacun leur carte', (await setup.locator('.an-relrow').count()) === 3 && (await setup.locator('.an-tab-dot').count()) === 0,
+  await setup.locator('.an-relrow').allInnerTexts());
+await lab.shotPanel(run, '4a-relations');
+// Une relation sans colonne : « Suppléant·e » demande une colonne de personne, que le module crée (avec l'accord) et que Grist montre par le nom, pas par le numéro.
+await setup.locator('[data-fk="rt:substitute"]').click();
+await frame.locator('[data-fk="pick-new:"]').click();
+await frame.locator('[data-fk="nc-name"]').waitFor({ state: 'visible' });
+await page.keyboard.type('Suppleant');
+check('une colonne de relation se crée comme une référence à une personne', (await frame.locator('[data-fk="nc-type:Ref:Personnes"]').getAttribute('aria-pressed')) === 'true');
+await page.keyboard.press('Enter');
+await frame.locator('.mod.an-nl').waitFor({ state: 'detached', timeout: 15000 });
+await settleUi();
+const shownBy = await frame.evaluate(async () => {
+  const meta = await grist.docApi.fetchTable('_grist_Tables_column');
+  const tables = await grist.docApi.fetchTable('_grist_Tables');
+  const parent = tables.id[tables.tableId.indexOf('Personnes')];
+  const at = meta.colId.findIndex((id, i) => id === 'Suppleant' && meta.parentId[i] === parent);
+  const nom = meta.id.find((id, i) => meta.colId[i] === 'Nom' && meta.parentId[i] === parent);
+  if (at < 0) return null;
+  const helper = meta.displayCol[at] ? meta.colId[meta.id.indexOf(meta.displayCol[at])] : '';
+  const cells = helper ? (await grist.docApi.fetchTable('Personnes'))[helper] : null;
+  return { type: meta.type[at], shownIsName: meta.visibleCol[at] === nom, helper, formula: helper ? meta.formula[meta.id.indexOf(meta.displayCol[at])] : '', cells: cells && cells.length };
+});
+check('Grist montre le nom de la personne (colonne « Nom » + formule d’affichage), pas son numéro', Boolean(shownBy) && shownBy.type === 'Ref:Personnes' && shownBy.shownIsName
+  && /^gristHelper_Display/.test(shownBy.helper) && shownBy.formula === '$Suppleant.Nom', shownBy);
+check('la relation « Suppléant·e » a sa carte, sans point orange', (await setup.locator('.an-relrow').count()) === 4 && (await setup.locator('.an-tab-dot').count()) === 0, await setup.locator('.an-relrow').count());
+// Onglet « Champs de la fiche » : des colonnes de la table, une colonne de la table liée (« Structure › Niveau ») et une colonne créée.
+await setup.locator('[data-fk="tab:fields"]').click();
 for (const field of ['Contrat', 'Competences', 'Teletravail', 'Arrivee']) {
   await setup.locator('[data-fk="field-add"]').click();
   await pick(field);
 }
+await setup.locator('[data-fk="field-add"]').click();
+await page.keyboard.type('niveau');
+await settleUi();
+await pick('Structure › Niveau');
+check('un champ peut venir d’une table liée : « Structure › Niveau »', (await setup.locator('.an-frow:not(.is-head) .an-f-name', { hasText: 'Structure › Niveau' }).count()) === 1,
+  await setup.locator('.an-f-name').allInnerTexts());
+check('avant la création, la colonne « Matricule » n’existe pas dans le document', !(await frame.evaluate(() => grist.docApi.fetchTable('Personnes'))).Matricule);
+await setup.locator('[data-fk="field-add"]').click();
+await frame.locator('[data-fk="pick-new:"]').click();
+await frame.locator('[data-fk="nc-name"]').waitFor({ state: 'visible' });
+await page.keyboard.type('Matricule');
+await lab.shotPanel(run, '4b-creer-une-colonne');
+check('la fenêtre dit ce qui va s’écrire, sans rien avoir écrit encore', (await frame.locator('.an-nl').innerText()).includes('Personnes') && !(await frame.evaluate(() => grist.docApi.fetchTable('Personnes'))).Matricule);
+await page.keyboard.press('Enter');
+await frame.locator('.mod.an-nl').waitFor({ state: 'detached', timeout: 15000 });
+await settleUi();
+const made = await frame.evaluate(async () => { const meta = await grist.docApi.fetchTable('_grist_Tables_column'); const at = meta.colId.indexOf('Matricule'); return at < 0 ? null : { type: meta.type[at], id: meta.colId[at] }; });
+check('Grist a reçu la colonne « Matricule » (texte), vide', Boolean(made) && made.type === 'Text', made);
+check('la colonne créée est un champ de la fiche', (await setup.locator('.an-frow:not(.is-head) .an-f-name', { hasText: 'Matricule' }).count()) === 1);
 await lab.shotPanel(run, '4-champs');
 const noFilter = await setup.locator('.an-frow:not(.is-head):not(.is-locked)').evaluateAll(rows => rows.map(row => [row.innerText.trim(), row.querySelector('[data-act="fld-filter"]').getAttribute('aria-disabled')]));
 check('un champ qui ne se prête pas à un filtre garde son interrupteur, grisé (la date)', noFilter.some(([text, disabled]) => text.includes('Arrivee') && disabled === 'true')
@@ -136,6 +226,12 @@ await settleUi();
 check('la fiche s’ouvre à droite avec l’adresse et les champs', (await frame.locator('.an-side').isVisible()) && (await frame.locator('.an-side').innerText()).includes('camille.durand@exemple.fr')
   && (await frame.locator('.an-side').innerText()).includes('Budget'), await frame.locator('.an-side').innerText());
 check('le téléphone de la fiche est un lien d’appel (tel:)', (await frame.locator('.an-side a[href^="tel:"]').first().getAttribute('href')) === 'tel:0102030411');
+check('la fiche est en sections : Coordonnées, Rattachement (le découpage hiérarchique), Informations', (await frame.locator('.an-side .an-fs-h').allInnerTexts()).map(text => text.toLowerCase()).join('|') === [T.contact, T.attach, T.info].map(text => text.toLowerCase()).join('|'),
+  await frame.locator('.an-side .an-fs-h').allInnerTexts());
+check('le rattachement de Camille : Pôle › Direction › Service puis le poste, un cran plus bas chaque fois', (await frame.locator('.an-side .an-hp-v').allInnerTexts()).join('|') === 'Pôle Ressources|Direction des finances|Budget|Cheffe du service Budget',
+  await frame.locator('.an-side .an-hp-v').allInnerTexts());
+check('la fiche dit ses relations : les référents de Camille, un tiret pour l’assistant·e qu’elle n’a pas', (await frame.locator('.an-side .an-fr', { hasText: T.referent }).innerText()).includes('Emma Rolland')
+  && (await frame.locator('.an-side .an-fr', { hasText: T.assistant }).first().locator('.an-empty').count()) === 1);
 await lab.shotPanel(run, '7-fiche');
 await frame.locator('.an-side [data-act="copy"]').first().click();
 await settleUi();
@@ -201,8 +297,12 @@ await page.keyboard.press('Escape');
 await win.waitFor({ state: 'detached' });
 check('Échap ferme la fenêtre et rend le clavier', true);
 
-// Aucune écriture dans la table des personnes.
+// Ce que le module a écrit : la colonne créée à la demande, la table de ses annuaires et leurs lignes ; rien dans les tables de la personne, ni dans les structures.
 const actions = await lab.actions();
-check('rien n’a été écrit dans Personnes ni Structures depuis l’ouverture', !actions.some(action => /Personnes|Structures/.test(action) && !/^(AddTable|BulkAddRecord|UpdateRecord)/.test(action)) || true);
+check('deux colonnes ajoutées (« Suppleant » et « Matricule », avec l’accord de la personne), la table des annuaires et sa ligne, rien d’autre',
+  actions.filter(action => /^AddColumn Personnes/.test(action)).length === 2 && actions.some(action => /^AddTable GFS_Annuaires/.test(action))
+  && actions.filter(action => /^SetDisplayFormula Personnes/.test(action)).length === 1
+  && !actions.some(action => /^(Update|BulkUpdate|Remove|BulkRemove|AddRecord|BulkAddRecord|RenameColumn|ModifyColumn|RemoveColumn).* (Personnes|Structures)/.test(action))
+  && !actions.some(action => / Structures/.test(action)), actions);
 check('aucun avertissement ni erreur de GFS ou de politique de sécurité', problems.length === 0, problems);
 await lab.browser.close();

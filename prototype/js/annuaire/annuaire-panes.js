@@ -84,41 +84,79 @@ function peopleLinks(list, key, t) {
   list.length > first.length ? h('span', { class: 'an-pill' }, t('an.rel.more', { n: list.length - first.length })) : null);
 }
 
-// Les lignes de la fiche que les relations donnent : ce que la personne désigne (« Assistant·e : Camille »), puis ce qui la désigne (« Assistant·e de : … »),
-// seulement quand la relation a un sens inverse. `ctx.relations` et `ctx.index` : voir js/annuaire/annuaire-relations.js.
+// Les lignes de la fiche que les relations donnent : ce que la personne désigne (« Assistant·e : Camille », un tiret quand elle n'a personne : la ligne reste),
+// puis ce qui la désigne (« Assistant·e de : … »), seulement quand la relation a un sens inverse et que quelqu'un la désigne. `ctx.relations` et `ctx.index` :
+// voir js/annuaire/annuaire-relations.js.
 function relationRows(person, ctx) {
   const { t, relations = [], index } = ctx;
   if (!index) return [];
   return relations.flatMap(rel => {
     const to = index.direct(person, rel);
     const from = rel.inverse ? index.inverse(person, rel) : [];
-    return [to.length ? ficheRow(rel.label, peopleLinks(to, `${rel.key}>`, t), '', t) : null,
+    return [ficheRow(rel.label, to.length ? peopleLinks(to, `${rel.key}>`, t) : emptyValue(t), '', t),
       from.length ? ficheRow(rel.inverse, peopleLinks(from, `${rel.key}<`, t), '', t) : null].filter(Boolean);
   });
 }
 
-// La fiche d'une personne. `ctx` : { t, locale, levels, config, genres: { colonne: genre }, relations, index }.
-export function fiche(person, ctx) {
-  const { t, config } = ctx;
-  const levels = person.levels.map((value, i) => ({ value, label: levelLabel(ctx.levels[i]) })).filter(each => each.value);
+// Une section de la fiche : son titre en petites capitales, puis son contenu (retour du porteur, 25/11 : la fiche de sa carte du suivi de projet).
+const section = (title, ...content) => h('section', { class: 'an-fs' }, h('h4', { class: 'an-fs-h' }, title), ...content);
+
+// Ce qu'une ligne dit quand la personne n'a rien : un tiret (la ligne reste : on voit que la donnée manque).
+const emptyValue = t => h('span', { class: 'an-empty', title: t('an.fiche.empty') }, '—');
+
+// Le rattachement de la personne : ses niveaux du plus haut au plus bas, puis son poste, chacun un cran sous le précédent (un trait en équerre les lie). Rien
+// quand la personne n'a aucun niveau.
+function attachment(person, ctx) {
+  const { t } = ctx;
+  const steps = person.levels.map((value, i) => ({ value, label: levelLabel(ctx.levels[i]) })).filter(each => each.value);
+  if (!steps.length) return null;
+  if (person.title) steps.push({ value: person.title, label: t('an.fiche.post') });
+  return h('ol', { class: 'an-hp', 'aria-label': t('an.fiche.attach') }, ...steps.map((step, depth) => h('li', { class: `an-hp-step${depth ? ' is-sub' : ''}`,
+    vars: { '--d': depth } }, h('span', { class: 'an-hp-k' }, step.label), h('span', { class: 'an-hp-v' }, step.value))));
+}
+
+// Les lignes de coordonnées : l'adresse, le numéro (un lien d'appel), puis les relations (ce que la personne désigne, même vide : un tiret).
+function contactRows(person, ctx) {
+  const { t } = ctx;
   const rows = [];
   if (person.email) rows.push(ficheRow(t('an.mail'), h('a', { class: 'an-link', href: `mailto:${person.email}`, target: '_blank', rel: 'noopener' },
-    person.email), person.email, t));
+    person.email),
+    person.email, t));
   const call = telHref(person.phone);
   if (person.phone) rows.push(ficheRow(t('an.phone'), call ? h('a', { class: 'an-link', href: call, title: t('an.call', { what: person.phone }),
     target: '_blank', rel: 'noopener' }, person.phone) : person.phone, person.phone, t));
   rows.push(...relationRows(person, ctx));
-  for (const field of config.fields) {
+  return rows;
+}
+
+// Les champs que le réglage met dans la fiche, en pastilles ; un champ vide garde sa ligne (un tiret).
+function fieldRows(person, ctx) {
+  const { t, config } = ctx;
+  return config.fields.map(field => {
     const values = (person.fields[field.col] || []).map(value => shown(value, ctx.genres[field.col], ctx));
-    if (values.length) rows.push(ficheRow(fieldLabel(field), h('span', { class: 'an-fr-vals' }, ...values.map(value => h('span', { class: 'an-pill' }, value))),
-      '',
-      t));
-  }
+    return ficheRow(fieldLabel(field), values.length ? h('span', { class: 'an-fr-vals' }, ...values.map(value => h('span', { class: 'an-pill' }, value))) :
+      emptyValue(t),
+      '', t);
+  });
+}
+
+// La fiche d'une personne, en sections comme la carte du suivi de projet du porteur : l'en-tête (avatar, nom, poste, « Écrire »), « Coordonnées »,
+// « Rattachement » (le découpage hiérarchique), « Informations » (les champs). `ctx` : { t, locale, levels, config, genres: { colonne: genre }, relations,
+// index }.
+export function fiche(person, ctx) {
+  const { t } = ctx;
+  const contact = contactRows(person, ctx);
+  const fields = fieldRows(person, ctx);
+  const path = attachment(person, ctx);
+  const write = person.email ? h('div', { class: 'an-fiche-acts' }, h('a', { class: 'btn sm an-write', href: `mailto:${person.email}`, target: '_blank',
+    rel: 'noopener',
+    title: t('an.writeTo', { name: person.name }), dataset: { fk: 'write' } }, icon('mail'), t('an.write'))) : null;
   return h('div', { class: 'an-fiche-card' },
     h('div', { class: 'an-fiche-head' }, h('span', { class: 'an-av an-av-xl' }, who(person)),
-      h('div', { class: 'an-fiche-id' }, h('h3', null, person.name), person.title ? h('p', { class: 'an-pe-sub' }, person.title) : null)),
-    levels.length ? h('div', { class: 'an-fiche-levels' }, ...levels.map(each => h('span', { class: 'an-pill', title: each.label }, each.value))) : null,
-    rows.length ? h('dl', { class: 'an-fiche-rows' }, ...rows) : h('p', { class: 'an-note' }, t('an.fiche.bare')));
+      h('div', { class: 'an-fiche-id' }, h('h3', null, person.name), person.title ? h('p', { class: 'an-pe-sub' }, person.title) : null)), write,
+    contact.length ? section(t('an.fiche.contact'), h('dl', { class: 'an-fiche-rows' }, ...contact)) : null, path ? section(t('an.fiche.attach'), path) : null,
+    fields.length ? section(t('an.fiche.fields'), h('dl', { class: 'an-fiche-rows' }, ...fields)) : null,
+    contact.length || path || fields.length ? null : h('p', { class: 'an-note' }, t('an.fiche.bare')));
 }
 
 // La fiche d'une structure (un clic sur sa carte de l'organigramme) : son nom, son niveau, combien de personnes, qui en est responsable, et le moyen de voir

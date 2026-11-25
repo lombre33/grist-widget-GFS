@@ -369,9 +369,35 @@ async function fieldsProblems(page, t, note, { click, snap }, where) {
   if (dateFilter && !dateFilter.disabled) note('réglage', `${where} : le filtre d'un champ date n'est pas grisé`);
   const locked = state.switches.filter(sw => sw.fk && sw.fk.startsWith('lk-'));
   if (locked.some(sw => !sw.disabled)) note('réglage', `${where} : un interrupteur d'une ligne fixe n'est pas grisé`);
+  await fieldCreation(page, t, note, { click }, where);
   await moveProblems(t, note, { click, snap }, where);
   await sugProblems(t, note, { click, snap }, where, state);
   await contrast(page, note, `${where}, champs`);
+}
+
+// « Créer une colonne » d'un champ propose six types : ils tiennent tous dans la fenêtre (à la ligne quand la place manque), chacun assez large pour se lire.
+// Rien ne se crée : Échap renonce, puis Échap ferme la liste.
+async function fieldCreation(page, t, note, { click }, where) {
+  await click('[data-fk="field-add"]');
+  await delay(300);
+  await click('[data-fk="pick-new:"]');
+  await delay(200);
+  const open = await page.run(() => {
+    const modal = document.querySelector('.mod.an-nl');
+    if (!modal) return null;
+    const box = node => { const b = node.getBoundingClientRect(); return { left: b.left, right: b.right, top: b.top, bottom: b.bottom, width: b.width }; };
+    return { body: box(modal.querySelector('.mod-body')), modal: box(modal), types: [...modal.querySelectorAll('[data-type]')].map(node => ({ type: node.dataset.type, text: node.textContent.trim(), ...box(node) })) };
+  });
+  if (!open) { note('réglage', `${where} : « ${t('an.new.item', { table: 'Personnes' })} » n'ouvre pas la fenêtre (champs)`); return; }
+  if (open.types.length !== 6) note('réglage', `${where} : la fenêtre propose ${open.types.length} types (6 attendus pour un champ)`);
+  for (const type of open.types) {
+    if (type.left < open.body.left - 1 || type.right > open.body.right + 1) note('hors de son cadre', `${where} : le type « ${type.text} » sort de la fenêtre « Créer une colonne » (${Math.round(type.right)} > ${Math.round(open.body.right)})`);
+  }
+  if (open.modal.bottom > (await page.run(() => window.innerHeight)) + 1) note('hors de la page', `${where} : la fenêtre « Créer une colonne » sort de la page par le bas`);
+  await page.press('Escape');
+  await delay(200);
+  await page.press('Escape');
+  await delay(200);
 }
 
 // Monter et descendre un champ : le premier passe en deuxième, puis revient.

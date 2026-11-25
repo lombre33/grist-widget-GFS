@@ -4,9 +4,9 @@
 // une ligne, peut demander à la personne de créer la table. Les gestes s'enchaînent l'un après l'autre.
 
 import { OwnTable, TableDeclined } from '../files/own-table.js';
-import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, annuairesOf, newRecord, addAction, updateAction, addColumnAction, writeConfig,
+import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, annuairesOf, newRecord, addAction, updateAction, addColumnAction, displayAction, writeConfig,
   effectiveConfig } from './annuaire-config.js';
-import { schemaOf, tablesNeeded } from './annuaire-schema.js';
+import { schemaOf, tablesNeeded, targetOf } from './annuaire-schema.js';
 import { buildPeople, buildTree } from './annuaire-model.js';
 
 export { TableDeclined };
@@ -73,12 +73,32 @@ export class AnnuaireStore {
 
   // Ajoute la colonne `name` (vide, du type `type` : « Text », « Ref:Personnes »…) à `table` : { id }. Grist choisit l'identifiant (il peut différer du nom) :
   // on le relit dans sa réponse. Le geste vient d'une fenêtre qui a dit ce qui s'écrit (js/annuaire/annuaire-setup-path.js).
-  addColumn(table, name, type) {
+  // Une référence montre la colonne `show` de sa table (le nom de la personne, pas son numéro : sans cela, la table montrerait des chiffres dans Grist) ; si ce
+  // réglage échoue, la colonne reste créée, avec ses numéros.
+  addColumn(table, name, type, show = '') {
     return this.#then(async () => {
-      const result = await this.#port.doc.applyUserActions([addColumnAction(table, name, type)]);
+      const target = targetOf(type);
+      const shown = target && show ? await this.#columnRef(target, show) : 0;
+      const result = await this.#port.doc.applyUserActions([addColumnAction(table, name, type, shown)]);
       const made = result && Array.isArray(result.retValues) ? result.retValues[0] : null;
-      return { id: made && typeof made.colId === 'string' && made.colId ? made.colId : String(name).trim() };
+      const id = made && typeof made.colId === 'string' && made.colId ? made.colId : String(name).trim();
+      if (shown && made && made.colRef) {
+        try { await this.#port.doc.applyUserActions([displayAction(table, made.colRef, id, show)]); }
+          catch (error) { console.warn('GFS : la colonne créée montre des numéros', error); }
+      }
+      return { id };
     });
+  }
+
+  // Le numéro (interne à Grist) d'une colonne d'une table : 0 quand on ne le trouve pas ou que la lecture est refusée.
+  async #columnRef(table, column) {
+    try {
+      const [tables, columns] = await Promise.all([this.#port.doc.fetchTable('_grist_Tables'), this.#port.doc.fetchTable('_grist_Tables_column')]);
+      const parent = tables.id[tables.tableId.indexOf(table)];
+      return columns.id.find((ref, i) => columns.parentId[i] === parent && columns.colId[i] === column) || 0;
+    } catch (error) {
+      return 0;
+    }
   }
 
   #then(task) {

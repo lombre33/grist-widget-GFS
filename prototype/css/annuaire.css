@@ -150,7 +150,20 @@
 /* La fiche : l'avatar, le nom, le poste, les niveaux en pastilles, puis une ligne par information. */
 .an-side { position: relative; padding: 0; }
 .an-side-x { position: absolute; top: 6px; right: 6px; }
-.an-fiche-card { display: flex; flex-direction: column; gap: 10px; padding: 14px 12px 12px; }
+.an-fiche-card { display: flex; flex-direction: column; gap: 10px; padding: 14px 12px 4px; }
+/* La fiche en sections (retour du porteur, 25/11 : le découpage hiérarchique, comme sa carte du suivi de projet) : un titre en petites capitales, un filet au-dessus. */
+.an-fiche-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.an-write { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.an-write .ic { width: 14px; height: 14px; }
+.an-fs { padding: 10px 0 12px; border-top: 1px solid var(--border); }
+.an-fs-h { margin: 0 0 8px; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.an-hp { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.an-hp-step { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 8px; min-width: 0; margin-left: calc(var(--d, 0) * 14px); }
+.an-hp-step.is-sub::before { content: ""; flex: none; align-self: center; width: 10px; height: 10px; margin: -6px -2px 0 0; border-bottom: 1.5px solid var(--border-strong);
+  border-left: 1.5px solid var(--border-strong); border-bottom-left-radius: 4px; }
+.an-hp-k { font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.an-hp-v { min-width: 0; font-size: max(13px, var(--fs-min)); font-weight: 600; overflow-wrap: anywhere; }
+.an-empty { color: var(--text-muted); }
 .an-fiche-head { display: flex; align-items: center; gap: 10px; padding-right: 26px; }
 .an-fiche-id { min-width: 0; }
 .an-fiche-id h3 { margin: 0; font-size: var(--fs-head); overflow-wrap: anywhere; }
@@ -311,6 +324,11 @@
 
 /* La fenêtre « Nouveau niveau » : le nom, puis la place parmi les niveaux (des repères en pointillés où il peut s'insérer ; celui qu'on a choisi est bleu). */
 .mod.an-nl { width: min(var(--win-m), 100%); }
+/* Les types d'une colonne à créer (jusqu'à six) : des boutons à passer à la ligne, chacun avec son cadre, plutôt qu'un bloc qui sortirait de la fenêtre. */
+.mod.an-nl .an-seg { display: flex; flex-wrap: wrap; gap: 6px; border: 0; background: transparent; overflow: visible; }
+.mod.an-nl .an-seg-b { border: 1px solid var(--border-strong); border-radius: var(--radius-btn); background: var(--surface); }
+.mod.an-nl .an-seg-b + .an-seg-b { border-left: 1px solid var(--border-strong); }
+.mod.an-nl .an-seg-b[aria-pressed="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); }
 .an-slots { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
 .an-slot { display: flex; align-items: center; gap: 8px; min-height: 22px; padding: 0; border: 0; background: transparent; color: var(--text-muted); font: inherit;
   font-size: max(11px, var(--fs-min)); cursor: pointer; }

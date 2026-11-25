@@ -41,17 +41,20 @@ export const SEED = {
     ['AddTable', 'Personnes', [{ id: 'Nom', type: 'Text' }, { id: 'Poste', type: 'Text' }, { id: 'Email', type: 'Text' }, { id: 'Tel', type: 'Text' },
       { id: 'Structure', type: 'Ref:Structures' }, { id: 'Contrat', type: 'Choice', widgetOptions: JSON.stringify({ choices: ['Titulaire', 'Contractuel', 'Contractuelle'] }) },
       { id: 'Competences', type: 'ChoiceList' }, { id: 'Teletravail', type: 'Bool' }, { id: 'Responsable', type: 'Ref:Personnes' }, { id: 'Chef', type: 'Bool' },
-      { id: 'Arrivee', type: 'Date' }, { id: 'Service', type: 'Text' }]],
+      { id: 'Arrivee', type: 'Date' }, { id: 'Service', type: 'Text' }, { id: 'Assistant', type: 'Ref:Personnes' }, { id: 'Referents', type: 'RefList:Personnes' }]],
   ],
   // Les références qui montrent la colonne « Nom » de leur table : [table, colonne, table visée].
-  visible: [['Structures', 'Pole', 'Structures'], ['Structures', 'Direction', 'Structures'], ['Personnes', 'Structure', 'Structures'], ['Personnes', 'Responsable', 'Personnes']],
+  visible: [['Structures', 'Pole', 'Structures'], ['Structures', 'Direction', 'Structures'], ['Personnes', 'Structure', 'Structures'], ['Personnes', 'Responsable', 'Personnes'],
+    ['Personnes', 'Assistant', 'Personnes'], ['Personnes', 'Referents', 'Personnes']],
   rows: [
     ['BulkAddRecord', 'Structures', STRUCTURES.map(() => null), { Nom: STRUCTURES.map(row => row[0]), Niveau: STRUCTURES.map(row => row[1]), Pole: STRUCTURES.map(row => row[2]),
       Direction: STRUCTURES.map(row => row[3]) }],
     ['BulkAddRecord', 'Personnes', PEOPLE.map(() => null), { Nom: PEOPLE.map(row => row[0]), Poste: PEOPLE.map(row => row[1]), Email: PEOPLE.map(row => row[2]),
       Tel: PEOPLE.map(row => row[3]), Structure: PEOPLE.map(row => row[4]), Contrat: PEOPLE.map(row => row[5]), Competences: PEOPLE.map(row => ['L', ...row[6]]),
       Teletravail: PEOPLE.map(row => row[7]), Responsable: PEOPLE.map(row => row[8]), Chef: PEOPLE.map(row => row[9]), Arrivee: PEOPLE.map(row => dayOf(row[10])),
-      Service: PEOPLE.map(row => row[11]) }],
+      Service: PEOPLE.map(row => row[11]),
+      // Les relations : Inès Marchand (5) est l'assistante d'Emma Rolland (2) et de Nathan Roussel (3) ; Camille Durand (4) a pour référents Emma et Nathan.
+      Assistant: PEOPLE.map((_, i) => ([1, 2].includes(i) ? 5 : 0)), Referents: PEOPLE.map((_, i) => (i === 3 ? ['L', 2, 3] : null)) }],
   ],
 };
 

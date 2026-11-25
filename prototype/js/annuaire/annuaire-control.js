@@ -144,7 +144,7 @@ export class AnnuaireControl {
   #setupTools(schema) {
     return { container: this.#o.container, inertTargets: this.#o.inertTargets, t: this.#o.t, schema,
       read: (draft, cache) => this.#store.read(draft, schema, cache),
-      fetch: name => this.#store.table(name), createColumn: (table, name, type) => this.#store.addColumn(table, name, type),
+      fetch: name => this.#store.table(name), createColumn: (table, name, type, show) => this.#store.addColumn(table, name, type, show),
         writeBlock: () => this.#o.writeBlock() };
   }
 

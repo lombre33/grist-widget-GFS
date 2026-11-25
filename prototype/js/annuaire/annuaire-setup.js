@@ -81,7 +81,7 @@ export class AnnuaireSetup {
   // Une colonne nouvelle dans `table` : Grist l'écrit (le nom réel peut changer : on le relit), le schéma du réglage la connaît aussitôt, la table se relira.
   async #createColumn(table, { name, type }) {
     if (!this.#o.createColumn) throw new Error('écriture indisponible');
-    const made = await this.#o.createColumn(table, name, type);
+    const made = await this.#o.createColumn(table, name, type, this.#draft.config.name);
     const col = { id: made.id, type, genre: genreOf(type), ref: targetOf(type), visible: '' };
     if (this.#o.schema[table]) this.#o.schema[table].columns.push(col);
     this.#cache.delete(table);

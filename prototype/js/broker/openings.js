@@ -7,6 +7,8 @@ import { acceptsFile, importOpening, templateOpening, openingKind, acceptsOpenin
 import { readOpening } from './reading.js';
 import { leaveApp, leaveQuestion } from './leave.js';
 import { FILES_APP } from '../files/gfs-files.js';
+import { ANNUAIRES_APP } from '../files/annuaire-files.js';
+import { openAnnuaire } from '../shell/annuaire-entry.js';
 import { fileKey } from '../explorer/explorer-model.js';
 import { ERR } from './filter.js';
 
@@ -25,6 +27,7 @@ export class Openings {
     const lock = c.lockOf(file);
     if (lock) { void c.unlock(lock); return Promise.resolve(false); }
     if (c.kept.has(file)) return this.#openKept(file);
+    if (file.app === ANNUAIRES_APP) return this.#openAnnuaire(file); // un annuaire : le module de GFS le montre, aucune app n'est ouverte
     if (!c.appById(file.app)) { c.notice(c.t('ex.notice.noApp')); return Promise.resolve(false); }
     return this.openIn(file.app, { fichier: { id: file.id, type: file.type }, type: file.type, dossier: c.explorer.state.path, raison: 'explorateur' },
       'ex.notice.open');
@@ -105,6 +108,12 @@ export class Openings {
     const app = c.appName(session.id);
     const where = () => (session !== c.session ? 'gone' : run === this.#leaveRun ? 'now' : 'moved');
     return leaveApp(session, reason, { offer: fault => c.ask(leaveQuestion({ t: c.t, app, fault })), where });
+  }
+
+  // Un annuaire du document (js/annuaire/) : sa fenêtre s'ouvre sur lui, par-dessus l'explorateur ; elle ne change pas l'app active.
+  async #openAnnuaire(file) {
+    await openAnnuaire(this.c, Number(file.id));
+    return true;
   }
 
   // Un fichier que GFS garde (contrats 5.4, point 8) : lu dans l'app qui sait le lire, une fois ses octets chargés ; l'app pas prête dit ce qui la débloque ;

@@ -90,14 +90,16 @@ export function runChecks(read, today = new Date()) {
   return { issues, counts, total: issues.length };
 }
 
-// Les lignes du tableau « Comparer » d'un doublon : une par information que l'annuaire lit (nom, poste, adresse, téléphone, niveaux, champs), avec la valeur
-// de chaque personne et `same` quand elles sont égales (une ligne qui ne dit rien de différent se lit d'un coup d'œil). `labels` : les mots des lignes fixes
-// ({ name, title, email, phone }).
-export function compareRows(people, config, labels) {
+// Les lignes du tableau « Comparer » d'un doublon : une par information que l'annuaire lit (nom, poste, adresse, téléphone, niveaux, champs), avec la valeur de
+// chaque personne et `same` quand elles sont égales (une ligne qui ne dit rien de différent se lit d'un coup d'œil). `labels` : les mots des lignes fixes ({
+// name, title, email, phone }). `format(colonne, valeur)` écrit une valeur de champ dans la langue de la personne (« Oui », une date lisible) ; sans lui, la
+// valeur brute.
+export function compareRows(people, config, labels, format = (col, value) => value) {
   const rows = [['name', labels.name, person => person.name], ['title', labels.title, person => person.title],
     ['email', labels.email, person => person.email], ['phone', labels.phone, person => person.phone],
     ...config.levels.map((level, i) => [`level:${i}`, level.label || level.path.at(-1), person => person.levels[i]]),
-    ...config.fields.map(field => [`field:${field.col}`, fieldLabel(field), person => (person.fields[field.col] || []).join(', ')])];
+    ...config.fields.map(field => [`field:${field.col}`, fieldLabel(field), person =>
+      (person.fields[field.col] || []).map(value => format(field.col, value)).join(', ')])];
   return rows.map(([key, label, of]) => {
     const values = people.map(person => String(of(person) || '').trim());
     return { key, label, values, same: values.every(value => lower(value) === lower(values[0])) };

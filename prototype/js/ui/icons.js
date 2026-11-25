@@ -64,6 +64,7 @@ const ICONS = {
   move: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 14h6M13 11l3 3-3 3"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/>',
   // Restaurer : la flèche qui revient en arrière (le fichier sort de la corbeille et reprend sa place).
+  refresh: '<path d="M20 11a8 8 0 0 0-14.7-3"/><path d="M4.5 4v4h4"/><path d="M4 13a8 8 0 0 0 14.7 3"/><path d="M19.5 20v-4h-4"/>',
   restore: '<path d="M3 4v5.5h5.5"/><path d="M3.8 15a8.5 8.5 0 1 0 2.2-8.2L3 9.5"/>',
   // Un modèle de départ (l'article « Depuis un modèle… » du menu « Nouveau ») : une page, son bandeau et ses deux blocs.
   template: '<rect x="3" y="4" width="18" height="5" rx="1.2"/><rect x="3" y="12" width="8" height="8" rx="1.2"/><rect x="14" y="12" width="7" height="8" rx="1.2"/>',

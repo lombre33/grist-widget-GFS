@@ -1,0 +1,41 @@
+// Les textes de la vue fusionnée « Tous mes annuaires » du module Annuaire (demande du porteur du 25/11, scène 11 de la maquette), en français (vouvoiement) et
+// en anglais dans le même lot. Ils rejoignent ceux du module par js/i18n/i18n-annuaire.js.
+
+export const ANNUAIRE_MERGE_STRINGS = Object.freeze({
+  fr: {
+    'an.merge.title': 'Tous mes annuaires',
+    'an.merge.name': 'Tous mes annuaires · {n}',
+    'an.merge.shown': 'Annuaires affichés',
+    'an.merge.origin': 'Annuaire',
+    'an.merge.path': 'Rattachement',
+    'an.merge.same': 'Une même adresse e-mail ne fait qu’une fiche',
+    'an.merge.joined': '{n} {n|réunie|réunies}',
+    'an.merge.one': 'Un seul annuaire…',
+    'an.merge.foot': '{n} {n|annuaire|annuaires}',
+    'an.merge.atLeast': 'Gardez au moins un annuaire affiché.',
+    'an.merge.skipped': 'Pas lu : {names}.',
+    'an.merge.noEdit': 'Modifiez la fiche dans son annuaire : cette liste en réunit plusieurs.',
+    'an.merge.noConfig': 'Choisissez d’abord un annuaire : chacun se règle à part.',
+    'an.merge.noOrg': 'L’organigramme se montre dans un seul annuaire : choisissez-en un.',
+    'an.merge.newSubTitle': 'Sous-annuaire de quel annuaire ?',
+    'an.merge.menu': 'Annuaires affichés : choisir lesquels réunir',
+  },
+  en: {
+    'an.merge.title': 'All my directories',
+    'an.merge.name': 'All my directories · {n}',
+    'an.merge.shown': 'Directories shown',
+    'an.merge.origin': 'Directory',
+    'an.merge.path': 'Placement',
+    'an.merge.same': 'One e-mail address makes one card',
+    'an.merge.joined': '{n} merged',
+    'an.merge.one': 'A single directory…',
+    'an.merge.foot': '{n} {n|directory|directories}',
+    'an.merge.atLeast': 'Keep at least one directory shown.',
+    'an.merge.skipped': 'Not read: {names}.',
+    'an.merge.noEdit': 'Edit the card in its own directory: this list gathers several.',
+    'an.merge.noConfig': 'Choose a directory first: each one has its own settings.',
+    'an.merge.noOrg': 'The org chart shows one directory at a time: choose one.',
+    'an.merge.newSubTitle': 'Sub-directory of which directory?',
+    'an.merge.menu': 'Directories shown: choose which to gather',
+  },
+});

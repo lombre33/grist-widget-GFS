@@ -61,7 +61,7 @@ test('config : les annuaires d\'une table lue ; une ligne sans nom ou sans table
   assert.deepEqual([found[0].row, found[0].name, found[0].table, found[0].parent], [1, 'Principal', 'Personnes', '']);
   assert.deepEqual(found[0].config.levels.map(level => level.label), ['Pôle', 'Direction', 'Service']);
   assert.deepEqual(annuairesOf(null), []);
-  assert.deepEqual(ANNUAIRES_COLUMNS.map(column => column.id), ['Nom', 'Table', 'Config', 'Parent']);
+  assert.deepEqual(ANNUAIRES_COLUMNS.map(column => column.id), ['Nom', 'Table', 'Config', 'Parent', 'Fiches']);
   assert.deepEqual(addAction('GFS_Annuaires', newRecord(' A ', 'Personnes', configFixture())).slice(0, 3), ['AddRecord', 'GFS_Annuaires', null]);
 });
 

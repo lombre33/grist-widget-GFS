@@ -25,7 +25,8 @@ export class CheckWindow {
 
   // opts : { container, inertTargets(), t, locale, name (l'annuaire), result (le contrôle : voir runChecks), config, person(ligne) -> la personne ou rien,
   //   canHide (« Ma
-  //   présence » est allumée), open(ligne), edit(ligne) -> Promise<vrai si la fiche est écrite>, hide(ligne) -> Promise<vrai si elle est masquée>,
+  //   présence » est allumée), format(colonne, valeur) -> le texte d'une valeur de champ, open(ligne), edit(ligne) -> Promise<vrai si la fiche est écrite>,
+  //   hide(ligne) -> Promise<vrai si elle est masquée>,
   //   recheck() -> Promise<résultat> }
   constructor(opts) {
     this.#o = opts;
@@ -136,7 +137,8 @@ export class CheckWindow {
   #comparison(issue) {
     const { t, config } = this.#o;
     const found = issue.rows.map(row => this.#o.person(row)).filter(Boolean);
-    const rows = compareRows(found, config, { name: t('an.col.name'), title: t('an.fiche.post'), email: t('an.mail'), phone: t('an.phone') });
+    const rows = compareRows(found, config, { name: t('an.col.name'), title: t('an.fiche.post'), email: t('an.mail'), phone: t('an.phone') },
+      this.#o.format);
     return h('div', { class: 'an-chk-cmp' }, h('table', null, h('thead', null, h('tr', null, h('th', null),
       ...found.map(person => h('th', { scope: 'col' }, person.name)))),
     h('tbody', null, ...rows.map(row => h('tr', { class: row.same ? '' : 'is-diff' }, h('th', { scope: 'row' }, row.label,

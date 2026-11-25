@@ -8,6 +8,7 @@ import { familyOf } from '../explorer/explorer-model.js';
 import { activeExtensionIds, extensionsOf } from '../apps/extensions.js';
 import { rowKey } from '../apps/modules-window.js';
 import { FILES_APP } from '../files/gfs-files.js';
+import { ANNUAIRES_APP } from '../files/annuaire-files.js';
 import { RECEIVED_APP } from '../sharing/received-files.js';
 import { importFormats, acceptsOpening } from '../files/import-file.js';
 import { readersOf, chooseReader } from './reading.js';
@@ -28,7 +29,8 @@ export class Entries {
     if (!c.fullAccess) return { text: c.t('gfs.needsFullAccess'), hint: c.t('gfs.needsFullAccessHint') };
     // un fichier que GFS garde, ou reçu d'un autre document et accepté : aucune app à installer (une arrivée en attente est grisée par
     // js/sharing/received-control.js)
-    if (file.app === FILES_APP || file.app === RECEIVED_APP) return null;
+    // un annuaire : le module de GFS qui le lit (js/annuaire/), aucune app à installer
+    if (file.app === FILES_APP || file.app === RECEIVED_APP || file.app === ANNUAIRES_APP) return null;
     if (!c.registry.has(file.app)) return { text: c.t('ex.lockedApp', { app: c.appName(file.app) }), focus: rowKey(file.app) };
     if (!file.known) return { text: c.t('ex.lockedType', { app: c.appName(file.app) }) };
     const extension = file.typeInfo.extension;

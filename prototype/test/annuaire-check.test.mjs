@@ -96,6 +96,18 @@ test('comparer : une ligne par information, « same » quand les personnes sont 
   assert.equal(by.email.label, 'Adresse');
 });
 
+test('comparer : les valeurs de champ s\'écrivent dans la langue de la personne quand la fenêtre donne son `format` (un oui/non n\'est pas « true »)', () => {
+  const cfg = config({ fields: [{ col: 'Teletravail', filter: true }] });
+  const a = person(1, 'Ana Roy', { fields: { Teletravail: ['true'] } });
+  const b = person(2, 'Ana Roy', { fields: { Teletravail: ['false'] } });
+  const raw = compareRows([a, b], cfg, { name: 'Nom', title: 'Poste', email: 'E-mail', phone: 'Tél.' }).find(row => row.key === 'field:Teletravail');
+  assert.deepEqual(raw.values, ['true', 'false'], 'sans `format`, la valeur brute');
+  const said = compareRows([a, b], cfg, { name: 'Nom', title: 'Poste', email: 'E-mail', phone: 'Tél.' }, (col, value) => (value === 'true' ? 'Oui' : 'Non'))
+    .find(row => row.key === 'field:Teletravail');
+  assert.deepEqual(said.values, ['Oui', 'Non']);
+  assert.equal(said.same, false);
+});
+
 // ---------- Ma présence ----------
 
 const withPresence = (people, cells, extra = {}) => read(people, config({ presence: { on: true, col: 'Visible' }, ...extra }), { Visible: cells });
@@ -105,13 +117,13 @@ test('ma présence : éteinte, ou sans colonne, rien n\'est masqué', () => {
   assert.equal(presenceCol(readConfig({ presence: { on: false, col: 'Visible' } })), '');
   assert.equal(presenceCol(readConfig({ presence: { on: true, col: '' } })), '');
   assert.equal(presenceCol(readConfig({ presence: { on: true, col: 'Visible' } })), 'Visible');
-  const off = read(THREE, config({}), { Visible: [false, false, false] });
+  const off = read(THREE, config({}), { Visible: [true, true, true] });
   assert.equal(maskedRows(off).size, 0);
   assert.equal(presenceView(off, {}).people.length, 3);
 });
 
-test('ma présence : la case décochée masque, une case vide ou cochée montre', () => {
-  const data = withPresence(THREE, [true, false, null]);
+test('ma présence : la case cochée masque, une case décochée ou vide montre', () => {
+  const data = withPresence(THREE, [false, true, null]);
   assert.deepEqual([...maskedRows(data)], [2]);
   const view = presenceView(data, { admin: false, identity: '' });
   assert.deepEqual(view.people.map(each => each.row), [1, 3]);
@@ -119,7 +131,7 @@ test('ma présence : la case décochée masque, une case vide ou cochée montre'
 });
 
 test('ma présence : un administrateur voit tout le monde, les masqués grisés ; la personne se voit elle-même', () => {
-  const data = withPresence(THREE, [true, false, null]);
+  const data = withPresence(THREE, [false, true, null]);
   const admin = presenceView(data, { admin: true });
   assert.deepEqual(admin.people.map(each => each.row), [1, 2, 3]);
   assert.deepEqual([...admin.masked], [2]);
@@ -130,7 +142,7 @@ test('ma présence : un administrateur voit tout le monde, les masqués grisés 
 
 test('ma présence : l\'arbre se recalcule sans les masqués', () => {
   const people = [person(1, 'Ana Roy', { levels: ['Pôle A'] }), person(2, 'Bob Roy', { levels: ['Pôle B'] })];
-  const view = presenceView(withPresence(people, [true, false]), {});
+  const view = presenceView(withPresence(people, [false, true]), {});
   assert.deepEqual(view.tree.ch.map(node => node.name), ['Pôle A'], 'un pôle sans personne visible n\'apparaît plus');
   assert.equal(view.tree.count, 1);
 });

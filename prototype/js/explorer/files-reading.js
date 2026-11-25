@@ -13,6 +13,7 @@
 import { loadFiles } from './explorer-data.js';
 import { createFileRefresh } from './file-refresh.js';
 import { FILES_ENTRY } from '../files/gfs-files.js';
+import { ANNUAIRES_ENTRY } from '../files/annuaire-files.js';
 
 export class FilesReading {
   #x;
@@ -32,7 +33,7 @@ export class FilesReading {
         this.#waited = typeof learning !== 'string';
         if (x.prepare) await x.prepare();
         if (x.hint) await x.hint.prime(x.reader); // un document vu lourd à la visite précédente se lit d'emblée en lecture légère
-        return { ...(await loadFiles(x.port, [...x.apps(), FILES_ENTRY], learning, x.reader, x.guard || null)), stamp };
+        return { ...(await loadFiles(x.port, [...x.apps(), FILES_ENTRY, ANNUAIRES_ENTRY], learning, x.reader, x.guard || null)), stamp };
       },
       onRestricted: () => {
         x.explorer().setFiles([]);

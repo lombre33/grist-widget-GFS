@@ -270,7 +270,7 @@ async function hideProblems(page, t, note, click, snapNow, where) {
   await delay(500);
   const done = (await page.run(writes)).slice(before);
   const action = done.find(each => each[0] === 'UpdateRecord' && each[1] === 'Personnes');
-  if (!action || action[2] !== 12 || JSON.stringify(action[3]) !== '{"Visible":false}') note('à vérifier', `${where} : « Masquer » écrit ${JSON.stringify(action)} (UpdateRecord Personnes 12 {Visible: false} attendu)`);
+  if (!action || action[2] !== 12 || JSON.stringify(action[3]) !== '{"Masquee":true}') note('à vérifier', `${where} : « Masquer » écrit ${JSON.stringify(action)} (UpdateRecord Personnes 12 {Masquee: true} attendu)`);
   if (done.filter(each => each[0] === 'UpdateRecord').length !== 1) note('à vérifier', `${where} : « Masquer » écrit plus d'une action (${JSON.stringify(done)})`);
   const snap = await snapNow();
   const all = snap && snap.kinds.find(kind => kind.id === 'all');
@@ -414,7 +414,7 @@ async function presenceWriteProblems(page, t, note, click, where) {
   await click('[data-fk="presence"]');
   await delay(500);
   const done = (await page.run(writes)).slice(before).filter(each => each[0] === 'UpdateRecord');
-  if (done.length !== 1 || done[0][1] !== 'Personnes' || done[0][2] !== 13 || JSON.stringify(done[0][3]) !== '{"Visible":true}') note('présence', `${where} : l'interrupteur écrit ${JSON.stringify(done)} (UpdateRecord Personnes 13 {Visible: true} attendu)`);
+  if (done.length !== 1 || done[0][1] !== 'Personnes' || done[0][2] !== 13 || JSON.stringify(done[0][3]) !== '{"Masquee":false}') note('présence', `${where} : l'interrupteur écrit ${JSON.stringify(done)} (UpdateRecord Personnes 13 {Masquee: false} attendu)`);
   let snap = await page.run(peopleSnap);
   if (snap.masked.length || !snap.fiche || !snap.fiche.presence || snap.fiche.presence.on !== true || snap.fiche.pill) note('présence', `${where} : la fiche ne redevient pas visible (${JSON.stringify({ masked: snap.masked, presence: snap.fiche && snap.fiche.presence && snap.fiche.presence.on, pill: snap.fiche && snap.fiche.pill })})`);
   if (snap.foot !== t('an.pres.shown', { name: 'Sacha Bernard' })) note('présence', `${where} : le pied dit « ${snap.foot} » (« ${t('an.pres.shown', { name: 'Sacha Bernard' })} » attendu)`);
@@ -508,7 +508,7 @@ function optionsProblems(snap, t, note, where) {
   const titles = [t('an.opt.presence'), t('an.opt.checks'), t('an.opt.mail')].join('|');
   if (snap.blocks.join('|') !== titles) note('options', `${where} : les blocs sont « ${snap.blocks.join(' | ')} » (« ${titles} » attendus)`);
   if (!snap.switches['op:on'] || !snap.switches['op:on'].on) note('options', `${where} : « ${t('an.opt.presenceOn')} » n'est pas allumée`);
-  if (snap.column !== 'Visible' || snap.leave !== 'Depart') note('options', `${where} : les colonnes disent « ${snap.column} » et « ${snap.leave} » (Visible et Depart attendues)`);
+  if (snap.column !== 'Masquee' || snap.leave !== 'Depart') note('options', `${where} : les colonnes disent « ${snap.column} » et « ${snap.leave} » (Masquee et Depart attendues)`);
   for (const kind of ['dup', 'mail', 'att', 'resp', 'dep']) if (!snap.switches[`oc:${kind}`] || !snap.switches[`oc:${kind}`].on) note('options', `${where} : le contrôle « ${kind} » n'est pas allumé`);
   for (const [fk, sw] of Object.entries(snap.switches)) if (sw.box.width < 26 || sw.box.height < 14) note('options', `${where} : l'interrupteur ${fk} ne mesure que ${Math.round(sw.box.width)} × ${Math.round(sw.box.height)} px`);
   return true;
@@ -538,7 +538,7 @@ async function optionsEditProblems(page, t, note, click, where) {
   if (!config) { note('options', `${where} : « Enregistrer » n'écrit pas la définition de l'annuaire`); return; }
   if (config.mail.per !== 30 || config.mail.to !== 'to') note('options', `${where} : le message est écrit ${JSON.stringify(config.mail)} ({ per: 30, to: "to" } attendu)`);
   if (config.checks.includes('mail') || !['dup', 'att', 'resp'].every(kind => config.checks.includes(kind))) note('options', `${where} : les contrôles écrits sont ${JSON.stringify(config.checks)} (dup, att et resp, sans mail)`);
-  if (config.leave !== '' || !config.presence.on || config.presence.col !== 'Visible') note('options', `${where} : le départ et la présence sont écrits ${JSON.stringify({ leave: config.leave, presence: config.presence })}`);
+  if (config.leave !== '' || !config.presence.on || config.presence.col !== 'Masquee') note('options', `${where} : le départ et la présence sont écrits ${JSON.stringify({ leave: config.leave, presence: config.presence })}`);
 }
 
 async function optionsTabProblems(page, t, note, click, { width, mode }) {

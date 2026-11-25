@@ -1,23 +1,24 @@
 // « Ma présence » (module Annuaire, demande du porteur du 25/11, scène 13 de la maquette) : une option que l'administrateur allume, avec une colonne oui/non de
-// la table des personnes (« apparaître dans l'annuaire »). Allumée, chacun voit sur sa propre fiche un interrupteur « Apparaître dans l'annuaire » ; une
-// personne qui a choisi de ne pas apparaître (la case est décochée ; une case vide veut dire « apparaît ») ne se voit plus dans l'annuaire des autres, et reste
-// grisée, avec sa pastille « Masquée », pour les administrateurs et pour elle-même (sans cela, elle ne pourrait plus se retrouver pour revenir).
+// la table des personnes : la case COCHÉE dit « fiche masquée » (mesuré dans un vrai Grist le 25/11 : une colonne oui/non y vaut « non » partout, sans état
+// vide, même après un effacement ; une case qui voudrait dire « apparaît » masquerait tout le monde dès la colonne créée). Allumée, chacun voit sur sa propre
+// fiche un interrupteur « Apparaître dans l'annuaire » (allumé quand la case est décochée) ; une personne qui a choisi de ne pas apparaître ne se voit plus
+// dans l'annuaire des autres, et reste grisée, avec sa pastille « Fiche masquée », pour les administrateurs et pour elle-même (sans cela, elle ne pourrait
+// plus se retrouver pour revenir).
 //
 // Cela masque la fiche dans l'annuaire de GFS ; ce n'est pas un verrou : la table des personnes reste lisible par qui la lit dans Grist. Un verrou réel est une
 // règle d'accès de Grist. Des fonctions sans effet de bord, essayées sous Node (test/annuaire-check.test.mjs).
-// « Masquée » : le mot de la pastille est `an.pres.masked` (« Fiche masquée »).
 
 import { buildTree } from './annuaire-model.js';
 
 // La colonne de présence quand l'option est allumée, sinon ''.
 export const presenceCol = config => (config.presence && config.presence.on ? config.presence.col : '');
 
-// Les lignes de la table des personnes dont la case « apparaître » est décochée.
+// Les lignes de la table des personnes dont la case « fiche masquée » est cochée.
 export function maskedRows(read) {
   const col = presenceCol(read.config);
   const table = col && read.data && read.annuaire ? read.data[read.annuaire.table] : null;
   const cells = table && Array.isArray(table[col]) && Array.isArray(table.id) ? table[col] : null;
-  return new Set(cells ? table.id.filter((row, i) => cells[i] === false) : []);
+  return new Set(cells ? table.id.filter((row, i) => cells[i] === true) : []);
 }
 
 // La personne dont l'adresse est celle de la personne qui lit (GFS la connaît quand le document la lui dit : js/controller.js, `identity`), ou null.

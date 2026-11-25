@@ -3,16 +3,22 @@
 // des essais (test/annuaire-fixtures.mjs) plus deux lignes qui poussent la mise en page : un nom, un poste, une adresse et une structure très longs (et le nom très long est l'assistant de quelqu'un). Aucun Grist : ce que l'essai
 // mesure est la mise en page, la souris et le clavier ; ce que Grist envoie vraiment se mesure dans le labo (labo/run-annuaire.mjs). La langue vient de `?lang=fr|en`.
 // `?tools=1` : le document des essais de « À vérifier », « Écrire au groupe » et « Ma présence » (test/annuaire-tools-firefox.mjs) : deux colonnes de plus (une date de
-// départ, un oui/non « apparaître »), un doublon de nom, une personne sans rattachement, un responsable qui n'existe pas, un départ dépassé, une personne masquée et
+// départ, un oui/non « fiche masquée » : faux partout, comme dans un vrai Grist), un doublon de nom, une personne sans rattachement, un responsable qui n'existe pas, un départ dépassé, une personne masquée et
 // cinquante agents aux adresses longues (de quoi dépasser le lien d'un message) ; `&admin=0` : la personne qui lit n'administre pas le document ; `&me=adresse` : son adresse.
 // L'essai part de zéro pour le bouton « Personnes » de l'organigramme (clé `gfs.annuaire.orgPeople` retirée du navigateur). `window.__annuaire` est le contrôle ; `window.__annuaireNotices` garde les phrases qu'il dit ; `window.__annuaireLanguage(lang)` change la langue fenêtre ouverte, comme le
 // contrôleur de GFS ; `window.__annuaireCopied` garde le dernier texte copié (le presse-papiers lui-même se mesure dans le labo).
+// `?sub=1` : les sous-annuaires (test/annuaire-sub-firefox.mjs) : `GFS_Annuaires` porte les colonnes que le moteur de partage y pose (lecteurs, écrivains, administrateurs,
+// refus), un faux « Partager » (`window.__annuaireShared` garde le fichier demandé ; `window.__annuaireShareWhy` : un texte qui le grise), et un sous-annuaire déjà là, « Pôle
+// Ressources » (copie du 20/11), dont `ecrivain@exemple.fr` est écrivain (`&me=`). Le vrai verrou de Grist se mesure dans le labo (labo/run-annuaire-sous.mjs).
 import { createI18n } from '/js/i18n/i18n.js';
 import { installSprite } from '/js/ui/icons.js';
 import { fakeGrist } from '/test/fake-grist.mjs';
 import { AnnuaireStore } from '/js/annuaire/annuaire-store.js';
 import { AnnuaireControl } from '/js/annuaire/annuaire-control.js';
 import { documentFixture, configFixture } from '/test/annuaire-fixtures.mjs';
+import { presenceView } from '/js/annuaire/annuaire-presence.js';
+import { levelKey } from '/js/annuaire/annuaire-model.js';
+import { ANNUAIRES_TABLE } from '/js/annuaire/annuaire-config.js';
 
 const LONG_UNIT = 'Direction des relations internationales et de la coopération universitaire';
 
@@ -38,16 +44,16 @@ function toolsDocument() {
   const document = longDocument();
   const { Personnes: people, _grist_Tables_column: columns } = document;
   people.Depart = people.id.map(() => null);
-  people.Visible = people.id.map(() => null);
+  people.Masquee = people.id.map(() => false); // un vrai Grist n'a pas de case vide : « non » partout
   columns.id.push(37, 38);
   columns.parentId.push(1, 1);
-  columns.colId.push('Depart', 'Visible');
+  columns.colId.push('Depart', 'Masquee');
   columns.type.push('Date', 'Bool');
   columns.visibleCol.push(0, 0);
   columns.widgetOptions.push('', '');
   columns.isFormula.push(false, false);
   const blank = { Nom: '', Poste: '', Email: '', Tel: '', Structure: 0, Contrat: '', Competences: null, Teletravail: null, Responsable: 0, Chef: false, Arrivee: null, Service: '',
-    Site: '', Assistant: 0, Referents: null, Suppleant: 0, Depart: null, Visible: null };
+    Site: '', Assistant: 0, Referents: null, Suppleant: 0, Depart: null, Masquee: false };
   const add = row => {
     const values = { ...blank, ...row, id: people.id.length + 1 };
     for (const key of Object.keys(people)) people[key].push(values[key] ?? null);
@@ -57,7 +63,7 @@ function toolsDocument() {
   add({ Nom: 'Noé Petit', Poste: 'Technicien', Email: 'noe.petit@exemple.fr', Structure: 0 });
   add({ Nom: 'Julien Mercier', Poste: 'Chargé de communication', Email: 'julien.mercier@exemple.fr', Structure: 3, Responsable: 99 });
   add({ Nom: 'Rémi Colas', Poste: 'Gestionnaire', Email: 'remi.colas@exemple.fr', Structure: 3, Depart: Date.UTC(2026, 8, 30) / 1000 });
-  add({ Nom: 'Sacha Bernard', Poste: 'Archiviste', Email: 'sacha.bernard@exemple.fr', Structure: 7, Visible: false });
+  add({ Nom: 'Sacha Bernard', Poste: 'Archiviste', Email: 'sacha.bernard@exemple.fr', Structure: 7, Masquee: true });
   for (let n = 1; n <= 50; n++) add({ Nom: `Agent Essai ${String(n).padStart(2, '0')}`, Poste: 'Agent', Structure: 5, Email: `agent.essai.${String(n).padStart(2, '0')}@universite-exemple.fr` });
   return document;
 }
@@ -68,6 +74,26 @@ function tablesOf(document) {
     const names = Object.keys(data).filter(key => key !== 'id');
     return [name, { columns: ['id', ...names], rows: data.id.map((id, at) => Object.fromEntries([['id', id], ...names.map(key => [key, data[key][at]])])) }];
   }));
+}
+
+// Le faux « droits » des sous-annuaires : les règles du partage couvrent déjà `GFS_Annuaires` (le verrou lui-même se mesure dans un vrai Grist), et « Partager » note ce qu'on lui
+// demande.
+function fakeRights() {
+  return { writer: { plans: async () => ({ sharing: { ok: false, reason: 'already' } }) },
+    sharing: { whyNot: () => window.__annuaireShareWhy || null, open: async file => { window.__annuaireShared = file; } } };
+}
+
+// Les colonnes que le moteur de partage pose dans `GFS_Annuaires`, et le sous-annuaire « Pôle Ressources » déjà là (copie du 20/11 ; un écrivain, aucun administrateur).
+async function seedSub(grist, seed) {
+  const { applyUserActions } = grist.port.doc;
+  const list = await seed.list();
+  const parent = list[0];
+  const read = presenceView(await seed.read(parent), { admin: true });
+  const made = await seed.createSub({ name: 'Pôle Ressources', parent, sub: { key: levelKey(0), label: 'Pôle', values: ['Pôle Ressources'] }, read,
+    at: '2026-11-20T09:30:00.000Z' });
+  const columns = ['GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Refus'];
+  await applyUserActions(columns.map(id => ['AddColumn', ANNUAIRES_TABLE, id, { type: 'ChoiceList', isFormula: false }]));
+  await applyUserActions([['UpdateRecord', ANNUAIRES_TABLE, made.row, { GFS_Ecrivains: ['L', 'ecrivain@exemple.fr'] }]]);
 }
 
 async function mount() {
@@ -89,16 +115,19 @@ async function mount() {
   const seed = new AnnuaireStore({ port: grist.port, consent: async () => true });
   // L'annuaire principal met l'adresse et le télétravail (un oui/non) en colonnes de la liste (retour du porteur, 25/11) : toute la mesure de la liste les porte.
   const base = configFixture();
-  const options = tools ? { checks: ['dup', 'mail', 'att', 'resp', 'dep'], leave: 'Depart', presence: { on: true, col: 'Visible' }, mail: { per: 40, to: 'bcc' } } : {};
+  const options = tools ? { checks: ['dup', 'mail', 'att', 'resp', 'dep'], leave: 'Depart', presence: { on: true, col: 'Masquee' }, mail: { per: 40, to: 'bcc' } } : {};
   await seed.create({ name: 'Annuaire principal', table: 'Personnes', config: { ...base, ...options, columns: ['email'],
     fields: base.fields.map(field => (field.col === 'Teletravail' ? { ...field, column: true } : field)) } });
   await seed.create({ name: 'Annuaire des directions', table: 'Personnes', config: { ...configFixture(), levels: configFixture().levels.slice(0, 2) } });
+  if (query.get('sub') === '1') await seedSub(grist, seed);
   window.__annuaireNotices = [];
   window.__annuaireCopied = null;
+  window.__annuaireShared = null;
   let lang = language;
   const control = new AnnuaireControl({ port: grist.port, container: document.getElementById('stage'), t: (key, vars) => i18n.t(key, vars), locale: () => locale(lang),
     inertTargets: () => [], ask: async () => true, notice: text => window.__annuaireNotices.push(text), writeBlock: () => window.__annuaireBlock || null, fullAccess: () => true,
-    isOwner: async () => query.get('admin') !== '0', identity: () => query.get('me') || '' });
+    isOwner: async () => query.get('admin') !== '0', identity: () => query.get('me') || '',
+    rights: query.get('sub') === '1' ? fakeRights() : undefined });
   window.__annuaire = control;
   window.__annuaireBatches = () => JSON.parse(JSON.stringify(grist.batches)); // les actions que le faux Grist a reçues, dans l'ordre
   window.__annuaireLanguage = next => { lang = next; i18n = createI18n(next); control.relocalize(); };

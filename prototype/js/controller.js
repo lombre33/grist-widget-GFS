@@ -32,12 +32,14 @@ import { Rangement, TableDeclined } from './files/rangement.js';
 import { isNewer } from './files/structure.js';
 import { appFilingOf } from './files/app-filing.js';
 import { RightsControl } from './rights/rights-control.js';
+import { openAnnuaire } from './shell/annuaire-entry.js';
 import { createOtherDocuments } from './sharing/share-other.js';
 import { createFollower } from './sharing/share-follow.js';
 import { resumeSharing } from './sharing/sync-resume.js';
 import { whenReceived } from './sharing/sync-service.js';
 import { WeightControl } from './weight/weight-control.js';
 import { FILES_APP, FILES_MANIFEST } from './files/gfs-files.js';
+import { ANNUAIRES_APP, ANNUAIRES_MANIFEST } from './files/annuaire-files.js';
 import { Transfer, buildTransferFrame } from './broker/transfer.js';
 import { Attach } from './broker/attach.js';
 import { Player } from './broker/player.js';
@@ -223,7 +225,7 @@ export class GfsController {
 
   appById(id) { return this.names.adaptItem(this.apps.find(item => item.app.id === id && item.ok) || null); }
   // Le manifeste d'une app installable, ou celui des fichiers que GFS garde lui-même (js/files/gfs-files.js) : null quand l'id n'est ni l'un ni l'autre.
-  manifestOf = id => (id === FILES_APP ? FILES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
+  manifestOf = id => (id === FILES_APP ? FILES_MANIFEST : id === ANNUAIRES_APP ? ANNUAIRES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
   appName = id => { const manifest = this.manifestOf(id); return manifest ? label(manifest.nom, this.lang) : id; };
   validApps() { return this.apps.filter(item => item.ok).map(item => this.names.adaptItem(item)); }
   typeLabel = file => (file.typeInfo ? label(file.typeInfo.nom, this.lang) : (file.type || '—'));
@@ -373,7 +375,7 @@ export class GfsController {
     if (this.session) this.session.show(false);
     this.explorer.open();
     void this.refreshFiles();
-    this.rights.resume(this.explorer);
+    this.rights.resume(this.explorer, { annuaire: () => void openAnnuaire(this).then(() => this.notice(this.t('an.sub.ready'))) });
   }
 
   hideExplorer() {

@@ -3,13 +3,18 @@
 // version plus ancienne y a écrit.
 //
 // Une ligne : `Nom` (le nom de l'annuaire), `Table` (la table des personnes, celle du document), `Config` (le reste, en JSON : voir `readConfig`) et `Parent`
-// (réservé aux sous-annuaires, vide pour un annuaire principal). Les personnes restent dans leur table : GFS n'y écrit rien et ne la copie pas (cahier 2,
-// « deux zones »). Un niveau de la hiérarchie est une colonne au choix (décision du porteur, 25/11), éventuellement après des références : son `path` liste
-// les colonnes à suivre depuis la personne.
+// (le numéro de ligne de l'annuaire d'origine pour un sous-annuaire, vide pour un annuaire principal) et `Fiches` (la copie des personnes d'un sous-annuaire,
+// vide pour un annuaire principal : js/annuaire/annuaire-sub.js). Les personnes d'un annuaire principal restent dans leur table : GFS n'y écrit rien et ne la
+// copie pas (cahier 2, « deux zones ») ; seule la copie d'un sous-annuaire, que Grist verrouille (js/sharing/sharing-model.js), en garde une. Un niveau de la
+// hiérarchie est une colonne au choix (décision du porteur, 25/11), éventuellement après des références : son `path` liste les colonnes à suivre depuis la
+// personne.
 
-export const ANNUAIRES_TABLE = 'GFS_Annuaires';
+import { ANNUAIRES_TABLE } from '../files/annuaire-files.js';
+import { listOf } from '../sharing/direct-shares.js';
+
+export { ANNUAIRES_TABLE };
 export const ANNUAIRES_COLUMNS = Object.freeze([
-  { id: 'Nom', type: 'Text' }, { id: 'Table', type: 'Text' }, { id: 'Config', type: 'Text' }, { id: 'Parent', type: 'Text' },
+  { id: 'Nom', type: 'Text' }, { id: 'Table', type: 'Text' }, { id: 'Config', type: 'Text' }, { id: 'Parent', type: 'Text' }, { id: 'Fiches', type: 'Text' },
 ]);
 export const CONFIG_VERSION = 1;
 
@@ -49,6 +54,14 @@ function readOptions(input) {
     mail: { per: Number.isFinite(per) ? Math.min(MAIL_PER.max, Math.max(MAIL_PER.min, per)) : MAIL_DEFAULT.per, to: mail.to === 'to' ? 'to' : 'bcc' } };
 }
 
+// Le critère d'un sous-annuaire (js/annuaire/annuaire-sub.js) : { key (la clé du filtre : celle d'un niveau de la hiérarchie, ou la colonne d'un champ), label
+// (son nom à l'écran), values (les valeurs retenues : « ou » entre elles), at (le moment de la copie, un texte ISO) } ; null pour un annuaire principal.
+function readSub(input) {
+  const object = input && typeof input === 'object' ? input : {};
+  const values = Array.isArray(object.values) ? [...new Set(object.values.map(text).filter(Boolean))] : [];
+  return text(object.key) && values.length ? { key: text(object.key), label: text(object.label), values, at: text(object.at) } : null;
+}
+
 // La configuration lue d'un texte JSON (ou d'un objet) : toujours complète, jamais d'exception. Ce que GFS ne connaît pas (une clé d'une version plus récente)
 // est ignoré à la lecture et perdu à la réécriture : `writeConfig` ne garde que ce qu'elle connaît ; une version plus récente écrit donc sa propre ligne. { v,
 // name, first, order, upper, hierarchy, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], relations: [{ col, label, inverse, card }],
@@ -86,6 +99,8 @@ export function readConfig(source) {
     card: !(rel && rel.card === false) }))
     .filter(rel => rel.col && !used.has(rel.col) && used.add(rel.col));
   Object.assign(config, readOptions(input));
+  const sub = readSub(input.sub);
+  if (sub) config.sub = sub;
   const fields = Array.isArray(input.fields) ? input.fields : [];
   const seen = new Set();
   config.fields = fields.map(field => {
@@ -110,7 +125,13 @@ export const writeConfig = config => JSON.stringify(readConfig(config));
 // (sans `hierarchy`) est lue comme allumée : seul « faux » l'éteint.
 export const effectiveConfig = config => (config.hierarchy === false ? { ...config, title: '', lead: '', levels: [] } : config);
 
-// Les annuaires d'une table lue : [{ row, name, table, config, parent }]. Une ligne sans nom ou sans table est ignorée (GFS ne saurait pas l'ouvrir).
+// Les adresses d'une colonne d'aide du partage (`GFS_Ecrivains`, `GFS_Admins` : js/sharing/sharing-model.js), en minuscules ; rien quand le partage n'a pas
+// étendu la table.
+const addressesIn = cell => listOf(cell).map(each => String(each).trim().toLowerCase()).filter(Boolean);
+
+// Les annuaires d'une table lue : [{ row, name, table, config, parent, fiches, access }] (`fiches` : le texte de la copie d'un sous-annuaire, vide sinon ;
+// `access` : { writers, admins }, les adresses que Grist dit écrivains et administrateurs de la ligne, quand le partage est étendu à la table). Une ligne sans
+// nom ou sans table est ignorée (GFS ne saurait pas l'ouvrir).
 export function annuairesOf(data) {
   const rows = data && Array.isArray(data.id) ? data.id : [];
   const cell = (column, i) => (Array.isArray(data[column]) ? data[column][i] : undefined);
@@ -118,7 +139,8 @@ export function annuairesOf(data) {
   rows.forEach((row, i) => {
     const name = text(cell('Nom', i));
     const table = text(cell('Table', i));
-    if (name && table) found.push({ row, name, table, config: readConfig(cell('Config', i)), parent: text(cell('Parent', i)) });
+    if (name && table) found.push({ row, name, table, config: readConfig(cell('Config', i)), parent: text(cell('Parent', i)),
+      fiches: String(cell('Fiches', i) ?? ''), access: { writers: addressesIn(cell('GFS_Ecrivains', i)), admins: addressesIn(cell('GFS_Admins', i)) } });
   });
   return found;
 }

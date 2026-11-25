@@ -16,6 +16,7 @@ import { OrgView } from './annuaire-org-view.js';
 import { copyText } from './annuaire-copy.js';
 import { FilterMenu } from './annuaire-filters.js';
 import { sortPeople, nextSort, sortKeys, sortButton } from './annuaire-sort.js';
+import { subButton, openSubMenu, copyDate } from './annuaire-sub-menu.js';
 import { checkButton, mailButton } from './annuaire-tools.js';
 import { listKeys, treeKeys } from './annuaire-keys.js';
 import { addressesOf } from './annuaire-mail.js';
@@ -125,7 +126,7 @@ export class AnnuaireWindow {
     const t = (key, vars) => this.#o.t(key, vars);
     const refs = {
       title: h('h2', { id: 'an-title' }), name: h('button', { type: 'button', class: 'an-name', 'aria-haspopup': 'dialog',
-        dataset: { act: 'switch', fk: 'switch' } }),
+        dataset: { act: 'switch', fk: 'switch' } }), tag: h('span', { class: 'an-pill an-sub-tag' }),
       search: h('input', { type: 'search', autocomplete: 'off', dataset: { fk: 'search' } }),
       views: h('div', { class: 'an-seg', role: 'group' }), tools: h('span', { class: 'an-top-tools' }), config: h('button', { type: 'button', class: 'an-ib',
         dataset: { act: 'configure', fk: 'configure' } }, icon('sliders')),
@@ -141,7 +142,7 @@ export class AnnuaireWindow {
     refs.body.append(refs.state, refs.tree, refs.main, refs.side);
     this.#refs = refs;
     const section = h('section', { class: 'mod an', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'an-title' },
-      h('header', { class: 'mod-head an-head' }, h('div', { class: 'an-top' }, refs.title, refs.name, h('span', { class: 'an-grow' }),
+      h('header', { class: 'mod-head an-head' }, h('div', { class: 'an-top' }, refs.title, refs.name, refs.tag, h('span', { class: 'an-grow' }),
         h('label', { class: 'inp-search an-search' }, icon('search'), refs.search), refs.tools, refs.views, refs.config)),
       refs.body, h('footer', { class: 'mod-foot' }, refs.note, refs.close));
     this.#root = h('div', { class: 'mod-scrim an-scrim' }, section);
@@ -160,8 +161,12 @@ export class AnnuaireWindow {
 
   #paintHead() {
     const t = this.#o.t;
-    const { title, name, search, views, config, close, tools } = this.#refs;
+    const { title, name, tag, search, views, config, close, tools } = this.#refs;
     const { current, data } = this.#show;
+    const sub = this.#show.state === 'ready' && data && data.sub ? data.sub : null; // la copie verrouillée d'un sous-annuaire (js/annuaire/annuaire-sub.js)
+    tag.hidden = !sub;
+    tag.replaceChildren(...(sub ? [icon('lock'), h('span', { class: 'an-tb-t' }, t('an.sub.tag'))] : []));
+    tag.title = sub ? t('an.sub.of', { name: sub.parent }) : '';
     title.textContent = t('an.title');
     name.replaceChildren(h('span', { class: 'an-name-t' }, current ? current.name : t('an.none.name')), icon('chev-down'));
     name.title = t('an.switch');
@@ -173,7 +178,7 @@ export class AnnuaireWindow {
     views.replaceChildren(...VIEWS.map(([id, glyph, key]) => h('button', { type: 'button', class: 'an-seg-b', 'aria-pressed': String(this.#view === id),
       'aria-disabled': greyed(id) ? 'true' : null, title: greyed(id) ? t('an.org.noHierarchy') : t(key), 'aria-label': t(key),
       dataset: { act: 'view', view: id, fk: `v:${id}` } }, icon(glyph), h('span', { class: 'an-seg-t' }, t(key)))));
-    tools.replaceChildren(...(this.#show.state === 'ready' && data ? [checkButton(data.checks, t)] : []));
+    tools.replaceChildren(...(this.#show.state === 'ready' && data ? [checkButton(data.checks, t), sub ? subButton(t) : null].filter(Boolean) : []));
     config.title = t('an.configure');
     config.setAttribute('aria-label', t('an.configure'));
     close.textContent = t('an.close');
@@ -326,7 +331,7 @@ export class AnnuaireWindow {
     const genres = fieldGenres(data.config, current.table, data.schema);
     const relations = relationsOf(data.config, t);
     const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres, relations,
-      index: relationIndex(data.people, relations), writeBlock: this.#o.writeBlock ? this.#o.writeBlock() : null, masked: data.masked,
+      index: relationIndex(data.people, relations), writeBlock: this.#writeBlock(), masked: data.masked,
         presence: person => this.#presenceOf(person) };
     const person = this.#person === null ? null : data.people.find(each => each.row === this.#person);
     // la fiche d'une carte de l'organigramme parle des mêmes personnes que la carte
@@ -350,7 +355,9 @@ export class AnnuaireWindow {
     const total = data.people.length;
     const found = this.#view === 'org' ? this.#matching().length : this.#scope().found.length;
     const chosen = this.#menu.summary(this.#filterModel(data.people), this.#filters);
-    const text = found === total ? t('an.foot.all', { n: total }) : t('an.foot.some', { n: found, total });
+    const count = found === total ? t('an.foot.all', { n: total }) : t('an.foot.some', { n: found, total });
+    const date = data.sub ? copyDate(data.sub.at, this.#o.locale()) : '';
+    const text = data.sub ? `${count} · ${date ? t('an.sub.stamp', { date }) : t('an.sub.stampNoDate')}` : count;
     note.replaceChildren(...[h('span', { class: 'an-foot-t' }, chosen ? `${text} · ${chosen}` : text),
       chosen ? h('button', { type: 'button', class: 'an-reset', dataset: { act: 'filters-reset', fk: 'filters-reset' } }, t('an.filters.reset')) :
         null].filter(Boolean));
@@ -397,11 +404,25 @@ export class AnnuaireWindow {
 
   // Choisit un nœud de la hiérarchie : lui et tout ce qui le porte se déplient, pour qu'il se voie.
   // Un geste que le contrôle fait (changer d'annuaire, en créer un, le régler).
-  callout(name) { this.#o[name](); }
+  callout(name, arg) { this.#o[name](arg); }
+
+  // Ce qui empêche d'écrire une fiche : une copie ne s'y modifie pas (la fiche se modifie dans l'annuaire d'origine), sinon ce que dit le document.
+  #writeBlock() {
+    const { data } = this.#show;
+    return data && data.sub ? this.#o.t('an.sub.noEdit') : (this.#o.writeBlock ? this.#o.writeBlock() : null);
+  }
+
+  // Le menu du sous-annuaire (actualiser, partager, supprimer), sous le cadenas de la barre.
+  subTool() {
+    const { data } = this.#show;
+    const anchor = this.#refs.tools.querySelector('[data-act="sub"]');
+    if (data && data.sub && anchor) openSubMenu({ anchor, host: this.#root, t: this.#o.t, locale: this.#o.locale(), state: data.sub,
+      run: key => this.callout('onSub', key) });
+  }
 
   // Le bouton « Modifier » de la fiche : grisé quand le document ne s'écrit pas (le pied dit pourquoi), sinon la fenêtre « Modifier » (le contrôle l'ouvre).
   editPerson(row) {
-    const blocked = this.#o.writeBlock ? this.#o.writeBlock() : null;
+    const blocked = this.#writeBlock();
     if (blocked) { this.#say(blocked); return; }
     void this.#o.onEdit(row);
   }
@@ -429,6 +450,7 @@ export class AnnuaireWindow {
   // La pastille « À vérifier » : réservée aux administrateurs (grisée, avec sa raison, pour les autres) ; sans contrôle allumé, le pied dit où les allumer.
   checkTool() {
     const { checks, admin } = this.#show.data;
+    if (checks.sub) { this.#say(this.#o.t('an.check.sub')); return; }
     if (!admin) { this.#say(this.#o.t('an.check.admin')); return; }
     if (!checks.on) { this.#say(this.#o.t('an.check.off')); return; }
     void this.#o.onCheck();
@@ -652,6 +674,7 @@ const ACTIONS = Object.freeze({
   'node-list': (window_, data) => window_.listNode(data.id),
   edit: (window_, data) => window_.editPerson(Number(data.row)),
   check: window_ => window_.checkTool(),
+  sub: window_ => window_.subTool(),
   mail: window_ => window_.mailTool(),
   presence: (window_, data) => window_.togglePresence(Number(data.row)),
 });

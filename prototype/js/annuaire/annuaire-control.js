@@ -20,8 +20,12 @@ import { columnOf } from './annuaire-schema.js';
 import { fieldGenres } from './annuaire-model.js';
 import { copyText } from './annuaire-copy.js';
 import { saveText } from '../apps/dependencies-export.js';
+import { SubControl } from './annuaire-sub-control.js';
+import { isSub, parentOf, orderAnnuaires } from './annuaire-sub.js';
 
 const NEW = '__new__';
+const NEW_SUB = '__new_sub__';
+const SUB_WHY = Object.freeze({ refresh: 'an.sub.refreshWhy', share: 'an.sub.shareWhy', remove: 'an.sub.removeWhy' });
 
 export class AnnuaireControl {
   #o;
@@ -31,6 +35,7 @@ export class AnnuaireControl {
   #row = null; // l'annuaire montré (le numéro de sa ligne)
   #reading = 0; // le numéro de la dernière lecture lancée : une lecture plus ancienne qui finit après ne montre rien
   #data = null; // la dernière lecture de l'annuaire montré (le formulaire « Modifier » en prend les valeurs et les choix), vue de la personne qui lit
+  #sub; // les gestes d'un sous-annuaire (js/annuaire/annuaire-sub-control.js)
   #admin = null; // la preuve qu'a GFS que la personne administre le document (une promesse, demandée une fois : js/broker/transfer.js, `isOwner`)
 
   // opts : { port ({ doc }), container, t, locale(), inertTargets(), ask(opts) -> Promise<boolean>, notice(texte), writeBlock() -> texte ou null, fullAccess(),
@@ -41,18 +46,26 @@ export class AnnuaireControl {
     const consent = () => opts.ask({ title: opts.t('an.table.title'), message: opts.t('an.table.text'), confirmLabel: opts.t('table.create'),
       cancelLabel: opts.t('table.cancel') });
     this.#store = new AnnuaireStore({ port: opts.port, consent });
+    this.#sub = new SubControl({ store: this.#store, t: opts.t, locale: opts.locale, container: opts.container, inertTargets: opts.inertTargets,
+      ask: o => opts.ask(o),
+      notice: text => opts.notice(text), say: text => this.#window.say(text), writeBlock: () => opts.writeBlock(), admin: () => this.#admin,
+        identity: opts.identity,
+      rights: opts.rights, origin: parent => this.#origin(parent), reload: row => this.#reload(row) });
     this.#window = new AnnuaireWindow({ container: opts.container, t: opts.t, locale: opts.locale, inertTargets: opts.inertTargets, writeBlock: opts.writeBlock,
       onSwitch: () => void this.#switch(), onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onEdit: row => this.#edit(row),
       onCheck: () => this.#check(), onMail: people => this.#mail(people), onPresence: (row, on) => this.#setPresence(row, on),
+        onSub: key => this.#subGesture(key),
       onFilterMore: (col, option) => this.#more(col, option), onSortPick: (keys, sort) => this.#pickSort(keys, sort), onClose: () => {} });
   }
 
   get isOpen() { return this.#window.isOpen; }
   get element() { return this.#window.element; }
 
-  // Ouvre la fenêtre sur « Lecture… », puis lit les annuaires du document.
-  async open() {
+  // Ouvre la fenêtre sur « Lecture… », puis lit les annuaires du document. `row` : le numéro de la ligne de l'annuaire à montrer (celui qu'on a choisi dans
+  // l'explorateur) ; sans lui, le dernier vu, sinon le premier.
+  async open(row = null) {
     if (this.#window.isOpen) return;
+    if (Number.isFinite(row)) this.#row = row;
     this.#admin ??= Promise.resolve().then(() => this.#o.isOwner()).then(owner => owner === true, () => false);
     this.#window.show({ state: 'loading', error: '' });
     this.#window.open();
@@ -70,7 +83,7 @@ export class AnnuaireControl {
     const t = this.#o.t;
     if (!this.#o.fullAccess()) { this.#window.show({ state: 'error', error: t('an.needsAccess'), annuaires: [], current: null, data: null }); return; }
     try {
-      this.#list = await this.#store.list();
+      this.#list = orderAnnuaires(await this.#store.list());
     } catch (error) {
       console.error('GFS : lecture des annuaires impossible', error);
       this.#window.show({ state: 'error', error: t('an.readFailed', { reason: String(error && error.message) }), annuaires: [], current: null, data: null });
@@ -105,6 +118,11 @@ export class AnnuaireControl {
     const admin = (await this.#admin) === true;
     const identity = this.#o.identity();
     const view = presenceView(read, { admin, identity });
+    if (isSub(read.annuaire)) { // la copie : ni « À vérifier » ni « Modifier » (ils se font dans l'annuaire d'origine), des gestes que Grist garde
+      const parent = parentOf(this.#list, read.annuaire);
+      return { ...view, admin, identity, found: { issues: [], counts: {}, total: 0 }, checks: { admin: false, on: false, total: 0, sub: true },
+        sub: { at: read.copy.at, parent: parent ? parent.name : '', can: this.#sub.can(read.annuaire, admin) } };
+    }
     const on = CHECK_KINDS.some(kind => view.config.checks.includes(kind) && !checkNeeds(kind, view.config));
     const found = admin && on ? runChecks(view) : { issues: [], counts: {}, total: 0 };
     return { ...view, admin, identity, found, checks: { admin, on, total: found.total } };
@@ -135,8 +153,13 @@ export class AnnuaireControl {
   async #check() {
     const read = this.#data;
     if (!read) return;
-    await new CheckWindow({ container: this.#o.container, inertTargets: this.#o.inertTargets, t: this.#o.t, locale: this.#o.locale(), name: read.annuaire.name,
-      result: read.found, config: read.config, person: row => (this.#data ? this.#data.people.find(each => each.row === row) : null),
+    const { t } = this.#o;
+    if (read.sub) { this.#window.say(t('an.check.sub')); return; }
+    const locale = this.#o.locale();
+    const genres = fieldGenres(read.config, read.annuaire.table, read.schema);
+    await new CheckWindow({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, locale, name: read.annuaire.name,
+      result: read.found, config: read.config, format: (col, value) => shown(value, genres[col], { t, locale }),
+        person: row => (this.#data ? this.#data.people.find(each => each.row === row) : null),
       canHide: Boolean(presenceCol(read.config)), open: row => this.#window.showPerson(row), edit: row => this.#edit(row),
         hide: row => this.#setPresence(row, false),
       recheck: async () => { await this.#read(true); return this.#data.found; } }).run();
@@ -171,7 +194,7 @@ export class AnnuaireControl {
     const table = read.annuaire.table;
     try {
       if (!columnOf(read.schema, table, col)) throw new Error(t('an.tableGone', { table: `${table}.${col}` })); // jamais une colonne qui n'existe plus
-      await this.#store.update(updateAction(table, row, { [col]: on }));
+      await this.#store.update(updateAction(table, row, { [col]: !on })); // la case cochée dit « masquée »
     } catch (error) {
       this.#window.say(t('an.pres.refused', { reason: String(error && error.message ? error.message : error) }));
       return false;
@@ -181,16 +204,50 @@ export class AnnuaireControl {
     return true;
   }
 
+  // La lecture d'un annuaire principal, vue d'un administrateur (les fiches masquées y sont) : de quoi prendre la copie d'un sous-annuaire.
+  async #origin(parent) {
+    return presenceView(await this.#store.read(parent), { admin: true, identity: this.#o.identity() });
+  }
+
+  // Relit la liste et montre l'annuaire `row` (celui qu'on montrait, sans numéro).
+  async #reload(row) {
+    if (row !== null && row !== undefined) this.#row = row;
+    await this.#load();
+  }
+
+  // Un nouveau sous-annuaire de l'annuaire montré (ou, dans un sous-annuaire, de son annuaire d'origine).
+  async #newSub() {
+    const current = this.#current;
+    const parent = current && isSub(current) ? parentOf(this.#list, current) : current;
+    if (!parent) { this.#o.notice(this.#o.t('an.sub.parentGone')); return; }
+    await this.#sub.create(parent, this.#list);
+  }
+
+  // Le menu d'un sous-annuaire : actualiser, partager, supprimer. Un geste que la personne ne peut pas faire dit pourquoi.
+  async #subGesture(key) {
+    const current = this.#current;
+    const can = this.#data && this.#data.sub ? this.#data.sub.can : null;
+    if (!current || !isSub(current) || !can) return;
+    if (!can[key]) { this.#window.say(this.#o.t(SUB_WHY[key])); return; }
+    if (key === 'refresh') await this.#sub.refresh(current, this.#list, this.#data.people.length);
+    else if (key === 'share') await this.#sub.share(current);
+    else await this.#sub.remove(current, this.#list);
+  }
+
   // Un autre annuaire du document, ou un nouveau.
   async #switch() {
     const t = this.#o.t;
-    const items = [...this.#list.map(each => ({ value: String(each.row), label: each.name, glyph: 'annuaire', hint: each.table })),
-      { value: NEW, label: t('an.new'), glyph: 'plus', hint: '' }];
+    const parentName = each => (parentOf(this.#list, each) || { name: '' }).name;
+    const items = [...this.#list.map(each => ({ value: String(each.row), label: each.name, glyph: isSub(each) ? 'lock' : 'annuaire',
+      hint: isSub(each) ? t('an.sub.of', { name: parentName(each) }) : each.table })),
+    { value: NEW, label: t('an.new'), glyph: 'plus', hint: '' },
+    ...(this.#list.length ? [{ value: NEW_SUB, label: t('an.sub.new'), glyph: 'plus', hint: t('an.sub.newHint') }] : [])];
     const chosen = await pickFrom({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, title: t('an.switch'), items,
       current: String(this.#row),
       none: t('an.noneFound') });
     if (chosen === null) return;
     if (chosen === NEW) { await this.#create(); return; }
+    if (chosen === NEW_SUB) { await this.#newSub(); return; }
     if (Number(chosen) === this.#row) return;
     this.#row = Number(chosen);
     await this.#read();
@@ -221,6 +278,7 @@ export class AnnuaireControl {
     const t = this.#o.t;
     const current = this.#current;
     if (!current) { await this.#create(); return; }
+    if (isSub(current)) { this.#window.say(t('an.sub.noConfig')); return; }
     const blocked = this.#o.writeBlock();
     if (blocked) { this.#o.notice(blocked); return; }
     const schema = await this.#schema();
@@ -283,5 +341,5 @@ export class AnnuaireControl {
 export function createAnnuaire(c) {
   return new AnnuaireControl({ port: c.port, container: c.$('stage'), t: c.t, locale: () => c.locale, inertTargets: c.inertTargets, ask: opts => c.ask(opts),
     notice: text => c.notice(text), writeBlock: () => c.writeBlock(), fullAccess: () => c.fullAccess, isOwner: () => c.transfer.isOwner(),
-    identity: () => c.identity || '' });
+    identity: () => c.identity || '', rights: c.rights });
 }

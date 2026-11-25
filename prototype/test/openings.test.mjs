@@ -16,7 +16,7 @@ function host({ apps = { form: { ouverture: { fichier: true, nouveau: true } }, 
   const calls = [];
   const notes = [];
   const c = {
-    t: text, calls, notes, session, opened: new OpenedFiles(), opening: 'gardée', contextServed, explorer: { state: { path: 'Dossier' } }, doc: {},
+    t: text, calls, notes, session, opened: new OpenedFiles(), opening: 'gardée', contextServed, explorer: { state: { view: 'folder', path: 'Dossier' }, isOpen: true }, doc: {}, refreshFiles: () => {},
     lockOf: file => { calls.push(['lockOf', file.id]); return lock; },
     unlock: async value => { calls.push(['unlock', value]); },
     appById: id => (apps[id] ? { app: { id }, manifest: apps[id] } : null),
@@ -84,6 +84,41 @@ test('openNew : l\'article grisé dit sa raison (ou son rappel) ; sinon l\'app s
   fresh.openings.openNew({ app: 'form', type: 'formulaire' });
   await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(steps(fresh.c, 'activate'), [['activate', 'form', { fichier: null, type: 'formulaire', dossier: 'Dossier', raison: 'nouveau' }]]);
+});
+
+test('« Nouveau », un modèle de départ et « Importer » créent dans le dossier ouvert ; hors d\'un dossier (« Récents », « Favoris », la corbeille), à la racine', async () => {
+  const apps = { publipostage: { ouverture: { fichier: true, nouveau: true, modele: true, importer: true } } };
+  for (const view of ['recent', 'fav', 'trash', 'shared', 'opened']) {
+    const away = host({ apps });
+    away.c.explorer.state.view = view; // le chemin de la dernière visite reste : « Dossier »
+    away.openings.openNew({ app: 'publipostage', type: 'document' });
+    away.openings.openTemplate({ app: 'publipostage', type: 'document', id: 'facture' });
+    await new Promise(resolve => setImmediate(resolve));
+    const folders = steps(away.c, 'activate').map(([, , opening]) => opening.dossier);
+    assert.deepEqual(folders, ['', ''], `depuis la vue « ${view} », le fichier neuf naît à la racine, pas dans le dernier dossier visité`);
+  }
+});
+
+test('le fichier qu\'une app crée après « Nouveau » est rangé dans le dossier où la personne était, une seule fois ; tout autre geste fait oublier l\'attente', async () => {
+  const apps = { publipostage: { ouverture: { fichier: true, nouveau: true }, fichiers: [{ table: 'Publipostage_Modeles' }] } };
+  const placed = [];
+  const { c, openings } = host({ apps });
+  c.filing = { rangeNew: async entries => { placed.push(entries); } };
+  openings.openNew({ app: 'publipostage', type: 'document' });
+  await new Promise(resolve => setImmediate(resolve));
+  const session = c.session;
+  assert.equal(session.id, 'publipostage', 'l\'app est ouverte');
+  openings.created.written(session, [['AddRecord', 'Publipostage_Modeles', null, { Nom: 'Neuf' }]], { retValues: [21] });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(placed, [[{ app: 'publipostage', file: '21', pinned: false, folder: 'Dossier' }]], 'le fichier neuf va dans le dossier ouvert (Moi, sous-dossier ou espace : le rangement sait)');
+  openings.created.written(session, [['AddRecord', 'Publipostage_Modeles', null, { Nom: 'Autre' }]], { retValues: [22] });
+  assert.equal(placed.length, 1, 'une seule fois : le fichier suivant que l\'app crée de son côté n\'est pas celui de « Nouveau »');
+  // ouvrir un fichier précis fait oublier la création en attente
+  openings.openNew({ app: 'publipostage', type: 'document' });
+  await new Promise(resolve => setImmediate(resolve));
+  await openings.openIn('publipostage', { fichier: { id: '3', type: 'document' }, type: 'document', dossier: 'Dossier', raison: 'explorateur' }, 'ex.notice.open');
+  openings.created.written(c.session, [['AddRecord', 'Publipostage_Modeles', null, {}]], { retValues: [23] });
+  assert.equal(placed.length, 1, 'après l\'ouverture d\'un fichier précis, ce que l\'app crée n\'est plus ce « Nouveau »');
 });
 
 test('openTemplate : l\'article grisé dit sa raison ; sinon l\'app s\'ouvre sur le modèle choisi, une seule fois, avec l\'identifiant du modèle ; une app qui ne sait pas l\'ouvrir le dit', async () => {

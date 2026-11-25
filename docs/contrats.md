@@ -1803,7 +1803,18 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    d'enregistrement. Le type demandé doit figurer dans `actions.ouvrir` du manifeste de l'app visée ; une app non installée
    est listée grisée avec « Installer ». « Nouveau » est `ouvrir` avec `fichier: null` et un `type` : l'app ouvre un fichier
    vierge de ce type et le crée à son premier enregistrement ; si son manifeste déclare `colonnes.dossier`, elle y écrit
-   `dossier` (sinon le fichier arrive à la racine). [D]
+   `dossier` (sinon le fichier arrive à la racine). [D] **Le fichier neuf va dans le dossier où la personne était, quoi que l'app fasse de `dossier`**
+   (25/11, demande du porteur : « quand on fait Nouveau, ça met à la racine et pas là où l'on est dans l'arborescence » ; faits vérifiés, 176) : `dossier`
+   n'est qu'une indication (5.2, point 3), Publipostage+ ne la lit pas et un dossier d'espace ne s'écrit que par GFS. GFS range donc lui-même, comme un PDF
+   importé : après chaque ouverture qui crée (`nouveau`, `modele`, `importer`) que l'app a faite, il retient le dossier ouvert (**la racine quand la vue n'est
+   pas un dossier** : « Récents », « Favoris », « Ouverts », « Partagés », la corbeille) ; le courtier, qui voit l'app écrire, reconnaît le **premier ajout
+   (`AddRecord` ou `BulkAddRecord`) à une table de `fichiers[]` de l'app active** et le numéro que Grist rend (`retValues`), et range ce numéro dans le dossier
+   retenu, une seule fois (`Filing.rangeNew` : la ligne de rangement de la personne, ou celle que la table de rangement de l'app déclare ; **un dossier d'espace
+   devient une ligne de `GFS_Placement`, par un propriétaire seulement**, sinon le fichier reste à la racine et la phrase du refus est dite). L'app n'attend pas
+   le rangement, qui s'écrit derrière elle ; un rangement qui échoue laisse le fichier à la racine (un avertissement). Rien n'est écrit tant que l'app n'a pas
+   créé son fichier : un modèle vierge qu'on n'enregistre pas ne laisse rien. L'attente s'oublie quand la personne ouvre autre chose (un fichier précis, un
+   PDF à lire, une personne à insérer), quand l'app active change, et après le premier fichier. Aucune app n'a rien à changer ; une app qui lirait un jour
+   `dossier` et le rangerait elle-même ne gêne pas (la même ligne est réécrite). `js/broker/created-files.js`, crochet `onApplied` de `js/broker/broker.js`.
    Quand l'app est déjà active, GFS (prototype V0.3) n'envoie l'appel qu'à une app qui a déjà demandé son `contexte` : avant, elle
    y lit l'`ouverture`, celle du dernier clic, rendue une seule fois (5.2, point 3). L'appel n'a pas de délai. `{ ouvert: false }`
    (la personne a annulé dans l'app) ne se commente pas ; `GFS_INCONNU` (l'app n'a pas la porte) vaut la phrase provisoire ;
@@ -3590,7 +3601,7 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        **« Partager… » sur un dossier d'espace : livré le 09/11.** Le menu d'un dossier a « Partager… » : dégrisé pour un dossier à l'intérieur d'un espace (cible `dossier:<clé>/<chemin>`), grisé avec sa phrase pour « Espaces »,
        un espace (ses groupes se règlent dans « Gérer les partages… », onglet Espaces) et un dossier de « Moi ». La fenêtre est celle des fichiers (personne, groupe, « Aucun accès ») et marque « Hérité » ce qui vient de l'espace
        et des dossiers au-dessus ; un droit donné se lit tout de suite dans les listes de chaque fichier du dossier (mesuré : `labo/run-partager-espaces.mjs`, étape 5, 43 vérifications ; Firefox : `test/dossiers-firefox.mjs`).
-       **Pas fait** : la création d'un fichier d'une app directement dans un dossier d'espace (il naît à la racine de la personne), les fichiers à la corbeille (ils gardent leur place dans l'espace).
+       **Livré le 25/11** : la création d'un fichier d'une app directement dans un dossier d'espace (5.4, point 1 : placé par un propriétaire). **Pas fait** : les fichiers à la corbeille (ils gardent leur place dans l'espace).
     m. [T] **« Partagés avec moi » : ce qu'on m'a donné par mon adresse, livré le 11/11** (lot 4c ; choix du porteur, 11/11 : « ce qu'on m'a donné par mon adresse »). La vue est celle des fichiers reçus d'un autre document (contrats 6.6,
        point 17) ; elle montre aussi les fichiers dont **le droit vient d'une ligne de partage à l'adresse de la personne, sur le fichier ou sur un dossier d'espace, écrite par quelqu'un d'autre**. Ni un groupe, ni une catégorie
        (« éditeurs », « tous »), ni la racine, ni un espace entier n'y comptent ; un fichier déjà rangé dans un espace que la personne voit reste dans l'espace. Grist le calcule : une colonne cachée de plus, **`GFS_Directs`**

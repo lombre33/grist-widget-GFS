@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-QO7W026X6jt8wbYJFwxnfc8IBR+BPzHW99gJj2XEPhY='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-FREaxkVrmw+Nk89Q2fV+9P0UQGMT+kXw36sXZIkItRc='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=a2e086add5">
 <link rel="stylesheet" href="css/explorer.css?v=c8ff42b04b">
 <link rel="stylesheet" href="css/modules.css?v=b467d702a6">
@@ -124,8 +124,9 @@
     "./js/broker/arrival-table.js": "./js/broker/arrival-table.js?v=58ba2ca762",
     "./js/broker/arrival.js": "./js/broker/arrival.js?v=7694fcdfd6",
     "./js/broker/attach.js": "./js/broker/attach.js?v=1c1097b59b",
-    "./js/broker/broker.js": "./js/broker/broker.js?v=91241fc26d",
+    "./js/broker/broker.js": "./js/broker/broker.js?v=0ebcd8a01c",
     "./js/broker/context.js": "./js/broker/context.js?v=319559f3bd",
+    "./js/broker/created-files.js": "./js/broker/created-files.js?v=4b6cddf6fb",
     "./js/broker/deposit.js": "./js/broker/deposit.js?v=357a730c38",
     "./js/broker/entries.js": "./js/broker/entries.js?v=a9fb06f388",
     "./js/broker/envelope.js": "./js/broker/envelope.js?v=761782e0d4",
@@ -133,7 +134,7 @@
     "./js/broker/frames.js": "./js/broker/frames.js?v=f45d5dcf64",
     "./js/broker/leave.js": "./js/broker/leave.js?v=5437d0c5dc",
     "./js/broker/links.js": "./js/broker/links.js?v=ce850aa50e",
-    "./js/broker/openings.js": "./js/broker/openings.js?v=51b2c28e70",
+    "./js/broker/openings.js": "./js/broker/openings.js?v=2fdec75c8a",
     "./js/broker/options-slice.js": "./js/broker/options-slice.js?v=63ada0fcde",
     "./js/broker/own-section.js": "./js/broker/own-section.js?v=b4451c0cb2",
     "./js/broker/player-sites.js": "./js/broker/player-sites.js?v=79d15fdf51",
@@ -143,7 +144,7 @@
     "./js/broker/reading.js": "./js/broker/reading.js?v=750a14c1da",
     "./js/broker/rpc.js": "./js/broker/rpc.js?v=d54b5c5f33",
     "./js/broker/security-relay.js": "./js/broker/security-relay.js?v=2e0d2107de",
-    "./js/broker/session.js": "./js/broker/session.js?v=c5ae6f1148",
+    "./js/broker/session.js": "./js/broker/session.js?v=7a615e2d56",
     "./js/broker/sharing-rules.js": "./js/broker/sharing-rules.js?v=efe8774466",
     "./js/broker/sharing.js": "./js/broker/sharing.js?v=e6dccec1cd",
     "./js/broker/sql-gate.js": "./js/broker/sql-gate.js?v=d3992fab10",
@@ -151,7 +152,7 @@
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=063ac32914",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=7c746e590f",
-    "./js/controller.js": "./js/controller.js?v=8a2478b3a3",
+    "./js/controller.js": "./js/controller.js?v=18f33c6bb0",
     "./js/explorer/doc-key.js": "./js/explorer/doc-key.js?v=4c44c49f1a",
     "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=256a78cd0f",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=62a4670621",
@@ -397,17 +398,17 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=8a2478b3a3">
+<link rel="modulepreload" href="./js/controller.js?v=18f33c6bb0">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=e4ffb08a57">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
-<link rel="modulepreload" href="./js/broker/broker.js?v=91241fc26d">
+<link rel="modulepreload" href="./js/broker/broker.js?v=0ebcd8a01c">
 <link rel="modulepreload" href="./js/broker/view-options.js?v=7c746e590f">
 <link rel="modulepreload" href="./js/broker/own-section.js?v=b4451c0cb2">
 <link rel="modulepreload" href="./js/broker/view-link.js?v=1853f29883">
 <link rel="modulepreload" href="./js/files/page-tree.js?v=dd42347e00">
 <link rel="modulepreload" href="./js/files/own-table.js?v=c6653c44a6">
-<link rel="modulepreload" href="./js/broker/session.js?v=c5ae6f1148">
+<link rel="modulepreload" href="./js/broker/session.js?v=7a615e2d56">
 <link rel="modulepreload" href="./js/broker/app-status.js?v=651007029f">
 <link rel="modulepreload" href="./js/broker/frames.js?v=f45d5dcf64">
 <link rel="modulepreload" href="./js/i18n/i18n.js?v=eaf9222bd7">
@@ -446,7 +447,7 @@
 <link rel="modulepreload" href="./js/broker/security-relay.js?v=2e0d2107de">
 <link rel="modulepreload" href="./js/ui/ask-window.js?v=bc29f4db59">
 <link rel="modulepreload" href="./js/broker/entries.js?v=a9fb06f388">
-<link rel="modulepreload" href="./js/broker/openings.js?v=51b2c28e70">
+<link rel="modulepreload" href="./js/broker/openings.js?v=2fdec75c8a">
 <link rel="modulepreload" href="./js/explorer/opened-files.js?v=975feeb422">
 <link rel="modulepreload" href="./js/explorer/files-reading.js?v=1e23914567">
 <link rel="modulepreload" href="./js/explorer/heavy-hint.js?v=b10999c56c">
@@ -527,6 +528,7 @@
 <link rel="modulepreload" href="./js/files/import-file.js?v=916d102222">
 <link rel="modulepreload" href="./js/broker/reading.js?v=750a14c1da">
 <link rel="modulepreload" href="./js/apps/templates-catalogue.js?v=29be066234">
+<link rel="modulepreload" href="./js/broker/created-files.js?v=4b6cddf6fb">
 <link rel="modulepreload" href="./js/broker/leave.js?v=5437d0c5dc">
 <link rel="modulepreload" href="./js/explorer/file-refresh.js?v=cfc9cbb1b5">
 <link rel="modulepreload" href="./js/ui/search.js?v=0921c92eb3">

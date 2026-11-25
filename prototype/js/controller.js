@@ -636,7 +636,7 @@ export class GfsController {
       container: this.$('frames'), readonly: this.readonly, preferences: this.appPreferences(), copies: this.registry.copiesFor(app.app.id),
         base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
       envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens),
-        viewOptions: this.viewOptions,
+        viewOptions: this.viewOptions, onApplied: (session, actions, result) => this.openings.created.written(session, actions, result),
     };
   }
 

@@ -5,6 +5,7 @@
 
 import { acceptsFile, importOpening, templateOpening, personOpening, openingKind, acceptsOpening, carriesFile, pickFile } from '../files/import-file.js';
 import { readOpening } from './reading.js';
+import { CreatedFiles } from './created-files.js';
 import { leaveApp, leaveQuestion } from './leave.js';
 import { FILES_APP } from '../files/gfs-files.js';
 import { ANNUAIRES_APP } from '../files/annuaire-files.js';
@@ -15,7 +16,19 @@ import { ERR } from './filter.js';
 export class Openings {
   #leaveRun = 0; // le numéro de la dernière demande « fermer » : une réponse qui arrive après un autre geste de la personne n'ouvre plus rien
 
-  constructor(c) { this.c = c; }
+  constructor(c) {
+    this.c = c;
+    // Le fichier que l'app crée après « Nouveau », « Importer » ou « Depuis un modèle » va dans le dossier où la personne était (js/broker/created-files.js).
+    this.created = new CreatedFiles({ manifestOf: id => c.manifestOf(id), place: entries => c.filing.rangeNew(entries),
+      done: () => { if (c.explorer && c.explorer.isOpen) void c.refreshFiles({ quiet: true }); } });
+  }
+
+  // Le dossier où naît un fichier neuf : le dossier ouvert, la racine quand la vue n'en est pas un (« Récents », « Favoris », la corbeille), comme « Nouveau
+  // dossier ».
+  #here() {
+    const { state } = this.c.explorer;
+    return state.view === 'folder' ? state.path : '';
+  }
 
   // La personne repart explorer (ou fait autre chose) : une app qui répondrait « fermer » plus tard ne change plus rien.
   moved() { this.#leaveRun++; }
@@ -36,7 +49,7 @@ export class Openings {
   openNew(entry) {
     const { c } = this;
     if (entry.greyed) { void c.unlock({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
-    void this.openIn(entry.app, { fichier: null, type: entry.type, dossier: c.explorer.state.path, raison: 'nouveau' }, 'ex.notice.new');
+    void this.openIn(entry.app, { fichier: null, type: entry.type, dossier: this.#here(), raison: 'nouveau' }, 'ex.notice.new');
   }
 
   // « Depuis un modèle » (contrats 5.4, point 13) : l'app ouvre un modèle non enregistré fait d'après le modèle du catalogue qu'elle a déclaré ; un modèle
@@ -44,7 +57,7 @@ export class Openings {
   openTemplate(entry) {
     const { c } = this;
     if (entry.greyed) { void c.unlock({ text: entry.reason, focus: entry.focus }); return; }
-    void this.openIn(entry.app, templateOpening(entry, c.explorer.state.path), 'ex.notice.template');
+    void this.openIn(entry.app, templateOpening(entry, this.#here()), 'ex.notice.template');
   }
 
   // « Insérer dans… » de la fiche d'une personne (contrats 5.4, point 16) : l'app s'ouvre avec la personne (`person` : { nom, email, titre, telephone, annuaire
@@ -64,7 +77,7 @@ export class Openings {
     if (!file) return;
     if (!acceptsFile(file.name, entry.extensions)) {
       c.notice(c.t('ex.import.wrong', { name: file.name, format: entry.label, extensions: entry.extensions.join(', ') })); return; }
-    void this.openIn(entry.app, importOpening(entry, file, c.explorer.state.path), 'ex.notice.import');
+    void this.openIn(entry.app, importOpening(entry, file, this.#here()), 'ex.notice.import');
   }
 
   // Rend `true` quand l'ouverture est partie vers l'app (ou qu'elle l'a faite), `false` quand l'app n'a pu être activée ou que la personne a annulé dans l'app
@@ -88,6 +101,8 @@ export class Openings {
     const opened = await asked;
     // « Ouverts » n'apprend que ce que l'app a ouvert (pas un refus de la personne, ni une app qui ne connaît pas l'appel)
     if (opened && knows) this.#remember(appId, opening, session);
+    // une création (« Nouveau », un modèle de départ, « Importer ») retient le dossier où l'app rangera son fichier neuf ; tout autre geste l'oublie
+    if (opened) this.created.opened(appId, knows ? opening : null, session);
     return opened;
   }
 

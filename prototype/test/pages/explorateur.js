@@ -542,7 +542,7 @@ async function mount() {
       onStopLink: async link => { window.__manageActs.push([link.state === 'pending' ? 'cancelLink' : 'stopLink', link.id]); window.__removed.push(link.id); return { ok: true }; } });
   };
   // La fenêtre « Envoyer à un autre document » (js/sharing/share-other-window.js, test/partager-autre-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur de partage et Grist se
-  // mesurent dans un vrai Grist : labo/run-partager-autre.mjs ; ici, la mise en page et les gestes). `kind` : 'ok' (le document qui répond est dans un dossier, son nom très long), 'perso' (dans l'espace personnel), 'lien' (relier deux documents sans fichier : « Gérer les partages > Autres documents > Relier un document… »),
+  // mesurent dans un vrai Grist : labo/run-partager-autre.mjs ; ici, la mise en page et les gestes). `kind` : 'ok' (le document qui répond est dans un dossier, son nom très long), 'perso' (dans l'espace personnel), 'lien' (relier deux documents sans fichier : « Gérer les partages > Autres documents > Relier un document… »), 'lien-neuf' (idem dans un document sans aucun PDF : la table des fichiers naît au « Continuer »),
   // 'refus' (préparer échoue), 'bloque' (l'envoi ne peut pas finir). `window.__sendActs` note ce que le parcours a reçu ; `window.__sendGo()` laisse l'envoi finir.
   const LONG_DOC = 'Essai de réception du service de la comptabilité fournisseurs de la région Nord-Est';
   window.__sendOther = kind => {
@@ -559,7 +559,7 @@ async function mount() {
       abort: async () => { acts.push(['abort']); },
     };
     let mode = 'once';
-    return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, createFlow: (chosen, strict) => { mode = chosen; acts.push(['mode', chosen, Boolean(strict)]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
+    return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' || kind === 'lien-neuf' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, filesTable: kind !== 'lien-neuf', createFlow: (chosen, strict) => { mode = chosen; acts.push(['mode', chosen, Boolean(strict)]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
   };
   // La fenêtre « Recevoir d'un autre document Grist » (js/sharing/share-receive-window.js, test/partager-recevoir-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur et Grist se mesurent
   // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'serveur' (le code vient d'un autre serveur Grist : refusé dès la lecture), 'refus' (accepter échoue).

@@ -9,6 +9,7 @@ import { formatBytes } from '../weight/weight.js';
 import { applyLevel, isTooBig, maxText, sizeOf, stopLink } from './share-links.js';
 import { filesOfFolder, folderLabel, isFolderTarget, skippedInFolder, tooBigInFolder, writeFolderName } from './share-folder.js';
 import { closeSharingTables } from './sync-rules.js';
+import { filesTableOf } from './share-files-table.js';
 
 // Pourquoi l'onglet est grisé (une phrase), ou null. `files` : pour un dossier, les fichiers qui peuvent y partir (js/share-folder.js) ; un dossier sans PDF à
 // partager n'a rien à envoyer (`tooBig` : combien de PDF de plus de 25 Mo l'en empêchent, le dire plutôt que « aucun PDF »).
@@ -102,12 +103,16 @@ export function createOtherDocuments(deps) {
     const blocked = deps.writeBlock();
     if (blocked) { deps.notice(blocked); return; }
     try {
-      const [{ openShareOther }, { createSourceFlow }, running, name] = await Promise.all(
-        [import('./share-other-window.js'), import('./share-other-flow.js'), engine(), documentName(deps.transfer, t)]);
+      // Un document sans PDF n'a pas la table des fichiers : l'accord le dit, et la table naît au « Continuer » (js/sharing/share-files-table.js).
+      const files = filesTableOf(deps.docApi());
+      const [{ openShareOther }, { createSourceFlow }, running, name, hasFiles] = await Promise.all(
+        [import('./share-other-window.js'), import('./share-other-flow.js'), engine(), documentName(deps.transfer, t), files.exists()]);
       const below = [...deps.container.querySelectorAll('.mod-scrim')];
       await openShareOther({
         container: deps.container, t, inertTargets: () => [...deps.inertTargets(), ...below], file: file ? { id: file.id, name: file.name } : null,
-        createFlow: (mode, strict) => createSourceFlow({ engine: running, file, mode: file ? mode : 'live', strict, name }), errorText: running.errorText,
+          filesTable: hasFiles,
+        createFlow: (mode, strict) => createSourceFlow({ engine: running, file, mode: file ? mode : 'live', strict, name, ensureFiles: files.ensure }),
+          errorText: running.errorText,
           notice: deps.notice, settled: () => closeTechnicalTables(deps),
       });
     } catch (error) { deps.notice(await said(error)); }

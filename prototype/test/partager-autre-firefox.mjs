@@ -156,6 +156,21 @@ async function linkFlow(page, tools, t) {
   await tools.expect(kind, '« Fermer » devait fermer la fenêtre', s => s.modal === null);
 }
 
+// Relier un document qui n'a aucun PDF de GFS (retour du porteur du 25/11 : « cols is null » au « Continuer ») : l'accord dit que la table des fichiers naît (vide, avec les trois colonnes d'aide), et plus
+// « trois colonnes d'aide dans la table » (elle n'existe pas encore) ; la fenêtre tient dans la page ; un document qui a déjà des PDF garde les mots d'avant (le parcours `lien`, plus haut).
+async function newTableFlow(page, tools, t) {
+  const kind = 'relier un document sans PDF';
+  const now = await tools.open(kind, 'lien-neuf');
+  if (!now.modal) return;
+  tools.fits(kind, now, 'l\'accord du lien, table à créer');
+  const created = t('so.accord.files', { table: 'GFS_Fichiers', columns: 'id_sync, MajLe, RecalculLe' });
+  const before = t('so.accord.columns', { table: 'GFS_Fichiers', columns: 'id_sync, MajLe, RecalculLe' });
+  if (!now.modal.body.includes(created)) tools.run.note(kind, `l'accord devait dire « ${created} » (il dit « ${now.modal.body.slice(0, 200)} »)`);
+  if (now.modal.body.includes(before)) tools.run.note(kind, 'l\'accord ne devait plus dire que la table a déjà ses colonnes d\'aide : elle n\'existe pas encore');
+  await page.press('Escape');
+  await tools.expect(kind, 'Échap devait fermer la fenêtre', s => s.modal === null);
+}
+
 async function failureFlow(page, tools, t) {
   let kind = 'préparation refusée';
   await tools.open(kind, 'refus');
@@ -415,6 +430,7 @@ export async function partagerAutreProblems(page, language, tag) {
     await sendingFlow(page, tools, t, 'perso');
     await sendingFlow(page, tools, t, 'ok', 'once', false);
     await linkFlow(page, tools, t);
+    await newTableFlow(page, tools, t);
     await failureFlow(page, tools, t);
     await tabFlow(page, tools, t);
     await emptyTabFlow(page, tools, t);

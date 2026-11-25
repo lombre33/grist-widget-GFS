@@ -66,3 +66,11 @@ test('le français de GFS vouvoie : ni « tu », « ton », « t’ », ni impé
 test('la liste des textes à la 3e personne ne garde que des clés qui existent', () => {
   for (const key of TROISIEME_PERSONNE) assert.ok(key in STRING_TABLES.fr, key);
 });
+
+test('le bas de la fenêtre du lien parle de la même « instance » de Grist : « le même Grist » laissait croire au même document (retour du 25/11)', () => {
+  for (const [language, word] of [['fr', /même instance de Grist/], ['en', /same Grist instance/]]) {
+    const foot = createI18n(language).t('so.foot');
+    assert.match(foot, word, language);
+    assert.doesNotMatch(foot, /(même|same) Grist\.?$/, `${language} : pas « le même Grist » seul`);
+  }
+});

@@ -6,8 +6,8 @@ import { norm } from '../js/broker/filter.js';
 
 // Des noms qui visent les préfixes réservés (GFS_, celui d'une autre app) par un détour : espaces, tirets, « _ » de tête, pleine chasse, signes combinants, lettres
 // que seule une translittération ramènerait à G, F ou S.
-const NAMES = ['GFS_Filing', '_GFS_Filing', '__gfs_filing', 'gfs rangement', 'GFS-rangement', 'GFS.rangement', 'GFS rangement', 'GFS​_rangement',
-  'ＧＦＳ_rangement', 'ǴFS_rangement', 'ᴳFS_rangement', 'ɢFS_rangement', 'GƑS_rangement', 'ǤFS_rangement', 'GFŞ_rangement', 'GFſ_filing',
+const NAMES = ['GFS_Filing', '_GFS_Rangement', '__gfs_rangement', 'gfs rangement', 'GFS-rangement', 'GFS.rangement', 'GFS rangement', 'GFS​_rangement',
+  'ＧＦＳ_rangement', 'ǴFS_rangement', 'ᴳFS_rangement', 'ɢFS_rangement', 'GƑS_rangement', 'ǤFS_rangement', 'GFŞ_rangement', 'GFſ_rangement',
   'Gᴍ_x', 'Publipostage_Autre', 'publipostage autre', 'Ｐublipostage_x', 'Publipostage·autre', 'SondeH_Essai', 'sondeh essai', 'Éléphant', '1abc', '___', 'a b c'];
 
 // COURTIER_JUGE=large : le jugement du nom avant l'appel est volontairement affaibli (il ne retire plus les « _ » de tête et ne remplace plus les signes) pour mesurer
@@ -49,7 +49,7 @@ check('le jeton est relayé : même issue que sans courtier (grist-static n\'en 
 
 // ----- 3. Les noms : ce que Grist rend pour chaque nom (sans courtier), ce que le courtier en juge, ce qu'il fait de la demande.
 const rows = [];
-const WIDE_NAMES = ['gfs rangement', 'GFS-rangement', '_GFS_x', '__gfs_filing', 'GFS.x', 'publipostage autre'];
+const WIDE_NAMES = ['gfs rangement', 'GFS-rangement', '_GFS_x', '__gfs_rangement', 'GFS.x', 'publipostage autre'];
 for (const name of (wide ? WIDE_NAMES : NAMES)) {
   const real = realId(await direct([['AddTable', name, [{ id: 'A', type: 'Text' }]]]));
   if (!real.startsWith('ERREUR')) await direct([['RemoveTable', real]]);

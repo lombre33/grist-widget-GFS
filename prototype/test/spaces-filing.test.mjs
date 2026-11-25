@@ -7,8 +7,8 @@ import { listItems } from '../js/explorer/explorer-model.js';
 import { createI18n } from '../js/i18n/i18n.js';
 
 const { t } = createI18n('fr');
-const SPACES = { id: [1, 2], Cle: ['achats', 'compta'], Nom: ['Achats', 'Compta'] };
-const PLACE = { id: [1, 2, 3, 4], Cible: ['publipostage:2', 'publipostage:3', '', 'publipostage:9'], Espace: ['achats', 'achats', 'achats', 'inconnu'], Dossier: ['Contrats', '', 'Contrats/Sous', 'X'] };
+const SPACES = { id: [1, 2], Key: ['achats', 'compta'], Name: ['Achats', 'Compta'] };
+const PLACE = { id: [1, 2, 3, 4], Target: ['publipostage:2', 'publipostage:3', '', 'publipostage:9'], Space: ['achats', 'achats', 'achats', 'inconnu'], Folder: ['Contrats', '', 'Contrats/Sous', 'X'] };
 const info = () => readSpaces(SPACES, PLACE);
 const file = (id, folder = '', extra = {}) => ({ key: `publipostage:${id}`, app: 'publipostage', id: String(id), name: `Modèle ${id}`, folder, pinned: false, search: '', weight: 0, pieces: [], ts: null, ...extra });
 
@@ -22,7 +22,7 @@ test('lire les espaces : un dossier « Espaces/<nom> » par espace lu, les dossi
 });
 
 test('deux espaces de même nom : le second porte sa clé', () => {
-  const read = readSpaces({ id: [1, 2], Cle: ['a', 'b'], Nom: ['Achats', 'achats'] }, null);
+  const read = readSpaces({ id: [1, 2], Key: ['a', 'b'], Name: ['Achats', 'achats'] }, null);
   assert.deepEqual(read.spaces.map(space => space.name), ['Achats', 'achats (b)']);
 });
 
@@ -108,11 +108,11 @@ test('écrire le placement : mise à jour, ajout, retrait, dossiers vides, en un
     markers: { add: [{ space: 'achats', folder: 'Neuf' }, { space: 'achats', folder: 'Contrats/Sous' }], drop: [{ space: 'achats', folder: 'Contrats/Sous' }] } };
   assert.equal(await writePlacement(doc, plan), true);
   assert.deepEqual(seen, [
-    ['UpdateRecord', 'GFS_Placement', 1, { Espace: 'compta', Dossier: '' }],
-    ['AddRecord', 'GFS_Placement', null, { Cible: 'publipostage:7', Espace: 'achats', Dossier: 'Contrats' }],
+    ['UpdateRecord', 'GFS_Placement', 1, { Space: 'compta', Folder: '' }],
+    ['AddRecord', 'GFS_Placement', null, { Target: 'publipostage:7', Space: 'achats', Folder: 'Contrats' }],
     ['RemoveRecord', 'GFS_Placement', 2],
     ['RemoveRecord', 'GFS_Placement', 3],
-    ['AddRecord', 'GFS_Placement', null, { Cible: '', Espace: 'achats', Dossier: 'Neuf' }],
+    ['AddRecord', 'GFS_Placement', null, { Target: '', Space: 'achats', Folder: 'Neuf' }],
   ]);
   assert.equal(await writePlacement({ fetchTable: async () => PLACE, applyUserActions: async () => { throw new Error('rien à écrire'); } }, { ops: [], markers: { add: [], drop: [] } }), false);
 });
@@ -135,7 +135,7 @@ function harness({ owner = true, files = [file(1, 'Perso'), file(2, 'Perso')], s
 test('couper-coller dans un espace : un propriétaire écrit le placement, le rangement garde le dossier de la personne', async () => {
   const { filing, log } = harness();
   assert.equal(await filing.moveFileTo(file(1, 'Perso'), 'Espaces/Achats/Contrats'), 'moved');
-  assert.deepEqual(log.placements, [['AddRecord', 'GFS_Placement', null, { Cible: 'publipostage:1', Espace: 'achats', Dossier: 'Contrats' }]]);
+  assert.deepEqual(log.placements, [['AddRecord', 'GFS_Placement', null, { Target: 'publipostage:1', Space: 'achats', Folder: 'Contrats' }]]);
   assert.equal(log.filings[0].entries[0].folder, 'Perso');
 });
 

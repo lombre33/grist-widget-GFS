@@ -17,9 +17,9 @@ test('les adresses d\'une colonne : texte, choix, liste de choix (tableau « L �
 
 test('les adresses connues : la personne, les partages (personne et auteur), les membres tapés des groupes et le rangement de chacun ; ni catégories ni groupes', () => {
   const known = knownAddresses({ me: 'Moi@X.fr',
-    shares: [{ Personne: 'Lea@x.fr', PersonneL: 'lea@x.fr', Auteur: 'moi@x.fr' }, { Personne: '@editeurs', Auteur: 'marc@x.fr' }, { Personne: '#Achats', Auteur: '' }],
-    groups: [{ PersonnesIci: 'zoe@x.fr\nlea@x.fr' }, { PersonnesIci: '' }],
-    filing: [{ Utilisateur: 'eve@x.fr' }, { Utilisateur: '@sonde' }, { Utilisateur: '@document' }, { Utilisateur: 'marc@x.fr' }] });
+    shares: [{ Person: 'Lea@x.fr', PersonL: 'lea@x.fr', Auteur: 'moi@x.fr' }, { Person: '@editeurs', Auteur: 'marc@x.fr' }, { Person: '#Achats', Auteur: '' }],
+    groups: [{ People: 'zoe@x.fr\nlea@x.fr' }, { People: '' }],
+    filing: [{ User: 'eve@x.fr' }, { User: '@sonde' }, { User: '@document' }, { User: 'marc@x.fr' }] });
   assert.deepEqual(known, ['eve@x.fr', 'lea@x.fr', 'marc@x.fr', 'moi@x.fr', 'zoe@x.fr']);
   assert.deepEqual(knownAddresses({}), []);
 });

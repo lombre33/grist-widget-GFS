@@ -136,8 +136,8 @@ export class SubControl {
     const read = async (table, keep) => {
       try { return rowsOf(await this.#o.store.table(table)).filter(keep).map(row => row.id); } catch (error) { return []; }
     };
-    const [shares, places, filing] = await Promise.all([read(SHARES_TABLE, row => row.Cible === key), read(PLACE_TABLE, row => row.Cible === key),
-      read(FILING_TABLE, row => row.App === ANNUAIRES_APP && String(row.Fichier) === String(annuaire.row))]);
+    const [shares, places, filing] = await Promise.all([read(SHARES_TABLE, row => row.Target === key), read(PLACE_TABLE, row => row.Target === key),
+      read(FILING_TABLE, row => row.App === ANNUAIRES_APP && String(row.File) === String(annuaire.row))]);
     return { shares, places, filing };
   }
 

@@ -7,7 +7,7 @@ import { gfsFrame } from './lab-droits.mjs';
 import { call, rowsOf } from './lab-rest.mjs';
 
 const { t } = createI18n(process.env.LAB_LANG || 'fr');
-export const FILES = 'GFS_Files', SHARES = 'GFS_Shares', FILING = 'GFS_Filing';
+export const FILES = 'GFS_Fichiers', SHARES = 'GFS_Shares', FILING = 'GFS_Filing';
 
 export const has = (value, who) => JSON.stringify(value ?? null).toLowerCase().includes(who);
 export const fileRow = async (run, name) => ((await rowsOf(run, FILES)) || []).find(row => row.Nom === name);
@@ -23,7 +23,7 @@ export async function addFile(run, name, id, who) {
   return fileRow(run, name);
 }
 // La ligne de rangement d'une personne : où ELLE range ce fichier.
-export const filing = (who, row, folder) => ['AddRecord', FILING, null, { Utilisateur: who, App: 'gfs-fichiers', Fichier: row.Identifiant, Dossier: folder, Favori: false }];
+export const filing = (who, row, folder) => ['AddRecord', FILING, null, { User: who, App: 'gfs-fichiers', File: row.Identifiant, Folder: folder, Favorite: false }];
 
 export async function openShareFor(frame, name) {
   await openRowMenu(frame, name);
@@ -55,11 +55,11 @@ export async function waitReload(page, old) {
 }
 
 // Les lignes d'état de dossier d'une personne dans `GFS_Filing` (ni app ni fichier, un chemin) : [{ id, Dossier }], dans l'ordre des numéros.
-export const stateRows = async (run, who) => ((await rowsOf(run, FILING)) || []).filter(row => String(row.Utilisateur).toLowerCase() === who && !row.App && !row.Fichier && row.Dossier);
+export const stateRows = async (run, who) => ((await rowsOf(run, FILING)) || []).filter(row => String(row.User).toLowerCase() === who && !row.App && !row.File && row.Folder);
 // Le numéro de la ligne d'état du dossier `path` de `who`, ou null.
-export const folderId = async (run, who, path) => (await stateRows(run, who)).find(row => row.Dossier === path)?.id ?? null;
+export const folderId = async (run, who, path) => (await stateRows(run, who)).find(row => row.Folder === path)?.id ?? null;
 // Les lignes de partage dont la cible est `target`.
-export const sharesOn = async (run, target) => ((await rowsOf(run, SHARES)) || []).filter(row => row.Cible === target);
+export const sharesOn = async (run, target) => ((await rowsOf(run, SHARES)) || []).filter(row => row.Target === target);
 
 // Active le partage du document par « Partager… » d'un fichier (la question dit ce que le rangement devient) ; rend le cadre rechargé par Grist.
 export async function activateSharing(run, name) {

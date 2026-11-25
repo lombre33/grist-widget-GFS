@@ -1,4 +1,4 @@
-// Les fichiers que GFS garde, côté données (contrats 6.6) : la table `GFS_Files`, une ligne par PDF, le fichier en pièce jointe Grist. Ce module ajoute,
+// Les fichiers que GFS garde, côté données (contrats 6.6) : la table `GFS_Fichiers`, une ligne par PDF, le fichier en pièce jointe Grist. Ce module ajoute,
 // remplace, retire et lit un fichier ; il ne montre rien à la personne (les fenêtres et les phrases sont à js/files/kept-files.js) et ne parle à Grist que par
 // le port de GFS et le cadre d'envoi (js/broker/transfer.js).
 //
@@ -179,7 +179,7 @@ export class FilesStore {
   }
 
   // Le contenu d'un fichier : { blob, name }. La ligne est relue (un fichier retiré par une autre personne, ou une cellule sans pièce jointe, est dit) ; rien
-  // n'est écrit. Un fichier reçu d'un autre document (`file.received`, js/sharing/received-files.js) est lu dans sa table `GFS_Received*`, par le numéro de sa
+  // n'est écrit. Un fichier reçu d'un autre document (`file.received`, js/sharing/received-files.js) est lu dans sa table `GFS_Recus*`, par le numéro de sa
   // ligne.
   async download(file) {
     const stored = file.received ? await this.#port.doc.fetchTable(file.received.table) : (await this.#table.load()).data;

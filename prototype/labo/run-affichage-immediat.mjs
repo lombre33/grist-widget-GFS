@@ -78,7 +78,7 @@ try {
   const present = name => frame.waitForFunction(n => [...document.querySelectorAll('.ls-row')].some(r => r.textContent.includes(n)), name, { polling: 'raf', timeout: 30000 });
   const absent = name => frame.waitForFunction(n => ![...document.querySelectorAll('.ls-row')].some(r => r.textContent.includes(n)), name, { polling: 'raf', timeout: 30000 });
   const toasts = () => frame.evaluate(() => [...document.querySelectorAll('#toast')].map(node => node.textContent.trim()));
-  const stateRows = async () => (await run.rest.rows(FILING)).filter(each => each.Utilisateur === 'essai@example.com' && !each.App && !each.Fichier && each.Dossier).map(each => each.Dossier).sort();
+  const stateRows = async () => (await run.rest.rows(FILING)).filter(each => each.User === 'essai@example.com' && !each.App && !each.File && each.Folder).map(each => each.Folder).sort();
   const modelNames = async () => (await run.rest.rows('Publipostage_Modeles')).map(each => each.Nom);
   const newFolder = async name => {
     await frame.locator('.ex-nav-row .btn.primary').click();
@@ -132,7 +132,7 @@ try {
   const pinned = await timed(() => row(MODEL).locator('button.pin').click(), () => frame.waitForFunction(n => [...document.querySelectorAll('.ls-row')].some(r => r.textContent.includes(n) && r.querySelector('button.pin.on')), MODEL, { polling: 'raf', timeout: 30000 }));
   check('l\'étoile s\'allume en moins de 250 ms', pinned < 250, `${pinned} ms`);
   const prefs = await run.rest.rows('Publipostage_PreferencesModeles');
-  const kept = (await run.rest.rows(FILING)).filter(each => each.App === 'publipostage' && each.Favori === true);
+  const kept = (await run.rest.rows(FILING)).filter(each => each.App === 'publipostage' && each.Favorite === true);
   check('Grist garde l\'étoile (chez l\'app ou dans le rangement de GFS)', prefs.some(each => each.Epingle === true) || kept.length > 0, { prefs: prefs.length, gfs: kept.length });
   await row(MODEL).click();
   await page.keyboard.press('F2');
@@ -172,7 +172,7 @@ try {
   check('Grist retire sa ligne', !(await stateRows()).includes('À jeter'), await stateRows());
 
   say('--- 7. la corbeille ---');
-  const binRows = async () => (await run.rest.rows('GFS_Trash')).map(each => each.Nom).sort();
+  const binRows = async () => (await run.rest.rows('GFS_Trash')).map(each => each.Name).sort();
   const binState = async () => ({ corbeille: await binRows(), modeles: (await modelNames()).length });
   // les images où le fichier est dans la liste pendant `ms` : le fichier qui revient (clignotement)
   const shownFor = async (name, ms) => frame.evaluate(([n, duration]) => new Promise(resolve => {

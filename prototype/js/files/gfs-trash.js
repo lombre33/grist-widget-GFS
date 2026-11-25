@@ -24,13 +24,13 @@ import { canonicalTable, isTable, canonicalColumn, documentColumn } from '../app
 
 export const BIN_TABLE = 'GFS_Trash';
 
-// Une ligne par fichier supprimé. `Identifiant` : le nom de l'entrée (douze signes hexadécimaux) ; `App`, `Table`, `FichierId` : d'où le fichier vient et
-// comment l'app le désignait ; `Nom`, `Type`, `Date`, `Auteur` : ce que l'explorateur montre, tel qu'il était ; `SupprimeLe`, `SupprimePar` : le geste ;
-// `Instantane` : la ligne de l'app, en JSON.
+// Une ligne par fichier supprimé. `EntryId` : le nom de l'entrée (douze signes hexadécimaux) ; `App`, `Table`, `FileId` : d'où le fichier vient et
+// comment l'app le désignait ; `Name`, `Type`, `Date`, `Author` : ce que l'explorateur montre, tel qu'il était ; `DeletedAt`, `DeletedBy` : le geste ;
+// `Snapshot` : la ligne de l'app, en JSON.
 export const BIN_COLUMNS = Object.freeze([
-  { id: 'Identifiant', type: 'Text' }, { id: 'App', type: 'Text' }, { id: 'Table', type: 'Text' }, { id: 'FichierId', type: 'Text' },
-  { id: 'Nom', type: 'Text' }, { id: 'Type', type: 'Text' }, { id: 'Date', type: 'DateTime:UTC' }, { id: 'Auteur', type: 'Text' },
-  { id: 'SupprimeLe', type: 'DateTime:UTC' }, { id: 'SupprimePar', type: 'Text' }, { id: 'Instantane', type: 'Text' },
+  { id: 'EntryId', type: 'Text' }, { id: 'App', type: 'Text' }, { id: 'Table', type: 'Text' }, { id: 'FileId', type: 'Text' },
+  { id: 'Name', type: 'Text' }, { id: 'Type', type: 'Text' }, { id: 'Date', type: 'DateTime:UTC' }, { id: 'Author', type: 'Text' },
+  { id: 'DeletedAt', type: 'DateTime:UTC' }, { id: 'DeletedBy', type: 'Text' }, { id: 'Snapshot', type: 'Text' },
 ].map(column => Object.freeze(column)));
 export const BIN_COLUMN_IDS = Object.freeze(BIN_COLUMNS.map(column => column.id));
 
@@ -70,14 +70,14 @@ export function parseSnapshot(json) {
 // La ligne de `GFS_Trash` d'un fichier supprimé. `file` : { id, name, type, ts, by } tel que la table de l'app le disait ; `id` : l'identifiant de
 // l'entrée.
 export const entryRecord = ({ id, app, spec, file, snapshot, now, author }) => ({
-  Identifiant: id, App: app, Table: canonicalTable(spec), FichierId: String(file.id), Nom: file.name, Type: file.type || '', Date: file.ts ?? null,
-    Auteur: file.by || '',
-  SupprimeLe: Math.floor(now / 1000), SupprimePar: author || '', Instantane: JSON.stringify(snapshot),
+  EntryId: id, App: app, Table: canonicalTable(spec), FileId: String(file.id), Name: file.name, Type: file.type || '', Date: file.ts ?? null,
+    Author: file.by || '',
+  DeletedAt: Math.floor(now / 1000), DeletedBy: author || '', Snapshot: JSON.stringify(snapshot),
 });
 
 // Les entrées de `GFS_Trash` d'une table de fichiers, dans la forme que `readFiles` (js/explorer/explorer-model.js) lit : les colonnes de la table de l'app
 // y portent ce que l'entrée a gardé. `id` reste le numéro de ligne de `GFS_Trash` (c'est lui qui désigne l'entrée) ; l'identifiant du fichier passe par
-// `FichierId`. Rend { spec, data, weights } : l'entrée du manifeste à lire, les données, et ce que chaque entrée pèse dans le document (toute la ligne de
+// `FileId`. Rend { spec, data, weights } : l'entrée du manifeste à lire, les données, et ce que chaque entrée pèse dans le document (toute la ligne de
 // `GFS_Trash`, copie JSON de la ligne de l'app comprise : c'est ce que la corbeille garde, non la ligne d'origine) ; `counted` : ces poids, ligne par
 // ligne, quand l'appelant les a déjà comptés (la lecture légère, js/explorer/explorer-sql.js, ne rend pas la copie JSON).
 export function binFiles(spec, bin, appId, counted = null) {
@@ -85,9 +85,9 @@ export function binFiles(spec, bin, appId, counted = null) {
   const all = Array.from({ length: bin && Array.isArray(bin.id) ? bin.id.length : 0 }, (_, i) => i);
   const rows = all.filter(i => text(cell(bin, 'App', i)) === appId && isTable(spec, text(cell(bin, 'Table', i))));
   const pick = column => rows.map(i => cell(bin, column, i));
-  const binTable = { id: rows.map(i => bin.id[i]), FichierId: pick('FichierId'), SupprimeLe: pick('SupprimeLe'), SupprimePar: pick('SupprimePar') };
-  for (const [key, from] of [['nom', 'Nom'], ['type', 'Type'], ['date', 'Date'], ['par', 'Auteur']]) if (cols[key]) binTable[cols[key]] = pick(from);
-  return { spec: { ...spec, exclure: undefined, corbeille: { date: 'SupprimeLe', par: 'SupprimePar' }, colonnes: { ...cols, id: 'FichierId' } }, data: binTable,
+  const binTable = { id: rows.map(i => bin.id[i]), FileId: pick('FileId'), DeletedAt: pick('DeletedAt'), DeletedBy: pick('DeletedBy') };
+  for (const [key, from] of [['nom', 'Name'], ['type', 'Type'], ['date', 'Date'], ['par', 'Author']]) if (cols[key]) binTable[cols[key]] = pick(from);
+  return { spec: { ...spec, exclure: undefined, corbeille: { date: 'DeletedAt', par: 'DeletedBy' }, colonnes: { ...cols, id: 'FileId' } }, data: binTable,
     weights: rows.map(counted ? i => counted[i] : rowWeigher(bin)) };
 }
 

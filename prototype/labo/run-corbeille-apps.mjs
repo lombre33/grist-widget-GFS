@@ -100,7 +100,7 @@ async function pinFirst(run) {
   await frame.locator('[data-fk="ask-yes"]').click();
   await frame.waitForFunction(() => document.querySelector('.ls-row .rb.pin.on'), null, { timeout: 20000 });
   const lines = (await rest.rows('GFS_Filing')).filter(row => row.App === 'publipostage');
-  check('le favori est rangé pour la personne que Grist connaît', lines.length === 1 && lines[0].Utilisateur === ME, lines);
+  check('le favori est rangé pour la personne que Grist connaît', lines.length === 1 && lines[0].User === ME, lines);
   await goHome(frame);
   check('GFS connaît la personne : son rangement s\'applique, les dossiers sont là et la racine n\'a que les trois modèles sans dossier', await folderRow(frame, 'Formation').count() === 1 && await sameNames(frame, ['Contrat de prestation', 'Quittance de loyer', 'Support de session']));
 }
@@ -150,10 +150,10 @@ async function playFirstTrash(run) {
   const moved = await said(frame, 'trash.moved', { name: 'Contrat de prestation' });
   check('« Créer la table » : le modèle est à la corbeille, la phrase le dit, la liste le montre en moins', moved === t('trash.moved', { name: 'Contrat de prestation' }) && await sameNames(frame, ['Quittance de loyer', 'Support de session']), moved);
   const types = Object.fromEntries((await run.rest.columns(BIN)).map(column => [column.id, column.type]));
-  check('GFS_Trash est née avec ses onze colonnes, dans les types voulus', same(Object.keys(types), ['Identifiant', 'App', 'Table', 'FichierId', 'Nom', 'Type', 'Date', 'Auteur', 'SupprimeLe', 'SupprimePar', 'Instantane']) && types.SupprimeLe === 'DateTime:UTC' && types.Instantane === 'Text', types);
+  check('GFS_Trash est née avec ses onze colonnes, dans les types voulus', same(Object.keys(types), ['EntryId', 'App', 'Table', 'FileId', 'Name', 'Type', 'Date', 'Author', 'DeletedAt', 'DeletedBy', 'Snapshot']) && types.DeletedAt === 'DateTime:UTC' && types.Snapshot === 'Text', types);
   const [entry] = await entries(run);
-  const copy = JSON.parse(entry.Instantane);
-  check('l\'entrée dit d\'où vient le fichier et qui l\'a supprimé (la date en secondes, l\'adresse que Grist donne)', entry.App === 'publipostage' && entry.Table === MODELS && entry.FichierId === '16' && entry.Nom === 'Contrat de prestation' && entry.Type === 'document' && Math.abs(entry.SupprimeLe - Date.now() / 1000) < 120 && entry.SupprimePar === ME, entry);
+  const copy = JSON.parse(entry.Snapshot);
+  check('l\'entrée dit d\'où vient le fichier et qui l\'a supprimé (la date en secondes, l\'adresse que Grist donne)', entry.App === 'publipostage' && entry.Table === MODELS && entry.FileId === '16' && entry.Nom === 'Contrat de prestation' && entry.Type === 'document' && Math.abs(entry.SupprimeLe - Date.now() / 1000) < 120 && entry.SupprimePar === ME, entry);
   check('la copie garde la ligne : son numéro et ses colonnes de données, ni la formule, ni la colonne de tri', copy.format === 1 && copy.id === 16 && copy.valeurs.Nom === 'Contrat de prestation' && copy.valeurs.Jeton === 'j16' && !('Resume' in copy.valeurs) && !('manualSort' in copy.valeurs) && 'Pieces' in copy.valeurs && 'DateModif' in copy.valeurs, Object.keys(copy.valeurs));
   check('la ligne n\'est plus dans la table de l\'app, les autres n\'ont pas bougé', !byId(await modelRows(run), 16) && (await modelRows(run)).length === 18);
   run.contract = before;

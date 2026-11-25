@@ -12,8 +12,8 @@ test('les tables techniques sont GFS_Synchro et les journaux reçus, pas les tab
   assert.equal(isTechnical('GFS_Synchro'), true);
   assert.equal(isTechnical('GFS_Journal_Facture'), true);
   assert.equal(isJournal('GFS_Journal_Facture'), true);
-  assert.equal(isTechnical('GFS_Received'), false, 'les fichiers reçus restent lisibles : « Partagés avec moi » les montre (carte 4c)');
-  assert.equal(isTechnical('GFS_Files'), false);
+  assert.equal(isTechnical('GFS_Recus'), false, 'les fichiers reçus restent lisibles : « Partagés avec moi » les montre (carte 4c)');
+  assert.equal(isTechnical('GFS_Fichiers'), false);
   assert.equal(isTechnical('Synchro'), false);
   assert.equal(isTechnical('Journal_Facture'), false);
 });
@@ -30,7 +30,7 @@ test('GFS_Synchro est fermée aux non-propriétaires ; un journal garde la créa
 });
 
 test('un document sans table technique : rien à poser', () => {
-  assert.deepEqual(planTechnicalRules(world(['Clients', 'GFS_Files', 'GFS_Received'])), { ok: false, reason: 'none' });
+  assert.deepEqual(planTechnicalRules(world(['Clients', 'GFS_Fichiers', 'GFS_Recus'])), { ok: false, reason: 'none' });
 });
 
 test('les règles se posent sur chaque table technique, avec leurs ressources, en une liasse', () => {

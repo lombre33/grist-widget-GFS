@@ -1,7 +1,7 @@
 // Après une première acceptation, que peut-il arriver SANS nouvelle invitation ? (schéma du 09/11 : « les noms avant d'accepter », « une copie qui se met à jour »), dans un VRAI Grist
 // (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`), deux documents qui ont GFS. Mesure sans écran, avec les fonctions du moteur et le port de GFS :
 //   1. un premier partage (Facture), l'export reste actif (« à jour ») ;
-//   2. le second PDF (Devis) est ajouté à l'export déjà accepté (la condition s'élargit : `finishEdit`) : arrive-t-il dans le même journal, puis dans `GFS_Received`, sans nouvelle invitation ?
+//   2. le second PDF (Devis) est ajouté à l'export déjà accepté (la condition s'élargit : `finishEdit`) : arrive-t-il dans le même journal, puis dans `GFS_Recus`, sans nouvelle invitation ?
 //   3. un PDF NOUVEAU de la source (jamais cité par l'export) : part-il ? (non : la condition ne le nomme pas) ;
 //   4. ce que le journal de la cible montre d'une arrivée AVANT qu'elle soit recopiée (les noms sont-ils lisibles tels que GFS les montrerait avant l'acceptation ?).
 //   REPO_DIR="$(realpath ../..)" node run-sync-suite.mjs
@@ -25,14 +25,14 @@ try {
   const target = await openGfs(context);
   await startEngine(source.frame);
   await startEngine(target.frame);
-  const devisId = (await source.rest.rows('GFS_Files')).find(row => row.Nom === 'Devis.pdf').Identifiant;
+  const devisId = (await source.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Devis.pdf').Identifiant;
 
   say('--- 1. un premier partage, l\'export reste actif ---');
   const first = await handshake(source, target, { name: 'Facture', ids: [source.id], columns: COLUMNS });
   const pass = async () => {
     await source.frame.evaluate(() => window.__s.catchUp());
     await target.frame.evaluate(() => window.__s.consolidateAll({ reread: true }));
-    return target.rest.rows('GFS_Received');
+    return target.rest.rows('GFS_Recus');
   };
   let rows = [];
   for (let i = 0; i < 40 && !rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i++) { await delay(source.page, 1500); rows = await pass(); }
@@ -45,7 +45,7 @@ try {
   }), { exp: first.exp, selection: first.selection([source.id, devisId]) });
   say('modification de l\'export :', JSON.stringify(edited));
   check('l\'export accepte une condition élargie (même invitation, même webhook)', edited.ok, edited);
-  // Les lignes du journal de la cible : leur type, et la colonne qui porte le nom du fichier (sans la recopie dans `GFS_Received`).
+  // Les lignes du journal de la cible : leur type, et la colonne qui porte le nom du fichier (sans la recopie dans `GFS_Recus`).
   const journalNames = () => target.frame.evaluate(name => window.__p.fetchRows(name).then(list => list.filter(row => row.Synchro_Type === 'lot' || row.Synchro_Type === 'liste').map(row => ({ type: row.Synchro_Type, table: row.Synchro_Table, columnWithName: Object.keys(row).filter(key => String(row[key]).includes('Devis.pdf')) }))), first.journal);
   await source.frame.evaluate(() => window.__s.catchUp());
   await delay(source.page, 2500);
@@ -55,7 +55,7 @@ try {
   check('le nom du second fichier est lisible dans le journal de la cible avant toute recopie', inJournal, beforeCopy.length);
   let after = [];
   for (let i = 0; i < 40 && !after.some(row => row.Nom === 'Devis.pdf' && row.Contenu); i++) { after = await pass(); if (!after.some(row => row.Nom === 'Devis.pdf' && row.Contenu)) await delay(source.page, 1500); }
-  check('le second fichier arrive dans GFS_Received sans nouvelle invitation, avec son contenu', after.some(row => row.Nom === 'Devis.pdf' && row.Contenu), after.map(row => ({ Nom: row.Nom, Contenu: row.Contenu })));
+  check('le second fichier arrive dans GFS_Recus sans nouvelle invitation, avec son contenu', after.some(row => row.Nom === 'Devis.pdf' && row.Contenu), after.map(row => ({ Nom: row.Nom, Contenu: row.Contenu })));
 
   say('--- 3. un PDF nouveau de la source, jamais cité par l\'export ---');
   await importPdf(source.page, source.frame, pdfFile('Contrat.pdf', 2, 'Contrat').file);
@@ -64,7 +64,7 @@ try {
   for (let i = 0; i < 6; i++) { last = await pass(); await delay(source.page, 1500); }
   check('un PDF neuf n\'arrive pas tout seul (l\'export ne le nomme pas) : il faut l\'ajouter à la condition', !last.some(row => row.Nom === 'Contrat.pdf'), last.map(row => row.Nom));
   const named = await source.frame.evaluate(id => window.__try(async () => {
-    const [entry] = (await window.__p.fetchRows('GFS_Files')).filter(row => row.Nom === 'Contrat.pdf');
+    const [entry] = (await window.__p.fetchRows('GFS_Fichiers')).filter(row => row.Nom === 'Contrat.pdf');
     return entry.Identifiant;
   }), '');
   const widened = await source.frame.evaluate(args => window.__try(async () => {

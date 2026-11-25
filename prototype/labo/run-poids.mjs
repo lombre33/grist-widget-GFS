@@ -31,7 +31,7 @@ const locale = lang === 'en' ? 'en-GB' : 'fr-FR';
 const TAG = `poids-${lang}-${scheme}`;
 const MODELS = 'Publipostage_Modeles';
 const PREFS = 'Publipostage_PreferencesModeles';
-const FILES = 'GFS_Files';
+const FILES = 'GFS_Fichiers';
 const BIN = 'GFS_Trash';
 const VERSIONS = 'Publipostage_Versions';
 const show = bytes => formatBytes(bytes, locale, t);
@@ -200,7 +200,7 @@ async function playTrash(run) {
 const PHOTOS = 'Photos';
 
 // Ce que Grist compte des pièces jointes que nul fichier de l'explorateur ne cite : SQL, la formule de Grist (`fileIdent` distincts, `timeDeleted` vide, la plus grande taille), sans les `fileIdent` des
-// pièces que citent les fichiers de GFS, vivants ou à la corbeille (leurs numéros viennent de `GFS_Files`, toutes lignes).
+// pièces que citent les fichiers de GFS, vivants ou à la corbeille (leurs numéros viennent de `GFS_Fichiers`, toutes lignes).
 async function exactOthers(run) {
   const own = (await run.rest.rows(FILES)).flatMap(row => attachmentIds(row.Contenu));
   const [row] = await sql(run, `SELECT COUNT(*) AS n, COALESCE(SUM(len), 0) AS octets FROM (SELECT MAX(meta.fileSize) AS len FROM _grist_Attachments AS meta WHERE meta.timeDeleted IS NULL AND meta.fileIdent NOT IN (SELECT fileIdent FROM _grist_Attachments WHERE id IN (${own.length ? own.join(',') : '0'})) GROUP BY meta.fileIdent)`);

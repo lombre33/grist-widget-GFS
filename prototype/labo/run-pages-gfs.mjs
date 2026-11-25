@@ -72,8 +72,8 @@ try {
   const run = await openGfs(context, { lang });
   say('\n=== Le document d\'avant : des tables de GFS à plat ===');
   say('pages :', shape(await pagesOf(run)));
-  await apply(run, [['AddTable', 'GFS_Filing', [column('Utilisateur')]], ['AddTable', 'GFS_Groups', [column('Nom')]], ['AddTable', 'Autre_Table', [column('Nom')]],
-    ['AddTable', 'GFS_Files', [column('Nom')]]]);
+  await apply(run, [['AddTable', 'GFS_Filing', [column('User')]], ['AddTable', 'GFS_Groups', [column('Nom')]], ['AddTable', 'Autre_Table', [column('Nom')]],
+    ['AddTable', 'GFS_Fichiers', [column('Nom')]]]);
   const flat = await pagesOf(run);
   say('pages :', shape(flat));
   check('Grist a posé une page au premier niveau pour chaque table', flat.length === 6 && flat.slice(-4).every(item => item.level === 0), shape(flat));
@@ -90,10 +90,10 @@ try {
   say('pages :', shape(after), '\nmarque :', mark);
   const parent = after.find(item => item.id === mainId);
   check('les trois tables de GFS sont sous la page qui porte GFS, dans l\'ordre où Grist les avait mises',
-    JSON.stringify(shape(after)) === JSON.stringify(['Table1', parent.table || parent.name, '  GFS_Filing', '  GFS_Groups', '  GFS_Files', 'Autre_Table']), shape(after));
+    JSON.stringify(shape(after)) === JSON.stringify(['Table1', parent.table || parent.name, '  GFS_Filing', '  GFS_Groups', '  GFS_Fichiers', 'Autre_Table']), shape(after));
   check('la page de GFS est repliée par défaut (`options.collapsed`)', Boolean(parent.options) && JSON.parse(parent.options).collapsed === true, parent.options);
   check('la table d\'autrui garde sa page au premier niveau, en bas', after.at(-1).table === 'Autre_Table' && after.at(-1).level === 0, shape(after));
-  check('la marque `gfs.pages` liste les trois tables', Array.isArray(mark) && JSON.stringify([...mark].sort()) === JSON.stringify(['GFS_Files', 'GFS_Groups', 'GFS_Filing']), mark);
+  check('la marque `gfs.pages` liste les trois tables', Array.isArray(mark) && JSON.stringify([...mark].sort()) === JSON.stringify(['GFS_Fichiers', 'GFS_Groups', 'GFS_Filing']), mark);
   const bars = await run.page.getByRole('button', { name: /^(Save|Revert|Enregistrer|Retour)$/ }).count();
   check('aucune barre « Enregistrer » dans Grist (la marque s\'écrit comme un réglage enregistré)', bars === 0, bars);
   await shot(run, '1-range');
@@ -101,14 +101,14 @@ try {
   say('\n=== Le document rouvert : la page de GFS est repliée, sa flèche montre les tables ===');
   await reopen(run);
   await run.page.waitForTimeout(1500);
-  check('les pages des tables de GFS ne sont pas dans le volet (repliées)', !(await visible(run, 'GFS_Filing')) && !(await visible(run, 'GFS_Files')));
+  check('les pages des tables de GFS ne sont pas dans le volet (repliées)', !(await visible(run, 'GFS_Filing')) && !(await visible(run, 'GFS_Fichiers')));
   check('la table d\'autrui, elle, y est', await visible(run, 'Autre_Table'));
   await shot(run, '2-replie');
   const row = header(run, parent.name);
   await row.hover();
   await row.locator('.test-treeview-itemArrow').click();
   await run.page.waitForTimeout(600);
-  check('la flèche de la page montre les trois tables', await visible(run, 'GFS_Filing') && await visible(run, 'GFS_Groups') && await visible(run, 'GFS_Files'));
+  check('la flèche de la page montre les trois tables', await visible(run, 'GFS_Filing') && await visible(run, 'GFS_Groups') && await visible(run, 'GFS_Fichiers'));
   await shot(run, '3-deplie');
   check('replier ou déplier à la main n\'écrit rien dans le document (l\'état est celui du navigateur)', (await pagesOf(run)).find(item => item.id === mainId).options === parent.options);
 

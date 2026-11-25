@@ -62,8 +62,8 @@ async function playScreen(run, frame, keyA) {
   await frame.locator('[data-fk="share-confirm"]').click();
   await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: EDITOR }).waitFor({ timeout: 15000 });
   const first = (await byName(run))[FIRST];
-  const mine = (await rows(run, 'GFS_Shares')).find(row => row.Cible === `publipostage:${first.id}` && row.Personne === EDITOR);
-  check('« Aucun accès » à editor@ s\'écrit, et Grist le met dans la liste des refus', mine && mine.Droit === 'aucun' && has(first.GFS_Refus, EDITOR), mine);
+  const mine = (await rows(run, 'GFS_Shares')).find(row => row.Target === `publipostage:${first.id}` && row.Person === EDITOR);
+  check('« Aucun accès » à editor@ s\'écrit, et Grist le met dans la liste des refus', mine && mine.Right === 'aucun' && has(first.GFS_Refus, EDITOR), mine);
   // l'onglet Espaces
   await frame.locator('[data-fk="share-manage"]').click();
   await frame.locator('.mod.mg .rt-content').waitFor();
@@ -73,26 +73,26 @@ async function playScreen(run, frame, keyA) {
   await frame.locator('[data-fk="name-input"]').fill('Équipe UI');
   await frame.locator('[data-fk="name-ok"]').click();
   await frame.locator('.mod.mg .rr[data-space]').filter({ hasText: 'Équipe UI' }).waitFor({ timeout: 15000 });
-  const made = (await rows(run, 'GFS_Spaces')).find(row => row.Nom === 'Équipe UI');
-  check('l\'espace créé par l\'écran a une clé', made && /^[a-z0-9-]+$/.test(made.Cle), made);
-  await frame.locator(`[data-fk="manage-space-${made.Cle}"]`).click();
+  const made = (await rows(run, 'GFS_Spaces')).find(row => row.Name === 'Équipe UI');
+  check('l\'espace créé par l\'écran a une clé', made && /^[a-z0-9-]+$/.test(made.Key), made);
+  await frame.locator(`[data-fk="manage-space-${made.Key}"]`).click();
   await frame.locator('[data-fk="manage-space-add-group"]').click();
   await frame.locator('[data-fk="pick-Achats"]').click();
   await frame.locator('.mod.mg .rr[data-space-group="Achats"]').waitFor({ timeout: 15000 });
   await frame.locator('[data-fk="manage-space-group-Achats"]').click();
   await frame.getByRole('menuitemradio', { name: new RegExp(`^${t('share.right.ecriture')}`) }).first().click();
   await frame.locator('[data-fk="manage-space-group-Achats"]').filter({ hasText: t('share.right.ecriture') }).waitFor({ timeout: 15000 });
-  const given = (await rows(run, 'GFS_Shares')).filter(row => row.Cible === `espace:${made.Cle}`);
+  const given = (await rows(run, 'GFS_Shares')).filter(row => row.Target === `espace:${made.Key}`);
   // La personne qui crée l'espace y entre en écriture dans la même écriture (12/11) : deux lignes, la sienne et celle du groupe.
-  check('le groupe Achats a l\'écriture sur l\'espace créé, et la personne qui l\'a créé y entre aussi', given.length === 2 && given.some(row => row.Personne === '#Achats' && row.Droit === 'ecriture') &&
-    given.some(row => row.Personne === OWNER && row.Droit === 'ecriture'), given);
-  const seenSpace = (await rows(run, 'GFS_Spaces')).find(row => row.Cle === made.Cle);
-  check('l\'espace voit l\'éditeur (membre du groupe Achats), pas le lecteur', has(seenSpace.Voit, EDITOR) && !has(seenSpace.Voit, VIEWER), seenSpace);
+  check('le groupe Achats a l\'écriture sur l\'espace créé, et la personne qui l\'a créé y entre aussi', given.length === 2 && given.some(row => row.Person === '#Achats' && row.Right === 'ecriture') &&
+    given.some(row => row.Person === OWNER && row.Right === 'ecriture'), given);
+  const seenSpace = (await rows(run, 'GFS_Spaces')).find(row => row.Key === made.Key);
+  check('l\'espace voit l\'éditeur (membre du groupe Achats), pas le lecteur', has(seenSpace.Sees, EDITOR) && !has(seenSpace.Sees, VIEWER), seenSpace);
   await frame.locator('[data-fk="manage-space-remove"]').click();
   await frame.locator('[data-fk="ask-yes"]').click();
   await frame.locator('.mod.mg .rr[data-space]').filter({ hasText: 'Équipe UI' }).waitFor({ state: 'detached', timeout: 15000 });
-  const left = (await rows(run, 'GFS_Shares')).filter(row => row.Cible === `espace:${made.Cle}`);
-  check('supprimer l\'espace retire sa ligne et ses partages', !(await rows(run, 'GFS_Spaces')).some(row => row.Cle === made.Cle) && left.length === 0, left);
+  const left = (await rows(run, 'GFS_Shares')).filter(row => row.Target === `espace:${made.Key}`);
+  check('supprimer l\'espace retire sa ligne et ses partages', !(await rows(run, 'GFS_Spaces')).some(row => row.Key === made.Key) && left.length === 0, left);
   await frame.locator('.mod.mg [data-fk="manage-close"]').click();
   // l'état laissé au temps de l'éditeur : editor@ n'a plus « Aucun accès » sur le premier modèle
   await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: EDITOR }).waitFor();
@@ -115,14 +115,14 @@ async function playExplorer(run, frame) {
     await frame.getByRole('menuitem', { name: new RegExp(`^${t('ex.move')}`) }).click();
     await frame.locator(`[data-fk="move-${path || 'root'}"]`).click();
   };
-  const placed = async () => (await rows(run, 'GFS_Placement')).find(row => row.Cible === `publipostage:${models_F_id}`);
+  const placed = async () => (await rows(run, 'GFS_Placement')).find(row => row.Target === `publipostage:${models_F_id}`);
   const models_F_id = (await byName(run))[NAMES.F].id;
   await move('Espaces/Achats/Contrats');
   for (let i = 0; i < 40 && !(await placed()); i++) await page.waitForTimeout(250);
   const row = await placed();
-  check('« Déplacer vers… » un dossier d\'espace écrit le placement', row && row.Espace === 'achats' && row.Dossier === 'Contrats', row);
+  check('« Déplacer vers… » un dossier d\'espace écrit le placement', row && row.Space === 'achats' && row.Folder === 'Contrats', row);
   const mine = await rows(run, 'GFS_Filing');
-  check('le rangement de la personne ne reçoit jamais le chemin d\'un espace', mine.every(line => !String(line.Dossier || '').startsWith('Espaces')), mine.map(line => line.Dossier));
+  check('le rangement de la personne ne reçoit jamais le chemin d\'un espace', mine.every(line => !String(line.Folder || '').startsWith('Espaces')), mine.map(line => line.Folder));
   await frame.locator('.tr-row[data-path="Espaces"]').click();
   await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats"]').waitFor();
   await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats"]').dblclick();
@@ -146,8 +146,8 @@ async function playExplorer(run, frame) {
   await frame.locator('[data-fk="share-pick-lea@example.com"]').click();
   await frame.locator('[data-fk="share-confirm"]').click();
   await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: 'lea@example.com' }).waitFor({ timeout: 15000 });
-  const given = (await rows(run, 'GFS_Shares')).find(line => line.Cible === 'dossier:achats/Contrats' && line.Personne === 'lea@example.com');
-  check('un droit donné dans la fenêtre du dossier s\'écrit sur « dossier:achats/Contrats »', given && given.Droit === 'lecture', given);
+  const given = (await rows(run, 'GFS_Shares')).find(line => line.Target === 'dossier:achats/Contrats' && line.Person === 'lea@example.com');
+  check('un droit donné dans la fenêtre du dossier s\'écrit sur « dossier:achats/Contrats »', given && given.Right === 'lecture', given);
   const withLea = (await byName(run))[NAMES.F];
   check('la personne lit le fichier rangé dans ce dossier (Grist le calcule)', has(withLea.GFS_Lecteurs, 'lea@example.com'), withLea.GFS_Calc);
   await frame.locator('[data-fk="share-close"]').click();
@@ -205,18 +205,18 @@ async function playOwner(run) {
   const models = await byName(run);
   const key = letter => `publipostage:${models[NAMES[letter]].id}`;
   answer = await apply(run, [
-    ['AddRecord', 'GFS_Groups', null, { Nom: 'Achats', PersonnesIci: EDITOR }],
-    ['AddRecord', 'GFS_Spaces', null, { Cle: 'achats', Nom: 'Achats' }],
-    ['BulkAddRecord', 'GFS_Placement', [null, null, null, null], { Cible: [key('A'), key('B'), key('C'), key('D')], Espace: ['achats', 'achats', 'achats', 'achats'], Dossier: ['Contrats', 'Contrats', '', 'Contrats/Sous'] }],
+    ['AddRecord', 'GFS_Groups', null, { Name: 'Achats', People: EDITOR }],
+    ['AddRecord', 'GFS_Spaces', null, { Key: 'achats', Name: 'Achats' }],
+    ['BulkAddRecord', 'GFS_Placement', [null, null, null, null], { Target: [key('A'), key('B'), key('C'), key('D')], Space: ['achats', 'achats', 'achats', 'achats'], Folder: ['Contrats', 'Contrats', '', 'Contrats/Sous'] }],
     ['BulkAddRecord', 'GFS_Shares', [null, null, null, null, null, null], {
-      Cible: ['espace:achats', key('B'), 'dossier:achats/Contrats', 'dossier:achats/Contrats/Sous', key('D'), key('C')],
-      Personne: ['#Achats', EDITOR, EDITOR, '#Achats', VIEWER, '#Achats'],
-      Droit: ['lecture', 'aucun', 'ecriture', 'lecture', 'lecture', 'aucun'],
+      Target: ['espace:achats', key('B'), 'dossier:achats/Contrats', 'dossier:achats/Contrats/Sous', key('D'), key('C')],
+      Person: ['#Achats', EDITOR, EDITOR, '#Achats', VIEWER, '#Achats'],
+      Right: ['lecture', 'aucun', 'ecriture', 'lecture', 'lecture', 'aucun'],
     }],
   ]);
   check('le décor s\'écrit en une opération', answer.status === 200, answer.text);
   const space = (await rows(run, 'GFS_Spaces'))[0];
-  check('l\'espace « achats » voit l\'éditeur (le groupe Achats y est en lecture), pas le lecteur', space && has(space.Voit, EDITOR) && !has(space.Voit, VIEWER), space);
+  check('l\'espace « achats » voit l\'éditeur (le groupe Achats y est en lecture), pas le lecteur', space && has(space.Sees, EDITOR) && !has(space.Sees, VIEWER), space);
 
   say('--- 3. les listes que Grist calcule pour chaque fichier ---');
   const all = await byName(run);
@@ -251,9 +251,9 @@ async function playEditor(run) {
   check('il voit l\'espace achats', spaces.length === 1 && spaces[0].Nom === 'Achats', spaces);
   const groups = await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Groups/records`);
   check('il ne lit pas les adresses des groupes', !groups.text.includes('example.com'), groups.text.slice(0, 160));
-  answer = await apply(run, [['AddRecord', 'GFS_Spaces', null, { Cle: 'pirate', Nom: 'Pirate' }]]);
+  answer = await apply(run, [['AddRecord', 'GFS_Spaces', null, { Key: 'pirate', Name: 'Pirate' }]]);
   check('il ne crée pas d\'espace', answer.status !== 200, answer.text);
-  answer = await apply(run, [['AddRecord', 'GFS_Placement', null, { Cible: 'publipostage:1', Espace: 'achats', Dossier: '' }]]);
+  answer = await apply(run, [['AddRecord', 'GFS_Placement', null, { Target: 'publipostage:1', Space: 'achats', Folder: '' }]]);
   check('il ne place pas un fichier dans l\'espace', answer.status !== 200, answer.text);
   // l'explorateur de l'éditeur : « Espaces » est là, le fichier rangé par le propriétaire aussi ; ranger ailleurs est réservé au propriétaire
   const frame = run.frame;
@@ -276,7 +276,7 @@ async function playEditor(run) {
   await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats"]').dblclick();
   await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats/Contrats"]').dblclick();
   await frame.locator('.ls-row:not(.folder)').filter({ hasText: NAMES.F }).waitFor({ timeout: 15000 });
-  check('l\'éditeur ne sort pas un fichier de l\'espace : seul un propriétaire range dans un espace', (await rows(run, 'GFS_Placement')).some(row => row.Dossier === 'Contrats' && row.Cible.startsWith('publipostage:')));
+  check('l\'éditeur ne sort pas un fichier de l\'espace : seul un propriétaire range dans un espace', (await rows(run, 'GFS_Placement')).some(row => row.Folder === 'Contrats' && row.Target.startsWith('publipostage:')));
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
 }
 

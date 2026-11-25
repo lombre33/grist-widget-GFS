@@ -18,8 +18,8 @@ import { neededColumns } from './explorer-sql.js';
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
 // Les colonnes de la corbeille que l'explorateur montre (js/files/gfs-trash.js, `binFiles`) : l'identifiant de l'entrée et la copie JSON de la ligne
-// (`Instantane`) n'y sont pas, mais pèsent dans le poids.
-const BIN_LIGHT = ['App', 'Table', 'FichierId', 'Nom', 'Type', 'Date', 'Auteur', 'SupprimeLe', 'SupprimePar'];
+// (`Snapshot`) n'y sont pas, mais pèsent dans le poids.
+const BIN_LIGHT = ['App', 'Table', 'FileId', 'Name', 'Type', 'Date', 'Author', 'DeletedAt', 'DeletedBy'];
 
 // Les lectures que la lecture légère aura à faire (js/explorer/explorer-sql.js, `prepare`) : [{ table, wanted }], une par table lue plus bas avec les mêmes
 // colonnes voulues : les tables des fichiers des apps, leurs tables liées et la corbeille, sous le nom que le document leur donne.

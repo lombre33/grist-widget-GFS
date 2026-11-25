@@ -2,7 +2,7 @@
 // qui rejoue les actions d'un plan sur un état (les tables, les colonnes, les ressources et les règles seulement). Un seul lieu pour ces fixtures : sharing-model.test.mjs et plan-sharing-golden.test.mjs.
 export const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', rulePos: null, memo: '' };
 export const base = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }], tables: [], columns: [] });
-export const withFiles = (extra = []) => ({ ...base(), tables: [{ id: 7, tableId: 'GFS_Files' }], columns: [{ parentId: 7, colId: 'Identifiant' }, { parentId: 7, colId: 'Auteur' }, ...extra] });
+export const withFiles = (extra = []) => ({ ...base(), tables: [{ id: 7, tableId: 'GFS_Fichiers' }], columns: [{ parentId: 7, colId: 'Identifiant' }, { parentId: 7, colId: 'Auteur' }, ...extra] });
 
 export const applied = (existing, actions) => {
   const next = { ...existing, resources: [...existing.resources], rules: [...existing.rules], tables: [...existing.tables], columns: [...existing.columns] };

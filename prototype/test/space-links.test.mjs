@@ -10,7 +10,7 @@ import { createI18n } from '../js/i18n/i18n.js';
 
 const { t } = createI18n('fr');
 const table = columns => ({ id: Object.values(columns)[0].map((_, at) => at + 1), ...columns });
-const SPACES = table({ Cle: ['achats', 'ventes'], Nom: ['Achats', 'Ventes'] });
+const SPACES = table({ Key: ['achats', 'ventes'], Name: ['Achats', 'Ventes'] });
 const space = { id: 2, key: 'ventes', name: 'Ventes', groups: [{ id: 5, group: 'Commerciaux', right: 'lecture' }, { id: 6, group: 'Stagiaires', right: 'aucun' }] };
 const SOURCE = 'dossier:achats/Contrats';
 
@@ -20,22 +20,22 @@ test('les groupes d\'un espace qui y ont un droit : « Aucun accès » ne compte
   assert.deepEqual(groupsOfSpace(null), []);
 });
 
-test('créer un lien : une ligne de partage par groupe de l\'espace, puis la ligne du lien (sans Cible) qui garde les groupes ajoutés', () => {
+test('créer un lien : une ligne de partage par groupe de l\'espace, puis la ligne du lien (sans Target) qui garde les groupes ajoutés', () => {
   const plan = planLink({ source: SOURCE, space, folder: ' Contrats d\'achat / ', right: 'ecriture' });
   assert.equal(plan.ok, true);
   assert.deepEqual(plan.actions.map(action => [action[0], action[1]]), [['AddRecord', 'GFS_Shares'], ['AddRecord', 'GFS_Placement']]);
   const [share, place] = plan.actions.map(action => action[3]);
-  assert.deepEqual([share.Cible, share.Personne, share.Droit], [SOURCE, '#Commerciaux', 'ecriture']);
-  assert.deepEqual(place, { Cible: '', Espace: 'ventes', Dossier: 'Contrats d\'achat', Lien: SOURCE, Partages: '#Commerciaux' });
+  assert.deepEqual([share.Target, share.Person, share.Right], [SOURCE, '#Commerciaux', 'ecriture']);
+  assert.deepEqual(place, { Target: '', Space: 'ventes', Folder: 'Contrats d\'achat', Link: SOURCE, Shares: '#Commerciaux' });
 });
 
 test('créer un lien : un droit déjà plus large est gardé, un plus étroit est élargi (et le lien ne le retirera pas), un droit absent est ajouté', () => {
   const two = { ...space, groups: [{ group: 'A', right: 'lecture' }, { group: 'B', right: 'lecture' }, { group: 'C', right: 'lecture' }] };
-  const shareRows = [{ id: 1, Cible: SOURCE, Personne: '#A', Droit: 'admin' }, { id: 2, Cible: SOURCE, Personne: '#B', Droit: 'lecture' }, { id: 3, Cible: 'autre', Personne: '#C', Droit: 'lecture' }];
+  const shareRows = [{ id: 1, Target: SOURCE, Person: '#A', Right: 'admin' }, { id: 2, Target: SOURCE, Person: '#B', Right: 'lecture' }, { id: 3, Target: 'autre', Person: '#C', Right: 'lecture' }];
   const plan = planLink({ source: SOURCE, space: two, folder: 'X', right: 'ecriture', shareRows });
-  assert.deepEqual(plan.actions.filter(action => action[1] === 'GFS_Shares').map(action => [action[0], action[2], action[3].Personne || action[3].Droit]),
+  assert.deepEqual(plan.actions.filter(action => action[1] === 'GFS_Shares').map(action => [action[0], action[2], action[3].Person || action[3].Right]),
     [['UpdateRecord', 2, 'ecriture'], ['AddRecord', null, '#C']]);
-  assert.equal(plan.actions.at(-1)[3].Partages, '#C', 'seule la ligne ajoutée est retirée avec le lien');
+  assert.equal(plan.actions.at(-1)[3].Shares, '#C', 'seule la ligne ajoutée est retirée avec le lien');
 });
 
 test('créer un lien : refusé avec sa raison (nom vide, droit inconnu, espace sans groupe, même espace, lien déjà là) ; un fichier peut aller à la racine', () => {
@@ -45,22 +45,22 @@ test('créer un lien : refusé avec sa raison (nom vide, droit inconnu, espace s
   assert.equal(reason({ source: '' }), 'invalid');
   assert.equal(reason({ space: { ...space, groups: [] } }), 'noGroup');
   assert.equal(reason({ space: { ...space, key: 'achats' } }), 'sameSpace');
-  assert.equal(reason({ placeRows: [{ Lien: SOURCE, Espace: 'ventes', Dossier: 'X' }] }), 'exists');
+  assert.equal(reason({ placeRows: [{ Link: SOURCE, Space: 'ventes', Folder: 'X' }] }), 'exists');
   const file = planLink({ source: 'gfs-fichiers:3', space, folder: '', right: 'lecture', kind: 'file' });
   assert.equal(file.ok, true);
-  assert.equal(file.actions.at(-1)[3].Dossier, '');
+  assert.equal(file.actions.at(-1)[3].Folder, '');
 });
 
 test('retirer un lien : sa ligne et seulement les lignes de partage qu\'il avait ajoutées, jamais un fichier', () => {
   const link = { id: 9, source: SOURCE, groups: '#Commerciaux, #Autres' };
-  const shareRows = [{ id: 1, Cible: SOURCE, Personne: '#Commerciaux' }, { id: 2, Cible: SOURCE, Personne: '#Stagiaires' }, { id: 3, Cible: 'gfs-fichiers:1', Personne: '#Commerciaux' }];
+  const shareRows = [{ id: 1, Target: SOURCE, Person: '#Commerciaux' }, { id: 2, Target: SOURCE, Person: '#Stagiaires' }, { id: 3, Target: 'gfs-fichiers:1', Person: '#Commerciaux' }];
   assert.deepEqual(planLinkRemove(link, shareRows).actions, [['BulkRemoveRecord', 'GFS_Shares', [1]], ['RemoveRecord', 'GFS_Placement', 9]]);
   assert.deepEqual(planLinkRemove({ id: 9, source: SOURCE, groups: '' }, shareRows).actions, [['RemoveRecord', 'GFS_Placement', 9]]);
   assert.equal(planLinkRemove(null).ok, false);
 });
 
-const PLACE = table({ Cible: ['gfs-fichiers:1', '', ''], Espace: ['achats', 'ventes', 'ventes'], Dossier: ['Contrats', 'Contrats achats', 'Divers'],
-  Lien: ['', SOURCE, 'gfs-fichiers:7'], Partages: ['', '#Commerciaux', ''] });
+const PLACE = table({ Target: ['gfs-fichiers:1', '', ''], Space: ['achats', 'ventes', 'ventes'], Folder: ['Contrats', 'Contrats achats', 'Divers'],
+  Link: ['', SOURCE, 'gfs-fichiers:7'], Shares: ['', '#Commerciaux', ''] });
 const info = () => readSpaces(SPACES, PLACE);
 
 test('lire les liens : le dossier d\'un lien est un dossier de l\'espace, un lien de fichier rend son dossier d\'accueil ; linkAt et linkWithin ne voient que les dossiers liés', () => {
@@ -110,7 +110,7 @@ test('l\'original d\'un fichier lié disparaît de la racine de « Moi » de qui
 
 test('sans lien, sans colonne GFS_Vus ou sans espaces : la liste ne change pas', () => {
   const same = () => [file(1), file(2)];
-  for (const [rows, spaces] of [[data, null], [{ id: [1, 2] }, info()], [data, readSpaces(SPACES, table({ Cible: [], Espace: [], Dossier: [] }))]]) {
+  for (const [rows, spaces] of [[data, null], [{ id: [1, 2] }, info()], [data, readSpaces(SPACES, table({ Target: [], Space: [], Folder: [] }))]]) {
     const files = same();
     applyLinks(files, rows, spaces, 'luc@x.fr');
     assert.equal(files.length, 2);
@@ -124,7 +124,7 @@ test('on ne range rien dans un lien et on n\'y crée rien (la phrase le dit) ; s
   assert.equal(splitWrites([], { add: ['Espaces/Ventes/Contrats achats/Neuf'] }, [], info()).error, 'ex.linkTarget');
   assert.equal(splitWrites([], { moved: [['E', 'Espaces/Ventes/Contrats achats/E']] }, [], info()).error, 'ex.linkTarget', 'un dossier gardé qu\'on déplace dans un lien : refusé aussi');
   assert.equal(splitWrites([{ ...entry, folder: 'Espaces/Ventes/Autre' }], {}, [file(1)], info()).error, undefined);
-  assert.equal(splitWrites([entry], {}, [file(1)], readSpaces(SPACES, table({ Cible: [], Espace: [], Dossier: [] }))).error, undefined);
+  assert.equal(splitWrites([entry], {}, [file(1)], readSpaces(SPACES, table({ Target: [], Space: [], Folder: [] }))).error, undefined);
 });
 
 test('un dossier vide qu\'on retire ne retire jamais la ligne d\'un lien qui porte le même nom', async () => {
@@ -135,7 +135,7 @@ test('un dossier vide qu\'on retire ne retire jamais la ligne d\'un lien qui por
   assert.deepEqual(written, []);
 });
 
-const control = ({ owner = true, spaces = info(), answers = [], written = [], files = [], extra = {}, shares = table({ Cible: ['espace:ventes'], Personne: ['#Commerciaux'], Droit: ['lecture'] }) } = {}) => {
+const control = ({ owner = true, spaces = info(), answers = [], written = [], files = [], extra = {}, shares = table({ Target: ['espace:ventes'], Person: ['#Commerciaux'], Right: ['lecture'] }) } = {}) => {
   const rows = { GFS_Spaces: SPACES, GFS_Shares: shares, GFS_Placement: PLACE };
   const notes = [];
   const picks = [];
@@ -159,7 +159,7 @@ test('l\'assistant pour un fichier : le dossier d\'accueil se choisit dans la li
   const run = control({ answers: ['ventes', '', 'ecriture'] });
   assert.equal(await run.made.open({ target: 'gfs-fichiers:3', name: 'Devis.pdf', kind: 'file' }), true);
   assert.deepEqual(run.picks[1].items.map(item => item.value), ['', 'Contrats achats', 'Divers']);
-  assert.equal(run.written.at(-1)[3].Dossier, '');
+  assert.equal(run.written.at(-1)[3].Folder, '');
   for (const answers of [[null], ['ventes', null], ['ventes', 'Neuf', null]]) {
     const cancelled = control({ answers });
     assert.equal(await cancelled.made.open({ target: SOURCE, name: 'C', kind: 'folder' }), false);
@@ -175,7 +175,7 @@ test('l\'assistant refuse avec sa phrase : pas propriétaire, espace sans groupe
   assert.equal(await bare.made.open({ target: 'dossier:ventes/X', name: 'X', kind: 'folder' }), false);
   assert.match(bare.notes[0], /n’a aucun groupe/);
   assert.match(control({ spaces: null }).made.whyNot(), /pas activé/);
-  assert.match(control({ spaces: readSpaces(table({ Cle: [], Nom: [] }), null) }).made.whyNot(), /Aucun espace/);
+  assert.match(control({ spaces: readSpaces(table({ Key: [], Name: [] }), null) }).made.whyNot(), /Aucun espace/);
   assert.equal(control().made.whyNot(), null);
 });
 
@@ -197,7 +197,7 @@ test('un nom de lien déjà pris dans l\'espace (dossier, lien ou fichier rangé
 
 test('retirer un lien : la question, puis la ligne et les droits qu\'il avait posés ; renoncer n\'écrit rien ; seul un propriétaire', async () => {
   const link = info().links[0];
-  const shares = table({ Cible: [SOURCE, SOURCE], Personne: ['#Commerciaux', '#Stagiaires'], Droit: ['lecture', 'lecture'] });
+  const shares = table({ Target: [SOURCE, SOURCE], Person: ['#Commerciaux', '#Stagiaires'], Right: ['lecture', 'lecture'] });
   const asked = [];
   const yes = control({ shares, extra: { ask: async options => { asked.push(options); return true; } } });
   assert.equal(await yes.made.remove(link), true);

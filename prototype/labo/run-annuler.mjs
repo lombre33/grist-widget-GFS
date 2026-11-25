@@ -66,11 +66,11 @@ const tableNow = name => frame.evaluate(async tableId => {
   return data.id.map((id, i) => ({ id, ...Object.fromEntries(columns.map(each => [each, data[each][i]])) }));
 }, name);
 const files = async () => ((await table('SondeZf_Fichiers')) || []).map(each => each.Nom).sort();
-const bin = async () => ((await table('GFS_Trash')) || []).map(each => each.Nom).sort();
+const bin = async () => ((await table('GFS_Trash')) || []).map(each => each.Name).sort();
 const filing = async () => (await table('GFS_Filing')) || [];
-const placeOf = async id => { const found = (await filing()).find(each => each.App === 'sonde-zf' && each.Fichier === String(id)); return found ? found.Dossier : ''; };
-const pinned = async id => { const found = (await filing()).find(each => each.App === 'sonde-zf' && each.Fichier === String(id)); return Boolean(found && found.Favori); };
-const keptFolders = async () => (await filing()).filter(each => !each.App && !each.Fichier).map(each => each.Dossier).sort();
+const placeOf = async id => { const found = (await filing()).find(each => each.App === 'sonde-zf' && each.File === String(id)); return found ? found.Folder : ''; };
+const pinned = async id => { const found = (await filing()).find(each => each.App === 'sonde-zf' && each.File === String(id)); return Boolean(found && found.Favorite); };
+const keptFolders = async () => (await filing()).filter(each => !each.App && !each.File).map(each => each.Folder).sort();
 const undo = () => page.keyboard.press('Control+z');
 const redo = () => page.keyboard.press('Control+y');
 const redoShift = () => page.keyboard.press('Control+Shift+z');

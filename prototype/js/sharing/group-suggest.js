@@ -23,8 +23,8 @@ const rowsAddresses = (rows, ...columns) => (rows || []).flatMap(row => columns.
 // GFS et les personnes qui ont rangé un fichier (une ligne de rangement porte leur adresse, écrite par Grist). Triées, sans doublon.
 // `known` : { me, shares (GFS_Shares), groups (GFS_Groups), filing (GFS_Filing) }.
 export function knownAddresses({ me = '', shares = [], groups = [], filing = [] } = {}) {
-  const all = [personOf(me), ...rowsAddresses(shares, 'PersonneL', 'Personne', 'Auteur'), ...(groups || []).flatMap(group => addressesIn(group.PersonnesIci)),
-    ...rowsAddresses(filing, 'Utilisateur')].filter(who => ADDRESS.test(who));
+  const all = [personOf(me), ...rowsAddresses(shares, 'PersonL', 'Person', 'Author'), ...(groups || []).flatMap(group => addressesIn(group.People)),
+    ...rowsAddresses(filing, 'User')].filter(who => ADDRESS.test(who));
   return [...new Set(all)].sort((a, b) => a.localeCompare(b));
 }
 

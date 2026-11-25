@@ -246,7 +246,7 @@ test('la corbeille : un modèle d\'un document anglais part et revient sous ses 
   assert.deepEqual(run.tables.Publipostage_Templates.rows.map(row => row.id), [1, 3]);
   const [stored] = run.tables[BIN_TABLE].rows;
   assert.equal(stored.Table, 'Publipostage_Modeles', 'la clé de la corbeille est le nom du manifeste : elle ne change pas quand le document est renommé');
-  const snapshot = parseSnapshot(stored.Instantane);
+  const snapshot = parseSnapshot(stored.Snapshot);
   assert.equal(snapshot.valeurs.Nom, 'Attestation', 'l\'instantané garde les noms du manifeste');
   assert.equal(snapshot.valeurs.Name, undefined);
   const after = await loadFiles(run.port, [{ manifest: run.adapted }], '');

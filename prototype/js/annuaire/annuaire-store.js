@@ -152,7 +152,7 @@ export class AnnuaireStore {
       const { people, record } = subRecord({ name, parent, sub, read, at });
       const result = await this.#port.doc.applyUserActions([addAction(this.#own.id, record)]);
       const row = result && Array.isArray(result.retValues) ? result.retValues[0] : null;
-      return { row, name: record.Nom, table: record.Table, config: readConfig(record.Config), parent: record.Parent, fiches: record.Fiches,
+      return { row, name: record.Name, table: record.Table, config: readConfig(record.Config), parent: record.Parent, fiches: record.Copy,
         count: people.length };
     });
   }
@@ -164,7 +164,7 @@ export class AnnuaireStore {
       if (!state || !annuairesOf(state.data).some(each => each.row === annuaire.row)) throw new MissingTable(ANNUAIRES_TABLE);
       const { people, record } = refreshRecord({ sub: annuaire.config.sub, parent, read, at });
       await this.#port.doc.applyUserActions([updateAction(this.#own.id, annuaire.row, record)]);
-      return { annuaire: { ...annuaire, table: record.Table, config: readConfig(record.Config), fiches: record.Fiches }, count: people.length };
+      return { annuaire: { ...annuaire, table: record.Table, config: readConfig(record.Config), fiches: record.Copy }, count: people.length };
     });
   }
 

@@ -1,5 +1,5 @@
 // La table du document quand elle n'est pas née de GFS (contrats 6.1 point 3, 6.5 point 4, 7.4 points 3 et 6), dans un vrai Grist : une table `GFS_Filing` d'une version plus
-// ancienne (sans la colonne `Valeur`) avec une ligne qui n'est pas à GFS ; puis une valeur qui porte une app et un champ que cette version ne connaît pas ; puis une autre section
+// ancienne (sans la colonne `Value`) avec une ligne qui n'est pas à GFS ; puis une valeur qui porte une app et un champ que cette version ne connaît pas ; puis une autre section
 // qui écrit la ligne entre deux gestes. GFS ne pose aucune question (la table existe), ajoute la colonne absente (une seule colonne inconnue dans un lot annulerait tout), garde
 // tout ce qu'il ne connaît pas et relit la ligne juste avant d'écrire. LAB_LANG=fr|en.
 import { startLab } from './lab-setup.mjs';
@@ -18,7 +18,7 @@ const state = f => lab.rangement(f);
 // Une autre section (ou la personne dans Grist) écrit la ligne : GFS n'en est pas prévenu (7.4 point 3).
 const writeValue = async (f, value) => {
   const { reservedId } = await lab.rangement(f);
-  await f.evaluate(([id, json]) => grist.docApi.applyUserActions([['UpdateRecord', 'GFS_Filing', id, { Valeur: json }]]), [reservedId, JSON.stringify(value)]);
+  await f.evaluate(([id, json]) => grist.docApi.applyUserActions([['UpdateRecord', 'GFS_Filing', id, { Value: json }]]), [reservedId, JSON.stringify(value)]);
 };
 const reload = async () => {
   await page.keyboard.press('Escape');
@@ -42,28 +42,28 @@ const gesture = async (key, mode = 'check') => {
 };
 const same = (a, b, keys) => keys.every(key => a[key] === b[key]);
 
-// 1. Une table d'une version plus ancienne : six colonnes, sans `Valeur`, et une ligne qui n'est pas à GFS. À l'ouverture, GFS lit l'adresse de la personne : la colonne `Adresse`
-// (et sa ligne-sonde, ajoutée puis retirée) est la seule chose qu'il pose seul ; `Valeur` attend un geste.
+// 1. Une table d'une version plus ancienne : six colonnes, sans `Value`, et une ligne qui n'est pas à GFS. À l'ouverture, GFS lit l'adresse de la personne : la colonne `Address`
+// (et sa ligne-sonde, ajoutée puis retirée) est la seule chose qu'il pose seul ; `Value` attend un geste.
 await frame.evaluate(async () => {
   await grist.docApi.applyUserActions([['AddTable', 'GFS_Filing', [
-    { id: 'Utilisateur', type: 'Text' }, { id: 'App', type: 'Text' }, { id: 'Fichier', type: 'Text' },
-    { id: 'Favori', type: 'Bool' }, { id: 'Dossier', type: 'Text' }, { id: 'Replie', type: 'Bool' },
+    { id: 'User', type: 'Text' }, { id: 'App', type: 'Text' }, { id: 'File', type: 'Text' },
+    { id: 'Favorite', type: 'Bool' }, { id: 'Folder', type: 'Text' }, { id: 'Collapsed', type: 'Bool' },
   ]]]);
-  await grist.docApi.applyUserActions([['AddRecord', 'GFS_Filing', null, { Utilisateur: 'a@exemple.org', App: 'publipostage', Fichier: '3', Favori: true, Dossier: 'Formation' }]]);
+  await grist.docApi.applyUserActions([['AddRecord', 'GFS_Filing', null, { User: 'a@exemple.org', App: 'publipostage', File: '3', Favorite: true, Folder: 'Formation' }]]);
 });
 await reload();
 const start = await state(frame);
 say('départ :', { colonnes: start.columns, lignes: start.lines.length, pages: start.pages });
-const OLD = ['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie'];
-check('la table du départ n\'a pas de colonne Valeur : ses six colonnes, puis Adresse (posée à l\'ouverture)', !start.columns.includes('Valeur') && JSON.stringify(start.columns) === JSON.stringify([...OLD, 'Adresse']), start.columns);
-check('aucune ligne-sonde ne reste', start.lines.length === 1 && !start.lines.some(line => String(line.Utilisateur).startsWith('@')), start.lines);
+const OLD = ['User', 'App', 'File', 'Favorite', 'Folder', 'Collapsed'];
+check('la table du départ n\'a pas de colonne Valeur : ses six colonnes, puis Adresse (posée à l\'ouverture)', !start.columns.includes('Value') && JSON.stringify(start.columns) === JSON.stringify([...OLD, 'Address']), start.columns);
+check('aucune ligne-sonde ne reste', start.lines.length === 1 && !start.lines.some(line => String(line.User).startsWith('@')), start.lines);
 
 const asked1 = await gesture('app:automation');
 const first = await state(frame);
 say('après Automation+ :', { colonnes: first.columns, valeur: first.value, pages: first.pages });
 check('la table existe : aucune question de création', asked1 === 0, asked1);
-check('la colonne Valeur manquante est ajoutée, sans autre changement de colonnes', JSON.stringify(first.columns) === JSON.stringify([...start.columns, 'Valeur']), first.columns);
-check('la ligne qui n\'est pas à GFS n\'a pas bougé', same(first.lines[0], start.lines[0], ['id', 'Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie']), first.lines[0]);
+check('la colonne Valeur manquante est ajoutée, sans autre changement de colonnes', JSON.stringify(first.columns) === JSON.stringify([...start.columns, 'Value']), first.columns);
+check('la ligne qui n\'est pas à GFS n\'a pas bougé', same(first.lines[0], start.lines[0], ['id', 'User', 'App', 'File', 'Favorite', 'Folder', 'Collapsed']), first.lines[0]);
 check('la ligne réservée est ajoutée avec Automation+', first.lines.length === 2 && Boolean(first.value && first.value.automation), first.value);
 check('aucune page de plus : la table existait', first.pages === start.pages, { avant: start.pages, apres: first.pages });
 
@@ -86,7 +86,7 @@ await gesture('mode:publipostage/graphique/vendorise');
 const third = await state(frame);
 say('après le mode :', third.value);
 check('le geste suivant garde ce que l\'autre section a écrit', Boolean(third.value && third.value.autre) && third.value.publipostage.modes && third.value.publipostage.modes.graphique === 'vendorise', third.value);
-check('toujours une seule ligne réservée, la ligne d\'un autre intacte', third.lines.length === 2 && same(third.lines[0], start.lines[0], ['id', 'Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie']), third.lines.length);
+check('toujours une seule ligne réservée, la ligne d\'un autre intacte', third.lines.length === 2 && same(third.lines[0], start.lines[0], ['id', 'User', 'App', 'File', 'Favorite', 'Folder', 'Collapsed']), third.lines.length);
 say('avertissements GFS :', warnings);
 check('aucun avertissement de GFS', warnings.length === 0, warnings);
 await lab.browser.close();

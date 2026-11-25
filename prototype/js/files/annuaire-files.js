@@ -14,7 +14,7 @@ const AUTHOR = 'GFS_Auteur';
 const bilingual = (fr, en) => Object.freeze({ fr, en });
 
 // Le manifeste de ces fichiers, de la forme de celui d'une app (contrats 2.4, 2.7) : le fichier est la ligne de l'annuaire (son numéro, `id`, en est
-// l'identifiant : un annuaire ne se renomme pas par sa clé), son nom est la colonne `Nom` ; sans date ni auteur propres, l'auteur est celui que Grist écrit
+// l'identifiant : un annuaire ne se renomme pas par sa clé), son nom est la colonne `Name` ; sans date ni auteur propres, l'auteur est celui que Grist écrit
 // (`GFS_Auteur`, js/sharing/sharing-model.js) quand le partage a étendu la table. `integre` : il est dans le code de GFS, hors du catalogue des apps.
 export const ANNUAIRES_MANIFEST = Object.freeze({
   id: ANNUAIRES_APP,
@@ -22,7 +22,7 @@ export const ANNUAIRES_MANIFEST = Object.freeze({
   integre: true,
   fichiers: Object.freeze([Object.freeze({
     table: ANNUAIRES_TABLE,
-    colonnes: Object.freeze({ id: 'id', nom: 'Nom', par: AUTHOR }),
+    colonnes: Object.freeze({ id: 'id', nom: 'Name', par: AUTHOR }),
     typeParDefaut: ANNUAIRE_TYPE,
     types: Object.freeze([Object.freeze({ valeur: ANNUAIRE_TYPE, nom: bilingual('Annuaire', 'Directory'), icone: 'annuaire', couleur: 'annuaire' })]),
   })]),

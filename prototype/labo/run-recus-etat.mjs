@@ -32,14 +32,14 @@ try {
   const target = await openGfs(context);
   await startEngine(source.frame);
   await startEngine(target.frame);
-  const files = await source.rest.rows('GFS_Files');
+  const files = await source.rest.rows('GFS_Fichiers');
   const idOf = name => files.find(row => row.Nom === name).Identifiant;
   const first = await handshake(source, target, { name: 'Lot', ids: [idOf('Facture.pdf'), idOf('Devis.pdf')], columns: COLUMNS, options: { archive: true } });
   const pass = async () => {
     const swallowed = await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
     const consolidated = await target.frame.evaluate(() => window.__try(() => window.__s.consolidateAll({ reread: true })));
     for (const each of [swallowed, consolidated]) if (!each.ok) errors.push(each.message);
-    return target.rest.rows('GFS_Received');
+    return target.rest.rows('GFS_Recus');
   };
   const until = async (test, tries = 40) => { let rows = []; for (let i = 0; i < tries; i += 1) { rows = await pass(); if (test(rows)) return rows; await source.page.waitForTimeout(1500); } return rows; };
   const named = (rows, name) => rows.filter(row => row.Nom === name);
@@ -48,33 +48,33 @@ try {
     return window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
   }), { exp: first.exp, selection: first.selection(ids) });
   const rename = async (from, to) => {
-    const row = (await source.rest.rows('GFS_Files')).find(each => each.Nom === from);
-    return send(source, 'PATCH', '/tables/GFS_Files/records', { records: [{ id: row.id, fields: { Nom: to } }] });
+    const row = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === from);
+    return send(source, 'PATCH', '/tables/GFS_Fichiers/records', { records: [{ id: row.id, fields: { Nom: to } }] });
   };
 
   say('--- 1. une colonne de GFS dans la table reçue ---');
   let rows = await until(list => ['Facture.pdf', 'Devis.pdf'].every(name => list.some(row => row.Nom === name && row.Contenu)));
   check('deux fichiers arrivés avec leur contenu', rows.length === 2 && rows.every(row => row.Contenu), rows.map(row => row.Nom));
-  const added = await send(target, 'POST', '/tables/GFS_Received/columns', { columns: [{ id: 'Accepte', fields: { type: 'Bool', label: 'Accepte' } }, { id: 'Refuse', fields: { type: 'Bool', label: 'Refuse' } }] });
+  const added = await send(target, 'POST', '/tables/GFS_Recus/columns', { columns: [{ id: 'Accepte', fields: { type: 'Bool', label: 'Accepte' } }, { id: 'Refuse', fields: { type: 'Bool', label: 'Refuse' } }] });
   check('Grist accepte d\'ajouter deux colonnes (Accepte, Refuse) à la table reçue', added.status === 200, added);
   const facture = named(rows, 'Facture.pdf')[0];
   const devis = named(rows, 'Devis.pdf')[0];
-  const accepted = await send(target, 'PATCH', '/tables/GFS_Received/records', { records: [{ id: facture.id, fields: { Accepte: true } }] });
-  const refused = await send(target, 'PATCH', '/tables/GFS_Received/records', { records: [{ id: devis.id, fields: { Refuse: true } }] });
+  const accepted = await send(target, 'PATCH', '/tables/GFS_Recus/records', { records: [{ id: facture.id, fields: { Accepte: true } }] });
+  const refused = await send(target, 'PATCH', '/tables/GFS_Recus/records', { records: [{ id: devis.id, fields: { Refuse: true } }] });
   check('Facture est marquée acceptée, Devis refusé', accepted.status === 200 && refused.status === 200, { accepted, refused });
 
   say('--- 2. l\'envoyeur renomme : la marque tient ---');
   await rename('Facture.pdf', 'Facture v2.pdf');
   await rename('Devis.pdf', 'Devis v2.pdf');
   rows = await until(list => list.some(row => row.Nom === 'Facture v2.pdf') && list.some(row => row.Nom === 'Devis v2.pdf'));
-  say('GFS_Received après le renommage :', JSON.stringify(rows.map(row => ({ id: row.id, Nom: row.Nom, Accepte: row.Accepte, Refuse: row.Refuse }))));
+  say('GFS_Recus après le renommage :', JSON.stringify(rows.map(row => ({ id: row.id, Nom: row.Nom, Accepte: row.Accepte, Refuse: row.Refuse }))));
   const f2 = named(rows, 'Facture v2.pdf');
   const d2 = named(rows, 'Devis v2.pdf');
   check('la mise à jour arrive sur la MÊME ligne de Facture (pas de doublon) et la marque « acceptée » tient', rows.length === 2 && f2.length === 1 && f2[0].id === facture.id && f2[0].Accepte === true, rows.map(row => [row.id, row.Nom, row.Accepte]));
   check('la mise à jour de Devis arrive sur sa ligne, la marque « refusé » tient, pas de doublon', d2.length === 1 && d2[0].id === devis.id && d2[0].Refuse === true, rows.map(row => [row.id, row.Nom, row.Refuse]));
 
   say('--- 3. contre-épreuve : effacer la ligne refusée ---');
-  const erased = await send(target, 'POST', '/tables/GFS_Received/data/delete', [devis.id]);
+  const erased = await send(target, 'POST', '/tables/GFS_Recus/data/delete', [devis.id]);
   say('effacement de la ligne de Devis :', JSON.stringify(erased));
   await rename('Devis v2.pdf', 'Devis v3.pdf');
   rows = await until(list => list.some(row => row.Nom === 'Devis v3.pdf'), 14);
@@ -85,7 +85,7 @@ try {
   say('--- 4. un fichier de plus arrive « à accepter » ---');
   await importPdf(source.page, source.frame, pdfFile('Contrat.pdf', 2, 'Contrat').file);
   await waitForNames(source.frame, ['Contrat.pdf', 'Devis v3.pdf', 'Facture v2.pdf']);
-  const contratId = (await source.rest.rows('GFS_Files')).find(row => row.Nom === 'Contrat.pdf').Identifiant;
+  const contratId = (await source.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Contrat.pdf').Identifiant;
   const widened = await edit([idOf('Facture.pdf'), idOf('Devis.pdf'), contratId]);
   check('Contrat entre dans la condition', widened.ok, widened);
   rows = await until(list => list.some(row => row.Nom === 'Contrat.pdf' && row.Contenu));
@@ -93,7 +93,7 @@ try {
   check('Contrat arrive avec son contenu et SANS marque (ni Accepte ni Refuse) : c\'est lui qui est « à accepter »', contrat.length === 1 && Boolean(contrat[0].Contenu) && !contrat[0].Accepte && !contrat[0].Refuse, contrat);
 
   say('--- 5. le moteur n\'a rien levé ---');
-  const columns = (await target.rest.columns('GFS_Received')).map(column => column.id);
+  const columns = (await target.rest.columns('GFS_Recus')).map(column => column.id);
   check('aucun passage du moteur n\'a levé d\'erreur, et Accepte et Refuse sont toujours des colonnes de la table reçue', errors.length === 0 && columns.includes('Accepte') && columns.includes('Refuse'), { errors, columns });
 } finally {
   await browser.close();

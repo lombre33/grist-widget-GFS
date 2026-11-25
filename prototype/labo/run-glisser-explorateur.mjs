@@ -51,7 +51,7 @@ const quiet = () => toast.waitFor({ state: 'hidden', timeout: 20000 }).catch(() 
 const filing = () => frame.evaluate(async () => {
   if (!(await grist.docApi.listTables()).includes('GFS_Filing')) return null;
   const data = await grist.docApi.fetchTable('GFS_Filing');
-  return data.id.map((id, i) => ({ app: data.App[i], file: data.Fichier[i], folder: data.Dossier[i] }));
+  return data.id.map((id, i) => ({ app: data.App[i], file: data.File[i], folder: data.Folder[i] }));
 });
 const placeOf = async id => { const rows = (await filing()) || []; const found = rows.find(each => each.app === 'sonde-zf' && each.file === String(id)); return found ? found.folder : ''; };
 const keptFolders = async () => ((await filing()) || []).filter(each => !each.app && !each.file).map(each => each.folder).sort();

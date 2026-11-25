@@ -678,7 +678,7 @@ const shares = (over = {}) => {
 };
 
 test('renommer un dossier partagé : sa ligne d\'état change de chemin sur place, ses partages passent au numéro dans le même lot, rien n\'est refusé', async () => {
-  const extra = [['UpdateRecord', 'GFS_Shares', 3, { Cible: 'dossier:moi:a@b.fr//9' }]];
+  const extra = [['UpdateRecord', 'GFS_Shares', 3, { Target: 'dossier:moi:a@b.fr//9' }]];
   const folderShares = shares({ extra });
   const { filing, log, kept } = harness({ spare: ['A/B'], answers: ['Neuf'], folderShares });
   await filing.renameFolder('A/B');

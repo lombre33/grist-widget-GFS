@@ -100,8 +100,8 @@ export const EXPLORER_STRINGS = {
     'ex.notice.openFailed': '{app} n’a pas pu ouvrir ce fichier : {reason}',
     'ex.notice.appOnly': 'Dupliquer se fait dans {app} : ouvrez le fichier.',
     'ex.notice.noApp': 'Aucune app installée ne sait ouvrir ce type de fichier.',
-    // Les fichiers que GFS garde lui-même (les PDF) : la table GFS_Files, l'envoi, la lecture.
-    'files.table.title': 'Créer la table GFS_Files ?',
+    // Les fichiers que GFS garde lui-même (les PDF) : la table GFS_Fichiers, l'envoi, la lecture.
+    'files.table.title': 'Créer la table GFS_Fichiers ?',
     'files.table.text': 'GFS y garde les PDF que vous importez et ceux qu’une app lui demande de ranger : une ligne par fichier, avec son nom, sa date et son auteur, et le PDF lui-même en pièce jointe de Grist. La table est ajoutée au document, avec une page pour elle ; les apps ne l’écrivent jamais, elles demandent à GFS. Sans elle, aucun PDF ne se garde.',
     'files.import.hint': 'Gardé par GFS',
     'files.readonly': 'Document en lecture seule : GFS ne peut pas y ajouter de fichier.',
@@ -117,7 +117,7 @@ export const EXPLORER_STRINGS = {
     'files.copied': 'Ce nom était pris : le fichier est gardé sous « {name} ».',
     'files.replaced': '« {name} » est remplacé.',
     'files.failed': '« {name} » n’a pas pu être ajouté : {reason}',
-    'files.declined': 'Rien n’a été ajouté : la table GFS_Files n’a pas été créée.',
+    'files.declined': 'Rien n’a été ajouté : la table GFS_Fichiers n’a pas été créée.',
     'files.empty': '« {name} » est vide.',
     'files.notPdf': '« {name} » n’est pas un PDF : son contenu ne commence pas comme un PDF.',
     'files.downloading': 'Téléchargement de « {name} »…',
@@ -245,8 +245,8 @@ export const EXPLORER_STRINGS = {
     'ex.notice.openFailed': '{app} could not open this file: {reason}',
     'ex.notice.appOnly': 'Duplicating is done in {app}: open the file.',
     'ex.notice.noApp': 'No installed app can open this type of file.',
-    // Les fichiers que GFS garde lui-même (les PDF) : la table GFS_Files, l'envoi, la lecture.
-    'files.table.title': 'Create the GFS_Files table?',
+    // Les fichiers que GFS garde lui-même (les PDF) : la table GFS_Fichiers, l'envoi, la lecture.
+    'files.table.title': 'Create the GFS_Fichiers table?',
     'files.table.text': 'GFS keeps the PDFs you import there, and those an app asks it to file: one row per file, with its name, date and author, and the PDF itself as a Grist attachment. The table is added to the document, with a page for it; apps never write to it, they ask GFS. Without it, no PDF can be kept.',
     'files.import.hint': 'Kept by GFS',
     'files.readonly': 'Read-only document: GFS cannot add a file to it.',
@@ -262,7 +262,7 @@ export const EXPLORER_STRINGS = {
     'files.copied': 'That name was taken: the file is kept as “{name}”.',
     'files.replaced': '“{name}” is replaced.',
     'files.failed': '“{name}” could not be added: {reason}',
-    'files.declined': 'Nothing was added: the GFS_Files table was not created.',
+    'files.declined': 'Nothing was added: the GFS_Fichiers table was not created.',
     'files.empty': '“{name}” is empty.',
     'files.notPdf': '“{name}” is not a PDF: its content does not start like a PDF.',
     'files.downloading': 'Downloading “{name}”…',

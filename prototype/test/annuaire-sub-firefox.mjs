@@ -217,7 +217,7 @@ async function adminMenuProblems(page, t, note, click, { width, mode }, { date }
   await delay(500);
   const done = (await page.run(writes)).slice(before);
   if (done.length !== 1 || done[0][0] !== 'UpdateRecord' || done[0][1] !== 'GFS_Directories' || done[0][2] !== SUB_ROW ||
-    Object.keys(done[0][3]).sort().join(',') !== 'Config,Fiches,Table') note('sous-annuaires', `${where} : « Actualiser » écrit ${JSON.stringify(done).slice(0, 200)} (une mise à jour de Config, Fiches et Table de la ligne ${SUB_ROW})`);
+    Object.keys(done[0][3]).sort().join(',') !== 'Config,Copy,Table') note('sous-annuaires', `${where} : « Actualiser » écrit ${JSON.stringify(done).slice(0, 200)} (une mise à jour de Config, Copy et Table de la ligne ${SUB_ROW})`);
   const snap = await page.run(barSnap);
   if (!snap.foot.includes(t('an.sub.refreshed', { n: 4 }))) note('sous-annuaires', `${where} : après « Actualiser », le pied dit « ${snap.foot} » (« ${t('an.sub.refreshed', { n: 4 })} » attendu)`);
   if (snap.persons !== 4) note('sous-annuaires', `${where} : ${snap.persons} personnes après « Actualiser » (4 attendues)`);
@@ -333,9 +333,9 @@ async function createProblems(page, t, note, click, { width, mode }) {
   else {
     const record = add[0][3];
     const keys = Object.keys(record).sort().join(',');
-    if (keys !== 'Config,Fiches,Nom,Parent,Table') note('sous-annuaires', `${where} : la ligne écrite porte ${keys} (Config,Fiches,Nom,Parent,Table attendues)`);
-    if (record.Nom !== 'Direction numérique' || record.Parent !== '1' || record.Table !== 'Personnes') note('sous-annuaires', `${where} : la ligne dit ${JSON.stringify({ Nom: record.Nom, Parent: record.Parent, Table: record.Table })}`);
-    const fiches = JSON.parse(record.Fiches);
+    if (keys !== 'Config,Copy,Name,Parent,Table') note('sous-annuaires', `${where} : la ligne écrite porte ${keys} (Config,Copy,Name,Parent,Table attendues)`);
+    if (record.Name !== 'Direction numérique' || record.Parent !== '1' || record.Table !== 'Personnes') note('sous-annuaires', `${where} : la ligne dit ${JSON.stringify({ Nom: record.Nom, Parent: record.Parent, Table: record.Table })}`);
+    const fiches = JSON.parse(record.Copy);
     if (fiches.people.length !== 4 || fiches.people.some(person => person.name === '')) note('sous-annuaires', `${where} : la copie garde ${fiches.people.length} personnes (4 attendues)`);
     const text = JSON.stringify(fiches);
     if (/Sacha|Masquee/.test(text)) note('sous-annuaires', `${where} : la copie garde une personne masquée ou une colonne qui n'est pas un champ`);

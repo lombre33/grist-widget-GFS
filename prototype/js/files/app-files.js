@@ -175,8 +175,8 @@ export class AppFiles {
   // La place de l'entrée de `file` dans `GFS_Trash` (relue), ou -1 : le numéro de ligne, l'app, le fichier et la date du geste doivent tous correspondre à
   // ce que la personne avait sous les yeux.
   #entryOf(bin, file) {
-    return (bin.id || []).findIndex((row, i) => row === file.row && text(cell(bin, 'App', i)) === file.app && text(cell(bin, 'FichierId', i)) === file.id &&
-      cell(bin, 'SupprimeLe', i) === file.trashed.ts);
+    return (bin.id || []).findIndex((row, i) => row === file.row && text(cell(bin, 'App', i)) === file.app && text(cell(bin, 'FileId', i)) === file.id &&
+      cell(bin, 'DeletedAt', i) === file.trashed.ts);
   }
 
   // La ligne du fichier, relue : { table, at }, ou null quand elle n'est plus dans la table de l'app.
@@ -273,7 +273,7 @@ export class AppFiles {
       const state = spec ? await this.#bin.existing() : null;
       const entry = state ? this.#entryOf(state.data, file) : -1;
       if (entry < 0) return null;
-      const snapshot = parseSnapshot(cell(state.data, 'Instantane', entry));
+      const snapshot = parseSnapshot(cell(state.data, 'Snapshot', entry));
       if (!snapshot) throw new Error(t('trash.unreadable'));
       const table = await this.#read(spec);
       if (!table) throw new Error(t('trash.tableGone'));

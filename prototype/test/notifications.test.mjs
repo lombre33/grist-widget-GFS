@@ -7,7 +7,7 @@ import { createI18n } from '../js/i18n/i18n.js';
 
 const FR = createI18n('fr');
 const EN = createI18n('en');
-const arrival = (n, by = 'Compta <compta@exemple.fr>') => ({ key: `gfs-recus:GFS_Received:f${n}`, id: `f${n}`, name: `Contrat ${n}.pdf`, by });
+const arrival = (n, by = 'Compta <compta@exemple.fr>') => ({ key: `gfs-recus:GFS_Recus:f${n}`, id: `f${n}`, name: `Contrat ${n}.pdf`, by });
 
 function setup(pending, i18n = FR) {
   const log = { asked: [], notices: [], opened: 0 };
@@ -56,7 +56,7 @@ test('l\'anglais dit la même chose', () => {
 });
 
 test('les fichiers d\'un dossier reçu n\'ont qu\'une ligne, celle du dossier : un clic pose la question du dossier ; les fichiers sans dossier gardent leur ligne', () => {
-  const inFolder = (n, folder) => ({ ...arrival(n), received: { table: 'GFS_Received', row: n, state: 'pending', folder } });
+  const inFolder = (n, folder) => ({ ...arrival(n), received: { table: 'GFS_Recus', row: n, state: 'pending', folder } });
   const asked = [];
   const items = notificationItems({ t: FR.t, pending: [inFolder(1, 'Contrats'), inFolder(2, 'Contrats'), inFolder(3, 'Contrats'), inFolder(4, ''), { ...inFolder(5, 'Devis'), by: '' }], notice() {}, ask: file => asked.push(file.id), askFolder: folder => asked.push(`dossier ${folder.name}`), openShared() {} });
   assert.deepEqual(items.slice(0, 3).map(item => item.label), ['Dossier « Contrats » de Compta : 3 fichiers à accepter', 'Dossier « Devis » : 1 fichier à accepter', '« Contrat 4.pdf » de Compta, à accepter']);

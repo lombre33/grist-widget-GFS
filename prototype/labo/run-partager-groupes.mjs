@@ -99,8 +99,8 @@ async function playOwner(run) {
   await shot(frame, '2-groupe');
   await frame.locator('[data-fk="manage-group-save"]').click();
   await frame.locator('.rr[data-group="Achats"]').waitFor({ timeout: 15000 });
-  const achats = (await rows(run, 'GFS_Groups')).find(row => row.Nom === 'Achats');
-  check('le groupe Achats compte une personne : l\'éditeur', achats && achats.Nb === 1 && JSON.stringify(achats.Membres).includes(EDITOR), achats);
+  const achats = (await rows(run, 'GFS_Groups')).find(row => row.Name === 'Achats');
+  check('le groupe Achats compte une personne : l\'éditeur', achats && achats.Count === 1 && JSON.stringify(achats.Members).includes(EDITOR), achats);
 
   say('--- 3. lire les groupes d\'une table : Contacts (Mail, Equipe) ---');
   await frame.locator('[data-fk="manage-group-read"]').click();
@@ -114,7 +114,7 @@ async function playOwner(run) {
   await frame.locator('.rr[data-group="Lecteurs"]').waitFor({ timeout: 15000 });
   const groups = await rows(run, 'GFS_Groups');
   const lecteurs = groups.find(row => row.Nom === 'Lecteurs');
-  check('le groupe Lecteurs est lu de la table : une personne, l\'adresse nettoyée (espaces, majuscules)', lecteurs && lecteurs.Nb === 1 && JSON.stringify(lecteurs.Membres).includes(VIEWER), lecteurs);
+  check('le groupe Lecteurs est lu de la table : une personne, l\'adresse nettoyée (espaces, majuscules)', lecteurs && lecteurs.Count === 1 && JSON.stringify(lecteurs.Members).includes(VIEWER), lecteurs);
   await shot(frame, '3-groupes');
   await closeManage(frame);
   await closeShare(frame);
@@ -134,8 +134,8 @@ async function playOwner(run) {
   await addGroup(frame, 'Achats');
   const rowA = (await inModels(run))[PRIVATE_A];
   check('la colonne d\'aide GFS_Lecteurs du modèle contient l\'éditeur (le groupe est développé par Grist)', readers(rowA).includes(EDITOR) && readers(rowA).includes(OWNER), rowA && rowA.GFS_Lecteurs);
-  const shareRow = (await rows(run, 'GFS_Shares')).find(row => row.Personne === '#Achats');
-  check('la ligne de partage vise « #Achats », valide', shareRow && shareRow.Valide === true && shareRow.Droit === 'lecture', shareRow);
+  const shareRow = (await rows(run, 'GFS_Shares')).find(row => row.Person === '#Achats');
+  check('la ligne de partage vise « #Achats », valide', shareRow && shareRow.Valid === true && shareRow.Right === 'lecture', shareRow);
   const text = (await frame.locator('.mod.sh').innerText()).replace(/\s+/g, ' ');
   check('la ligne se lit « Groupe · Achats »', text.includes(t('share.group.label', { name: 'Achats' })), text);
   await shot(frame, '5-partage-groupe');
@@ -167,8 +167,8 @@ async function playOwner(run) {
   await frame.locator('[data-fk="manage-cat-editeurs"]').click();
   await frame.getByRole('menuitemradio', { name: new RegExp(t('share.right.lecture')) }).first().click();
   await frame.locator('[data-fk="manage-cat-editeurs"]').filter({ hasText: t('share.right.lecture') }).waitFor({ timeout: 15000 });
-  const root = (await rows(run, 'GFS_Shares')).find(row => row.Cible === '*' && row.Personne === '@editeurs');
-  check('une ligne « * » pour les éditeurs, en lecture', root && root.Droit === 'lecture', root);
+  const root = (await rows(run, 'GFS_Shares')).find(row => row.Target === '*' && row.Person === '@editeurs');
+  check('une ligne « * » pour les éditeurs, en lecture', root && root.Right === 'lecture', root);
   const rowR = (await inModels(run))[PRIVATE_R];
   check('le modèle « racine » est lu des éditeurs (GFS_Cats) mais pas du lecteur', JSON.stringify(rowR.GFS_Cats).includes('editeurs') || JSON.stringify(rowR.GFS_Cats).includes('@'), rowR && rowR.GFS_Cats);
   await shot(frame, '6-categories');
@@ -194,7 +194,7 @@ async function playEditor(run) {
   check('il lit tous les modèles privés : la racine donne « Lecture » à tous les éditeurs sur tout le document', [PRIVATE_A, PRIVATE_L, PRIVATE_N, PRIVATE_R].every(name => seen.includes(name)), seen);
   const groups = await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Groups/records`);
   check('il ne lit ni les adresses ni les membres des groupes', !groups.text.includes('example.com'), groups.text.slice(0, 200));
-  const answer = await apply(run, [['AddRecord', 'GFS_Groups', null, { Nom: 'Pirate', PersonnesIci: EDITOR }]]);
+  const answer = await apply(run, [['AddRecord', 'GFS_Groups', null, { Name: 'Pirate', People: EDITOR }]]);
   check('il n\'écrit pas dans les groupes', answer.status !== 200, answer.text);
   const own = await apply(run, [['AddRecord', MODELS, null, { Nom: 'Modèle de l\'éditeur', TypeModele: 'document', DateModif: Math.floor(Date.now() / 1000) }]]);
   check('il crée un modèle', own.status === 200, own.text);

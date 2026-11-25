@@ -86,13 +86,13 @@ export function carryOver(filing, target, gfs, identity) {
   const folders = new Set();
   const removed = [];
   ((data && data.id) || []).forEach((rowId, i) => {
-    if (text(data.Utilisateur[i]) !== identity) return;
+    if (text(data.User[i]) !== identity) return;
     const app = text(data.App[i]);
-    const file = text(data.Fichier[i]);
-    const folder = normalizePath(data.Dossier[i]);
+    const file = text(data.File[i]);
+    const folder = normalizePath(data.Folder[i]);
     if (app === filing.app && file) {
       removed.push(['RemoveRecord', gfs.tableId, rowId]);
-      const pinned = data.Favori[i] === true;
+      const pinned = data.Favorite[i] === true;
       if (!entries.has(file) && (known.has(file) || pinned || folder)) entries.set(file, { file, pinned, folder });
     } else if (!app && !file && folder && hasMark(filing)) folders.add(folder);
   });

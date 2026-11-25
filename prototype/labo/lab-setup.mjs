@@ -157,11 +157,11 @@ export async function startLab(options = {}) {
     const pages = (await grist.docApi.fetchTable('_grist_Pages')).id.length;
     if (!tables.includes('GFS_Filing')) return { table: false, pages, tables: tables.length };
     const data = await grist.docApi.fetchTable('GFS_Filing');
-    const at = data.id.findIndex((id, i) => data.Utilisateur[i] === '@document' && data.App[i] === 'gfs' && data.Fichier[i] === 'apps');
+    const at = data.id.findIndex((id, i) => data.User[i] === '@document' && data.App[i] === 'gfs' && data.File[i] === 'apps');
     const columns = Object.keys(data).filter(name => /^[A-Z]/.test(name));
     // `lines` : toutes les lignes, avec leurs colonnes (celles d'un autre auteur comprises), pour vérifier qu'une écriture n'y a pas touché.
     const lines = data.id.map((id, i) => ({ id, ...Object.fromEntries(columns.map(name => [name, data[name][i]])) }));
-    return { table: true, pages, tables: tables.length, rows: data.id.length, columns, lines, reservedId: at >= 0 ? data.id[at] : null, value: at >= 0 && data.Valeur ? JSON.parse(data.Valeur[at]) : null };
+    return { table: true, pages, tables: tables.length, rows: data.id.length, columns, lines, reservedId: at >= 0 ? data.id[at] : null, value: at >= 0 && data.Value ? JSON.parse(data.Value[at]) : null };
   });
   // Une section de plus sur la page, par la même suite de gestes que la première (accès « aucun », comme Grist le donne à un widget qu'on ajoute).
   const addSection = address => addCustomWidget(page, address);

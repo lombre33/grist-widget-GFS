@@ -1,8 +1,8 @@
 // Les liens entre espaces (contrats 11.7, point 13.o ; choix du porteur, 13/11 : « un lien avec son droit »). Un dossier ou un fichier d'un espace A se montre
 // dans un espace B, sans copie : c'est le même dossier, et les groupes de B y ont la lecture ou l'écriture. Un lien est une ligne de `GFS_Placement` sans
-// `Cible` qui porte `Lien` (la cible à montrer : un fichier ou `dossier:<clé>/<chemin>`), l'espace B et le dossier de B où il se montre. **Il ne donne aucun
+// `Target` qui porte `Link` (la cible à montrer : un fichier ou `dossier:<clé>/<chemin>`), l'espace B et le dossier de B où il se montre. **Il ne donne aucun
 // droit par
-// lui-même** : à sa création, GFS écrit des lignes de partage ordinaires sur la source pour les groupes de B (`Partages` garde ceux qu'il a ajoutés, pour les
+// lui-même** : à sa création, GFS écrit des lignes de partage ordinaires sur la source pour les groupes de B (`Shares` garde ceux qu'il a ajoutés, pour les
 //   retirer avec lui), et Grist les calcule comme tous les partages (le droit le plus précis gagne, « Aucun accès » d'un fichier du dossier reste gagnant). Ce
 //   qui se montre sous le lien, Grist le dit aussi : la colonne d'aide `GFS_Vus` de chaque fichier (js/sharing/sharing-model.js) donne les chemins où il se
 //   montre, et une personne ne lit que les fichiers où elle a un droit. Ce module ne touche pas à Grist : il rend des actions et pose les chemins sur les
@@ -30,16 +30,16 @@ export function planLink({ source, space, folder, right, shareRows = [], placeRo
   const groups = groupsOfSpace(space);
   if (!groups.length) return { ok: false, reason: 'noGroup' };
   if (inSpace(source, space)) return { ok: false, reason: 'sameSpace' };
-  if (placeRows.some(row => row.Lien === source && row.Espace === space.key && cleanPath(row.Dossier) === path)) return { ok: false, reason: 'exists' };
+  if (placeRows.some(row => row.Link === source && row.Space === space.key && cleanPath(row.Folder) === path)) return { ok: false, reason: 'exists' };
   const added = [];
   const actions = [];
   for (const name of groups) {
     const who = `${GROUP_PREFIX}${name}`;
-    const row = shareRows.find(item => item.Cible === source && String(item.Personne) === who);
+    const row = shareRows.find(item => item.Target === source && String(item.Person) === who);
     if (!row) { actions.push(['AddRecord', SHARES_TABLE, null, shareRecord({ target: source, who, right, download: true })]); added.push(who); }
-    else if ((WEIGHT[row.Droit] ?? 0) < WEIGHT[right]) actions.push(['UpdateRecord', SHARES_TABLE, row.id, { Droit: right }]);
+    else if ((WEIGHT[row.Right] ?? 0) < WEIGHT[right]) actions.push(['UpdateRecord', SHARES_TABLE, row.id, { Right: right }]);
   }
-  actions.push(['AddRecord', PLACE_TABLE, null, { Cible: '', Espace: space.key, Dossier: path, Lien: source, Partages: added.join(',') }]);
+  actions.push(['AddRecord', PLACE_TABLE, null, { Target: '', Space: space.key, Folder: path, Link: source, Shares: added.join(',') }]);
   return { ok: true, actions, groups };
 }
 
@@ -51,7 +51,7 @@ export const inSpace = (source, space) => String(source).startsWith(`dossier:${s
 export function planLinkRemove(link, shareRows = []) {
   if (!link || !link.id) return { ok: false, reason: 'none' };
   const mine = new Set(String(link.groups || '').split(',').map(name => name.trim()).filter(Boolean));
-  const rows = shareRows.filter(row => row.Cible === link.source && mine.has(String(row.Personne))).map(row => row.id);
+  const rows = shareRows.filter(row => row.Target === link.source && mine.has(String(row.Person))).map(row => row.id);
   return { ok: true, actions: [...(rows.length ? [['BulkRemoveRecord', SHARES_TABLE, rows]] : []), ['RemoveRecord', PLACE_TABLE, link.id]] };
 }
 

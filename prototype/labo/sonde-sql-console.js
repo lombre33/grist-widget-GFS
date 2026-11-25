@@ -7,7 +7,7 @@
   const [, kind, org, doc] = location.pathname.split('/');
   if (kind !== 'o' || !org || !doc) { console.error('Ouvrez une page d\'un document (adresse /o/<équipe>/<document>/…) avant de coller la sonde.'); return; }
   const base = `${location.origin}/o/${org}/api/docs/${doc}/sql`;
-  const STRUCT = 'SELECT t.tableId AS tableId, c.colId AS colId, c.type AS type FROM _grist_Tables_column AS c JOIN _grist_Tables AS t ON t.id = c.parentId WHERE t.tableId IN (\'GFS_Files\')';
+  const STRUCT = 'SELECT t.tableId AS tableId, c.colId AS colId, c.type AS type FROM _grist_Tables_column AS c JOIN _grist_Tables AS t ON t.id = c.parentId WHERE t.tableId IN (\'GFS_Fichiers\')';
   const tests = [
     ['0 témoin : un compte simple', 'SELECT COUNT(*) AS n FROM _grist_Tables'],
     ['1 poids du fichier (forme actuelle de GFS)', 'SELECT (SELECT page_count FROM pragma_page_count()) * (SELECT page_size FROM pragma_page_size()) AS octets'],
@@ -31,7 +31,7 @@
     ['17 poids d\'une table (pgsize - unused)', 'SELECT COALESCE(SUM(pgsize - unused), 0) AS octets FROM dbstat WHERE name = \'_grist_Tables\''],
     ['18 liste des tables', 'SELECT tableId FROM _grist_Tables ORDER BY tableId'],
     ['19 structure (forme de GFS, plusieurs tables)', 'SELECT t.tableId AS tableId, c.colId AS colId, c.type AS type FROM _grist_Tables_column AS c JOIN _grist_Tables AS t ON t.id = c.parentId '
-      + 'WHERE t.tableId IN (\'GFS_Trash\', \'GFS_Files\', \'GFS_Directories\', \'Publipostage_Templates\') AND c.colId NOT LIKE \'gristHelper%\' AND c.colId != \'manualSort\' ORDER BY c.parentId, c.colId'],
+      + 'WHERE t.tableId IN (\'GFS_Trash\', \'GFS_Fichiers\', \'GFS_Directories\', \'Publipostage_Templates\') AND c.colId NOT LIKE \'gristHelper%\' AND c.colId != \'manualSort\' ORDER BY c.parentId, c.colId'],
   ];
   const out = [];
   for (const [label, q] of tests) {

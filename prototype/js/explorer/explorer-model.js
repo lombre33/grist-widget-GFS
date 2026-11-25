@@ -108,11 +108,11 @@ export function readFiling(rangement, data, identity = '') {
 export function readGfsFiling(data, identity = '') {
   const byFile = new Map();
   for (let i = 0; i < rowCount(data); i++) {
-    const user = text(cell(data, 'Utilisateur', i));
+    const user = text(cell(data, 'User', i));
     const app = text(cell(data, 'App', i));
-    const file = text(cell(data, 'Fichier', i));
+    const file = text(cell(data, 'File', i));
     if (user !== identity || user.startsWith('@') || !app || !file || byFile.has(fileKey(app, file))) continue;
-    byFile.set(fileKey(app, file), { folder: normalizePath(cell(data, 'Dossier', i)), pinned: cell(data, 'Favori', i) === true });
+    byFile.set(fileKey(app, file), { folder: normalizePath(cell(data, 'Folder', i)), pinned: cell(data, 'Favorite', i) === true });
   }
   return byFile;
 }
@@ -123,9 +123,9 @@ export function readGfsFiling(data, identity = '') {
 export function readGfsFolders(data, identity = '') {
   const found = new Set();
   for (let i = 0; i < rowCount(data); i++) {
-    const user = text(cell(data, 'Utilisateur', i));
-    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'Fichier', i))) continue;
-    const path = normalizePath(cell(data, 'Dossier', i));
+    const user = text(cell(data, 'User', i));
+    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'File', i))) continue;
+    const path = normalizePath(cell(data, 'Folder', i));
     if (path) found.add(path);
   }
   return [...found];
@@ -137,9 +137,9 @@ export function readGfsFolders(data, identity = '') {
 export function readGfsFolderRows(data, identity = '') {
   const found = [];
   for (let i = 0; i < rowCount(data); i++) {
-    const user = text(cell(data, 'Utilisateur', i));
-    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'Fichier', i))) continue;
-    const path = normalizePath(cell(data, 'Dossier', i));
+    const user = text(cell(data, 'User', i));
+    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'File', i))) continue;
+    const path = normalizePath(cell(data, 'Folder', i));
     if (path) found.push({ id: data.id[i], path });
   }
   return found;

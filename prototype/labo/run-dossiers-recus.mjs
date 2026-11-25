@@ -47,7 +47,7 @@ try {
   const target = await openGfs(context, { lang });
   await startEngine(source.frame);
   await startEngine(target.frame);
-  const files = await source.rest.rows('GFS_Files');
+  const files = await source.rest.rows('GFS_Fichiers');
   const idOf = name => files.find(row => row.Nom === name).Identifiant;
   const rowIdOf = name => files.find(row => row.Nom === name).id;
   const first = await handshake(source, target, { name: 'Lot', ids: [idOf('Facture.pdf')], columns: COLUMNS, options: { archive: true } });
@@ -66,11 +66,11 @@ try {
     await alive(target);
     await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
     await target.frame.evaluate(() => window.__try(() => window.__s.consolidateAll({ reread: true })));
-    return target.rest.rows('GFS_Received');
+    return target.rest.rows('GFS_Recus');
   };
   const until = async (test, tries = 40) => { let rows = []; for (let i = 0; i < tries; i += 1) { rows = await pass(); if (test(rows)) return rows; await source.page.waitForTimeout(1500); } return rows; };
   const editExport = ids => source.frame.evaluate(args => window.__try(async () => {
-    const selection = [{ table: 'GFS_Files', columns: args.columns, filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: args.ids }] } }];
+    const selection = [{ table: 'GFS_Fichiers', columns: args.columns, filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: args.ids }] } }];
     const done = await window.__s.saveChosenExport({ exp: args.exp, name: args.exp.name, selection });
     return window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
   }), { exp: first.exp, columns: [...COLUMNS, FOLDER], ids });
@@ -84,9 +84,9 @@ try {
 
   await until(list => list.length === 1 && list[0].Contenu);
   // L'envoyeur donne un dossier : la colonne, le nom du dossier sur deux fichiers, la condition étendue (mesuré : run-dossier-colonne.mjs).
-  await source.frame.evaluate(column => grist.docApi.applyUserActions([['AddColumn', 'GFS_Files', column, { type: 'Text', isFormula: false }]]), FOLDER);
-  await patch(source, 'GFS_Files', rowIdOf('Devis.pdf'), { [FOLDER]: 'Contrats' });
-  await patch(source, 'GFS_Files', rowIdOf('Contrat.pdf'), { [FOLDER]: 'Contrats' });
+  await source.frame.evaluate(column => grist.docApi.applyUserActions([['AddColumn', 'GFS_Fichiers', column, { type: 'Text', isFormula: false }]]), FOLDER);
+  await patch(source, 'GFS_Fichiers', rowIdOf('Devis.pdf'), { [FOLDER]: 'Contrats' });
+  await patch(source, 'GFS_Fichiers', rowIdOf('Contrat.pdf'), { [FOLDER]: 'Contrats' });
   await editExport([idOf('Facture.pdf'), idOf('Devis.pdf'), idOf('Contrat.pdf')]);
   const rows = await until(list => list.length === 3 && list.every(row => row.Contenu));
   check('trois fichiers arrivés, deux d\'un dossier « Contrats »', rows.length === 3 && rows.filter(row => row[FOLDER] === 'Contrats').length === 2, rows.map(row => [row.Nom, row[FOLDER]]));
@@ -140,7 +140,7 @@ try {
   await shot(frame, '3-question');
   await page.keyboard.press('Escape');
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
-  const bare = await target.rest.rows('GFS_Received');
+  const bare = await target.rest.rows('GFS_Recus');
   check('Échap n\'écrit rien : aucune colonne de marque, aucune ligne touchée', !Object.keys(bare[0]).some(key => /^(Accepte|Refuse)$/.test(key)), Object.keys(bare[0]));
   await frame.locator('.trash-bar .btn').click();
   await frame.locator('.mod.so').waitFor();
@@ -148,7 +148,7 @@ try {
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
   await frame.waitForFunction(() => !document.querySelector('.trash-bar') && !document.querySelector('.ls-row.lk'), null, { timeout: 15000 });
   check('les deux fichiers ne sont plus grisés, la barre est partie, la phrase le dit', !(await greyed(frame, 'Contrat.pdf')) && !(await greyed(frame, 'Devis.pdf')) && (await toast(frame)).includes(t('rx.folder.accepted', { name: 'Contrats', n: 2 })), { toast: await toast(frame) });
-  const marked = await target.rest.rows('GFS_Received');
+  const marked = await target.rest.rows('GFS_Recus');
   const mark = name => marked.find(row => row.Nom === name);
   check('les marques sont sur les deux lignes du dossier, pas sur le fichier seul', mark('Contrat.pdf').Accepte === true && mark('Devis.pdf').Accepte === true && mark('Facture.pdf').Accepte !== true, marked.map(row => [row.Nom, row.Accepte]));
   await shot(frame, '3-accepte');
@@ -159,7 +159,7 @@ try {
 
   say('--- 4. un fichier de plus dans le dossier ---');
   await alive(source);
-  await patch(source, 'GFS_Files', rowIdOf('Avenant.pdf'), { [FOLDER]: 'Contrats' });
+  await patch(source, 'GFS_Fichiers', rowIdOf('Avenant.pdf'), { [FOLDER]: 'Contrats' });
   await editExport([idOf('Facture.pdf'), idOf('Devis.pdf'), idOf('Contrat.pdf'), idOf('Avenant.pdf')]);
   await until(list => list.some(row => row.Nom === 'Avenant.pdf' && row.Contenu), 60);
   ui = await view();
@@ -195,7 +195,7 @@ try {
   await frame.locator('[data-fk="rx-refuse"]').click();
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
   await frame.waitForFunction(() => document.querySelectorAll('.ls-row:not(.folder)').length === 2, null, { timeout: 15000 });
-  const refused = await target.rest.rows('GFS_Received');
+  const refused = await target.rest.rows('GFS_Recus');
   check('« Avenant.pdf » (le seul qui attendait) est refusé ; « Contrat.pdf » et « Devis.pdf » restent acceptés', refused.find(row => row.Nom === 'Avenant.pdf').Refuse === true && refused.find(row => row.Nom === 'Contrat.pdf').Accepte === true && refused.find(row => row.Nom === 'Devis.pdf').Refuse !== true, refused.map(row => [row.Nom, row.Accepte, row.Refuse]));
   if (races.length) say(`(connu : ${races.length} erreur « KeyError 'GFS_Synchro' », sans suite)`);
   check('aucune erreur de GFS dans la console', [source, target, ...views].every(run => unexpected(run).length === 0), [source, target, ...views].map(run => unexpected(run).map(each => each.slice(each.indexOf('was delivered'), each.indexOf('was delivered') + 220))));

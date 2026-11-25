@@ -49,8 +49,8 @@ export class KeptFiles {
 
   // ---------- ce que l'explorateur demande ----------
 
-  // Un fichier que GFS garde se lit comme tel : les PDF de `GFS_Files`, et ceux qu'un autre document a partagés et que la personne a acceptés
-  // (js/sharing/received-files.js : ils sont dans une table `GFS_Received`).
+  // Un fichier que GFS garde se lit comme tel : les PDF de `GFS_Fichiers`, et ceux qu'un autre document a partagés et que la personne a acceptés
+  // (js/sharing/received-files.js : ils sont dans une table `GFS_Recus`).
   has = file => file.app === FILES_APP || isAcceptedReceived(file);
 
   // La corbeille (js/files/trash.js) : GFS garde ces fichiers, il sait donc les mettre à la corbeille, les restaurer et les supprimer pour de bon. `lock()` : {

@@ -1,5 +1,5 @@
 // La table du document où GFS retient ce qui vaut pour tout le document et le rangement des fichiers : `GFS_Filing` (contrats 6.4). Quatre sortes de lignes
-// (la dernière, les dossiers suivis, plus bas) : la ligne réservée des apps installées (`@document` / `gfs` / `apps`, la valeur en JSON dans `Valeur`, contrats
+// (la dernière, les dossiers suivis, plus bas) : la ligne réservée des apps installées (`@document` / `gfs` / `apps`, la valeur en JSON dans `Value`, contrats
 // 7.4), la ligne-sonde qui apprend à GFS l'adresse de la personne (`@sonde`, ajoutée puis retirée aussitôt, 6.4 point 6) et une ligne par (personne, app,
 // fichier) qui a un favori ou un dossier (6.4, point 1). GFS seul l'écrit, par sa propre connexion à Grist. Les règles d'une table de GFS (lire ne crée rien,
 // 7.4 point 6 ; écrire relit d'abord et ne crée la table qu'avec l'accord de la personne, 6.2 point 1 ; l'identifiant réel relu après `AddTable`, 6.2 point 2 ;
@@ -13,30 +13,30 @@ import { DocumentNewer, STRUCTURE, STRUCTURE_ROW, isNewer, stamped, structureFro
 export { TableDeclined, DocumentNewer };
 
 export const TABLE = 'GFS_Filing';
-export const RESERVED = Object.freeze({ Utilisateur: '@document', App: 'gfs', Fichier: 'apps' });
-// La ligne-sonde : ajoutée puis retirée aussitôt, c'est elle seule que Grist remplit de l'adresse de la personne (formule déclenchée de `Adresse`, 6.4 point
+export const RESERVED = Object.freeze({ User: '@document', App: 'gfs', File: 'apps' });
+// La ligne-sonde : ajoutée puis retirée aussitôt, c'est elle seule que Grist remplit de l'adresse de la personne (formule déclenchée de `Address`, 6.4 point
 // 6).
-const PROBE = Object.freeze({ Utilisateur: '@sonde' });
+const PROBE = Object.freeze({ User: '@sonde' });
 export const COLUMNS = Object.freeze([
-  { id: 'Utilisateur', type: 'Text' }, { id: 'App', type: 'Text' }, { id: 'Fichier', type: 'Text' },
-  { id: 'Favori', type: 'Bool' }, { id: 'Dossier', type: 'Text' }, { id: 'Replie', type: 'Bool' }, { id: 'Valeur', type: 'Text' },
+  { id: 'User', type: 'Text' }, { id: 'App', type: 'Text' }, { id: 'File', type: 'Text' },
+  { id: 'Favorite', type: 'Bool' }, { id: 'Folder', type: 'Text' }, { id: 'Collapsed', type: 'Bool' }, { id: 'Value', type: 'Text' },
   // Une formule déclenchée (`recalcWhen: 0` : à la création d'une ligne ; `recalcDeps: null` : jamais ensuite) : Grist y écrit `user.Email` pour la
   // ligne-sonde, rien pour les autres.
-  { id: 'Adresse', type: 'Text', isFormula: false, formula: `user.Email if $Utilisateur == '${PROBE.Utilisateur}' else ''`, recalcWhen: 0, recalcDeps: null },
+  { id: 'Address', type: 'Text', isFormula: false, formula: `user.Email if $User == '${PROBE.User}' else ''`, recalcWhen: 0, recalcDeps: null },
 ]);
 // Les colonnes sans lesquelles la ligne réservée ne s'écrit pas, puis celles d'une ligne de rangement.
-const REQUIRED = Object.freeze(['Utilisateur', 'App', 'Fichier', 'Valeur']);
-// Les dossiers partagés « à jour » avec un document relié (11/11) : une ligne par (personne, document relié, dossier), `App` = FOLLOW_APP, `Fichier` = l'export
-// du lien, `Dossier` = le chemin, `Valeur` = la liste JSON des fichiers du dossier au dernier passage (js/share-follow.js). Ni un fichier rangé ni un dossier
+const REQUIRED = Object.freeze(['User', 'App', 'File', 'Value']);
+// Les dossiers partagés « à jour » avec un document relié (11/11) : une ligne par (personne, document relié, dossier), `App` = FOLLOW_APP, `File` = l'export
+// du lien, `Folder` = le chemin, `Value` = la liste JSON des fichiers du dossier au dernier passage (js/share-follow.js). Ni un fichier rangé ni un dossier
 // gardé : `readGfsFiling` ne trouve aucun fichier sous cette app.
 export const FOLLOW_APP = 'gfs-suivi';
-const FOLLOW = Object.freeze(['Utilisateur', 'App', 'Fichier', 'Dossier', 'Valeur']);
-const followKey = (identity, link, path) => ({ Utilisateur: identity, App: FOLLOW_APP, Fichier: String(link), Dossier: path });
-const FILING = Object.freeze(['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier']);
+const FOLLOW = Object.freeze(['User', 'App', 'File', 'Folder', 'Value']);
+const followKey = (identity, link, path) => ({ User: identity, App: FOLLOW_APP, File: String(link), Folder: path });
+const FILING = Object.freeze(['User', 'App', 'File', 'Favorite', 'Folder']);
 
 const ANONYMOUS = 'anon@getgrist.com'; // l'adresse que Grist donne à quiconque n'est pas connecté
 
-// Ce que Grist a écrit dans `Adresse`, ou '' quand ce n'est pas l'adresse d'une personne : rien, une erreur de la formule, l'anonyme de Grist, un nom réservé à
+// Ce que Grist a écrit dans `Address`, ou '' quand ce n'est pas l'adresse d'une personne : rien, une erreur de la formule, l'anonyme de Grist, un nom réservé à
 // GFS (en « @ »).
 function addressOf(value) {
   if (typeof value !== 'string') return '';
@@ -66,7 +66,7 @@ const rowsOf = (data, values) => ((data && data.id) || []).filter((rowId, i) => 
   data[column][i] === values[column]));
 
 // La ligne d'état d'un dossier que la personne garde sans fichier : ni app ni fichier (6.4, point 11).
-const folderKey = (identity, path) => ({ Utilisateur: identity, App: '', Fichier: '', Dossier: path });
+const folderKey = (identity, path) => ({ User: identity, App: '', File: '', Folder: path });
 
 // Les dossiers gardés qui changent de chemin (`moved` : [[de, vers]]) : leur ligne d'état change de chemin, sur place ; sans ligne, le chemin d'arrivée est
 // gardé comme avant ; si le chemin d'arrivée a déjà sa ligne, celle du dossier qui arrive est retirée (le dossier d'arrivée garde ses partages).
@@ -75,8 +75,8 @@ function movedActions(tableId, data, identity, moved) {
   for (const [from, to] of moved) {
     const rows = rowsOf(data, folderKey(identity, from));
     const taken = findRow(data, folderKey(identity, to)) >= 0;
-    if (!rows.length) { if (!taken) actions.push(['AddRecord', tableId, null, { ...folderKey(identity, to), Favori: false }]); continue; }
-    actions.push(...rows.map(rowId => (taken ? ['RemoveRecord', tableId, rowId] : ['UpdateRecord', tableId, rowId, { Dossier: to }])));
+    if (!rows.length) { if (!taken) actions.push(['AddRecord', tableId, null, { ...folderKey(identity, to), Favorite: false }]); continue; }
+    actions.push(...rows.map(rowId => (taken ? ['RemoveRecord', tableId, rowId] : ['UpdateRecord', tableId, rowId, { Folder: to }])));
   }
   return actions;
 }
@@ -87,7 +87,7 @@ function folderActions(tableId, data, identity, { add, drop, moved, merged }) {
   const removal = rowId => ['RemoveRecord', tableId, rowId];
   return [...drop.flatMap(path => rowsOf(data, folderKey(identity, path)).map(removal)),
     ...add.filter(path => !drop.includes(path) && findRow(data, folderKey(identity, path)) < 0).map(path => (
-      ['AddRecord', tableId, null, { ...folderKey(identity, path), Favori: false }])),
+      ['AddRecord', tableId, null, { ...folderKey(identity, path), Favorite: false }])),
     ...movedActions(tableId, data, identity, moved),
     ...merged.flatMap(([from]) => rowsOf(data, folderKey(identity, from)).map(removal))];
 }
@@ -130,7 +130,7 @@ export class Rangement {
   // part sans attendre la sonde et ne l'attend qu'au moment de ranger (js/explorer/explorer-data.js).
   get learning() { return this.#pending || this.identity; }
 
-  // Apprend l'adresse de la personne (6.4, point 6) : une ligne-sonde est ajoutée, Grist en remplit `Adresse`, GFS la lit et la retire. Une fois par
+  // Apprend l'adresse de la personne (6.4, point 6) : une ligne-sonde est ajoutée, Grist en remplit `Address`, GFS la lit et la retire. Une fois par
   // ouverture : la réponse, avec adresse ou sans, est gardée en mémoire (jamais dans le navigateur : une autre personne sur le même poste doit être reconnue).
   // Sans table (elle ne se crée pas ici), en lecture seule ou sur une erreur, rien n'est gardé et le geste suivant réessaie. Ne lève jamais : une adresse non
   // lue, c'est une personne inconnue.
@@ -154,22 +154,22 @@ export class Rangement {
     return found;
   }
 
-  // La sonde : l'adresse que Grist a écrite dans `Adresse` de la ligne ajoutée ('' si ce n'est pas celle d'une personne), ou null quand rien ne peut être tenté
+  // La sonde : l'adresse que Grist a écrite dans `Address` de la ligne ajoutée ('' si ce n'est pas celle d'une personne), ou null quand rien ne peut être tenté
   // (pas de table, lecture seule). Une colonne absente est ajoutée avant.
   async #probe() {
     if (!this.#canWrite()) return null;
     const { exists, columns } = await this.#table.load();
-    if (!exists || !columns.includes('Utilisateur')) return null;
+    if (!exists || !columns.includes('User')) return null;
     const { doc } = this.#port;
     const tableId = this.#table.id;
-    if (!columns.includes('Adresse')) await this.#table.addColumn('Adresse');
+    if (!columns.includes('Address')) await this.#table.addColumn('Address');
     const added = await doc.applyUserActions([['AddRecord', tableId, null, { ...PROBE }]]);
     const rowId = added && Array.isArray(added.retValues) ? added.retValues[0] : null;
     if (rowId == null) throw new Error(`AddRecord sur ${tableId} n’a renvoyé aucun identifiant de ligne`);
     try {
       const table = await doc.fetchTable(tableId);
       const at = (table.id || []).indexOf(rowId);
-      return addressOf(at >= 0 && table.Adresse ? table.Adresse[at] : '');
+      return addressOf(at >= 0 && table.Address ? table.Address[at] : '');
     } finally {
       // La ligne part sans que l'adresse l'attende : une écriture de plus à Grist, c'est un aller-retour de réseau (deux fois le prix d'une lecture) que
       // l'explorateur n'a pas à patienter pour une adresse déjà lue.
@@ -183,7 +183,7 @@ export class Rangement {
     const { exists, columns, data } = await this.#table.load();
     if (!exists) return { exists: false, columns: [], rowId: null, raw: null, structure: null };
     const at = findRow(data, RESERVED);
-    return { exists: true, columns, rowId: at >= 0 ? data.id[at] : null, raw: at >= 0 && data.Valeur ? parseValue(data.Valeur[at]) : null,
+    return { exists: true, columns, rowId: at >= 0 ? data.id[at] : null, raw: at >= 0 && data.Value ? parseValue(data.Value[at]) : null,
       structure: this.#structureIn(data).found };
   }
 
@@ -191,7 +191,7 @@ export class Rangement {
   // valeur lue en JSON, `found` : le numéro ou null).
   #structureIn(data) {
     const at = findRow(data, STRUCTURE_ROW);
-    const raw = at >= 0 && data.Valeur ? parseValue(data.Valeur[at]) : null;
+    const raw = at >= 0 && data.Value ? parseValue(data.Value[at]) : null;
     return { at, raw, found: structureFrom(raw) };
   }
 
@@ -209,7 +209,7 @@ export class Rangement {
     this.#stamped = true;
     const { at, raw, found } = this.#structureIn(data);
     if (found === STRUCTURE || (at >= 0 && raw === null)) return;
-    const record = { Valeur: JSON.stringify(stamped(raw)) };
+    const record = { Value: JSON.stringify(stamped(raw)) };
     const tableId = this.#table.id;
     try {
       await this.#port.doc.applyUserActions([at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] :
@@ -232,8 +232,8 @@ export class Rangement {
   async update(mutate) {
     const { data } = await this.#ready(REQUIRED);
     const at = findRow(data, RESERVED);
-    const next = mutate(at >= 0 && data.Valeur ? parseValue(data.Valeur[at]) : null);
-    const record = { Valeur: JSON.stringify(next) };
+    const next = mutate(at >= 0 && data.Value ? parseValue(data.Value[at]) : null);
+    const record = { Value: JSON.stringify(next) };
     const tableId = this.#table.id;
     await this.#port.doc.applyUserActions([at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] :
       ['AddRecord', tableId, null, { ...RESERVED, ...record }]]);
@@ -248,8 +248,8 @@ export class Rangement {
     if (!exists || FOLLOW.some(column => !columns.includes(column))) return [];
     await this.identify();
     const identity = this.identity;
-    return data.id.map((rowId, i) => ({ user: data.Utilisateur[i], app: data.App[i], link: String(data.Fichier[i] || ''), path: String(data.Dossier[i] || ''),
-      ids: parseList(data.Valeur[i]) }))
+    return data.id.map((rowId, i) => ({ user: data.User[i], app: data.App[i], link: String(data.File[i] || ''), path: String(data.Folder[i] || ''),
+      ids: parseList(data.Value[i]) }))
       .filter(row => row.user === identity && row.app === FOLLOW_APP && row.link && row.path).map(({ link, path, ids }) => ({ link, path, ids }));
   }
 
@@ -261,7 +261,7 @@ export class Rangement {
     await this.identify();
     const key = followKey(this.identity, link, path);
     const at = findRow(state.data, key);
-    const record = { Valeur: JSON.stringify(ids) };
+    const record = { Value: JSON.stringify(ids) };
     const tableId = this.#table.id;
     await this.#port.doc.applyUserActions([at >= 0 ? ['UpdateRecord', tableId, state.data.id[at], record] :
       ['AddRecord', tableId, null, { ...key, ...record }]]);
@@ -355,9 +355,9 @@ export class Rangement {
     const identity = this.identity;
     const tableId = this.#table.id;
     const actions = entries.filter(({ app }) => !targets.has(app)).map(({ app, file, pinned, folder }) => {
-      const key = { Utilisateur: identity, App: app, Fichier: String(file) };
+      const key = { User: identity, App: app, File: String(file) };
       const at = findRow(data, key);
-      const record = { Favori: pinned === true, Dossier: folder || '' };
+      const record = { Favorite: pinned === true, Folder: folder || '' };
       return at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] : ['AddRecord', tableId, null, { ...key, ...record }];
     });
     actions.push(...folderActions(tableId, data, identity, { add, drop, moved, merged }));

@@ -639,7 +639,7 @@ test('contrats 3.3 et 3.4 : Grist-BI lit ses pièces jointes par `jeton` en lect
   const batch = actions => checkBatch(policy, actions);
   assert.equal(batch([['AddColumn', 'Publications', 'MotsCles', { type: 'Text', isFormula: false }]]).ok, true, 'une colonne de texte, sans formule, dans une table de la personne');
   assert.equal(batch([['UpdateRecord', 'Publications', 3, { MotsCles: 'budget, rapport' }]]).ok, true);
-  assert.equal(batch([['AddColumn', 'GFS_Files', 'MotsCles', { type: 'Text' }]]).ok, false, 'jamais une table de GFS');
+  assert.equal(batch([['AddColumn', 'GFS_Fichiers', 'MotsCles', { type: 'Text' }]]).ok, false, 'jamais une table de GFS');
   assert.equal(batch([['AddColumn', 'PubliPostage_Modeles', 'MotsCles', { type: 'Text' }]]).ok, false, 'jamais la table d\'une autre app');
   assert.equal(batch([['ModifyColumn', 'Publications', 'MotsCles', { type: 'Int' }]]).ok, false, '`ModifyColumn` n\'est pas dans la liste des verbes');
 });

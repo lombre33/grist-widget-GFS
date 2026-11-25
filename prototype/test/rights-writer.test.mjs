@@ -7,7 +7,7 @@ import { runAction, askOptions } from '../js/rights/rights-actions.js';
 import { RANGEMENT } from '../js/rights/rights-plan.js';
 
 const BUILT_IN = { id: 1, resource: 1, permissions: 63, aclFormula: '', permissionsText: '', rulePos: 1, memo: '' };
-const RAW = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }], tables: [{ id: 5, tableId: RANGEMENT }], columns: [{ parentId: 5, colId: 'Utilisateur' }, { parentId: 5, colId: 'Adresse' }] });
+const RAW = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }], tables: [{ id: 5, tableId: RANGEMENT }], columns: [{ parentId: 5, colId: 'User' }, { parentId: 5, colId: 'Address' }] });
 const memoryStore = () => { let value = null; return { read: () => value, write: next => { value = next; return true; } }; };
 
 function setup({ raw = RAW(), fail = null } = {}) {
@@ -120,9 +120,9 @@ test('activer le partage : les PDF déjà rangés restent lisibles de tous (un p
   const { writer, sent } = setup({ raw: { ...RAW(), fileIds: ['a1', 'b2'] } });
   await writer.apply('sharing');
   const bulk = sent[0].find(action => action[0] === 'BulkAddRecord' && action[1] === 'GFS_Shares');
-  assert.deepEqual(bulk[3].Cible, ['gfs-fichiers:a1', 'gfs-fichiers:b2']);
-  assert.deepEqual(bulk[3].Personne, ['@tous', '@tous']);
-  assert.deepEqual(bulk[3].Droit, ['lecture', 'lecture']);
+  assert.deepEqual(bulk[3].Target, ['gfs-fichiers:a1', 'gfs-fichiers:b2']);
+  assert.deepEqual(bulk[3].Person, ['@tous', '@tous']);
+  assert.deepEqual(bulk[3].Right, ['lecture', 'lecture']);
   const none = setup();
   await none.writer.apply('sharing');
   assert.ok(!none.sent[0].some(action => action[0] === 'BulkAddRecord'), 'aucun fichier : aucune ligne à écrire');

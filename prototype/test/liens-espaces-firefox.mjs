@@ -168,9 +168,9 @@ async function fileFlow(run, t) {
   await pick.press('écriture', 'pick-ecriture');
   const done = await pick.expect('le lien du fichier écrit', 'le lien devait s\'écrire', s => s.modal === null && s.actions.length === 2);
   const place = done.actions.find(action => action[1] === 'GFS_Placement');
-  if (!place || place[3].Dossier !== '' || place[3].Cible !== '') run.note('le lien du fichier écrit', `le lien devait être à la racine de l'espace, sans cible (écrit : ${JSON.stringify(place && place[3])})`);
+  if (!place || place[3].Folder !== '' || place[3].Target !== '') run.note('le lien du fichier écrit', `le lien devait être à la racine de l'espace, sans cible (écrit : ${JSON.stringify(place && place[3])})`);
   const share = done.actions.find(action => action[1] === 'GFS_Shares');
-  if (!share || share[3].Droit !== 'ecriture') run.note('le lien du fichier écrit', `le droit devait être l'écriture (écrit : ${JSON.stringify(share && share[3])})`);
+  if (!share || share[3].Right !== 'ecriture') run.note('le lien du fichier écrit', `le droit devait être l'écriture (écrit : ${JSON.stringify(share && share[3])})`);
 }
 
 // Sans être propriétaire : la phrase, aucune fenêtre.

@@ -27,12 +27,12 @@ test('config : le critère d\'un sous-annuaire se relit, et un critère incomple
   for (const sub of [undefined, null, 'x', {}, { key: '@L0' }, { key: '@L0', values: [] }, { values: ['a'] }]) assert.equal(readConfig({ sub }).sub, undefined, JSON.stringify(sub));
 });
 
-test('colonnes : GFS_Directories garde sa copie dans une colonne « Fiches », en plus des quatre d\'avant', () => {
-  assert.deepEqual(ANNUAIRES_COLUMNS.map(column => column.id), ['Nom', 'Table', 'Config', 'Parent', 'Fiches']);
+test('colonnes : GFS_Directories garde sa copie dans une colonne « Copy », en plus des quatre d\'avant', () => {
+  assert.deepEqual(ANNUAIRES_COLUMNS.map(column => column.id), ['Name', 'Table', 'Config', 'Parent', 'Copy']);
 });
 
 test('annuairesOf : le numéro de l\'annuaire d\'origine, la copie et ce que Grist dit des droits de la ligne', () => {
-  const data = { id: [1, 2], Nom: ['Principal', 'RH'], Table: ['Personnes', 'Personnes'], Config: ['{}', '{}'], Parent: ['', '1'], Fiches: ['', '{"people":[]}'],
+  const data = { id: [1, 2], Name: ['Principal', 'RH'], Table: ['Personnes', 'Personnes'], Config: ['{}', '{}'], Parent: ['', '1'], Copy: ['', '{"people":[]}'],
     GFS_Ecrivains: [null, ['L', 'Ecrit@Exemple.fr']], GFS_Admins: [null, ['L', 'chef@exemple.fr', ' ']] };
   const [first, second] = annuairesOf(data);
   assert.equal(first.parent, '');
@@ -40,7 +40,7 @@ test('annuairesOf : le numéro de l\'annuaire d\'origine, la copie et ce que Gri
   assert.equal(second.fiches, '{"people":[]}');
   assert.deepEqual(second.access, { writers: ['ecrit@exemple.fr'], admins: ['chef@exemple.fr'] }, 'adresses en minuscules, sans blanc');
   assert.deepEqual(first.access, { writers: [], admins: [] });
-  assert.deepEqual(annuairesOf({ id: [1], Nom: ['A'], Table: ['T'] })[0].access, { writers: [], admins: [] }, 'sans partage, la table n\'a pas ces colonnes');
+  assert.deepEqual(annuairesOf({ id: [1], Name: ['A'], Table: ['T'] })[0].access, { writers: [], admins: [] }, 'sans partage, la table n\'a pas ces colonnes');
 });
 
 test('liste : chaque annuaire principal est suivi de ses sous-annuaires ; un sous-annuaire orphelin reste, à la fin', () => {
@@ -121,22 +121,22 @@ test('enregistrement : la ligne d\'un sous-annuaire porte son annuaire d\'origin
   const at = '2026-11-25T14:00:00.000Z';
   const { people: kept, record } = subRecord({ name: '  Pôle Ressources ', parent: main, sub: RESSOURCES, read, at });
   assert.equal(kept.length, 4);
-  assert.deepEqual(Object.keys(record).sort(), ['Config', 'Fiches', 'Nom', 'Parent', 'Table']);
-  assert.equal(record.Nom, 'Pôle Ressources');
+  assert.deepEqual(Object.keys(record).sort(), ['Config', 'Copy', 'Name', 'Parent', 'Table']);
+  assert.equal(record.Name, 'Pôle Ressources');
   assert.equal(record.Parent, '1', 'le numéro de la ligne de l\'annuaire d\'origine');
   assert.equal(record.Table, 'Personnes');
   assert.deepEqual(readConfig(record.Config).sub, { ...RESSOURCES, at });
   assert.deepEqual(readConfig(record.Config).levels, read.config.levels, 'la définition de l\'annuaire d\'origine est reprise');
-  assert.equal(unpackFiches(record.Fiches, 3).people.length, 4);
-  assert.ok(record.Fiches.includes('Camille Durand') && !record.Fiches.includes('Louis Girard'), 'la copie ne contient que les personnes du critère');
+  assert.equal(unpackFiches(record.Copy, 3).people.length, 4);
+  assert.ok(record.Copy.includes('Camille Durand') && !record.Copy.includes('Louis Girard'), 'la copie ne contient que les personnes du critère');
   const masked = subRecord({ name: 'x', parent: main, sub: RESSOURCES, read: { ...read, masked: new Set([people.find(each => each.name === 'Camille Durand').row]) }, at });
   assert.equal(masked.people.length, 3);
-  assert.ok(!masked.record.Fiches.includes('Camille Durand'), 'une fiche masquée n\'entre pas dans la copie');
+  assert.ok(!masked.record.Copy.includes('Camille Durand'), 'une fiche masquée n\'entre pas dans la copie');
 });
 
 test('actualiser : la copie, la définition et le moment changent ; le nom, l\'origine et le partage restent', () => {
   const { record } = refreshRecord({ sub: RESSOURCES, parent: main, read, at: '2026-11-26T08:00:00.000Z' });
-  assert.deepEqual(Object.keys(record).sort(), ['Config', 'Fiches', 'Table']);
+  assert.deepEqual(Object.keys(record).sort(), ['Config', 'Copy', 'Table']);
   assert.equal(readConfig(record.Config).sub.at, '2026-11-26T08:00:00.000Z');
 });
 
@@ -158,7 +158,7 @@ test('partage : GFS_Directories est une cible du moteur, ouverte pour les annuai
 });
 
 test('partage : activer le partage d\'un document qui a des annuaires étend GFS_Directories (colonnes d\'aide et règles), sans toucher à ses données', () => {
-  const existing = { resources: [], rules: [], tables: [{ id: 1, tableId: 'GFS_Directories' }], columns: ['Nom', 'Table', 'Config', 'Parent', 'Fiches'].map(colId => ({ parentId: 1,
+  const existing = { resources: [], rules: [], tables: [{ id: 1, tableId: 'GFS_Directories' }], columns: ['Name', 'Table', 'Config', 'Parent', 'Copy'].map(colId => ({ parentId: 1,
     colId })), files: { GFS_Directories: ['1'] }, targets: targetsOf([]) };
   const plan = planSharing(existing, FILES_COLUMNS, existing.targets);
   assert.equal(plan.ok, true);
@@ -173,6 +173,6 @@ test('explorateur : l\'annuaire est un fichier intégré, de type « annuaire »
   const [spec] = ANNUAIRES_MANIFEST.fichiers;
   assert.equal(ANNUAIRES_MANIFEST.integre, true);
   assert.equal(spec.table, 'GFS_Directories');
-  assert.deepEqual(spec.colonnes, { id: 'id', nom: 'Nom', par: 'GFS_Auteur' });
+  assert.deepEqual(spec.colonnes, { id: 'id', nom: 'Name', par: 'GFS_Auteur' });
   assert.deepEqual(spec.types.map(type => [type.valeur, type.icone, type.couleur]), [['annuaire', 'annuaire', 'annuaire']]);
 });

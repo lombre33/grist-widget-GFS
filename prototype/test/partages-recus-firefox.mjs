@@ -13,7 +13,7 @@
 import { createI18n } from '../js/i18n/i18n.js';
 import { Run, delay, centerOfName, centerOfSelector } from './corbeille-firefox.mjs';
 
-const KEY = id => `gfs-recus:GFS_Received:r${id}`;
+const KEY = id => `gfs-recus:GFS_Recus:r${id}`;
 const LONG = 'Facture de la session de formation de septembre 2026.pdf';
 
 // Ce que la personne voit (s'exécute dans la page : rien du module n'y est visible).
@@ -57,7 +57,7 @@ function state() {
     notices: window.__notices.slice(),
     opened: window.__opened,
     menu: [...document.querySelectorAll('.menu .menu-item')].map(item => ({ label: text(item.querySelector('.menu-label')), hint: text(item.querySelector('.menu-hint')) })),
-    marks: window.__sharedTables && window.__sharedTables.GFS_Received ? window.__sharedTables.GFS_Received.rows.map(row => [row.Nom, row.Accepte === true, row.Refuse === true]) : [],
+    marks: window.__sharedTables && window.__sharedTables.GFS_Recus ? window.__sharedTables.GFS_Recus.rows.map(row => [row.Nom, row.Accepte === true, row.Refuse === true]) : [],
     writes: window.__sharedActions ? window.__sharedActions.length : 0,
     modal: null,
   };

@@ -106,7 +106,7 @@ test('le rangement dans le dossier refusé ou en échec : le fichier est gardé,
 });
 
 test('la table refusée : la phrase le dit ; un envoi qui échoue : le code du serveur est traduit en mots', async () => {
-  const declined = setup({ add: async () => { throw new TableDeclined('GFS_Files'); } });
+  const declined = setup({ add: async () => { throw new TableDeclined('GFS_Fichiers'); } });
   await declined.importing(pdf());
   assert.deepEqual(declined.log.notices, [FR.t('files.declined')]);
   const warn = console.warn; console.warn = () => {};

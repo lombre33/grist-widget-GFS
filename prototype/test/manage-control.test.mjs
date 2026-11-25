@@ -18,8 +18,8 @@ const make = ({ owner = true, fetch, written = [], block = null, reads = [], ext
   port: { doc: { fetchTable: fetch || (async () => { throw new Error('absente'); }), applyUserActions: async actions => { written.push(actions); } } },
 });
 const fetchAll = async name => ({
-  GFS_Shares: table({ Cible: ['*', '*', 'gfs-fichiers:a'], Personne: ['@editeurs', '@tous', 'x@y.fr'], Droit: ['lecture', 'ecriture', 'lecture'] }),
-  GFS_Groups: table({ Nom: ['Achats'], Nb: [2], Source: [''], PersonnesIci: ['a@x.fr\nb@x.fr'] }),
+  GFS_Shares: table({ Target: ['*', '*', 'gfs-fichiers:a'], Person: ['@editeurs', '@tous', 'x@y.fr'], Right: ['lecture', 'ecriture', 'lecture'] }),
+  GFS_Groups: table({ Name: ['Achats'], Count: [2], Source: [''], People: ['a@x.fr\nb@x.fr'] }),
 }[name]);
 
 test('un non-propriétaire ne lit rien : seulement à qui s\'adresser ; le propriétaire lit les groupes, les droits de la racine et les tables lisibles (jamais GFS_ ni _grist_, ni une table à une seule colonne de texte)', async () => {
@@ -42,25 +42,25 @@ test('écrire : un groupe tapé, ses adresses changées, le groupe supprimé ; u
   const state = await control.load();
   assert.equal((await control.addGroup(state, { name: 'Ventes', people: 'v@x.fr' })).ok, true);
   assert.deepEqual(written[0][0].slice(0, 3), ['AddRecord', 'GFS_Groups', null]);
-  assert.equal(written[0][0][3].Nom, 'Ventes');
+  assert.equal(written[0][0][3].Name, 'Ventes');
   const taken = await control.addGroup(state, { name: 'achats', people: '' });
   assert.deepEqual([taken.ok, taken.message], [false, t('manage.groups.exists')]);
   assert.equal(written.length, 1);
   await control.updateGroup(1, ' z@x.fr ');
-  assert.deepEqual(written[1], [['UpdateRecord', 'GFS_Groups', 1, { PersonnesIci: 'z@x.fr' }]]);
+  assert.deepEqual(written[1], [['UpdateRecord', 'GFS_Groups', 1, { People: 'z@x.fr' }]]);
   await control.removeGroup(1);
   assert.deepEqual(written[2], [['RemoveRecord', 'GFS_Groups', 1]]);
 });
 
 test('un droit sur tout le document : ajouté à la racine, changé, retiré ; rien n\'est écrit pour retirer ce qui n\'existe pas', async () => {
   const written = [];
-  const control = make({ fetch: async name => (name === 'GFS_Shares' ? table({ Cible: ['*'], Personne: ['@tous'], Droit: ['lecture'] }) : table({ Nom: [] })), written });
+  const control = make({ fetch: async name => (name === 'GFS_Shares' ? table({ Target: ['*'], Person: ['@tous'], Right: ['lecture'] }) : table({ Name: [] })), written });
   const state = await control.load();
   await control.setRoot(state, '@editeurs', 'ecriture');
   assert.deepEqual(written[0][0].slice(0, 3), ['AddRecord', 'GFS_Shares', null]);
-  assert.deepEqual([written[0][0][3].Cible, written[0][0][3].Personne, written[0][0][3].Droit], ['*', '@editeurs', 'ecriture']);
+  assert.deepEqual([written[0][0][3].Target, written[0][0][3].Person, written[0][0][3].Right], ['*', '@editeurs', 'ecriture']);
   await control.setRoot(state, '@tous', 'ecriture');
-  assert.deepEqual(written[1], [['UpdateRecord', 'GFS_Shares', 1, { Droit: 'ecriture' }]]);
+  assert.deepEqual(written[1], [['UpdateRecord', 'GFS_Shares', 1, { Right: 'ecriture' }]]);
   await control.setRoot(state, '@tous', null);
   assert.deepEqual(written[2], [['RemoveRecord', 'GFS_Shares', 1]]);
   await control.setRoot(state, '@editeurs', null);
@@ -99,7 +99,7 @@ test('les règles d\'accès se lisent une fois par ouverture, sans les tables de
   assert.deepEqual(reads, [{ files: false }], 'raw() une seule fois, sans les fichiers');
   assert.equal(first.structure.kind, 'close');
   assert.equal(fetched.filter(name => name === 'GFS_Shares').length, 2, 'les tables du partage se relisent, chacune une fois par lecture');
-  assert.equal(fetched.filter(name => name.startsWith('_grist_') || name === 'GFS_Files').length, 0, 'ni tables internes ni fichiers par le contrôleur : tout passe par raw()');
+  assert.equal(fetched.filter(name => name.startsWith('_grist_') || name === 'GFS_Fichiers').length, 0, 'ni tables internes ni fichiers par le contrôleur : tout passe par raw()');
 });
 
 test('à la fermeture, l\'explorateur relit ses fichiers si la fenêtre a écrit quelque chose (un espace créé s\'y voit sans recharger la page), et pas sinon', async () => {
@@ -125,7 +125,7 @@ test('créer un espace : la personne qui est connectée y entre dans la même é
   const state = await control(() => 'Moi@x.fr').load();
   assert.equal((await control(() => 'Moi@x.fr').addSpace(state)).ok, true);
   assert.deepEqual(written[0].map(action => action.slice(0, 2)), [['AddRecord', 'GFS_Spaces'], ['AddRecord', 'GFS_Shares']]);
-  assert.deepEqual([written[0][1][3].Cible, written[0][1][3].Personne, written[0][1][3].Droit], ['espace:equipe-ui', 'moi@x.fr', 'ecriture']);
+  assert.deepEqual([written[0][1][3].Target, written[0][1][3].Person, written[0][1][3].Right], ['espace:equipe-ui', 'moi@x.fr', 'ecriture']);
   await control(() => '').addSpace(state);
   assert.equal(written[1].length, 1);
 });
@@ -138,7 +138,7 @@ test('la fenêtre sait quelles tables ont une colonne d\'adresses (pour les sugg
 
 test('les adresses proposées : celles des partages, des groupes, de la personne et du rangement de chacun (lu à la demande), sans celles déjà tapées ; la liste dit d\'où elles viennent', async () => {
   const asked = [];
-  const fetch = async name => (name === 'GFS_Filing' ? table({ Utilisateur: ['eve@x.fr', '@sonde', 'marc@x.fr'] }) : fetchAll(name));
+  const fetch = async name => (name === 'GFS_Filing' ? table({ User: ['eve@x.fr', '@sonde', 'marc@x.fr'] }) : fetchAll(name));
   const control = make({ fetch, extra: { identity: () => 'Moi@x.fr', pick: async options => { asked.push(options); return options.items[0].value; } } });
   const state = await control.load();
   assert.equal(asked.length, 0, 'rien n\'est lu avant que la personne demande la liste');

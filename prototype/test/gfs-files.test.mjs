@@ -43,7 +43,7 @@ test('les colonnes déclarées par le manifeste existent toutes dans la table', 
 test('la table des fichiers que GFS garde est lue avec celles des apps ; une table absente n\'est pas un problème', async () => {
   const data = { id: [1], Identifiant: ['aa'], Nom: ['Facture.pdf'], Type: ['pdf'], Date: [0], Auteur: [''], Contenu: [['L', 3]] };
   const port = tables => ({ doc: { listTables: async () => Object.keys(tables), fetchTable: async name => tables[name] } });
-  const found = await loadFiles(port({ GFS_Files: data }), [FILES_ENTRY], '');
+  const found = await loadFiles(port({ GFS_Fichiers: data }), [FILES_ENTRY], '');
   assert.deepEqual(found.files.map(file => file.key), ['gfs-fichiers:aa']);
   assert.deepEqual(found.problems, []);
   const none = await loadFiles(port({ Clients: { id: [] } }), [FILES_ENTRY], '');

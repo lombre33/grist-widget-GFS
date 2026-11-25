@@ -109,7 +109,7 @@ async function playNotYet(run) {
 async function playRead(run) {
   const { page, frame, rest } = run;
   say('--- 2. lire ---');
-  const before = { rows: (await rest.rows('GFS_Files')).length, attachments: (await rest.attachments()).length, tables: await rest.tables() };
+  const before = { rows: (await rest.rows('GFS_Fichiers')).length, attachments: (await rest.attachments()).length, tables: await rest.tables() };
   const state = await buttonState(frame);
   check('« Lire » est maintenant dégrisé', state.label === t('files.read') && !state.greyed, state);
   check('la barre dit où le PDF s\'ouvre', (await frame.locator('.ex-info').textContent()).includes(t('ex.opensIn', { app: APP })));
@@ -132,7 +132,7 @@ async function playRead(run) {
   check('aucune erreur dans l\'app', said.erreurs.length === 0, said.erreurs);
   await run.page.waitForTimeout(400);
   await shot(frame, 'lire-6-page');
-  const after = { rows: (await rest.rows('GFS_Files')).length, attachments: (await rest.attachments()).length, tables: await rest.tables() };
+  const after = { rows: (await rest.rows('GFS_Fichiers')).length, attachments: (await rest.attachments()).length, tables: await rest.tables() };
   check('lire n\'écrit rien : mêmes lignes, mêmes pièces jointes, mêmes tables', JSON.stringify(after) === JSON.stringify(before), [before, after]);
 }
 
@@ -192,7 +192,7 @@ async function playDownloadAndKeys(run) {
   const [download] = await Promise.all([page.waitForEvent('download'), frame.getByRole('menuitem', { name: t('files.download') }).click()]);
   const bytes = await readFile(await download.path());
   check('« Télécharger » du menu rend le PDF octet pour octet', download.suggestedFilename() === 'Facture.pdf' && sha256(bytes) === run.facture.hash, [download.suggestedFilename(), bytes.length]);
-  check('la lecture et le téléchargement n\'ont rien écrit', (await rest.rows('GFS_Files')).length === 2 && (await rest.attachments()).length === 2);
+  check('la lecture et le téléchargement n\'ont rien écrit', (await rest.rows('GFS_Fichiers')).length === 2 && (await rest.attachments()).length === 2);
   await rowOf(frame, 'Facture.pdf').click();
   const before = (await probeSays(page)).appels.length;
   await page.keyboard.press('Enter');

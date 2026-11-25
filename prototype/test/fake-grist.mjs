@@ -39,9 +39,9 @@ export function fakeGrist(tables = {}, { renameTo = null, email = null, fail = {
       table.nextId = Math.max(table.nextId, made.id + 1);
       // Une colonne à formule déclenchée est remplie par Grist à la création de la ligne : l'adresse de la personne pour la ligne-sonde, rien pour les autres.
       for (const column of table.columns) {
-        // Une table donnée qui a déjà sa colonne `Adresse` l'a reçue de GFS : à formule déclenchée.
-        const spec = (specs[name] || {})[column] || (column === 'Adresse' ? { isFormula: false, formula: 'user.Email' } : null);
-        if (spec && spec.isFormula === false && /user\.Email/.test(spec.formula || '')) made[column] = b.Utilisateur === '@sonde' ? email : '';
+        // Une table donnée qui a déjà sa colonne `Address` l'a reçue de GFS : à formule déclenchée.
+        const spec = (specs[name] || {})[column] || (column === 'Address' ? { isFormula: false, formula: 'user.Email' } : null);
+        if (spec && spec.isFormula === false && /user\.Email/.test(spec.formula || '')) made[column] = b.User === '@sonde' ? email : '';
       }
       table.rows.push(made);
       return made.id;

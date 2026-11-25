@@ -2,7 +2,7 @@
 // (l'annuaire d'origine), et que Grist ne montre qu'à certaines personnes. Du code sans effet de bord, essayé sous Node (test/annuaire-sub.test.mjs).
 //
 // Le verrou est celui de Grist, jamais un filtre d'écran : un filtre d'affichage n'arrête personne (cahier 2, « deux zones »). La table des personnes reste
-// à son propriétaire, et GFS n'y pose aucune règle ; ce que Grist verrouille est une COPIE, que GFS range dans la ligne du sous-annuaire (`Fiches`, de
+// à son propriétaire, et GFS n'y pose aucune règle ; ce que Grist verrouille est une COPIE, que GFS range dans la ligne du sous-annuaire (`Copy`, de
 // `GFS_Directories`) : la table de GFS que le moteur de partage couvre (js/sharing/sharing-model.js, `ANNUAIRES_TARGET`), avec les mêmes lignes « qui voit
 //   quoi »
 //   que les fichiers (lecture, écriture, administration, aucun accès, pour une personne, un groupe ou une catégorie). La copie dit quand elle a été prise ; la
@@ -113,14 +113,14 @@ export function unpackFiches(source, depth = 0) {
 export function subRecord({ name, parent, sub, read, at }) {
   const people = peopleOfSub(copyable(read), sub);
   const kept = { ...sub, at };
-  return { people, record: { Nom: String(name ?? '').trim(), Table: parent.table, Config: writeConfig({ ...read.config, sub: kept }),
+  return { people, record: { Name: String(name ?? '').trim(), Table: parent.table, Config: writeConfig({ ...read.config, sub: kept }),
     Parent: String(parent.row),
-    Fiches: packFiches({ people, schema: miniSchema(read.config, parent.table, read.schema), at }) } };
+    Copy: packFiches({ people, schema: miniSchema(read.config, parent.table, read.schema), at }) } };
 }
 
 // Les valeurs qu'un sous-annuaire change quand on l'actualise : la définition reprise de l'annuaire d'origine (ses niveaux et ses champs), le critère
 // gardé, la copie et son moment.
 export function refreshRecord({ sub, parent, read, at }) {
   const { people, record } = subRecord({ name: parent.name, parent, sub, read, at });
-  return { people, record: { Table: record.Table, Config: record.Config, Fiches: record.Fiches } };
+  return { people, record: { Table: record.Table, Config: record.Config, Copy: record.Copy } };
 }

@@ -180,6 +180,7 @@ const STRINGS = {
     'mod.saved': 'Ces choix s’enregistrent tout de suite, pour tout le document.',
     'mod.readonly': 'Lecture seule : ces choix ne s’enregistrent pas.',
     'mod.needsAccess': 'Accès complet au document requis : ces choix ne s’enregistrent pas.',
+    'doc.legacy': 'Les tables de GFS de ce document portent encore leurs anciens noms : une personne propriétaire du document doit l’ouvrir avec GFS pour les mettre à jour. En attendant, rien ne s’y enregistre.',
     'doc.newer': 'Ce document a été préparé par une version plus récente de GFS : il se lit, mais rien ne s’y enregistre. Pour y écrire, mettez l’adresse de la dernière version de GFS dans le champ du panneau de droite de Grist.',
     // Les questions « Créer la table … ? » : aucune table n'est créée sans l'accord de la personne.
     'table.title': 'Créer la table GFS_Filing ?',
@@ -370,6 +371,7 @@ const STRINGS = {
     'mod.saved': 'These choices are saved right away, for the whole document.',
     'mod.readonly': 'Read-only: these choices are not saved.',
     'mod.needsAccess': 'Full document access required: these choices are not saved.',
+    'doc.legacy': 'This document’s GFS tables still use their old names: an owner of the document needs to open it with GFS to update them. Until then, nothing is saved in it.',
     'doc.newer': 'This document was prepared by a newer version of GFS: you can read it, but nothing is saved in it. To write to it, put the address of the latest version of GFS in the field of Grist’s right panel.',
     // Les questions « Créer la table … ? » : aucune table n'est créée sans l'accord de la personne.
     'table.title': 'Create the GFS_Filing table?',

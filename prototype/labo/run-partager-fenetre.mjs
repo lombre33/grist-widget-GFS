@@ -24,7 +24,7 @@ const VIEWER = 'viewer@example.com';
 const shot = (frame, name) => pdfShot(frame, `partager-${lang}-${scheme}-${name}`);
 const panel = async frame => (await frame.locator('.mod.sh').innerText()).replace(/\s+/g, ' ');
 const unexpected = run => run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
-const shares = async run => (await run.rest.rows('GFS_Shares')).map(row => [row.Cible.replace('gfs-fichiers:', ''), row.Personne, row.Droit, row.Valide]);
+const shares = async run => (await run.rest.rows('GFS_Shares')).map(row => [row.Target.replace('gfs-fichiers:', ''), row.Person, row.Right, row.Valid]);
 
 // « Partager… » du menu d'une ligne, à la vraie souris.
 async function openShareFor(frame, name) {
@@ -142,7 +142,7 @@ async function playEditor(run) {
   await shot(frame, '9-editeur-auteur');
   await addPerson(frame, VIEWER);
   const rows = await run.rest.rows('GFS_Shares').catch(() => []);
-  check('son partage est écrit sans propriétaire, avec son nom pour auteur', rows.some(row => row.Personne === VIEWER && row.Auteur === 'editor@example.com'), rows.map(row => [row.Cible, row.Personne, row.Auteur]));
+  check('son partage est écrit sans propriétaire, avec son nom pour auteur', rows.some(row => row.Person === VIEWER && row.Auteur === 'editor@example.com'), rows.map(row => [row.Target, row.Person, row.Auteur]));
   await closeShare(frame);
   await openShareFor(frame, 'Facture.pdf');
   check('sur le PDF du propriétaire : rien à ajouter, la fenêtre le dit', (await frame.locator('[data-fk="share-add"]').count()) === 0 && (await frame.locator('[data-fk="share-readonly"]').count()) === 1, await panel(frame));
@@ -156,7 +156,7 @@ async function playViewer(run) {
   const { frame } = run;
   say('--- lecteur ---');
   const list = await waitForNames(frame, ['Devis.pdf']);
-  say('   les lignes que Grist lui rend :', JSON.stringify((await run.rest.rows('GFS_Files')).map(row => [row.Nom, row.GFS_Auteur, row.GFS_Lecteurs, row.GFS_Cats, row.GFS_Dossier])));
+  say('   les lignes que Grist lui rend :', JSON.stringify((await run.rest.rows('GFS_Fichiers')).map(row => [row.Nom, row.GFS_Auteur, row.GFS_Lecteurs, row.GFS_Cats, row.GFS_Dossier])));
   check('à la racine, il voit les PDF ouverts à « tous »', JSON.stringify(list) === JSON.stringify(['Devis.pdf']), list);
   await goTo(frame, new RegExp(t('rx.view')));
   const gifts = await waitForNames(frame, ['Contrat.pdf', 'Facture.pdf']);

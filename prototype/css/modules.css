@@ -32,6 +32,16 @@
 .ask-again input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--accent-solid); cursor: pointer; }
 .ask-foot { justify-content: flex-end; }
 
+/* La mise à jour des noms (names-window.js) : la même base que la question ; ce qui est fait se dit en vert lisible, ce qui bloque en rouge lisible, la liste des noms s'ouvre. */
+.names-body .names-text + .names-text, .names-body .names-details { margin-top: 8px; }
+.names-strong { font-weight: 600; }
+.names-ok { color: var(--good); }
+.names-alert { color: var(--danger-ink); }
+.names-details summary { cursor: pointer; color: var(--text-muted); }
+.names-pairs { margin: 6px 0 0; padding-left: 18px; }
+.names-pairs li + li { margin-top: 3px; }
+.names-pairs code { font-family: ui-monospace, monospace; font-size: max(12px, var(--fs-min)); }
+
 /* Nommer (filing-window.js : renommer un fichier ou un dossier) : la même base, un champ ; ce qui manque se dit sous lui, en rouge lisible. */
 .nw-label { display: block; margin: 0 0 4px; font-size: max(12px, var(--fs-min)); font-weight: 600; color: var(--text-muted); }
 .nw-input { display: block; width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);

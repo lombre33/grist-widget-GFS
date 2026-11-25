@@ -45,15 +45,15 @@ function whatIs(file, { me, author, placed, stateRows }) {
   return [keysOf(me, file.path, stateRows), mineOrigins(me, partsOf(file.path).slice(0, -1), stateRows)];
 }
 
-// La personne administre-t-elle la cible ? Une ligne `admin` à son adresse, ou à un groupe dont elle est membre (Grist l'a calculé : `AdminsCible` dit qui
+// La personne administre-t-elle la cible ? Une ligne `admin` à son adresse, ou à un groupe dont elle est membre (Grist l'a calculé : `AdminsTarget` dit qui
 // administre la cible, la racine comprise).
 function administers({ me, key, rows, shares }) {
   if (me === '') return false;
   return shares.some(share => share.valid && share.active && share.right === 'admin' && lower(share.who) === me) ||
-    rows.some(row => (row.Cible === key || row.Cible === ROOT) && listOf(row.AdminsCible).map(lower).includes(me));
+    rows.some(row => (row.Target === key || row.Target === ROOT) && listOf(row.AdminsTarget).map(lower).includes(me));
 }
 
-const peopleOf = rows => [...new Set(rows.map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@') &&
+const peopleOf = rows => [...new Set(rows.map(row => lower(row.PersonL || row.Person)).filter(who => who && !who.startsWith('@') &&
   !who.startsWith('#')))].sort();
 
 export class ShareControl {
@@ -172,11 +172,11 @@ export class ShareControl {
   // Ce que le fichier hérite de l'espace où il est placé : l'espace, puis chaque dossier du chemin (rien si le fichier n'est dans aucun espace, ou si la
   // personne ne lit pas le placement).
   async #inherited(key) {
-    const place = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(PLACE_TABLE)).find(row => row.Cible === key), null);
-    if (!place || !place.Espace) return [];
+    const place = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(PLACE_TABLE)).find(row => row.Target === key), null);
+    if (!place || !place.Space) return [];
     const spaces = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SPACES_TABLE)), []);
-    const name = (spaces.find(row => row.Cle === place.Espace) || {}).Nom || place.Espace;
-    return originsOf(place.Espace, name, String(place.Dossier || '').split('/').filter(Boolean));
+    const name = (spaces.find(row => row.Key === place.Space) || {}).Name || place.Space;
+    return originsOf(place.Space, name, String(place.Folder || '').split('/').filter(Boolean));
   }
 
   #write(actions) { return writeActions(this.#o, actions); }
@@ -191,7 +191,7 @@ export class ShareControl {
   // Écrit un partage : un dossier de « Moi » le reçoit par le numéro de sa ligne d'état (`keyOf`), que la fenêtre ne connaît pas encore quand le dossier
   // n'avait aucun partage.
   async add(file, record) {
-    return this.#write([['AddRecord', SHARES_TABLE, null, file.mine ? { ...record, Cible: await this.keyOf(file) } : record]]);
+    return this.#write([['AddRecord', SHARES_TABLE, null, file.mine ? { ...record, Target: await this.keyOf(file) } : record]]);
   }
 
   // Ouvre la fenêtre du fichier ; rend la promesse de sa fermeture.

@@ -1,8 +1,12 @@
-// Une table que GFS crée et écrit lui-même dans le document (`GFS_Filing`, contrats 6.4 ; `GFS_Files`, contrats 6.6) : la relire, la créer avec l'accord
+// Une table que GFS crée et écrit lui-même dans le document (`GFS_Filing`, contrats 6.4 ; `GFS_Fichiers`, contrats 6.6) : la relire, la créer avec l'accord
 // de la personne, lui ajouter une colonne absente. Un seul lieu pour ces règles, pour que chaque table de GFS les suive :
 //   lire ne crée rien ; écrire relit d'abord, et ne crée la table qu'avec l'accord de la personne (6.2, point 1) ;
 //   après `AddTable`, l'identifiant réel est relu (6.2, point 2) ; une colonne absente est ajoutée avant d'être écrite (6.1, point 3) : une seule colonne
 //   inconnue annulerait tout le lot.
+// Un document dont les tables de GFS portent encore leurs noms d'avant (js/files/gfs-names.js) n'en reçoit jamais une seconde à côté : tant que la mise à jour
+// des noms n'a pas eu lieu (propriétaire absent, refus), GFS ne crée rien et n'ajoute aucune colonne.
+
+import { isLegacyForm } from './gfs-names.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -25,6 +29,16 @@ export class TableDeclined extends Error {
   constructor(table) {
     super(`La personne a refusé de créer la table ${table}.`);
     this.table = table;
+  }
+}
+
+// La table est encore sous son nom d'avant : rien n'est créé ni ajouté, la mise à jour des noms doit passer d'abord. Comme un refus de la personne, pour qui
+// l'attrape : rien n'a été écrit.
+export class LegacyNames extends TableDeclined {
+  code = 'GFS_NOMS_D_AVANT';
+  constructor(table) {
+    super(table);
+    this.message = `La table ${table} porte encore ses noms d'avant : la mise à jour des noms de GFS doit passer d'abord.`;
   }
 }
 
@@ -58,8 +72,9 @@ export class OwnTable {
     if (id) this.#tableId = id;
   }
 
-  // La table telle qu'elle est : { exists, columns, data }. Ne crée rien. Une table déjà vue est lue en même temps que la liste des tables qui confirme son nom
-  // (un aller-retour de réseau de moins avant chaque écriture) : la liste fait foi, et la lecture d'avance est jetée si la table a changé de nom ou disparu.
+  // La table telle qu'elle est : { exists, columns, data, legacy }. Ne crée rien. `legacy` : elle est encore sous la forme d'avant (js/files/gfs-names.js). Une
+  // table déjà vue est lue en même temps que la liste des tables qui confirme son nom (un aller-retour de réseau de moins avant chaque écriture) : la liste
+  // fait foi, et la lecture d'avance est jetée si la table a changé de nom ou disparu.
   async load() {
     const known = this.#seen;
     const guess = known === null ? null : this.#port.doc.fetchTable(known).catch(() => null);
@@ -67,12 +82,13 @@ export class OwnTable {
     const found = tables.find(name => sameName(name, this.#name));
     if (!found) {
       this.#seen = null;
-      return { exists: false, columns: [], data: null };
+      return { exists: false, columns: [], data: null, legacy: isLegacyForm(this.#name, tables) };
     }
     this.#tableId = found;
     this.#seen = found;
     const fetched = (guess && found === known && (await guess)) || (await this.#port.doc.fetchTable(found));
-    return { exists: true, columns: Object.keys(fetched || {}), data: fetched };
+    const columns = Object.keys(fetched || {});
+    return { exists: true, columns, data: fetched, legacy: isLegacyForm(this.#name, tables, columns) };
   }
 
   // La table prête à être écrite, relue juste avant, avec les colonnes `needed` : sans table, l'accord de la personne, puis la création. `created` : la table
@@ -80,6 +96,7 @@ export class OwnTable {
   async ready(needed = []) {
     let state = await this.load();
     let created = false;
+    if (state.legacy) throw new LegacyNames(this.#name);
     if (!state.exists) {
       created = true;
       if (!(await this.#consent())) throw new TableDeclined(this.#name);
@@ -94,7 +111,7 @@ export class OwnTable {
   // est déjà (mettre un fichier à la corbeille, le restaurer) : un geste de ce genre ne crée jamais la table, et ne demande donc jamais son accord.
   async existing(needed = []) {
     const state = await this.load();
-    if (!state.exists) return null;
+    if (!state.exists || state.legacy) return null;
     for (const column of needed.filter(name => !state.columns.includes(name))) await this.addColumn(column);
     return state;
   }

@@ -39,17 +39,17 @@ function fakeDoc(tables) {
 }
 
 test('ensureMarks : les deux colonnes naissent dans chaque table reçue qui les n\'a pas, en UNE écriture', async () => {
-  const doc = fakeDoc({ GFS_Received: ['id', 'Nom', 'Contenu'], GFS_Received_2: ['id', 'Nom', 'Accepte'], Clients: ['id', 'Nom'] });
-  assert.deepEqual(await ensureMarks(doc, ['GFS_Received', 'GFS_Received_2', 'Clients']), ['GFS_Received', 'GFS_Received_2']);
+  const doc = fakeDoc({ GFS_Recus: ['id', 'Nom', 'Contenu'], GFS_Recus_2: ['id', 'Nom', 'Accepte'], Clients: ['id', 'Nom'] });
+  assert.deepEqual(await ensureMarks(doc, ['GFS_Recus', 'GFS_Recus_2', 'Clients']), ['GFS_Recus', 'GFS_Recus_2']);
   assert.equal(doc.calls.length, 1, 'une seule écriture : un lot qui échoue n\'écrit rien');
   assert.deepEqual(doc.calls[0], [
-    ['AddColumn', 'GFS_Received', 'Accepte', { type: 'Bool', isFormula: false }], ['AddColumn', 'GFS_Received', 'Refuse', { type: 'Bool', isFormula: false }],
-    ['AddColumn', 'GFS_Received_2', 'Refuse', { type: 'Bool', isFormula: false }]]);
+    ['AddColumn', 'GFS_Recus', 'Accepte', { type: 'Bool', isFormula: false }], ['AddColumn', 'GFS_Recus', 'Refuse', { type: 'Bool', isFormula: false }],
+    ['AddColumn', 'GFS_Recus_2', 'Refuse', { type: 'Bool', isFormula: false }]]);
 });
 
 test('ensureMarks : rien à écrire quand tout est là, quand la table n\'existe pas, et jamais dans une table qui n\'est pas une table reçue', async () => {
-  const doc = fakeDoc({ GFS_Received: ['id', 'Accepte', 'Refuse'], GFS_Recusees: ['id'], Clients: ['id'] });
-  assert.deepEqual(await ensureMarks(doc, ['GFS_Received', 'GFS_Recusees', 'Clients', 'GFS_Received_9']), []);
+  const doc = fakeDoc({ GFS_Recus: ['id', 'Accepte', 'Refuse'], GFS_Recusees: ['id'], Clients: ['id'] });
+  assert.deepEqual(await ensureMarks(doc, ['GFS_Recus', 'GFS_Recusees', 'Clients', 'GFS_Recus_9']), []);
   assert.deepEqual(await ensureMarks(doc, []), []);
   assert.deepEqual(await ensureMarks(doc, undefined), []);
   assert.deepEqual(doc.calls, []);

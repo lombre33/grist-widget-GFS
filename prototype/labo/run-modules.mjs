@@ -124,11 +124,11 @@ await frame.waitForFunction(() => document.body.dataset.registry === 'idle' && d
 check('Automation+ installée : 2 actifs sur 5', /^2 /.test(await count()), await count());
 const made = await rangement();
 say('table du document :', made);
-check('la table GFS_Filing existe avec ses sept colonnes', made.table && ['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie', 'Valeur'].every(name => made.columns.includes(name)), made.columns);
+check('la table GFS_Filing existe avec ses sept colonnes', made.table && ['User', 'App', 'File', 'Favorite', 'Folder', 'Collapsed', 'Value'].every(name => made.columns.includes(name)), made.columns);
 check('Grist a ajouté une page pour elle', made.pages === before.pages + 1 && made.tables === before.tables + 1, made);
 check('deux lignes réservées : les apps, et le numéro de structure noté après le geste (contrats 6.4, point 16)', made.rows === 2
   && JSON.stringify(made.value) === JSON.stringify({ publipostage: { extensions: [] }, automation: { extensions: [] } })
-  && made.lines.some(line => line.Utilisateur === '@document' && line.Fichier === 'structure' && line.Valeur === '{"structure":1}'), made);
+  && made.lines.some(line => line.User === '@document' && line.File === 'structure' && line.Value === '{"structure":1}'), made);
 check('Automation+ a son bouton Ouvrir', await frame.locator('[data-open="automation"]').isVisible());
 check('le clavier est sur « Ouvrir » de la carte', await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'open:automation'));
 await lab.shot(run, '3-page-grist-apres-accord');

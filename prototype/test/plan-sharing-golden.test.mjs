@@ -39,8 +39,8 @@ function scenarios() {
   record('colonne d\'aide d\'auteur déjà là', withFiles([{ parentId: 7, colId: 'GFS_Auteur' }]));
   record('table de fichiers sans « Auteur »', { ...withFiles(), columns: [{ parentId: 7, colId: 'Identifiant' }] });
   record('déjà activé', done);
-  record('règle d\'un autre auteur sur la table de partages', { ...base(), tables: [{ id: 3, tableId: 'GFS_Files' }], resources: [{ id: 1, tableId: '', colIds: '' }, { id: 2, tableId: 'GFS_Files', colIds: '*' }], rules: [{ ...BUILT_IN }, hand(2)] });
-  record('règle d\'un autre auteur sur une table de fichiers', { ...withFiles(), resources: [{ id: 1, tableId: '', colIds: '' }, { id: 2, tableId: 'GFS_Files', colIds: '*' }], rules: [{ ...BUILT_IN }, hand(2)] });
+  record('règle d\'un autre auteur sur la table de partages', { ...base(), tables: [{ id: 3, tableId: 'GFS_Fichiers' }], resources: [{ id: 1, tableId: '', colIds: '' }, { id: 2, tableId: 'GFS_Fichiers', colIds: '*' }], rules: [{ ...BUILT_IN }, hand(2)] });
+  record('règle d\'un autre auteur sur une table de fichiers', { ...withFiles(), resources: [{ id: 1, tableId: '', colIds: '' }, { id: 2, tableId: 'GFS_Fichiers', colIds: '*' }], rules: [{ ...BUILT_IN }, hand(2)] });
   record('avec une app', withApp());
   record('avec une app et ses numéros de lignes', withApp({ files: { Publipostage_Modeles: [3, 5, 8] } }));
   record('avec une app sans ses numéros', withApp({ files: undefined }));
@@ -64,7 +64,7 @@ function scenarios() {
   record('sans la table de rangement', { ...done, tables: done.tables.filter(row => row.tableId !== 'GFS_Filing') });
   record('cibles données à part', base(), targetsOf([ids]));
   record('fichiers rangés avant', { ...withFiles(), fileIds: [4, 9] });
-  record('fichiers rangés par table', { ...withFiles(), files: { GFS_Files: [2, 3] } });
+  record('fichiers rangés par table', { ...withFiles(), files: { GFS_Fichiers: [2, 3] } });
   return JSON.parse(JSON.stringify(out, (key, value) => (value === undefined ? null : value)));
 }
 

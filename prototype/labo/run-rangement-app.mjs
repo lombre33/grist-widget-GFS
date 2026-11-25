@@ -44,9 +44,9 @@ await frame.evaluate(async ([prefs, models, email]) => {
     ['AddRecord', prefs, null, { Utilisateur: 'autre@exemple.org', ModeleId: idOf('Quittance de loyer'), Epingle: false, Dossier: 'Prive' }],
   ]);
 }, [PREFS, MODELS, ANA.Email]);
-// Un document où GFS range déjà : sa table existe (sans elle, GFS ne connaît pas l'adresse d'Ana et ne lit que le rangement commun), sans la colonne `Adresse` que la sonde ajoute.
+// Un document où GFS range déjà : sa table existe (sans elle, GFS ne connaît pas l'adresse d'Ana et ne lit que le rangement commun), sans la colonne `Address` que la sonde ajoute.
 await frame.evaluate(async filing => {
-  const columns = ['Utilisateur', 'App', 'Fichier', 'Dossier', 'Valeur'].map(id => ({ id, type: 'Text' })).concat([{ id: 'Favori', type: 'Bool' }, { id: 'Replie', type: 'Bool' }]);
+  const columns = ['User', 'App', 'File', 'Folder', 'Value'].map(id => ({ id, type: 'Text' })).concat([{ id: 'Favorite', type: 'Bool' }, { id: 'Collapsed', type: 'Bool' }]);
   await grist.docApi.applyUserActions([['AddTable', filing, columns]]);
 }, FILING);
 await frame.evaluate(() => location.reload());
@@ -70,10 +70,10 @@ const rows = async name => {
   return data.id.map((id, i) => Object.fromEntries(Object.keys(data).map(column => [column, data[column][i]])));
 };
 const idOf = async name => { const data = await table(MODELS); return data.id[data.Nom.indexOf(name)]; };
-const mine = list => (list || []).filter(line => line.Utilisateur === ANA.Email);
+const mine = list => (list || []).filter(line => line.User === ANA.Email);
 const prefsOf = async id => mine(await rows(PREFS)).filter(line => line.ModeleId === id);
 const statesOf = async () => mine(await rows(PREFS)).filter(line => line.ModeleId === 0).map(line => line.Dossier).sort();
-const gfsStates = async () => mine(await rows(FILING)).filter(line => !line.App && !line.Fichier && line.Dossier).map(line => line.Dossier).sort();
+const gfsStates = async () => mine(await rows(FILING)).filter(line => !line.App && !line.File && line.Folder).map(line => line.Folder).sort();
 const gfsLines = async () => mine(await rows(FILING)).filter(line => line.App === 'publipostage');
 // Ce que Publipostage+ lit (js/template-preferences.js, `loadNow` : la dernière ligne de chaque modèle fait foi) : { modèle: dossier }.
 const ppView = async () => {
@@ -148,17 +148,17 @@ await openMenu(contract);
 await menuItem(/Déplacer|Move/).click();
 await frame.locator('.mv').waitFor();
 await frame.locator('.mv .wk-item', { has: frame.locator('.wk-name', { hasText: /^Projets$/ }) }).click();
-await until(async () => (await prefsOf(contractId)).some(line => line.Dossier === 'Projets'));
-check('le contrat est dans « Projets » chez l\'app', same((await prefsOf(contractId)).map(line => line.Dossier), ['Projets']), await prefsOf(contractId));
+await until(async () => (await prefsOf(contractId)).some(line => line.Folder === 'Projets'));
+check('le contrat est dans « Projets » chez l\'app', same((await prefsOf(contractId)).map(line => line.Folder), ['Projets']), await prefsOf(contractId));
 await page.keyboard.press('Control+z');
-const back = await until(async () => (await prefsOf(contractId)).some(line => line.Dossier === 'Archives'));
+const back = await until(async () => (await prefsOf(contractId)).some(line => line.Folder === 'Archives'));
 check('Ctrl+Z : la ligne de l\'app redit « Archives »', back, await prefsOf(contractId));
 
 say('\n6. Ce que GFS_Filing disait avant passe chez l\'app');
 const support = 'Support de session';
 const supportId = await idOf(support);
 await frame.evaluate(async ([filing, id, email]) => {
-  await grist.docApi.applyUserActions([['AddRecord', filing, null, { Utilisateur: email, App: 'publipostage', Fichier: String(id), Favori: true, Dossier: 'Ancien' }]]);
+  await grist.docApi.applyUserActions([['AddRecord', filing, null, { User: email, App: 'publipostage', File: String(id), Favorite: true, Folder: 'Ancien' }]]);
 }, [FILING, supportId, ANA.Email]);
 await reopen();
 check('avant tout rangement, GFS montre encore le modèle dans « Ancien » (repli sur sa ligne)', (await folderOf(support)) === 'Ancien', await folderOf(support));

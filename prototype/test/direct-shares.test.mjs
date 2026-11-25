@@ -38,8 +38,8 @@ test('la vue montre les fichiers donnés avec celui qui les a donnés dans « Pa
 });
 
 test('un lecteur n\'écrit rien dans le document : son adresse est la seule adresse de personne parmi les partages qu\'il lit', () => {
-  assert.equal(addressFromShares([{ PersonneL: '@tous' }, { PersonneL: 'Moi@x.fr' }, { PersonneL: 'moi@x.fr' }]), 'moi@x.fr');
-  assert.equal(addressFromShares([{ PersonneL: 'moi@x.fr' }, { PersonneL: 'autre@x.fr' }]), '', 'plusieurs adresses : on ne devine pas');
-  assert.equal(addressFromShares([{ PersonneL: '@editeurs' }, { PersonneL: '#achats' }]), '');
+  assert.equal(addressFromShares([{ PersonL: '@tous' }, { PersonL: 'Moi@x.fr' }, { PersonL: 'moi@x.fr' }]), 'moi@x.fr');
+  assert.equal(addressFromShares([{ PersonL: 'moi@x.fr' }, { PersonL: 'autre@x.fr' }]), '', 'plusieurs adresses : on ne devine pas');
+  assert.equal(addressFromShares([{ PersonL: '@editeurs' }, { PersonL: '#achats' }]), '');
   assert.equal(addressFromShares(null), '');
 });

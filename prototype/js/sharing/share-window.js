@@ -320,7 +320,7 @@ export function openShare(opts) {
   };
   ctx.choose = who => { ctx.pending = who; ctx.draft = null; ctx.say(footText()); draw(); };
   ctx.add = record => (record ? write(() => opts.onAdd(record), true) : Promise.resolve());
-  ctx.change = (share, right) => write(() => opts.onChange(share.id, { Droit: right }));
+  ctx.change = (share, right) => write(() => opts.onChange(share.id, { Right: right }));
   ctx.remove = share => write(() => opts.onRemove(share.id));
   ctx.activate = async () => { if (!(await opts.onActivate())) await reload(); };
   manage.addEventListener('click', async () => {

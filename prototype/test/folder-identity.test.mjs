@@ -7,8 +7,8 @@ import { FolderShares } from '../js/sharing/folder-shares.js';
 import { PLACE_TABLE, SHARES_TABLE, personalTarget } from '../js/sharing/sharing-model.js';
 
 const ME = 'Marie@Exemple.fr';
-const share = (id, Cible, extra = {}) => ({ id, Cible, Personne: 'luc@exemple.fr', Droit: 'lecture', ...extra });
-const link = (id, Lien) => ({ id, Cible: '', Espace: 'ventes', Dossier: 'Lien', Lien });
+const share = (id, Target, extra = {}) => ({ id, Target, Person: 'luc@exemple.fr', Right: 'lecture', ...extra });
+const link = (id, Link) => ({ id, Target: '', Space: 'ventes', Folder: 'Lien', Link });
 const rows = [{ id: 11, path: 'Docs' }, { id: 12, path: 'Docs/Factures' }, { id: 13, path: 'Autre' }];
 
 test('la cible par numéro : l\'adresse en minuscules, deux « / » de suite ; elle n\'est jamais un chemin, et un chemin n\'est jamais elle', () => {
@@ -40,7 +40,7 @@ test('renommer : un partage à l\'ancienne mode passe au numéro de la ligne d\'
   const shares = [share(1, personalTarget(ME, 'Docs')), share(2, personalTarget(ME, 'Docs/Factures')), share(3, idKey(ME, 11)), share(4, personalTarget(ME, 'Autre')),
     share(5, personalTarget('luc@exemple.fr', 'Docs'))];
   const out = relocationExtra({ identity: ME, rows, from: 'Docs', to: 'Papiers', shares });
-  assert.deepEqual(out, { refuse: null, lost: 0, extra: [['UpdateRecord', SHARES_TABLE, 1, { Cible: idKey(ME, 11) }], ['UpdateRecord', SHARES_TABLE, 2, { Cible: idKey(ME, 12) }]] });
+  assert.deepEqual(out, { refuse: null, lost: 0, extra: [['UpdateRecord', SHARES_TABLE, 1, { Target: idKey(ME, 11) }], ['UpdateRecord', SHARES_TABLE, 2, { Target: idKey(ME, 12) }]] });
 });
 
 test('un dossier qui se fond dans un dossier qui existe déjà : il prend les partages du dossier d\'arrivée, les siens (par numéro ou par chemin) sont retirés et comptés', () => {
@@ -64,7 +64,7 @@ test('un lien : il passe au numéro quand la personne est propriétaire ; sinon 
   const places = [link(5, personalTarget(ME, 'Docs'))];
   const shares = [share(1, personalTarget(ME, 'Docs'))];
   assert.deepEqual(relocationExtra({ identity: ME, rows, from: 'Docs', to: 'Papiers', shares, places, owner: true }).extra,
-    [['UpdateRecord', SHARES_TABLE, 1, { Cible: idKey(ME, 11) }], ['UpdateRecord', PLACE_TABLE, 5, { Lien: idKey(ME, 11) }]]);
+    [['UpdateRecord', SHARES_TABLE, 1, { Target: idKey(ME, 11) }], ['UpdateRecord', PLACE_TABLE, 5, { Link: idKey(ME, 11) }]]);
   assert.deepEqual(relocationExtra({ identity: ME, rows, from: 'Docs', to: 'Papiers', shares, places, owner: false }), { refuse: 'ex.folderLinked', extra: [], lost: 1 - 1 });
   const byId = [link(6, idKey(ME, 11))];
   assert.deepEqual(relocationExtra({ identity: ME, rows, from: 'Docs', to: 'Papiers', places: byId }).extra, [], 'un lien par numéro suit sans rien écrire, même sans être propriétaire');
@@ -85,7 +85,7 @@ test('supprimer : les partages du dossier (par numéro et par chemin) partent av
 function harness({ shares, places = [], folderRows = [], owner = true }) {
   const created = [];
   const tables = { [SHARES_TABLE]: shares, [PLACE_TABLE]: places };
-  const asTable = list => (list ? { id: list.map(item => item.id), Cible: list.map(item => item.Cible), Lien: list.map(item => item.Lien) } : null);
+  const asTable = list => (list ? { id: list.map(item => item.id), Target: list.map(item => item.Target), Link: list.map(item => item.Link) } : null);
   let state = [...folderRows];
   const rangement = { folderRows: async () => state,
     folderIds: async paths => { created.push(...paths); state = [...state, ...paths.map((path, at) => ({ id: 100 + at, path }))]; return new Map(); } };
@@ -98,7 +98,7 @@ test('FolderShares : sans table des partages ou sans adresse, rien à suivre ; u
   const { created, shared } = harness({ shares: [share(1, personalTarget(ME, 'Docs')), share(2, personalTarget(ME, 'Docs/Disparu'))], folderRows: [] });
   const out = await shared.relocation('Docs', 'Papiers', ['Docs', 'Autre']);
   assert.deepEqual(created, ['Docs'], 'seul le dossier qui existe reçoit sa ligne');
-  assert.deepEqual(out, { refuse: null, lost: 0, spare: ['Docs'], extra: [['UpdateRecord', SHARES_TABLE, 1, { Cible: idKey(ME, 100) }]] });
+  assert.deepEqual(out, { refuse: null, lost: 0, spare: ['Docs'], extra: [['UpdateRecord', SHARES_TABLE, 1, { Target: idKey(ME, 100) }]] });
   const already = harness({ shares: [share(1, personalTarget(ME, 'Docs'))], folderRows: [{ id: 7, path: 'Docs' }] });
   assert.deepEqual((await already.shared.relocation('Docs', 'Papiers', ['Docs'])).spare, ['Docs']);
   assert.deepEqual(already.created, [], 'la ligne existe : rien n\'est écrit avant le lot');
@@ -117,7 +117,7 @@ test('FolderShares : la suppression rend les partages à retirer ; le propriéta
   const { shared } = harness({ shares: [share(1, idKey(ME, 7)), share(2, idKey(ME, 8))], folderRows: [{ id: 7, path: 'Docs' }, { id: 8, path: 'Autre' }] });
   assert.deepEqual(await shared.removal(['Docs']), { refuse: null, removed: 1, extra: [['RemoveRecord', SHARES_TABLE, 1]] });
   let asked = 0;
-  const port = { doc: { fetchTable: async () => ({ id: [], Cible: [], Lien: [] }) } };
+  const port = { doc: { fetchTable: async () => ({ id: [], Target: [], Link: [] }) } };
   const counting = new FolderShares({ port, rangement: { folderRows: async () => [], folderIds: async () => new Map() }, identity: () => ME, owner: async () => { asked += 1; return true; } });
   await counting.relocation('Docs', 'Papiers', ['Docs']);
   assert.equal(asked, 0, 'aucun lien à l\'ancienne mode : la personne n\'est pas questionnée');

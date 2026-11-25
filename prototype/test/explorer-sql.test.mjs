@@ -80,14 +80,14 @@ const document = () => ({
   Publipostage_Versions: { colonnes: [{ id: 'Jeton', type: 'Text' }, { id: 'Contenu', type: 'Text' }, { id: 'Numero', type: 'Int' }], lignes: [
     { Jeton: 'j1', Contenu: heavy(2000), Numero: 1 }, { Jeton: 'j1', Contenu: heavy(500), Numero: 2 }, { Jeton: 'j2', Contenu: heavy(90), Numero: 1 }, { Jeton: '', Contenu: 'orpheline', Numero: 7 },
   ] },
-  GFS_Files: { colonnes: [{ id: 'Identifiant', type: 'Text' }, { id: 'Nom', type: 'Text' }, { id: 'Type', type: 'Text' }, { id: 'Date', type: 'DateTime:UTC' }, { id: 'Auteur', type: 'Text' },
+  GFS_Fichiers: { colonnes: [{ id: 'Identifiant', type: 'Text' }, { id: 'Nom', type: 'Text' }, { id: 'Type', type: 'Text' }, { id: 'Date', type: 'DateTime:UTC' }, { id: 'Auteur', type: 'Text' },
     { id: 'Contenu', type: 'Attachments' }, { id: 'Taille', type: 'Int' }, { id: 'Origine', type: 'Text' }, { id: 'SupprimeLe', type: 'DateTime:UTC' }, { id: 'SupprimePar', type: 'Text' }], lignes: [
     { Identifiant: 'aa', Nom: 'A.pdf', Type: 'pdf', Date: 10, Auteur: 'p', Contenu: '[7]', Taille: 90000, Origine: 'import' },
     { Identifiant: 'bb', Nom: 'B.pdf', Type: 'pdf', Date: 20, Auteur: 'p', Contenu: '[8]', Taille: 500, Origine: 'import', SupprimeLe: 1762000000, SupprimePar: 'paul@exemple.fr' },
   ] },
   GFS_Trash: { colonnes: BIN_COLUMNS.map(column => ({ id: column.id, type: column.type })), lignes: [
-    { Identifiant: 'x1', App: 'publipostage', Table: 'Publipostage_Modeles', FichierId: '9', Nom: 'Vieux modèle', Type: 'document', Date: 5, Auteur: 'p', SupprimeLe: 1762000500, SupprimePar: 'p', Instantane: heavy(1200) },
-    { Identifiant: 'x2', App: 'form', Table: 'FormPlus_Formulaires', FichierId: '3', Nom: 'Autre app', Type: 'formulaire', Date: 6, Auteur: 'q', SupprimeLe: 1762000600, SupprimePar: 'q', Instantane: heavy(300) },
+    { EntryId: 'x1', App: 'publipostage', Table: 'Publipostage_Modeles', FileId: '9', Name: 'Vieux modèle', Type: 'document', Date: 5, Author: 'p', DeletedAt: 1762000500, DeletedBy: 'p', Snapshot: heavy(1200) },
+    { EntryId: 'x2', App: 'form', Table: 'FormPlus_Formulaires', FileId: '3', Name: 'Autre app', Type: 'formulaire', Date: 6, Author: 'q', DeletedAt: 1762000600, DeletedBy: 'q', Snapshot: heavy(300) },
   ] },
 });
 
@@ -112,12 +112,12 @@ test('rowsStatement : la cellule lourde n\'est jamais lue, seulement comptée ; 
 // Le pare-feu devant le Grist de la DINUM refuse en 403, sans en-tête CORS, la lecture des colonnes écrite `substr(…) <> …` (sonde du porteur, 25/11, faits vérifiés 173) : GFS lit alors
 // tous les fichiers en entier et la console se remplit d'un « CORS manquant » à chaque affichage. La forme `NOT LIKE` et `!=` y passe (200) : elle garde les mêmes colonnes.
 test('schemaStatement : la forme que le pare-feu de la DINUM laisse passer (ni `substr(` ni `<>`), et les mêmes colonnes qu\'avant', { skip }, async () => {
-  const statement = schemaStatement(['GFS_Files', 'Publipostage_Modeles']);
+  const statement = schemaStatement(['GFS_Fichiers', 'Publipostage_Modeles']);
   assert.ok(!/substr\s*\(|<>/i.test(statement), `forme refusée par le pare-feu : ${statement}`);
   assert.match(statement, /c\.colId NOT LIKE 'gristHelper%' AND c\.colId != 'manualSort'/);
-  const db = makeDb({ GFS_Files: { colonnes: [{ id: 'Nom', type: 'Text' }, { id: 'Taille', type: 'Int' }], lignes: [] }, Autre: { colonnes: [{ id: 'X', type: 'Text' }], lignes: [] } });
+  const db = makeDb({ GFS_Fichiers: { colonnes: [{ id: 'Nom', type: 'Text' }, { id: 'Taille', type: 'Int' }], lignes: [] }, Autre: { colonnes: [{ id: 'X', type: 'Text' }], lignes: [] } });
   const rows = (await db.sql(statement)).map(row => ({ ...row }));
-  assert.deepEqual(rows, [{ tableId: 'GFS_Files', colId: 'Nom', type: 'Text' }, { tableId: 'GFS_Files', colId: 'Taille', type: 'Int' }],
+  assert.deepEqual(rows, [{ tableId: 'GFS_Fichiers', colId: 'Nom', type: 'Text' }, { tableId: 'GFS_Fichiers', colId: 'Taille', type: 'Int' }],
     'ni `manualSort` ni `gristHelper_Display`, et seulement les tables demandées');
 });
 
@@ -131,14 +131,14 @@ test('readRows : une liste de Grist se lit comme fetchTable la rend ; un texte q
 test('les deux lectures donnent les mêmes fichiers, le même poids et les mêmes lignes liées, à l\'octet près, pour chaque manifeste (SQLite réel)', { skip }, async () => {
   const db = makeDb(document());
   const reader = createLightReader({ sql: db.sql, threshold: 0 });
-  await reader.prepare(['Publipostage_Modeles', 'Publipostage_Versions', 'GFS_Files', 'GFS_Trash'].map(table => ({ table, wanted: [] })));
+  await reader.prepare(['Publipostage_Modeles', 'Publipostage_Versions', 'GFS_Fichiers', 'GFS_Trash'].map(table => ({ table, wanted: [] })));
   reader.learn(1);
   for (const manifest of [publipostage(), FILES_MANIFEST]) {
     const spec = manifest.fichiers[0];
     const full = db.fetchTable(spec.table);
     const light = await reader.read(spec.table, neededColumns(spec));
     assert.deepEqual(light.weights, full.id.map((unused, i) => rowWeigher(full)(i)), `${spec.table} : les poids des lignes`);
-    assert.ok(!('Contenu' in light.data) || spec.table === 'GFS_Files', 'la cellule lourde n\'est pas rendue');
+    assert.ok(!('Contenu' in light.data) || spec.table === 'GFS_Fichiers', 'la cellule lourde n\'est pas rendue');
   }
   const versions = db.fetchTable('Publipostage_Versions');
   const lightVersions = await reader.read('Publipostage_Versions', ['Jeton']);
@@ -169,9 +169,9 @@ test('loadFiles : la toute première lecture d\'un document est déjà légère,
   assert.equal(reads.length, 4, 'une lecture SQL par table : modèles, versions, fichiers de GFS, corbeille');
   for (const call of reads) {
     if (/FROM "Publipostage_(Modeles|Versions)"$/.test(call)) assert.ok(!selected(call).includes('"Contenu"'), `le contenu d'un modèle n'est pas rendu : ${call}`);
-    if (call.endsWith('FROM "GFS_Trash"')) assert.ok(!selected(call).includes('"Instantane"'), `la copie JSON de la corbeille n'est pas rendue : ${call}`);
+    if (call.endsWith('FROM "GFS_Trash"')) assert.ok(!selected(call).includes('"Snapshot"'), `la copie JSON de la corbeille n'est pas rendue : ${call}`);
   }
-  assert.ok(reads.some(call => call.includes('length(CAST("Contenu" AS BLOB))')) && reads.some(call => call.includes('length(CAST("Instantane" AS BLOB))')), 'elles sont comptées, pour le poids');
+  assert.ok(reads.some(call => call.includes('length(CAST("Contenu" AS BLOB))')) && reads.some(call => call.includes('length(CAST("Snapshot" AS BLOB))')), 'elles sont comptées, pour le poids');
   db.calls.length = 0;
   const third = await loadFiles(db.port, apps, '', reader);
   assert.equal(third.stats.light, true);

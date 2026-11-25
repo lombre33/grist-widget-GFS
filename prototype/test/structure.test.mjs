@@ -9,12 +9,12 @@ import { AppsState } from '../js/apps/apps-state.js';
 import { STRING_TABLES } from '../js/i18n/i18n.js';
 import { fakeGrist } from './fake-grist.mjs';
 
-const full = ['id', 'Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie', 'Valeur', 'Adresse'];
-const row = (id, extra) => ({ id, Utilisateur: '', App: '', Fichier: '', Favori: false, Dossier: '', Replie: false, Valeur: '', Adresse: '', ...extra });
-const marked = value => row(9, { ...STRUCTURE_ROW, Valeur: typeof value === 'string' ? value : JSON.stringify(value) });
+const full = ['id', 'User', 'App', 'File', 'Favorite', 'Folder', 'Collapsed', 'Value', 'Address'];
+const row = (id, extra) => ({ id, User: '', App: '', File: '', Favorite: false, Folder: '', Collapsed: false, Value: '', Address: '', ...extra });
+const marked = value => row(9, { ...STRUCTURE_ROW, Value: typeof value === 'string' ? value : JSON.stringify(value) });
 const accept = () => async () => true;
 const noProbe = { canWrite: () => false };
-const isMark = action => Boolean(action[3]) && action[3].Fichier === 'structure';
+const isMark = action => Boolean(action[3]) && action[3].File === 'structure';
 const gesture = () => ({ app: 'x', file: '1', pinned: true, folder: '' });
 
 test('le numéro lu : un entier de 1 ou plus, sinon rien ; ce qu\'il dit de cette version', () => {
@@ -33,13 +33,13 @@ test('le premier geste qui écrit note le numéro, dans un lot à part, après l
   const { port, tables, actions, batches } = fakeGrist();
   await new Rangement({ port, consent: accept(), ...noProbe }).update(() => ({ publipostage: { extensions: [] } }));
   assert.deepEqual(actions.map(action => action[0]), ['AddTable', 'AddRecord', 'AddRecord']);
-  assert.deepEqual(actions[2].slice(1), [TABLE, null, { ...STRUCTURE_ROW, Valeur: '{"structure":1}' }]);
+  assert.deepEqual(actions[2].slice(1), [TABLE, null, { ...STRUCTURE_ROW, Value: '{"structure":1}' }]);
   assert.equal(batches.at(-1).length, 1, 'le lot du geste est parti avant : un refus de la note ne le défait pas');
-  assert.deepEqual(tables[TABLE].rows.map(line => [line.Utilisateur, line.App, line.Fichier]), [['@document', 'gfs', 'apps'], ['@document', 'gfs', 'structure']]);
+  assert.deepEqual(tables[TABLE].rows.map(line => [line.User, line.App, line.File]), [['@document', 'gfs', 'apps'], ['@document', 'gfs', 'structure']]);
 });
 
 test('le numéro est noté aussi par un rangement de fichier (setFiling), une seule fois par ouverture et plus du tout quand il est déjà là', async () => {
-  const first = fakeGrist({ [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, Valeur: '{}' })] } });
+  const first = fakeGrist({ [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, Value: '{}' })] } });
   const store = new Rangement({ port: first.port, consent: accept(), ...noProbe });
   await store.setFiling([gesture()]);
   await store.setFiling([{ ...gesture(), pinned: false }]);
@@ -53,10 +53,10 @@ test('le numéro est noté aussi par un rangement de fichier (setFiling), une se
 test('une ligne du numéro sans le numéro est complétée en gardant le reste ; une valeur illisible n\'est pas touchée et le geste part quand même', async () => {
   const partial = fakeGrist({ [TABLE]: { columns: full, rows: [marked({ autre: 'gardé' })] } });
   await new Rangement({ port: partial.port, consent: accept(), ...noProbe }).setFiling([gesture()]);
-  assert.deepEqual(partial.actions.at(-1), ['UpdateRecord', TABLE, 9, { Valeur: '{"autre":"gardé","structure":1}' }]);
+  assert.deepEqual(partial.actions.at(-1), ['UpdateRecord', TABLE, 9, { Value: '{"autre":"gardé","structure":1}' }]);
   const broken = fakeGrist({ [TABLE]: { columns: full, rows: [marked('{pas du json')] } });
   assert.equal(await new Rangement({ port: broken.port, consent: accept(), ...noProbe }).setFiling([gesture()]), true);
-  assert.equal(broken.tables[TABLE].rows[0].Valeur, '{pas du json');
+  assert.equal(broken.tables[TABLE].rows[0].Value, '{pas du json');
   assert.equal(broken.actions.length, 1, 'le geste seul');
 });
 
@@ -77,7 +77,7 @@ test('Grist refuse la note (une personne qui n\'est pas propriétaire) : le gest
 });
 
 test('un document qu\'une version plus récente a préparé : la lecture dit son numéro, aucune écriture de GFS ne part', async () => {
-  const tables = { [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, Valeur: '{"form":{"extensions":[]}}' }), marked({ structure: STRUCTURE + 1 })] } };
+  const tables = { [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, Value: '{"form":{"extensions":[]}}' }), marked({ structure: STRUCTURE + 1 })] } };
   const { port, actions } = fakeGrist(tables);
   const store = new Rangement({ port, consent: () => assert.fail('aucune question'), ...noProbe });
   const state = await store.read();
@@ -93,7 +93,7 @@ test('un document qu\'une version plus récente a préparé : la lecture dit son
 test('lire un document sans table, ou sans le numéro, ne dit rien et n\'écrit rien', async () => {
   const none = await new Rangement({ port: fakeGrist().port, consent: accept() }).read();
   assert.equal(none.structure, null);
-  const { port, actions } = fakeGrist({ [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, Valeur: '{}' })] } });
+  const { port, actions } = fakeGrist({ [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, Value: '{}' })] } });
   assert.equal((await new Rangement({ port, consent: accept() }).read()).structure, null);
   assert.deepEqual(actions, []);
 });

@@ -29,8 +29,8 @@ const exact = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const said = (frame, key, params) => waitForToast(frame, exact(t(key, params)));
 
 // Ce que le serveur retient de la table des PDF.
-const rowNamed = async (rest, name) => (await rest.rows('GFS_Files')).find(row => row.Nom === name);
-const columnTypes = async rest => Object.fromEntries((await rest.columns('GFS_Files')).map(column => [column.id, column.type]));
+const rowNamed = async (rest, name) => (await rest.rows('GFS_Fichiers')).find(row => row.Nom === name);
+const columnTypes = async rest => Object.fromEntries((await rest.columns('GFS_Fichiers')).map(column => [column.id, column.type]));
 const marked = row => Boolean(row) && row.SupprimeLe > 0;
 
 // Une écriture directe dans le document (le serveur de la personne d'essai : la page de Grist est de son origine, sa session suffit).
@@ -54,7 +54,7 @@ async function pinFirst(run) {
   await frame.locator('[data-fk="ask-yes"]').click();
   await frame.waitForFunction(() => document.querySelector('.ls-row .rb.pin.on'), null, { timeout: 20000 });
   const lines = (await rest.rows('GFS_Filing')).filter(row => row.App === 'gfs-fichiers');
-  check('le favori est rangé pour la personne que Grist connaît', lines.length === 1 && lines[0].Utilisateur === ME, lines);
+  check('le favori est rangé pour la personne que Grist connaît', lines.length === 1 && lines[0].User === ME, lines);
 }
 
 // ----- 1. Une table d'une version plus ancienne : Suppr ajoute les colonnes et marque la ligne.
@@ -65,9 +65,9 @@ async function playFirstTrash(run) {
   check('la table de GFS a les deux colonnes de la corbeille, dans les types voulus', types.SupprimeLe === 'DateTime:UTC' && types.SupprimePar === 'Text', types);
   const before = await rowNamed(rest, 'Devis.pdf');
   check('une cellule de date jamais écrite est vide pour Grist (null), pas une date', before.SupprimeLe === null || before.SupprimeLe === 0 || before.SupprimeLe === undefined, before.SupprimeLe);
-  await apply(run, [['RemoveColumn', 'GFS_Files', 'SupprimeLe'], ['RemoveColumn', 'GFS_Files', 'SupprimePar']]);
+  await apply(run, [['RemoveColumn', 'GFS_Fichiers', 'SupprimeLe'], ['RemoveColumn', 'GFS_Fichiers', 'SupprimePar']]);
   const old = await columnTypes(rest);
-  check('la table devient celle d\'une version plus ancienne : sans les deux colonnes, avec ses lignes', !('SupprimeLe' in old) && !('SupprimePar' in old) && (await rest.rows('GFS_Files')).length === 2, old);
+  check('la table devient celle d\'une version plus ancienne : sans les deux colonnes, avec ses lignes', !('SupprimeLe' in old) && !('SupprimePar' in old) && (await rest.rows('GFS_Fichiers')).length === 2, old);
   const tables = await rest.tables();
 
   await rowOf(frame, 'Devis.pdf').click();
@@ -130,7 +130,7 @@ async function playNameTaken(run) {
   await rowOf(frame, 'Devis.pdf').locator('.rb.rs').click();
   const renamed = await said(frame, 'trash.restoredAs', { name: 'Devis.pdf', as: 'Devis (1).pdf' });
   check('« Restaurer » (à la souris) prend un autre nom, et la phrase dit lequel', renamed === t('trash.restoredAs', { name: 'Devis.pdf', as: 'Devis (1).pdf' }), renamed);
-  const rows = await rest.rows('GFS_Files');
+  const rows = await rest.rows('GFS_Fichiers');
   const old = rows.find(row => row.Identifiant === run.devisId);
   const fresh = rows.find(row => row.Nom === 'Devis.pdf');
   check('la table : l\'ancienne ligne porte le nouveau nom et plus de marque, la nouvelle garde « Devis.pdf »', old.Nom === 'Devis (1).pdf' && !marked(old) && fresh && fresh.Identifiant !== run.devisId && !marked(fresh), rows.map(row => [row.Nom, row.SupprimeLe]));
@@ -146,7 +146,7 @@ async function playPurge(run) {
   await frame.getByRole('menuitem', { name: new RegExp(`^${t('trash.move')}`) }).click();
   await said(frame, 'trash.moved', { name: 'Devis (1).pdf' });
   const attachmentsBefore = (await rest.attachments()).length;
-  const rowsBefore = (await rest.rows('GFS_Files')).length;
+  const rowsBefore = (await rest.rows('GFS_Fichiers')).length;
   await openTrash(frame);
   await rowOf(frame, 'Devis (1).pdf').click();
   await page.keyboard.press('Delete');
@@ -158,13 +158,13 @@ async function playPurge(run) {
   await shot(frame, `${TAG}-3-supprimer`);
   await page.keyboard.press('Escape');
   await frame.locator('.mod.ask').waitFor({ state: 'detached' });
-  check('Échap : rien n\'est supprimé', (await rest.rows('GFS_Files')).length === rowsBefore && await sameNames(frame, ['Devis (1).pdf']));
+  check('Échap : rien n\'est supprimé', (await rest.rows('GFS_Fichiers')).length === rowsBefore && await sameNames(frame, ['Devis (1).pdf']));
   await page.keyboard.press('Delete');
   await frame.locator('.mod.ask').waitFor();
   await frame.locator('[data-fk="ask-yes"]').click();
   const purged = await said(frame, 'trash.purged', { name: 'Devis (1).pdf' });
   check('« Supprimer définitivement » le dit', purged === t('trash.purged', { name: 'Devis (1).pdf' }), purged);
-  check('la ligne n\'est plus dans la table ; les autres n\'ont pas bougé', (await rest.rows('GFS_Files')).length === rowsBefore - 1 && !(await rowNamed(rest, 'Devis (1).pdf')) && Boolean(await rowNamed(rest, 'Devis.pdf')) && Boolean(await rowNamed(rest, 'Facture.pdf')));
+  check('la ligne n\'est plus dans la table ; les autres n\'ont pas bougé', (await rest.rows('GFS_Fichiers')).length === rowsBefore - 1 && !(await rowNamed(rest, 'Devis (1).pdf')) && Boolean(await rowNamed(rest, 'Devis.pdf')) && Boolean(await rowNamed(rest, 'Facture.pdf')));
   check('la pièce jointe reste sur le serveur (Grist l\'efface seul au bout de 7 jours)', (await rest.attachments()).length === attachmentsBefore);
   check('la corbeille est vide', JSON.stringify(await waitForNames(frame, [])) === '[]');
   await goHome(frame);
@@ -190,11 +190,11 @@ async function playEmpty(run) {
   await shot(frame, `${TAG}-4-vider`);
   // Pendant que la fenêtre est ouverte, une autre personne met « Contrat.pdf » à la corbeille : la personne ne l'a pas sous les yeux, il doit rester.
   const contract = await rowNamed(rest, 'Contrat.pdf');
-  await apply(run, [['UpdateRecord', 'GFS_Files', contract.id, { SupprimeLe: Math.floor(Date.now() / 1000), SupprimePar: 'autre@example.com' }]]);
+  await apply(run, [['UpdateRecord', 'GFS_Fichiers', contract.id, { SupprimeLe: Math.floor(Date.now() / 1000), SupprimePar: 'autre@example.com' }]]);
   await frame.locator('[data-fk="ask-yes"]').click();
   const emptied = await said(frame, 'trash.emptied', { n: 2 });
   check('la phrase dit combien de fichiers sont partis', emptied === t('trash.emptied', { n: 2 }), emptied);
-  const rows = await rest.rows('GFS_Files');
+  const rows = await rest.rows('GFS_Fichiers');
   check('un seul lot a retiré les deux lignes vues ; la ligne que l\'autre personne vient de supprimer reste, marquée', rows.length === 1 && rows[0].Nom === 'Contrat.pdf' && marked(rows[0]) && rows[0].SupprimePar === 'autre@example.com', rows.map(row => row.Nom));
   check('la liste est relue : la corbeille montre ce fichier-là, avec le nom de l\'autre personne', await sameNames(frame, ['Contrat.pdf']) && await trashCount(frame) === '1');
   await rowOf(frame, 'Contrat.pdf').click();

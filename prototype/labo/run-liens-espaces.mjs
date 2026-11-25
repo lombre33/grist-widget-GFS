@@ -27,7 +27,7 @@ const phase = process.env.PHASE || 'proprietaire';
 const STATE = process.env.LIENS_ESPACES_ETAT || '/tmp/liens-espaces-etat.json';
 const { t } = createI18n(lang);
 const OWNER = 'essai@example.com', EDITOR = 'editor@example.com', VIEWER = 'viewer@example.com';
-const FILES = 'GFS_Files', SHARES = 'GFS_Shares', PLACE = 'GFS_Placement';
+const FILES = 'GFS_Fichiers', SHARES = 'GFS_Shares', PLACE = 'GFS_Placement';
 const SOURCE = 'dossier:achats/Contrats';
 const LINK = 'Contrats achats';
 const shot = (frame, name) => pdfShot(frame, `liens-espaces-${lang}-${scheme}-${name}`);
@@ -106,17 +106,17 @@ async function playOwner(run) {
   say('--- 1. activer le partage : le placement porte les colonnes du lien, les fichiers GFS_Vus ---');
   let frame = await activate(run);
   const placeColumns = (await run.rest.columns(PLACE)).map(column => column.id);
-  check('GFS_Placement porte Lien et Partages', ['Lien', 'Partages'].every(id => placeColumns.includes(id)), placeColumns);
+  check('GFS_Placement porte Lien et Partages', ['Link', 'Shares'].every(id => placeColumns.includes(id)), placeColumns);
   check('la table des fichiers porte GFS_Vus', (await run.rest.columns(FILES)).some(column => column.id === 'GFS_Vus'));
 
   say('--- 2. le décor : deux espaces, le groupe Ventes (editor@), des fichiers dans achats ---');
   const plan = await addFile(run, 'Plan.pdf', 201); const notes = await addFile(run, 'Notes.pdf', 202); const sous = await addFile(run, 'Sous.pdf', 203);
   const interne = await addFile(run, 'Interne.pdf', 204); const memo = await addFile(run, 'Memo.pdf', 205);
   await addFile(run, 'Libre.pdf', 206);
-  const placed = (row, folder) => ['AddRecord', PLACE, null, { Cible: keyOf(row), Espace: 'achats', Dossier: folder }];
-  const set = await apply(run, [['AddRecord', 'GFS_Groups', null, { Nom: 'Ventes', PersonnesIci: EDITOR }], ['AddRecord', 'GFS_Spaces', null, { Cle: 'achats', Nom: 'Achats' }],
-    ['AddRecord', 'GFS_Spaces', null, { Cle: 'ventes', Nom: 'Ventes' }],
-    ['AddRecord', SHARES, null, { Cible: 'espace:achats', Personne: OWNER, Droit: 'ecriture' }], ['AddRecord', SHARES, null, { Cible: 'espace:ventes', Personne: '#Ventes', Droit: 'lecture' }],
+  const placed = (row, folder) => ['AddRecord', PLACE, null, { Target: keyOf(row), Space: 'achats', Folder: folder }];
+  const set = await apply(run, [['AddRecord', 'GFS_Groups', null, { Name: 'Ventes', People: EDITOR }], ['AddRecord', 'GFS_Spaces', null, { Key: 'achats', Name: 'Achats' }],
+    ['AddRecord', 'GFS_Spaces', null, { Key: 'ventes', Name: 'Ventes' }],
+    ['AddRecord', SHARES, null, { Target: 'espace:achats', Person: OWNER, Right: 'ecriture' }], ['AddRecord', SHARES, null, { Target: 'espace:ventes', Person: '#Ventes', Right: 'lecture' }],
     placed(plan, 'Contrats'), placed(notes, 'Contrats'), placed(sous, 'Contrats/Sous'), placed(interne, 'Interne'), placed(memo, '')]);
   check('le décor est écrit', set.status === 200, set.text);
   await page.reload();
@@ -137,10 +137,10 @@ async function playOwner(run) {
   await frame.locator('.mod.pk').waitFor({ state: 'detached', timeout: 20000 });
   await page.waitForTimeout(1500);
   check('la phrase dit ce que les groupes ont', (await toast(frame)).includes(t('slink.right.lecture.short')), await toast(frame));
-  const link = ((await rows(run, PLACE)) || []).find(row => row.Lien === SOURCE);
-  check('le lien est une ligne de placement sans Cible, dans Ventes, avec les groupes qu\'il a ajoutés', link && link.Cible === '' && link.Espace === 'ventes' && link.Dossier === LINK && link.Partages === '#Ventes', link);
-  const given = ((await rows(run, SHARES)) || []).find(row => row.Cible === SOURCE && row.Personne === '#Ventes');
-  check('le droit du groupe Ventes est une ligne de partage ordinaire sur le dossier d\'origine (valide, lecture)', given && given.Droit === 'lecture' && given.Valide === true, given);
+  const link = ((await rows(run, PLACE)) || []).find(row => row.Link === SOURCE);
+  check('le lien est une ligne de placement sans Cible, dans Ventes, avec les groupes qu\'il a ajoutés', link && link.Target === '' && link.Space === 'ventes' && link.Folder === LINK && link.Shares === '#Ventes', link);
+  const given = ((await rows(run, SHARES)) || []).find(row => row.Target === SOURCE && row.Person === '#Ventes');
+  check('le droit du groupe Ventes est une ligne de partage ordinaire sur le dossier d\'origine (valide, lecture)', given && given.Right === 'lecture' && given.Valid === true, given);
 
   say('--- 4. ce que Grist en calcule : qui lit, où le fichier se montre ---');
   const read = async name => fileRow(run, name);
@@ -159,9 +159,9 @@ async function playOwner(run) {
   await linkThrough(frame, { space: 'ventes', folder: '', right: 'ecriture' });
   await frame.locator('.mod.pk').waitFor({ state: 'detached', timeout: 20000 });
   await page.waitForTimeout(1500);
-  const memoLink = ((await rows(run, PLACE)) || []).find(row => row.Lien === keyOf(memo));
-  check('le lien d\'un fichier : une ligne à la racine de Ventes, le droit posé sur le fichier', memoLink && memoLink.Espace === 'ventes' && memoLink.Dossier === '' && memoLink.Partages === '#Ventes' &&
-    ((await rows(run, SHARES)) || []).some(row => row.Cible === keyOf(memo) && row.Personne === '#Ventes' && row.Droit === 'ecriture'), memoLink);
+  const memoLink = ((await rows(run, PLACE)) || []).find(row => row.Link === keyOf(memo));
+  check('le lien d\'un fichier : une ligne à la racine de Ventes, le droit posé sur le fichier', memoLink && memoLink.Space === 'ventes' && memoLink.Folder === '' && memoLink.Shares === '#Ventes' &&
+    ((await rows(run, SHARES)) || []).some(row => row.Target === keyOf(memo) && row.Person === '#Ventes' && row.Right === 'ecriture'), memoLink);
   const memoRow = await read('Memo.pdf');
   check('l\'éditeur écrit Memo.pdf, et le fichier se montre à la racine de Ventes', has(memoRow.GFS_Ecrivains, EDITOR) && has(memoRow.GFS_Vus, 'ventes/'), [memoRow.GFS_Ecrivains, memoRow.GFS_Vus]);
 
@@ -220,17 +220,17 @@ async function playEditor(run, writes) {
   }
   const interne = await tryEdit(run, 'Notes.pdf', 'Notes truqué.pdf');
   check(writes ? 'Notes.pdf, du même dossier, se modifie aussi' : 'Notes.pdf, du dossier lié en lecture, ne se modifie pas', writes ? interne.changed : (interne.refused && !interne.changed), interne.text);
-  const forged = await apply(run, [['AddRecord', PLACE, null, { Cible: '', Espace: 'ventes', Dossier: 'Volé', Lien: 'dossier:achats/Interne', Partages: '' }]]);
+  const forged = await apply(run, [['AddRecord', PLACE, null, { Target: '', Space: 'ventes', Folder: 'Volé', Link: 'dossier:achats/Interne', Shares: '' }]]);
   check('il ne forge pas de lien (le placement n\'est écrit que par les propriétaires)', refused(forged), forged.text);
-  const link = ((await rows(run, PLACE)) || []).find(row => row.Lien === SOURCE);
-  check('il lit le lien de son espace', link && link.Espace === 'ventes', link);
+  const link = ((await rows(run, PLACE)) || []).find(row => row.Link === SOURCE);
+  check('il lit le lien de son espace', link && link.Space === 'ventes', link);
   const removeLink = await apply(run, [['RemoveRecord', PLACE, state.linkId]]);
   check('il ne retire pas le lien', refused(removeLink), removeLink.text);
-  const widen = await apply(run, [['UpdateRecord', SHARES, state.shared, { Droit: 'admin' }]]);
+  const widen = await apply(run, [['UpdateRecord', SHARES, state.shared, { Right: 'admin' }]]);
   check('il ne change pas le droit que le lien a posé (la ligne de partage, adressée par son numéro, n\'est pas à lui)', refused(widen), widen.text);
   const drop = await apply(run, [['RemoveRecord', SHARES, state.shared]]);
   check('il ne retire pas non plus cette ligne de partage', refused(drop), drop.text);
-  await apply(run, [['AddRecord', SHARES, null, { Cible: keyOfIdentifier(state.interne), Personne: EDITOR, Droit: 'ecriture' }]]);
+  await apply(run, [['AddRecord', SHARES, null, { Target: keyOfIdentifier(state.interne), Person: EDITOR, Right: 'ecriture' }]]);
   const stillBlind = (await fileNames(run)).includes('Interne.pdf');
   check('un faux partage de sa main sur Interne.pdf ne lui donne pas le fichier', !stillBlind, await fileNames(run));
   const column = await apply(run, [['ModifyColumn', FILES, 'GFS_Vus', { formula: '["achats/Interne"]' }]]);
@@ -253,10 +253,10 @@ async function playRaise(run) {
   await row.locator('button.lvl').click();
   await frame.getByRole('menuitemradio', { name: new RegExp(t('share.right.ecriture')) }).first().click({ force: true });
   await page.waitForTimeout(1500);
-  const given = ((await rows(run, SHARES)) || []).find(item => item.Cible === SOURCE && item.Personne === '#Ventes');
-  check('la ligne du groupe est maintenant en écriture, c\'est la même ligne que le lien a posée', given && given.Droit === 'ecriture', given);
+  const given = ((await rows(run, SHARES)) || []).find(item => item.Target === SOURCE && item.Person === '#Ventes');
+  check('la ligne du groupe est maintenant en écriture, c\'est la même ligne que le lien a posée', given && given.Right === 'ecriture', given);
   const forged = ((await rows(run, SHARES)) || []).filter(item => item.Auteur === EDITOR);
-  check('ce que l\'éditeur a pu ajouter à son nom (un faux partage) ne vaut rien : aucune ligne valide de sa main', forged.every(item => item.Valide === false), forged.map(item => [item.Cible, item.Personne, item.Valide]));
+  check('ce que l\'éditeur a pu ajouter à son nom (un faux partage) ne vaut rien : aucune ligne valide de sa main', forged.every(item => item.Valid === false), forged.map(item => [item.Target, item.Person, item.Valid]));
   const plan = await fileRow(run, 'Plan.pdf');
   check('Grist calcule : l\'éditeur écrit Plan.pdf', has(plan.GFS_Ecrivains, EDITOR), plan.GFS_Ecrivains);
   await shot(frame, '6-releve');
@@ -270,9 +270,9 @@ async function playViewer(run) {
   check('il ne lit aucun fichier d\'achats ni de Ventes', !seen.some(name => ['Plan.pdf', 'Notes.pdf', 'Sous.pdf', 'Interne.pdf', 'Memo.pdf'].includes(name)), seen);
   const links = await rows(run, PLACE);
   check('il ne lit pas les liens (le placement est caché à qui n\'est pas dans l\'espace)', !links || links.length === 0, links);
-  const forged = await apply(run, [['AddRecord', PLACE, null, { Cible: '', Espace: 'ventes', Dossier: 'Volé', Lien: SOURCE }]]);
+  const forged = await apply(run, [['AddRecord', PLACE, null, { Target: '', Space: 'ventes', Folder: 'Volé', Link: SOURCE }]]);
   check('il ne forge pas de lien', refused(forged), forged.text);
-  const widen = await apply(run, [['UpdateRecord', SHARES, JSON.parse(readFileSync(STATE, 'utf8')).shared, { Droit: 'admin' }]]);
+  const widen = await apply(run, [['UpdateRecord', SHARES, JSON.parse(readFileSync(STATE, 'utf8')).shared, { Right: 'admin' }]]);
   check('il ne change pas le droit posé par le lien', refused(widen), widen.text);
   await page.waitForTimeout(800);
   check('l\'explorateur ne lui montre aucun espace (pas de racine « Espaces »)', (await frame.locator('.tr-row[data-path="Espaces"]').count()) === 0 && (await frame.locator('.ls-row').count()) > 0, await folders(frame));
@@ -292,8 +292,8 @@ async function playRemoval(run) {
   await frame.locator('[data-fk="ask-yes"]').click();
   await page.waitForTimeout(2000);
   const place = (await rows(run, PLACE)) || [];
-  check('la ligne du lien est partie ; le lien de Memo.pdf reste', !place.some(row => row.Lien === SOURCE) && place.some(row => row.Lien !== '' && row.Lien !== SOURCE), place.map(row => [row.Lien, row.Espace]));
-  check('le droit que le lien avait posé est retiré, celui du lien de Memo.pdf reste', !((await rows(run, SHARES)) || []).some(row => row.Cible === SOURCE) && ((await rows(run, SHARES)) || []).some(row => row.Personne === '#Ventes' && row.Cible.startsWith('gfs-fichiers:')));
+  check('la ligne du lien est partie ; le lien de Memo.pdf reste', !place.some(row => row.Link === SOURCE) && place.some(row => row.Link !== '' && row.Link !== SOURCE), place.map(row => [row.Link, row.Space]));
+  check('le droit que le lien avait posé est retiré, celui du lien de Memo.pdf reste', !((await rows(run, SHARES)) || []).some(row => row.Target === SOURCE) && ((await rows(run, SHARES)) || []).some(row => row.Person === '#Ventes' && row.Target.startsWith('gfs-fichiers:')));
   const plan = await fileRow(run, 'Plan.pdf');
   check('les fichiers sont intacts, et l\'éditeur ne lit plus Plan.pdf (calculé par Grist)', plan && !has(plan.GFS_Lecteurs, EDITOR) && has(plan.GFS_Lecteurs, OWNER), plan && plan.GFS_Lecteurs);
   const memo = await fileRow(run, 'Memo.pdf');

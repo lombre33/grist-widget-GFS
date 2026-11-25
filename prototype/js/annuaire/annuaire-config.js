@@ -2,8 +2,8 @@
 // personne (js/files/own-table.js). Ce module ne parle ni à Grist ni à la page : il dit ce que la table contient et lit, sans jamais échouer, ce qu'une
 // personne ou une version plus ancienne y a écrit.
 //
-// Une ligne : `Nom` (le nom de l'annuaire), `Table` (la table des personnes, celle du document), `Config` (le reste, en JSON : voir `readConfig`) et `Parent`
-// (le numéro de ligne de l'annuaire d'origine pour un sous-annuaire, vide pour un annuaire principal) et `Fiches` (la copie des personnes d'un sous-annuaire,
+// Une ligne : `Name` (le nom de l'annuaire), `Table` (la table des personnes, celle du document), `Config` (le reste, en JSON : voir `readConfig`) et `Parent`
+// (le numéro de ligne de l'annuaire d'origine pour un sous-annuaire, vide pour un annuaire principal) et `Copy` (la copie des personnes d'un sous-annuaire,
 // vide pour un annuaire principal : js/annuaire/annuaire-sub.js). Les personnes d'un annuaire principal restent dans leur table : GFS n'y écrit rien et ne la
 // copie pas (cahier 2, « deux zones ») ; seule la copie d'un sous-annuaire, que Grist verrouille (js/sharing/sharing-model.js), en garde une. Un niveau de la
 // hiérarchie est une colonne au choix (décision du porteur, 25/11), éventuellement après des références : son `path` liste les colonnes à suivre depuis la
@@ -14,7 +14,7 @@ import { listOf } from '../sharing/direct-shares.js';
 
 export { ANNUAIRES_TABLE };
 export const ANNUAIRES_COLUMNS = Object.freeze([
-  { id: 'Nom', type: 'Text' }, { id: 'Table', type: 'Text' }, { id: 'Config', type: 'Text' }, { id: 'Parent', type: 'Text' }, { id: 'Fiches', type: 'Text' },
+  { id: 'Name', type: 'Text' }, { id: 'Table', type: 'Text' }, { id: 'Config', type: 'Text' }, { id: 'Parent', type: 'Text' }, { id: 'Copy', type: 'Text' },
 ]);
 export const CONFIG_VERSION = 1;
 
@@ -137,16 +137,16 @@ export function annuairesOf(data) {
   const cell = (column, i) => (Array.isArray(data[column]) ? data[column][i] : undefined);
   const found = [];
   rows.forEach((row, i) => {
-    const name = text(cell('Nom', i));
+    const name = text(cell('Name', i));
     const table = text(cell('Table', i));
     if (name && table) found.push({ row, name, table, config: readConfig(cell('Config', i)), parent: text(cell('Parent', i)),
-      fiches: String(cell('Fiches', i) ?? ''), access: { writers: addressesIn(cell('GFS_Ecrivains', i)), admins: addressesIn(cell('GFS_Admins', i)) } });
+      fiches: String(cell('Copy', i) ?? ''), access: { writers: addressesIn(cell('GFS_Ecrivains', i)), admins: addressesIn(cell('GFS_Admins', i)) } });
   });
   return found;
 }
 
 // Le dossier d'un nouvel annuaire, tel que `AddRecord` le reçoit.
-export const newRecord = (name, table, config) => ({ Nom: text(name), Table: text(table), Config: writeConfig(config), Parent: '' });
+export const newRecord = (name, table, config) => ({ Name: text(name), Table: text(table), Config: writeConfig(config), Parent: '' });
 
 // Les actions de Grist qui créent ou réécrivent une ligne : `AddRecord` (la table, un identifiant nul, les valeurs) et `UpdateRecord`.
 export const addAction = (tableId, record) => ['AddRecord', tableId, null, record];

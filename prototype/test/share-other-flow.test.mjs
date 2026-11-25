@@ -33,7 +33,7 @@ test('le nom de l\'export est celui du fichier sans « .pdf » ; la sélection e
   assert.equal(exportName(FILE), 'Facture 2026');
   assert.equal(exportName({ id: 'x', name: '.pdf' }), '.pdf');
   const [selection] = selectionOf(FILE);
-  assert.equal(selection.table, 'GFS_Files');
+  assert.equal(selection.table, 'GFS_Fichiers');
   assert.deepEqual(selection.filter, { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: ['abc123'] }] });
   assert.ok(SENT_COLUMNS.includes('Contenu') && SENT_COLUMNS.includes('Identifiant'));
   assert.ok(!SENT_COLUMNS.includes('SupprimeLe') && !SENT_COLUMNS.includes('SupprimePar'));

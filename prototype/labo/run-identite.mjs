@@ -7,7 +7,7 @@
 //   3. Ben ouvre le même document : il ne voit rien d'Ana ; ses favoris et ses dossiers sont à lui, la ligne d'Ana ne bouge pas.
 //   4. Ana revient : ses favoris, pas ceux de Ben.
 //   5. Les favoris et dossiers qu'une personne a dans Publipostage+ (rangement propre de l'app, par adresse) apparaissent aussi dans GFS.
-//   6. Une table d'avant (sans la colonne `Adresse`) la reçoit, à formule déclenchée, avant la sonde.
+//   6. Une table d'avant (sans la colonne `Address`) la reçoit, à formule déclenchée, avant la sonde.
 //   7. Une personne que Grist ne connaît pas (l'anonyme de Grist, ou aucune adresse) : rangement commun au document, comme avant.
 //   8. Document en lecture seule : aucune écriture du tout, pas de sonde ; épingler dit pourquoi.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
@@ -58,9 +58,9 @@ const idOf = async name => { const data = await table('Publipostage_Modeles'); r
 const lines = async ({ all = false } = {}) => {
   const state = await lab.rangement(frame);
   if (!state.table) return null;
-  return all ? state.lines : state.lines.filter(line => !String(line.Utilisateur).startsWith('@'));
+  return all ? state.lines : state.lines.filter(line => !String(line.User).startsWith('@'));
 };
-const linesOf = async who => ((await lines()) || []).filter(line => line.Utilisateur === who);
+const linesOf = async who => ((await lines()) || []).filter(line => line.User === who);
 // Ce que le moteur a reçu qui touche la table de GFS : « Verbe Table [Utilisateur] ».
 const gfsActions = async () => (await lab.actions()).filter(action => / GFS_Filing/.test(action));
 const SONDE = 'AddRecord GFS_Filing [@sonde]';
@@ -103,13 +103,13 @@ check('l\'étoile s\'allume après « Créer la table »', Boolean(lit));
 const sequence = await gfsActions();
 check('le moteur reçoit, dans l\'ordre : la table, la sonde, son retrait, puis la ligne d\'Ana à son adresse',
   JSON.stringify(sequence) === JSON.stringify(['AddTable GFS_Filing', SONDE, 'RemoveRecord GFS_Filing', `AddRecord GFS_Filing [${ANA.Email}]`]), sequence);
-const adresse = await COLUMN('Adresse');
+const adresse = await COLUMN('Address');
 check('la colonne Adresse est une formule déclenchée : à la création d\'une ligne seulement, `user.Email` pour la ligne-sonde', adresse && adresse.type === 'Text' && adresse.isFormula === false
   && /user\.Email/.test(adresse.formula) && /@sonde/.test(adresse.formula) && adresse.recalcWhen === 0 && !adresse.recalcDeps, adresse);
 const first = await lines({ all: true });
-check('la ligne d\'Ana est à son adresse, favori, sans dossier ; plus aucune ligne-sonde', first.length === 1 && first[0].Utilisateur === ANA.Email && first[0].App === 'publipostage'
-  && first[0].Fichier === contractId && first[0].Favori === true && first[0].Dossier === '', first);
-check('Grist n\'a rien inscrit dans Adresse pour la ligne d\'Ana (seule la ligne-sonde en reçoit, et elle est partie)', first.every(line => !line.Adresse), first);
+check('la ligne d\'Ana est à son adresse, favori, sans dossier ; plus aucune ligne-sonde', first.length === 1 && first[0].User === ANA.Email && first[0].App === 'publipostage'
+  && first[0].File === contractId && first[0].Favorite === true && first[0].Folder === '', first);
+check('Grist n\'a rien inscrit dans Adresse pour la ligne d\'Ana (seule la ligne-sonde en reçoit, et elle est partie)', first.every(line => !line.Address), first);
 const learned = await info();
 check('GFS connaît Ana : la barre du bas ne parle plus de rangement commun, la liste est relue pour elle', PERSONAL.test(learned) && (await favCount()) === 1, learned);
 await shot('2-personnel');
@@ -135,7 +135,7 @@ const timings = await frame.evaluate(async () => {
   const ms = [];
   for (let i = 0; i < 3; i++) {
     const start = performance.now();
-    const added = await grist.docApi.applyUserActions([['AddRecord', 'GFS_Filing', null, { Utilisateur: '@sonde' }]]);
+    const added = await grist.docApi.applyUserActions([['AddRecord', 'GFS_Filing', null, { User: '@sonde' }]]);
     await grist.docApi.fetchTable('GFS_Filing');
     await grist.docApi.applyUserActions([['RemoveRecord', 'GFS_Filing', added.retValues[0]]]);
     ms.push(Math.round(performance.now() - start));
@@ -163,9 +163,9 @@ await page.keyboard.press('Enter');
 const benMoved = await until(async () => (await folderNames()).includes('Dossier de Ben') && !(await fileNames()).includes(rent));
 check('Ben range ce fichier dans un nouveau dossier : il le voit, à la racine', benMoved, { dossiers: await folderNames(), fichiers: await fileNames() });
 const bens = await linesOf(BEN.Email);
-check('la ligne de Ben est à son adresse : favori et dossier', bens.length === 1 && bens[0].Fichier === rentId && bens[0].Favori === true && bens[0].Dossier === 'Dossier de Ben', bens);
+check('la ligne de Ben est à son adresse : favori et dossier', bens.length === 1 && bens[0].File === rentId && bens[0].Favorite === true && bens[0].Folder === 'Dossier de Ben', bens);
 check('la ligne d\'Ana n\'a pas bougé', JSON.stringify(await linesOf(ANA.Email)) === anaBefore);
-check('aucune ligne-sonde ne reste dans la table, aucune ligne sans personne', (await lines({ all: true })).every(line => line.Utilisateur !== '@sonde' && line.Utilisateur !== ''));
+check('aucune ligne-sonde ne reste dans la table, aucune ligne sans personne', (await lines({ all: true })).every(line => line.User !== '@sonde' && line.User !== ''));
 await shot('4-ben');
 
 // ----- 4. Ana revient.
@@ -199,12 +199,12 @@ check('GFS n\'a rien écrit dans le rangement de Publipostage+', JSON.stringify(
 
 // ----- 6. Une table d'avant, sans la colonne Adresse.
 say('\n6. Une table d\'avant, sans la colonne Adresse');
-await frame.evaluate(() => grist.docApi.applyUserActions([['RemoveColumn', 'GFS_Filing', 'Adresse']]));
-check('au départ, la colonne Adresse n\'y est plus', (await COLUMN('Adresse')) === null);
+await frame.evaluate(() => grist.docApi.applyUserActions([['RemoveColumn', 'GFS_Filing', 'Address']]));
+check('au départ, la colonne Adresse n\'y est plus', (await COLUMN('Address')) === null);
 await open(ANA);
 const oldTable = await gfsActions();
 check('à l\'ouverture, la colonne est ajoutée avant la sonde, qui passe', JSON.stringify(oldTable) === JSON.stringify(['AddColumn GFS_Filing', SONDE, 'RemoveRecord GFS_Filing']), oldTable);
-const back = await COLUMN('Adresse');
+const back = await COLUMN('Address');
 check('la colonne est revenue à formule déclenchée', back && back.isFormula === false && /user\.Email/.test(back.formula) && back.recalcWhen === 0, back);
 check('Ana est reconnue : son favori, la barre du bas sans « commun »', (await starOn(contract)) && PERSONAL.test(await info()));
 
@@ -220,7 +220,7 @@ await shot('6-commun');
 await row(contract).hover();
 await row(contract).locator('.rb.pin').click();
 await until(() => starOn(contract));
-check('épingler y range dans le rangement commun : la ligne est sans personne, comme avant l\'adresse', (await linesOf('')).length === 1 && (await linesOf('')).every(line => line.Fichier === contractId && line.Favori === true), await lines());
+check('épingler y range dans le rangement commun : la ligne est sans personne, comme avant l\'adresse', (await linesOf('')).length === 1 && (await linesOf('')).every(line => line.File === contractId && line.Favorite === true), await lines());
 await row(contract).locator('.rb.pin').click();
 await until(async () => !(await starOn(contract)));
 

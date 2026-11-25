@@ -133,7 +133,7 @@ test('`show` redit la dernière phrase dans la langue qui vaut maintenant, sans 
 });
 
 // La table du rangement telle que `fetchTable` la rend : les colonnes que GFS lit, sans une ligne.
-const rangementTable = () => ({ id: [], Utilisateur: [], App: [], Fichier: [], Favori: [], Dossier: [], Valeur: [] });
+const rangementTable = () => ({ id: [], User: [], App: [], File: [], Favorite: [], Folder: [], Value: [] });
 
 test('la lecture dit au rangement le nom que le document donne à sa table (ou qu\'elle manque) : un geste de rangement le sait sans la relire', async () => {
   const without = bench();

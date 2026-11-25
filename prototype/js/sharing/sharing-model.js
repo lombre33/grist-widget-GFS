@@ -3,7 +3,7 @@
 // fichiers, en tirent les listes que lisent les règles (une règle ne lit que `rec` et `newRec` : faits vérifiés, 46 et 55). Ce module ne touche pas à Grist :
 // il rend les actions à envoyer en UNE `applyUserActions` et les lignes à écrire.
 //
-// Le premier lot couvre les fichiers que GFS garde (`GFS_Files`, les PDF : une table de GFS, sans app) : « lecture » et « écriture » et « administration ».
+// Le premier lot couvre les fichiers que GFS garde (`GFS_Fichiers`, les PDF : une table de GFS, sans app) : « lecture » et « écriture » et « administration ».
 // « Commentaires » (ceux des apps) et « dépôt seul » attendent leurs tables ; « peut télécharger » est un confort de GFS (le bouton), jamais une protection :
 // qui lit la pièce jointe peut la copier (contrats 11.1, point 8).
 
@@ -35,7 +35,7 @@ export const STAMP = 'GFS_Auteur';
 export const FILES_TARGET = Object.freeze({ table: FILES_TABLE, prefix: 'gfs-fichiers:', id: 'Identifiant', author: STAMP, stamped: true, open: '' });
 export const TARGETS = Object.freeze([FILES_TARGET]);
 // Les annuaires (js/files/annuaire-files.js) : un annuaire principal reste ouvert comme avant (`Parent` vide) ; un sous-annuaire (`Parent` dit son annuaire
-// d'origine) n'est lu que de ceux à qui il est partagé : sa ligne porte la copie des personnes (`Fiches`), donc le verrou de Grist est celui de la ligne.
+// d'origine) n'est lu que de ceux à qui il est partagé : sa ligne porte la copie des personnes (`Copy`), donc le verrou de Grist est celui de la ligne.
 export const ANNUAIRES_TARGET = Object.freeze({ table: ANNUAIRES_TABLE, prefix: `${ANNUAIRES_APP}:`, id: null, author: STAMP, stamped: true,
   open: 'not rec.Parent' });
 
@@ -63,37 +63,37 @@ const findFile = target => (target.id
   : `  raw = cible[${target.prefix.length}:]\n  found = ${target.table}.lookupOne(id=int(raw)) if raw.isdigit() else None`);
 
 const column = (id, type, extra = {}) => Object.freeze({ id, type, ...extra });
-// `Auteur` et `AuteurAcces` : écrits par Grist à la création (formule déclenchée sur `user`), jamais choisis par la personne.
+// `Author` et `AuthorAccess` : écrits par Grist à la création (formule déclenchée sur `user`), jamais choisis par la personne.
 const stamped = (id, formula) => column(id, 'Text', { isFormula: false, formula, recalcWhen: 0, recalcDeps: null });
 const formula = (id, type, body) => column(id, type, { isFormula: true, formula: body });
 
-// La table de partages. `Valide1` : l'auteur est propriétaire. `AdminsBase` : l'auteur du fichier visé et les administrateurs que des propriétaires ont nommés,
-// pour la cible. `Valide` : le partage vient d'un propriétaire ou d'un administrateur de la cible (deux niveaux : une formule ne peut pas dépendre
-// d'elle-même). `AdminsCible` : ceux qui administrent la cible (les règles s'y fient).
+// La table de partages. `AuthorOwner` : l'auteur est propriétaire. `AdminsBase` : l'auteur du fichier visé et les administrateurs que des propriétaires ont
+// nommés, pour la cible. `Valid` : le partage vient d'un propriétaire ou d'un administrateur de la cible (deux niveaux : une formule ne peut pas dépendre
+// d'elle-même). `AdminsTarget` : ceux qui administrent la cible (les règles s'y fient).
 export function shareColumns(targets = TARGETS) {
   const author = targets.map(target =>
     `if cible.startswith("${target.prefix}"):\n${findFile(target)}\n  if found:\n    out.add(str(found.${target.author}).strip().lower())`).join('\n');
   return [
-    column('Cible', 'Text'), column('Personne', 'Text'), column('Droit', 'Text'), column('Telecharger', 'Bool'), column('Fin', 'Date'),
-    stamped('Auteur', 'user.Email'), stamped('AuteurAcces', 'str(user.Access)'),
-    formula('PersonneL', 'Text', 'str($Personne or "").strip().lower()'),
-    formula('Actif', 'Bool', 'not $Fin or $Fin >= TODAY()'),
-    formula('Valide1', 'Bool', 'str($AuteurAcces).lower() in ("owners", "owner")'),
+    column('Target', 'Text'), column('Person', 'Text'), column('Right', 'Text'), column('Download', 'Bool'), column('End', 'Date'),
+    stamped('Author', 'user.Email'), stamped('AuthorAccess', 'str(user.Access)'),
+    formula('PersonL', 'Text', 'str($Person or "").strip().lower()'),
+    formula('Active', 'Bool', 'not $End or $End >= TODAY()'),
+    formula('AuthorOwner', 'Bool', 'str($AuthorAccess).lower() in ("owners", "owner")'),
     formula('AdminsBase', 'Any', [
-      'cible = str($Cible)', 'out = set()',
+      'cible = str($Target)', 'out = set()',
       author,
       // Le dossier d'une personne dans « Moi » (`dossier:moi:<adresse>/<chemin>`) : la personne en est l'administratrice, sans propriétaire.
       `if cible.startswith("${PERSONAL_PREFIX}"):`,
       `  out.add(cible[${PERSONAL_PREFIX.length}:].split("/")[0].strip().lower())`,
-      'for p in Partages.lookupRecords(Droit="admin"):',
-      '  if p.Valide1 and p.Actif and p.Cible in (cible, "*"):',
+      'for p in Partages.lookupRecords(Right="admin"):',
+      '  if p.AuthorOwner and p.Active and p.Target in (cible, "*"):',
       adminsOf('    '),
       'return tuple(sorted(out))'].filter(Boolean).join('\n').replace(/Partages\./g, `${SHARES_TABLE}.`)),
-    formula('Valide', 'Bool', '$Valide1 or str($Auteur).strip().lower() in $AdminsBase'),
-    formula('AdminsCible', 'Any', [
+    formula('Valid', 'Bool', '$AuthorOwner or str($Author).strip().lower() in $AdminsBase'),
+    formula('AdminsTarget', 'Any', [
       'out = set($AdminsBase)',
-      `for p in ${SHARES_TABLE}.lookupRecords(Droit="admin"):`,
-      '  if p.Valide and p.Actif and p.Cible in (str($Cible), "*"):',
+      `for p in ${SHARES_TABLE}.lookupRecords(Right="admin"):`,
+      '  if p.Valid and p.Active and p.Target in (str($Target), "*"):',
       adminsOf('    '),
       'return tuple(sorted(out))'].join('\n')),
   ];
@@ -102,15 +102,15 @@ export function shareColumns(targets = TARGETS) {
 // Ajoute à `out` ceux qu'une ligne `admin` désigne : une personne, ou les membres d'un groupe (« Administrer » comme une personne, choix du porteur, 13/11).
 // Une catégorie (« @ ») n'administre jamais : « tous les éditeurs » ne change pas les partages d'un fichier.
 const adminsOf = indent => [
-  'if p.PersonneL.startswith("#"):',
-  `  g = ${GROUPS_TABLE}.lookupOne(NomL=p.PersonneL[1:])`,
-  '  out.update(list(g.Membres or ()) if g else [])',
-  'elif p.PersonneL and not p.PersonneL.startswith("@"):',
-  '  out.add(p.PersonneL)'].map(line => indent + line).join('\n');
+  'if p.PersonL.startswith("#"):',
+  `  g = ${GROUPS_TABLE}.lookupOne(NameL=p.PersonL[1:])`,
+  '  out.update(list(g.Members or ()) if g else [])',
+  'elif p.PersonL and not p.PersonL.startswith("@"):',
+  '  out.add(p.PersonL)'].map(line => indent + line).join('\n');
 
-// Les groupes (contrats 11.7, point 13, lot 3) : `GFS_Groups`, une ligne par groupe. Un groupe créé dans GFS garde ses adresses dans `PersonnesIci` (une par
-// ligne) ; un groupe lu dans une table du document porte la table et les deux colonnes (`Source`, `SourceEmail`, `SourceGroupe`) et `Membres` les relit
-// (formule : une règle de Grist ne lit pas une autre table, les colonnes d'aide de chaque fichier lisent `Membres`). Un partage cible un groupe par `#nom`. Les
+// Les groupes (contrats 11.7, point 13, lot 3) : `GFS_Groups`, une ligne par groupe. Un groupe créé dans GFS garde ses adresses dans `People` (une par
+// ligne) ; un groupe lu dans une table du document porte la table et les deux colonnes (`Source`, `SourceEmail`, `SourceGroup`) et `Members` les relit
+// (formule : une règle de Grist ne lit pas une autre table, les colonnes d'aide de chaque fichier lisent `Members`). Un partage cible un groupe par `#nom`. Les
 // noms de table et de colonne sont des identifiants Grist, vérifiés avant d'entrer dans une formule.
 export const GROUPS_TABLE = 'GFS_Groups';
 export const GROUP_PREFIX = '#';
@@ -122,33 +122,33 @@ export const isIdent = text => IDENT.test(String(text ?? ''));
 export function sourcesOf(rows) {
   const seen = new Map();
   for (const row of rows || []) {
-    if (!row.Source || !isIdent(row.Source) || !isIdent(row.SourceEmail) || !isIdent(row.SourceGroupe)) continue;
-    seen.set(`${row.Source}/${row.SourceEmail}/${row.SourceGroupe}`, { table: row.Source, email: row.SourceEmail, group: row.SourceGroupe });
+    if (!row.Source || !isIdent(row.Source) || !isIdent(row.SourceEmail) || !isIdent(row.SourceGroup)) continue;
+    seen.set(`${row.Source}/${row.SourceEmail}/${row.SourceGroup}`, { table: row.Source, email: row.SourceEmail, group: row.SourceGroup });
   }
   return [...seen.values()];
 }
 
 const membersFormula = sources => [
-  'out = set(m.strip().lower() for m in str($PersonnesIci or "").replace(",", "\\n").split("\\n") if m.strip())',
+  'out = set(m.strip().lower() for m in str($People or "").replace(",", "\\n").split("\\n") if m.strip())',
   ...sources.filter(source => isIdent(source.table) && isIdent(source.email) && isIdent(source.group)).map(source =>
-    `if $Source == "${source.table}":\n  for r in ${source.table}.lookupRecords(${source.group}=$Nom):\n    out.add(str(r.${source.email} or "").strip().lower())`),
+    `if $Source == "${source.table}":\n  for r in ${source.table}.lookupRecords(${source.group}=$Name):\n    out.add(str(r.${source.email} or "").strip().lower())`),
   'out.discard("")', 'return tuple(sorted(out))'].join('\n');
 
 export const groupColumns = (sources = []) => [
-  column('Nom', 'Text'), formula('NomL', 'Text', 'str($Nom or "").strip().lower()'), column('PersonnesIci', 'Text'),
-  column('Source', 'Text'), column('SourceEmail', 'Text'), column('SourceGroupe', 'Text'),
-  formula('Membres', 'Any', membersFormula(sources)), formula('Nb', 'Int', 'len($Membres or ())'),
+  column('Name', 'Text'), formula('NameL', 'Text', 'str($Name or "").strip().lower()'), column('People', 'Text'),
+  column('Source', 'Text'), column('SourceEmail', 'Text'), column('SourceGroup', 'Text'),
+  formula('Members', 'Any', membersFormula(sources)), formula('Count', 'Int', 'len($Members or ())'),
 ];
 
 // Les règles de la table des groupes : les propriétaires font tout ; les éditeurs lisent le nom, la source et le nombre (pour proposer un groupe), jamais les
 // adresses ; le reste est refusé.
-export const GROUP_PUBLIC = 'Nom,NomL,Nb,Source';
+export const GROUP_PUBLIC = 'Name,NameL,Count,Source';
 export const groupRules = () => [rule('user.Access in [OWNER]', '+CRUD', 'les propriétaires tiennent les groupes'),
   rule('', '-CRUD', 'les adresses d’un groupe ne se lisent que des propriétaires')];
 export const groupPublicRules = () => [rule('user.Access in [EDITOR]', '+R', 'un éditeur voit le nom d’un groupe et combien de personnes il compte')];
 
-// Le plan d'un changement de sources : la formule de `Membres` relue avec `sources`.
-export const planGroupSources = sources => ({ ok: true, actions: [['ModifyColumn', GROUPS_TABLE, 'Membres', { formula: membersFormula(sources) }]] });
+// Le plan d'un changement de sources : la formule de `Members` relue avec `sources`.
+export const planGroupSources = sources => ({ ok: true, actions: [['ModifyColumn', GROUPS_TABLE, 'Members', { formula: membersFormula(sources) }]] });
 
 // Les espaces (contrats 11.7, point 13, lot 4 ; décision du porteur du 09/11, comme Google Drive) : `GFS_Spaces` (une ligne par espace partagé ; l'accès à
 // l'espace passe par des groupes, des lignes de partage dont la cible est `espace:<clé>`) et `GFS_Placement` (quel fichier est dans quel espace, et dans quel
@@ -165,22 +165,22 @@ export const personalTarget = (identity, path) => folderTarget(`${PERSONAL_PREFI
 export const folderTarget = (key, path) => `dossier:${key}/${String(path || '').split('/').filter(Boolean).join('/')}`;
 const POSITIVE = '("lecture", "ecriture", "admin")';
 
-export const spaceColumns = () => [column('Cle', 'Text'), column('Nom', 'Text'), formula('Voit', 'Any', [
+export const spaceColumns = () => [column('Key', 'Text'), column('Name', 'Text'), formula('Sees', 'Any', [
   'out = set()',
-  `for p in ${SHARES_TABLE}.lookupRecords(Cible="espace:" + str($Cle)):`,
-  `  if p.Valide and p.Actif and p.Droit in ${POSITIVE}:`,
-  '    if p.PersonneL.startswith("#"):',
-  `      g = ${GROUPS_TABLE}.lookupOne(NomL=p.PersonneL[1:])`,
-  '      out.update(list(g.Membres or ()) if g else [])',
-  '    elif p.PersonneL and not p.PersonneL.startswith("@"):',
-  '      out.add(p.PersonneL)',
+  `for p in ${SHARES_TABLE}.lookupRecords(Target="espace:" + str($Key)):`,
+  `  if p.Valid and p.Active and p.Right in ${POSITIVE}:`,
+  '    if p.PersonL.startswith("#"):',
+  `      g = ${GROUPS_TABLE}.lookupOne(NameL=p.PersonL[1:])`,
+  '      out.update(list(g.Members or ()) if g else [])',
+  '    elif p.PersonL and not p.PersonL.startswith("@"):',
+  '      out.add(p.PersonL)',
   'return tuple(sorted(out))'].join('\n'))];
-// Un lien (contrats 11.7, point 13.o) est une ligne de placement sans `Cible` (comme un dossier vide d'espace) qui porte en plus `Lien` (la cible vue d'un
+// Un lien (contrats 11.7, point 13.o) est une ligne de placement sans `Target` (comme un dossier vide d'espace) qui porte en plus `Link` (la cible vue d'un
 // autre
-// espace : un fichier ou `dossier:<clé>/<chemin>`) et `Partages` (les groupes à qui le lien a donné un droit, `#nom` séparés par une virgule).
-export const PLACE_LINK_COLUMNS = Object.freeze(['Lien', 'Partages']);
-export const placeColumns = () => [column('Cible', 'Text'), column('Espace', 'Text'), column('Dossier', 'Text'),
-  formula('Voit', 'Any', `${SPACES_TABLE}.lookupOne(Cle=$Espace).Voit or ()`), ...PLACE_LINK_COLUMNS.map(id => column(id, 'Text'))];
+// espace : un fichier ou `dossier:<clé>/<chemin>`) et `Shares` (les groupes à qui le lien a donné un droit, `#nom` séparés par une virgule).
+export const PLACE_LINK_COLUMNS = Object.freeze(['Link', 'Shares']);
+export const placeColumns = () => [column('Target', 'Text'), column('Space', 'Text'), column('Folder', 'Text'),
+  formula('Sees', 'Any', `${SPACES_TABLE}.lookupOne(Key=$Space).Sees or ()`), ...PLACE_LINK_COLUMNS.map(id => column(id, 'Text'))];
 
 // Le dossier que l'auteur du fichier lui a donné dans « Moi » (une ligne de `GFS_Filing` à son adresse, pour ce fichier ; rien si le fichier n'y est pas
 // rangé) : le calcul des droits le lit, et c'est aussi ce qui dit à GFS qu'un document partagé avant ce lot est à mettre à jour.
@@ -188,9 +188,9 @@ function folderFormula(target) {
   const app = target.prefix.slice(0, -1);
   return [
     `author = str($${target.author}).strip().lower()`, 'out = ""', 'if author:',
-    `  for r in ${FILING_TABLE}.lookupRecords(App="${app}", Fichier=str(${idOf(target)})):`,
-    '    if str(r.Utilisateur or "").strip().lower() == author:',
-    '      out = "/".join(x for x in str(r.Dossier or "").split("/") if x)',
+    `  for r in ${FILING_TABLE}.lookupRecords(App="${app}", File=str(${idOf(target)})):`,
+    '    if str(r.User or "").strip().lower() == author:',
+    '      out = "/".join(x for x in str(r.Folder or "").split("/") if x)',
     '      break',
     'return out'].join('\n');
 }
@@ -203,8 +203,8 @@ function idsFormula(target) {
     `author = str($${target.author}).strip().lower()`, 'out = []', 'if author:',
     '  mine = [x for x in str($GFS_Dossier or "").split("/") if x]',
     '  for i in range(len(mine)):',
-    `    for r in ${FILING_TABLE}.lookupRecords(App="", Fichier="", Dossier="/".join(mine[:i + 1])):`,
-    '      if str(r.Utilisateur or "").strip().lower() == author:',
+    `    for r in ${FILING_TABLE}.lookupRecords(App="", File="", Folder="/".join(mine[:i + 1])):`,
+    '      if str(r.User or "").strip().lower() == author:',
     '        out.append([r.id, i])',
     'return out'].join('\n');
 }
@@ -218,13 +218,13 @@ const chainLines = target => [
   `author = str($${target.author}).strip().lower()`,
   'chain = {"*": 0}',
   'full = []',
-  `pl = ${PLACE_TABLE}.lookupOne(Cible=key)`,
-  'if pl and pl.Espace:',
-  '  chain["espace:" + str(pl.Espace)] = 1',
-  '  parts = [x for x in str(pl.Dossier or "").split("/") if x]',
+  `pl = ${PLACE_TABLE}.lookupOne(Target=key)`,
+  'if pl and pl.Space:',
+  '  chain["espace:" + str(pl.Space)] = 1',
+  '  parts = [x for x in str(pl.Folder or "").split("/") if x]',
   '  full = parts',
   '  for i in range(len(parts)):',
-  '    chain["dossier:" + str(pl.Espace) + "/" + "/".join(parts[:i + 1])] = 2 + i',
+  '    chain["dossier:" + str(pl.Space) + "/" + "/".join(parts[:i + 1])] = 2 + i',
   'elif author:',
   '  mine = [x for x in str($GFS_Dossier or "").split("/") if x]',
   '  full = mine',
@@ -241,12 +241,12 @@ function vusFormula(target) {
   return [...chainLines(target),
     'out = set()',
     'for cible, lvl in chain.items():',
-    `  for l in ${PLACE_TABLE}.lookupRecords(Lien=cible):`,
-    '    if not l.Espace:',
+    `  for l in ${PLACE_TABLE}.lookupRecords(Link=cible):`,
+    '    if not l.Space:',
     '      continue',
-    '    base = [x for x in str(l.Dossier or "").split("/") if x]',
+    '    base = [x for x in str(l.Folder or "").split("/") if x]',
     '    rest = [] if cible == key else full[lvl - 1:]',
-    '    out.add(str(l.Espace) + "/" + "/".join(base + rest))',
+    '    out.add(str(l.Space) + "/" + "/".join(base + rest))',
     'return tuple(sorted(out))'].join('\n');
 }
 
@@ -263,22 +263,22 @@ function calcFormula(target) {
     '  if cur is None or (lvl, kind) > (cur[0], cur[1]) or ((lvl, kind) == (cur[0], cur[1]) and rank > cur[2]):',
     '    table[who] = (lvl, kind, rank, src)',
     'for cible, lvl in chain.items():',
-    `  for p in ${SHARES_TABLE}.lookupRecords(Cible=cible):`,
-    '    if not (p.Valide and p.Actif) or p.Droit not in RANK:',
+    `  for p in ${SHARES_TABLE}.lookupRecords(Target=cible):`,
+    '    if not (p.Valid and p.Active) or p.Right not in RANK:',
     '      continue',
-    '    rank = RANK[p.Droit]',
-    '    if p.PersonneL.startswith("@"):',
+    '    rank = RANK[p.Right]',
+    '    if p.PersonL.startswith("@"):',
     // une catégorie lit ou écrit, jamais n'administre
     '      if rank:',
-    '        put(cats, p.PersonneL[1:], lvl, 0, min(rank, 2))',
-    '    elif p.PersonneL.startswith("#"):',
-    `      g = ${GROUPS_TABLE}.lookupOne(NomL=p.PersonneL[1:])`,
+    '        put(cats, p.PersonL[1:], lvl, 0, min(rank, 2))',
+    '    elif p.PersonL.startswith("#"):',
+    `      g = ${GROUPS_TABLE}.lookupOne(NameL=p.PersonL[1:])`,
     // les membres d'un groupe à qui un dossier de « Moi » est donné ont le fichier « donné » (« Partagés avec moi »), comme ceux dont l'adresse est nommée
-    `      gave = str(p.Auteur or "").strip().lower() if cible.startswith("${PERSONAL_PREFIX}") else ""`,
-    '      for m in (list(g.Membres or ()) if g else []):',
+    `      gave = str(p.Author or "").strip().lower() if cible.startswith("${PERSONAL_PREFIX}") else ""`,
+    '      for m in (list(g.Members or ()) if g else []):',
     '        put(best, m, lvl, 1, rank, gave)',
-    '    elif p.PersonneL:',
-    '      put(best, p.PersonneL, lvl, 2, rank, str(p.Auteur or "").strip().lower() if lvl >= 2 else "")',
+    '    elif p.PersonL:',
+    '      put(best, p.PersonL, lvl, 2, rank, str(p.Author or "").strip().lower() if lvl >= 2 else "")',
     'if author:',
     '  best[author] = (999, 9, 3, "")',
     'def has(table, least):',
@@ -316,8 +316,8 @@ const me = 'user.Email and user.Email.lower()';
 const inList = name => `user.Email and rec.${name} and user.Email.lower() in rec.${name}`;
 // Les règles des deux tables d'espaces : les propriétaires font tout ; ceux qui voient l'espace le lisent (son nom, ses membres) ; le reste est refusé.
 export const spaceRules = () => [rule('user.Access in [OWNER]', '+CRUD', 'les propriétaires tiennent les espaces'),
-  rule(inList('Voit'), '+R', 'ceux qui ont accès à un espace le voient'), rule('', '-CRUD', 'un espace est caché à qui n’y a pas accès')];
-const ownShare = 'user.Email and rec.Auteur and rec.Auteur.lower() == user.Email.lower()';
+  rule(inList('Sees'), '+R', 'ceux qui ont accès à un espace le voient'), rule('', '-CRUD', 'un espace est caché à qui n’y a pas accès')];
+const ownShare = 'user.Email and rec.Author and rec.Author.lower() == user.Email.lower()';
 const rule = (formulaText, rights, memo, extra = {}) => ({ formula: formulaText, rights, memo: `${NOTE}${memo}`, ...extra });
 
 // Les règles d'une table de fichiers : les propriétaires, les administrateurs, qui écrit, qui lit (par adresse ou par catégorie), la création à son nom, le
@@ -346,13 +346,14 @@ export function fileRules(target = FILES_TARGET) {
 export function shareRules() {
   return [
     rule('user.Access in [OWNER]', '+CRUD', 'les propriétaires gardent la main'),
-    rule(inList('AdminsCible'), '+RUD', 'les administrateurs d’un fichier gèrent ses partages'),
+    rule(inList('AdminsTarget'), '+RUD', 'les administrateurs d’un fichier gèrent ses partages'),
     rule(ownShare, '+RUD', 'chacun gère les partages qu’il a ajoutés'),
-    rule('(user.Email and rec.PersonneL == user.Email.lower()) or (rec.PersonneL == "@tous" and user.Access in [EDITOR, VIEWER]) or (rec.PersonneL == "@editeurs" and user.Access in [EDITOR])',
+    rule('(user.Email and rec.PersonL == user.Email.lower()) or (rec.PersonL == "@tous" and user.Access in [EDITOR, VIEWER]) or (rec.PersonL == "@editeurs" and user.Access in [EDITOR])',
       '+R', 'chacun lit les partages qui le concernent, catégories comprises'),
     // Mesuré (faits 55) : une colonne à formule déclenchée garde la valeur qu'on lui donne à la création, et `newRec` porte, à la création, celle que Grist
     // écrit ou celle qu'on a donnée : la règle exige que l'auteur et son rôle soient ceux de la personne.
-    rule('user.Access in [EDITOR] and user.Email and newRec.Auteur and newRec.Auteur.lower() == user.Email.lower() and newRec.AuteurAcces == user.Access', '+C',
+    rule('user.Access in [EDITOR] and user.Email and newRec.Author and newRec.Author.lower() == user.Email.lower() and newRec.AuthorAccess == user.Access',
+      '+C',
       'tout éditeur peut ajouter une ligne, à son nom : elle ne vaut que si elle est valide'),
     rule('', '-CRUD', 'le reste est refusé'),
   ];
@@ -363,20 +364,20 @@ export const stampRules = (memo = 'l’auteur d’un partage est écrit par Gris
 // joint à son refus. Le partage les pose sur `GFS_Filing` : le dossier qu'une personne donne à un fichier dans « Moi » ouvre des droits (`GFS_Dossier`), et
 // n'importe quel éditeur pourrait sinon écrire la ligne de rangement d'une autre personne pour y ranger son fichier dans un dossier partagé.
 export function sharedRules() {
-  const own = 'user.Email and rec.Utilisateur and rec.Utilisateur.lower() == user.Email.lower()';
+  const own = 'user.Email and rec.User and rec.User.lower() == user.Email.lower()';
   return [
     { formula: 'user.Access in [OWNER]', rights: '+CRUD', memo: 'GFS : Partagé · les propriétaires gardent la main' },
-    { formula: 'rec.Utilisateur == "@document"', rights: '+R', memo: 'GFS : Partagé · la liste des apps du document se lit par tous' },
+    { formula: 'rec.User == "@document"', rights: '+R', memo: 'GFS : Partagé · la liste des apps du document se lit par tous' },
     { formula: own, rights: '+R', memo: 'GFS : Partagé · chacun lit son propre rangement' },
-    { formula: `${own} and newRec.Utilisateur.lower() == user.Email.lower()`, rights: '+CUD',
+    { formula: `${own} and newRec.User.lower() == user.Email.lower()`, rights: '+CUD',
       memo: 'GFS : Partagé · chacun écrit son propre rangement, jamais celui d’un autre' },
-    { formula: 'rec.Utilisateur == "@sonde" and user.Email and rec.Adresse and rec.Adresse.lower() == user.Email.lower()', rights: '+CRD',
+    { formula: 'rec.User == "@sonde" and user.Email and rec.Address and rec.Address.lower() == user.Email.lower()', rights: '+CRD',
       memo: 'GFS : Partagé · la ligne-sonde de l’adresse' },
     { formula: '', rights: '-CRUD', memo: 'GFS : Partagé · le rangement d’une autre personne n’est pas à vous' },
   ];
 }
 // Les colonnes sans lesquelles ces règles ne s'écrivent pas (Grist refuse une formule qui nomme une colonne absente).
-export const RANGEMENT_NEEDED = Object.freeze(['Utilisateur', 'Adresse']);
+export const RANGEMENT_NEEDED = Object.freeze(['User', 'Address']);
 
 const maxId = rows => rows.reduce((top, row) => Math.max(top, Number(row.id) || 0), 0);
 const byResource = existing => new Map(existing.resources.map(resource => [resource.id, resource]));
@@ -409,7 +410,7 @@ function dropRules(existing, items) {
   return [['BulkRemoveRecord', '_grist_ACLRules', [...dropped]], ...(emptied.length ? [['BulkRemoveRecord', '_grist_ACLResources', emptied]] : [])];
 }
 
-// Activer le partage : crée `GFS_Shares` (et `GFS_Files`, `GFS_Filing` s'ils manquent), ajoute les colonnes d'aide aux tables de fichiers (celles que
+// Activer le partage : crée `GFS_Shares` (et `GFS_Fichiers`, `GFS_Filing` s'ils manquent), ajoute les colonnes d'aide aux tables de fichiers (celles que
 // GFS garde et celles des apps : `GFS_Auteur`, que Grist écrit à la création, en plus pour les apps), pose les règles. Rejoué quand une app a été ajoutée
 // depuis (ou après un retrait), il ne complète que ce qui manque. `existing` : { resources, rules, tables, columns, targets, files: { table: [identifiants] }
 // } ; `targets` : les tables de fichiers (`targetsOf`, js/sharing/sharing-model.js), celles des apps seulement si elles sont dans le document. Rend { ok: true,
@@ -475,8 +476,8 @@ function pickTargets(view, targets, shared) {
 // Les tables communes : les groupes (un partage cible `#nom`), les espaces et leur placement. `missing` : celles à créer ; `unruled` : celles qui sont là sans
 // leurs règles.
 function coreTables(view) {
-  const core = [[GROUPS_TABLE, groupColumns, GROUP_PUBLIC, groupPublicRules, groupRules], [SPACES_TABLE, spaceColumns, 'Cle,Nom,Voit', null, spaceRules],
-    [PLACE_TABLE, placeColumns, 'Cible,Espace,Dossier,Voit', null, spaceRules]];
+  const core = [[GROUPS_TABLE, groupColumns, GROUP_PUBLIC, groupPublicRules, groupRules], [SPACES_TABLE, spaceColumns, 'Key,Name,Sees', null, spaceRules],
+    [PLACE_TABLE, placeColumns, 'Target,Space,Folder,Sees', null, spaceRules]];
   // Un placement d'avant les liens : ses deux colonnes de lien s'ajoutent (additif, rien ne se recharge).
   const have = view.columnsOf(PLACE_TABLE);
   return { missing: core.filter(([name]) => !view.hasTable(name)), unruled: core.filter(([name]) => view.hasTable(name) && view.mine(name).length === 0),
@@ -549,13 +550,13 @@ function legacyKeys(existing, targets) {
 }
 
 const legacyAction = keys => ['BulkAddRecord', SHARES_TABLE, keys.map(() => null),
-  { Cible: keys, Personne: keys.map(() => CATEGORIES.tous), Droit: keys.map(() => 'lecture'), Telecharger: keys.map(() => true) }];
+  { Target: keys, Person: keys.map(() => CATEGORIES.tous), Right: keys.map(() => 'lecture'), Download: keys.map(() => true) }];
 
 // Les règles à poser, par ressource : celles de la table de partages (si elles manquent), des tables communes qui n'en ont pas, puis de chaque table de
 // fichiers à faire.
 function ruleGroups({ sharesRules, core, todo, filing }) {
   return [
-    ...(sharesRules ? [] : [{ tableId: SHARES_TABLE, colIds: 'Auteur,AuteurAcces', rules: stampRules() },
+    ...(sharesRules ? [] : [{ tableId: SHARES_TABLE, colIds: 'Author,AuthorAccess', rules: stampRules() },
       { tableId: SHARES_TABLE, colIds: '*', rules: shareRules() }]),
     ...[...core.missing, ...core.unruled].flatMap(([name, , publicColumns, publicRules, tableRules]) =>
       [...(publicRules ? [{ tableId: name, colIds: publicColumns, rules: publicRules() }] : []), { tableId: name, colIds: '*', rules: tableRules() }]),
@@ -586,7 +587,7 @@ export function shareRecord({ target, who, right, download = false, end = null }
   if (!target || !cleaned || !RIGHTS.includes(right)) return null;
   if (right === 'admin' && cleaned.startsWith('@')) return null; // l'administration est celle d'une personne ou d'un groupe, jamais d'une catégorie
   if (right === 'aucun' && cleaned.startsWith('@')) return null; // « Aucun accès » vise une personne ou un groupe, jamais une catégorie
-  return { Cible: target, Personne: cleaned, Droit: right, Telecharger: Boolean(download), Fin: end ?? null };
+  return { Target: target, Person: cleaned, Right: right, Download: Boolean(download), End: end ?? null };
 }
 
 // Ce que dit la table de partages d'une cible, pour la fenêtre : les lignes qui la visent (la racine `*` et, pour un fichier placé dans un espace, l'espace et
@@ -595,11 +596,11 @@ export function sharesOf(rows, target, extras = []) {
   // `target` : la cible, ou les cibles qui désignent le même dossier (un dossier de « Moi » : par son numéro de ligne et, pour un partage ancien, par son
   //   chemin) ; `extra.target` de même.
   const own = [].concat(target);
-  const origin = row => (row.Cible === ROOT ? { kind: 'root' } : extras.find(item => [].concat(item.target).includes(row.Cible)) || null);
-  return rows.filter(row => own.includes(row.Cible) || origin(row)).map(row => ({
-    id: row.id, who: String(row.Personne || ''), right: row.Droit, download: Boolean(row.Telecharger), end: row.Fin || null,
-      inherited: !own.includes(row.Cible),
-      from: own.includes(row.Cible) ? null : origin(row), valid: row.Valide !== false, active: row.Actif !== false, author: String(row.Auteur || ''),
+  const origin = row => (row.Target === ROOT ? { kind: 'root' } : extras.find(item => [].concat(item.target).includes(row.Target)) || null);
+  return rows.filter(row => own.includes(row.Target) || origin(row)).map(row => ({
+    id: row.id, who: String(row.Person || ''), right: row.Right, download: Boolean(row.Download), end: row.End || null,
+      inherited: !own.includes(row.Target),
+      from: own.includes(row.Target) ? null : origin(row), valid: row.Valid !== false, active: row.Active !== false, author: String(row.Author || ''),
   })).sort((a, b) => Number(a.inherited) - Number(b.inherited) || a.who.localeCompare(b.who));
 }
 
@@ -611,8 +612,8 @@ export function groupName(text) {
 
 // Les groupes pour la fenêtre : { id, name, count, source (la table lue, ou ''), here (les adresses tapées dans GFS) }, triés par nom. Un éditeur ne lit que le
 // nom, le nombre et la source.
-export const groupsOf = rows => (rows || []).map(row => ({ id: row.id, name: String(row.Nom || ''), count: Number(row.Nb) || 0,
-  source: String(row.Source || ''), here: String(row.PersonnesIci || '') }))
+export const groupsOf = rows => (rows || []).map(row => ({ id: row.id, name: String(row.Name || ''), count: Number(row.Count) || 0,
+  source: String(row.Source || ''), here: String(row.People || '') }))
   .filter(group => group.name).sort((a, b) => a.name.localeCompare(b.name));
 
 // La ligne d'un groupe : tapé dans GFS (`people` : les adresses) ou lu d'une table (`source` : { table, email, group }, identifiants Grist vérifiés). Null si
@@ -620,15 +621,15 @@ export const groupsOf = rows => (rows || []).map(row => ({ id: row.id, name: Str
 export function groupRecord({ name, people = '', source = null }) {
   const clean = groupName(name);
   if (!clean) return null;
-  if (!source) return { Nom: clean, PersonnesIci: String(people || '').trim(), Source: '', SourceEmail: '', SourceGroupe: '' };
+  if (!source) return { Name: clean, People: String(people || '').trim(), Source: '', SourceEmail: '', SourceGroup: '' };
   if (![source.table, source.email, source.group].every(isIdent)) return null;
-  return { Nom: clean, PersonnesIci: '', Source: source.table, SourceEmail: source.email, SourceGroupe: source.group };
+  return { Name: clean, People: '', Source: source.table, SourceEmail: source.email, SourceGroup: source.group };
 }
 
-// L'ajout d'un groupe lu d'une table : la formule de `Membres` relue avec toutes les sources (celles d'avant et la nouvelle), puis la ligne.
+// L'ajout d'un groupe lu d'une table : la formule de `Members` relue avec toutes les sources (celles d'avant et la nouvelle), puis la ligne.
 export function planGroupAdd(rows, record) {
   if (!record) return { ok: false, reason: 'invalid' };
-  if ((rows || []).some(row => String(row.Nom || '').trim().toLowerCase() === record.Nom.toLowerCase())) return { ok: false, reason: 'exists' };
+  if ((rows || []).some(row => String(row.Name || '').trim().toLowerCase() === record.Name.toLowerCase())) return { ok: false, reason: 'exists' };
   const actions = [];
   if (record.Source) actions.push(...planGroupSources(sourcesOf([...(rows || []), record])).actions);
   actions.push(['AddRecord', GROUPS_TABLE, null, record]);
@@ -639,7 +640,7 @@ export function planGroupAdd(rows, record) {
 // actions, added, skipped } ou { ok: false, reason }.
 export function planGroupsRead(rows, source, names) {
   if (!source || ![source.table, source.email, source.group].every(isIdent)) return { ok: false, reason: 'invalid' };
-  const taken = new Set((rows || []).map(row => String(row.Nom || '').trim().toLowerCase()));
+  const taken = new Set((rows || []).map(row => String(row.Name || '').trim().toLowerCase()));
   const fresh = [];
   for (const name of [...new Set((names || []).map(groupName).filter(Boolean))]) {
     if (taken.has(name.toLowerCase())) continue;
@@ -667,10 +668,10 @@ export function spaceKey(name, taken = []) {
 // Les espaces pour la fenêtre : { id, key, name, people (qui y a accès), groups: [{ id (la ligne de partage), group, right }] }, triés par nom. `shares` : les
 // lignes de GFS_Shares.
 export function spacesOf(spaceRows, shareRows) {
-  return (spaceRows || []).filter(row => row.Cle && row.Nom).map(row => ({
-    id: row.id, key: String(row.Cle), name: String(row.Nom), people: Array.isArray(row.Voit) ? row.Voit.filter(item => typeof item === 'string').length : 0,
-    groups: (shareRows || []).filter(share => share.Cible === spaceTarget(row.Cle) &&
-      isGroup(share.Personne)).map(share => ({ id: share.id, group: String(share.Personne).slice(1), right: share.Droit })),
+  return (spaceRows || []).filter(row => row.Key && row.Name).map(row => ({
+    id: row.id, key: String(row.Key), name: String(row.Name), people: Array.isArray(row.Sees) ? row.Sees.filter(item => typeof item === 'string').length : 0,
+    groups: (shareRows || []).filter(share => share.Target === spaceTarget(row.Key) &&
+      isGroup(share.Person)).map(share => ({ id: share.id, group: String(share.Person).slice(1), right: share.Right })),
   })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -680,11 +681,11 @@ export function spacesOf(spaceRows, shareRows) {
 export function planSpaceAdd(spaceRows, name, creator = '') {
   const clean = String(name ?? '').replace(/\s+/g, ' ').trim();
   if (!clean || clean.length > 60) return { ok: false, reason: 'invalid' };
-  if ((spaceRows || []).some(row => String(row.Nom || '').trim().toLowerCase() === clean.toLowerCase())) return { ok: false, reason: 'exists' };
-  const key = spaceKey(clean, (spaceRows || []).map(row => row.Cle));
+  if ((spaceRows || []).some(row => String(row.Name || '').trim().toLowerCase() === clean.toLowerCase())) return { ok: false, reason: 'exists' };
+  const key = spaceKey(clean, (spaceRows || []).map(row => row.Key));
   if (!key) return { ok: false, reason: 'invalid' };
   const member = shareRecord({ target: spaceTarget(key), who: String(creator ?? '').trim().toLowerCase(), right: 'ecriture' });
-  return { ok: true, key, actions: [['AddRecord', SPACES_TABLE, null, { Cle: key, Nom: clean }],
+  return { ok: true, key, actions: [['AddRecord', SPACES_TABLE, null, { Key: key, Name: clean }],
     ...(member ? [['AddRecord', SHARES_TABLE, null, member]] : [])] };
 }
 
@@ -692,8 +693,8 @@ export function planSpaceAdd(spaceRows, name, creator = '') {
 export function planSpaceRemove(space, shareRows, placeRows) {
   if (!space) return { ok: false, reason: 'none' };
   const mine = target => target === spaceTarget(space.key) || String(target).startsWith(`dossier:${space.key}/`);
-  const shares = (shareRows || []).filter(share => mine(share.Cible)).map(share => share.id);
-  const places = (placeRows || []).filter(place => place.Espace === space.key).map(place => place.id);
+  const shares = (shareRows || []).filter(share => mine(share.Target)).map(share => share.id);
+  const places = (placeRows || []).filter(place => place.Space === space.key).map(place => place.id);
   return { ok: true, actions: [...(shares.length ? [['BulkRemoveRecord', SHARES_TABLE, shares]] : []),
     ...(places.length ? [['BulkRemoveRecord', PLACE_TABLE, places]] : []), ['RemoveRecord', SPACES_TABLE, space.id]] };
 }
@@ -703,9 +704,9 @@ export function planSpaceRemove(space, shareRows, placeRows) {
 export function planSpaceGroup(space, shareRows, group, right) {
   const name = String(group ?? '').replace(/^#/, '');
   if (!space || !name) return { ok: false, reason: 'invalid' };
-  const current = (shareRows || []).find(share => share.Cible === spaceTarget(space.key) && String(share.Personne) === `${GROUP_PREFIX}${name}`);
+  const current = (shareRows || []).find(share => share.Target === spaceTarget(space.key) && String(share.Person) === `${GROUP_PREFIX}${name}`);
   if (!right) return current ? { ok: true, actions: [['RemoveRecord', SHARES_TABLE, current.id]] } : { ok: true, actions: [] };
   if (!['lecture', 'ecriture'].includes(right)) return { ok: false, reason: 'invalid' };
-  if (current) return { ok: true, actions: [['UpdateRecord', SHARES_TABLE, current.id, { Droit: right }]] };
+  if (current) return { ok: true, actions: [['UpdateRecord', SHARES_TABLE, current.id, { Right: right }]] };
   return { ok: true, actions: [['AddRecord', SHARES_TABLE, null, shareRecord({ target: spaceTarget(space.key), who: `${GROUP_PREFIX}${name}`, right })]] };
 }

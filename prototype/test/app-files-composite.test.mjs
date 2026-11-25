@@ -73,8 +73,8 @@ test('mettre à la corbeille : l\'accord de la table d\'abord, puis l\'app ferme
   assert.deepEqual(run.verbs(), [['AddTable'], ['AddRecord', 'RemoveRecord']]);
   assert.deepEqual(run.live().map(each => each.id), [2, 3]);
   const [stored] = run.tables[BIN_TABLE].rows;
-  assert.deepEqual([stored.App, stored.Table, stored.FichierId, stored.Nom], ['form', 'FormPlus_Formulaires', '1', 'Inscription atelier']);
-  assert.equal(JSON.parse(stored.Instantane).valeurs.Definition, '{"vsId":7}', 'la définition est gardée, pour la restauration');
+  assert.deepEqual([stored.App, stored.Table, stored.FileId, stored.Name], ['form', 'FormPlus_Formulaires', '1', 'Inscription atelier']);
+  assert.equal(JSON.parse(stored.Snapshot).valeurs.Definition, '{"vsId":7}', 'la définition est gardée, pour la restauration');
 });
 
 test('l\'app ajoute sa phrase (`dit`) : GFS la rend, sur une ligne et coupée à 200 signes ; sans phrase, c\'est `true`', async () => {

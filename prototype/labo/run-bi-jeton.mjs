@@ -91,11 +91,11 @@ async function playWrite(run, app, rows) {
   check('`UpdateRecord` : la valeur est dans la cellule de la ligne, l\'autre ligne n\'a pas bougé', after[0][colId] === 'budget, rapport, 2026' && !after[1][colId], after.map(row => row[colId]));
   const refused = await app.evaluate(async table => {
     const attempt = actions => grist.docApi.applyUserActions(actions).then(() => 'passé', error => String((error && error.message) || error).slice(0, 160));
-    return { modify: await attempt([['ModifyColumn', table, 'MotsCles', { type: 'Int' }]]), gfs: await attempt([['AddColumn', 'GFS_Files', 'Intrus', { type: 'Text' }]]) };
+    return { modify: await attempt([['ModifyColumn', table, 'MotsCles', { type: 'Int' }]]), gfs: await attempt([['AddColumn', 'GFS_Fichiers', 'Intrus', { type: 'Text' }]]) };
   }, TABLE);
   check('GFS refuse `ModifyColumn` et une colonne dans une table de GFS (GFS_REFUSE), sans rien écrire', /GFS_REFUSE|refus|Verbe|réservée/i.test(refused.modify) && /GFS_REFUSE|refus|réservée/i.test(refused.gfs), refused);
-  const gfsRows = await rowsOf(run, 'GFS_Files');
-  check('GFS_Files n\'a pas de colonne en plus (rien n\'a été écrit)', gfsRows === null || gfsRows.every(row => !Object.keys(row).includes('Intrus')), gfsRows && gfsRows.length);
+  const gfsRows = await rowsOf(run, 'GFS_Fichiers');
+  check('GFS_Fichiers n\'a pas de colonne en plus (rien n\'a été écrit)', gfsRows === null || gfsRows.every(row => !Object.keys(row).includes('Intrus')), gfsRows && gfsRows.length);
 }
 
 const server = await requireServer();
@@ -111,7 +111,7 @@ try {
   await playToken(run, app);
   await playWrite(run, app, rows);
   // Les deux refus que l'essai a provoqués lui-même (ModifyColumn, une table de GFS) sont dits dans la console de GFS : ils sont attendus, pas les autres.
-  const provoked = /GFS : bi : GristDocAPI\.applyUserActions refusé \(GFS_REFUSE\) : Action 1 refusée : (Le verbe ModifyColumn|La table GFS_Files est réservée)/;
+  const provoked = /GFS : bi : GristDocAPI\.applyUserActions refusé \(GFS_REFUSE\) : Action 1 refusée : (Le verbe ModifyColumn|La table GFS_Fichiers est réservée)/;
   const unexpected = run.problems.filter(problem => !run.allow.some(known => known.test(problem)) && !provoked.test(problem));
   check('aucune erreur ni avertissement de GFS dans la console (hors les deux refus que l\'essai a provoqués), ni violation de politique', unexpected.length === 0, unexpected);
 } finally {

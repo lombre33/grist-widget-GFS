@@ -53,7 +53,7 @@ async function accordFlow(page, tools, t) {
   tools.fits(kind, now, 'l\'accord');
   const radios = await page.run(() => ['once', 'live'].map(mode => { const node = document.querySelector(`[data-fk="so-mode-${mode}"]`); return node ? node.checked : null; }));
   if (radios[0] !== true || radios[1] !== false) tools.run.note(kind, `l'accord devait proposer « ${t('so.mode.once')} » (coché) et « ${t('so.mode.live')} » (état des deux choix : ${JSON.stringify(radios)})`);
-  for (const part of [t('so.mode.once'), t('so.mode.live')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} »`);
+  for (const part of [t('so.mode.once'), t('so.mode.live'), t('so.beta')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} »`);
   // La structure du document se ferme avec les tables techniques (choix du porteur, 18/11) : l'accord le dit avec les mots de la question d'activation du partage.
   for (const part of [t('so.accord.adds'), t('so.accord.hook'), t('so.accord.keep'), t('so.accord.rules'), t('rights.ask.sharing.structure'), t('rights.ask.close.item2')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 160)} »)`);
   // « Exiger la comparaison du code de contrôle » : proposé et coché au départ (décision du 09/11, audit de sécurité), décochable à la vraie souris.
@@ -134,6 +134,7 @@ async function linkFlow(page, tools, t) {
   const now = await tools.open(kind, 'lien');
   if (!now.modal) return;
   tools.fits(kind, now, 'l\'accord du lien');
+  if (!now.modal.body.includes(t('so.beta'))) tools.run.note(kind, 'l\'accord du lien devait dire que la fonction repose sur Sync+, encore en bêta, donc très expérimentale');
   if (!now.modal.body.includes(t('so.link.lead')) || now.modal.keys.some(key => key.startsWith('so-mode-')) || !now.modal.body.includes(t('so.accord.hook.live'))) tools.run.note(kind, `l'accord devait dire que rien n'est envoyé maintenant, sans choix une fois / à jour (il dit « ${now.modal.body.slice(0, 200)} »)`);
   if (!now.modal.title.includes(t('so.title.link'))) tools.run.note(kind, `le titre devait être « ${t('so.title.link')} » (il est « ${now.modal.title} »)`);
   await tools.press(kind, 'so-continue');
@@ -213,6 +214,7 @@ async function tabFlow(page, tools, t) {
   const tab = open.tab;
   if (!tab || tab.links.length !== 3) return;
   const by = id => tab.links.find(link => link.id === id);
+  if (!tab.body.includes(t('so.beta'))) tools.run.note(kind, 'l\'onglet devait dire que la fonction repose sur Sync+, encore en bêta, donc très expérimentale');
   if (tab.tabs.find(item => item[0] === 'share-tab-other')[1] !== 'true') tools.run.note(kind, 'l\'onglet « Dans un autre document Grist » devait être le choisi');
   if (!tab.inPage || !tab.sticky || tab.outside.length) tools.run.note(kind, `la fenêtre devait tenir dans la page, titre et bouton en place, rien ne sortir (sort : ${tab.outside.join(', ')})`);
   const expectLink = (id, level, label, tag, locked) => {

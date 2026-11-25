@@ -89,6 +89,32 @@ test('un dossier d\'espace se partage (clé « dossier: »), « Moi » et un esp
   const mine = await share.load(share.folderFile('Perso/Dossier'));
   assert.deepEqual([mine.active, mine.owner, mine.me, mine.author, mine.folder, mine.canManage], [true, true, 'moi@x.fr', 'moi@x.fr', true, true]);
   assert.deepEqual(mine.shares.map(item => [item.who, item.right, item.inherited]), [['@editeurs', 'lecture', true]], 'seule la racine « tout le document » est héritée');
+  // « Partager… » sur la ligne d'un espace (demande du 25/11) : l'espace entier se partage (clé « espace: », ni chemin ni app), sans changer ce que `whyNotFolder` et
+  // `folderFile` disent (« Lier dans un espace… » s'en sert : un espace entier ne se lie pas).
+  assert.equal(share.whyNotShareFolder('Espaces/Achats'), null);
+  assert.equal(share.whyNotShareFolder('Espaces/Achats/Contrats'), null);
+  assert.equal(share.whyNotShareFolder('Espaces'), t('share.folder.space'), 'la racine « Espaces » ne se partage pas');
+  assert.equal(share.whyNotShareFolder('Espaces/Inconnu'), t('share.folder.space'), 'un espace que GFS ne connaît pas non plus');
+  assert.equal(share.whyNotShareFolder(''), t('share.folder.personal'));
+  assert.equal(share.whyNotShareFolder('Perso/Dossier'), null);
+  const noAccess = new ShareControl({ t, targets: () => targetsOf([PP]), fullAccess: () => false, identity: () => 'moi@x.fr', writeBlock: () => null, reader: { owner: async () => true }, spaces: () => info,
+    port: { doc: { fetchTable: fetch } } });
+  assert.equal(noAccess.whyNotShareFolder('Espaces/Achats'), t('share.noAccess'), 'sans accès complet, l\'espace reste grisé avec sa raison');
+  const space = share.shareFolderFile('Espaces/Achats');
+  assert.deepEqual(space, { key: 'espace:achats', name: 'Achats', space: info.spaces[0], wholeSpace: true });
+  assert.equal('path' in space || 'app' in space, false, 'un espace n\'est ni un dossier (chemin) ni un fichier (app) : l\'onglet « autre document » ne le prend pas pour un dossier');
+  assert.deepEqual(share.shareFolderFile('Espaces/Achats/Contrats'), share.folderFile('Espaces/Achats/Contrats'));
+  assert.deepEqual(share.shareFolderFile('Perso/Dossier'), share.folderFile('Perso/Dossier'));
+  const whole = await share.load(space);
+  assert.deepEqual([whole.active, whole.owner, whole.author, whole.folder, whole.canManage], [true, true, '', false, true]);
+  assert.deepEqual(whole.shares.map(item => [item.who, item.right, item.inherited]).sort(), [['#Achats', 'lecture', false], ['@editeurs', 'lecture', true]],
+    'un espace garde ses lignes à lui, et hérite seulement de la racine « tout le document »');
+  // Un fichier rangé dans un espace porte lui aussi `space` (js/sharing/spaces-filing.js) : ce n'est PAS un espace entier, il hérite de l'espace et du dossier par son placement (régression mesurée dans un vrai Grist le 25/11).
+  const placedFetch = async name => ({ GFS_Placement: { id: [1], Cible: ['pdf:9'], Espace: ['achats'], Dossier: ['Contrats'] }, GFS_Espaces: { id: [1], Cle: ['achats'], Nom: ['Achats'] } }[name] || fetch(name));
+  const placedShare = new ShareControl({ t, targets: () => targetsOf([PP]), fullAccess: () => true, identity: () => 'moi@x.fr', writeBlock: () => null, reader: { owner: async () => true }, spaces: () => info,
+    port: { doc: { fetchTable: placedFetch } } });
+  const placed = await placedShare.load({ key: 'pdf:9', name: 'Fichier', app: 'gfs', space: { key: 'achats', folder: 'Contrats' } });
+  assert.deepEqual(placed.shares.filter(item => item.inherited).map(item => [item.who, item.from.kind]).sort(), [['#Achats', 'space'], ['@editeurs', 'root'], ['marc@x.fr', 'folder']]);
   const folder = share.folderFile('Espaces/Achats/Contrats/Sous');
   assert.equal(folder.key, 'dossier:achats/Contrats/Sous');
   assert.equal(folder.name, 'Sous');

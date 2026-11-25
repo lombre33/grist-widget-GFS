@@ -10,6 +10,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { area, button, codeWithCopy, openSteps, structureNotes } from './steps-window.js';
+import { betaNotice } from './other-beta-notice.js';
 import { FILES_TABLE } from '../files/gfs-files.js';
 import { HELPER_COLUMNS, RECEIVED_TABLE, SYNC_TABLE_NAME } from './share-other-flow.js';
 
@@ -23,6 +24,7 @@ function accordDetails(ctx) {
   const { t } = ctx;
   const live = ctx.mode === 'live';
   return [
+    betaNotice(t, 'so-beta'),
     h('p', { class: 'so-lead' }, icon('info'), h('span', null, t(ctx.file ? (live ? 'so.accord.lead.live' : 'so.accord.lead') : 'so.link.lead'))),
     h('div', { class: 'sec' }, t('so.accord.adds')),
     h('ul', { class: 'so-list' },

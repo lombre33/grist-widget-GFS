@@ -32,6 +32,7 @@ async function toAccord(page, tools, t, kind, flow) {
   const first = await tools.open(kind, flow);
   if (!first.modal) return null;
   tools.fits(kind, first, 'le code à coller');
+  if (!first.modal.body.includes(t('so.beta'))) tools.run.note(kind, 'la fenêtre devait dire que la fonction repose sur Sync+, encore en bêta, donc très expérimentale');
   if (!first.modal.body.includes(t('sr.paste.hint'))) tools.run.note(kind, `la fenêtre devait dire où trouver le code (« ${t('sr.paste.hint')} »)`);
   await tools.press(kind, 'sr-continue');
   if ((await tools.snap()).acts.some(act => act[0] === 'read')) tools.run.note(kind, '« Continuer » grisé ne devait rien demander au parcours');

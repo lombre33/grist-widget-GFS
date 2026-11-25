@@ -14,6 +14,7 @@ import { closeSharingTables } from './sync-rules.js';
 // partager n'a rien à envoyer (`tooBig` : combien de PDF de plus de 25 Mo l'en empêchent, le dire plutôt que « aucun PDF »).
 export function whyNot(t, { file, state, files, tooBig = 0 }) {
   if (!file) return t('share.other.why.pdf');
+  if (file.wholeSpace) return t('share.other.why.space');
   if (isFolderTarget(file)) {
     if (!files || !files.length) return tooBig > 0 ? t('share.other.why.allTooBig', { max: maxText(t) }) : t('share.other.why.emptyFolder');
   } else if (file.app !== FILES_APP) return t('share.other.why.pdf');

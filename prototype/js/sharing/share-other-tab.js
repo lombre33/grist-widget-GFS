@@ -5,6 +5,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openMenu } from '../ui/menu.js';
+import { betaNotice } from './other-beta-notice.js';
 import { levelOf, maxText } from './share-links.js';
 
 const mark = name => h('span', { class: 'who' }, String(name || '?').trim().slice(0, 2).replace(/^./, first => first.toUpperCase()) || '?');
@@ -52,7 +53,7 @@ export function otherTab(ctx) {
   const fresh = h('button', { type: 'button', class: 'btn', 'aria-disabled': stuck ? 'true' : null, dataset: { fk: 'other-new' } }, t('so.tab.new'));
   fresh.addEventListener('click', () => (stuck ? ctx.say(stuck) : ctx.newDocument()));
   const lead = other.folder ? t('so.tab.lead.folder', { n: other.count }) : t('so.tab.lead');
-  const parts = [stuck ? h('p', { class: 'rt-lead' }, icon('lock'), h('span', null, stuck)) :
+  const parts = [betaNotice(t, 'other-beta'), stuck ? h('p', { class: 'rt-lead' }, icon('lock'), h('span', null, stuck)) :
     h('p', { class: 'fine' }, lead)];
   if (other.folder && other.skipped > 0) parts.push(h('p', { class: 'fine', dataset: { fk: 'other-skipped' } },
     t('so.tab.skipped.folder', { n: other.skipped })));

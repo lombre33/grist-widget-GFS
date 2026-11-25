@@ -57,6 +57,28 @@ test('un dossier : supprimer est grisé tant que des fichiers y sont, et pendant
   assert.equal(items[2].hint, undefined);
 });
 
+test('« Partager… » sur la ligne d\'un espace entier ouvre le partage de l\'espace (25/11) ; « Lier dans un espace… » reste grisé pour lui', () => {
+  const x = context();
+  x.opts.links = { whyNot: () => null, open: () => {}, linkAt: () => null };
+  const space = { key: 'espace:achats', name: 'Achats', space: { name: 'Achats' }, wholeSpace: true };
+  x.opts.sharing.whyNotFolder = path => (path === 'Espaces/Achats' ? 'les droits d\'un espace se règlent dans « Gérer les partages… »' : null);
+  x.opts.sharing.whyNotShareFolder = () => null;
+  x.opts.sharing.shareFolderFile = path => (path === 'Espaces/Achats' ? space : { folder: path });
+  const items = rowItems(x, 'dir:Espaces/Achats');
+  const share = items.find(entry => entry !== '-' && entry.label === t('share.menu'));
+  assert.equal(share.greyed, false);
+  share.run();
+  assert.deepEqual(x.calls, [['share', space]]);
+  const link = items.find(entry => entry !== '-' && entry.label === t('slink.menu'));
+  assert.equal(link.greyed, true, 'un espace entier ne se lie pas dans un autre espace');
+  const grey = context();
+  grey.opts.sharing.whyNotShareFolder = () => 'pas ici';
+  const blocked = rowItems(grey, 'dir:Espaces').find(entry => entry !== '-' && entry.label === t('share.menu'));
+  assert.equal(blocked.greyed, true);
+  blocked.run();
+  assert.deepEqual([grey.notices, grey.calls], [['pas ici'], []]);
+});
+
 test('un dossier : « Partager… » ouvre la fenêtre du dossier d\'un espace ; sinon il est grisé avec la phrase de GFS, sans partage connu avec « pas encore », pendant un choix avec la phrase du choix', () => {
   const open = context();
   const ok = rowItems(open, 'dir:Espaces/Achats/Contrats')[3];

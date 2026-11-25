@@ -17,8 +17,8 @@ import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
 import { seedFiles } from './seed.mjs';
-import { PAGE_PORT, openGfs, openRowMenu } from './lab-pdf.mjs';
-import { gfsFrame, shareWithEditorAndViewer } from './lab-droits.mjs';
+import { PAGE_PORT, openGfs, openRowMenu, shot as pdfShot } from './lab-pdf.mjs';
+import { fits, gfsFrame, shareWithEditorAndViewer } from './lab-droits.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -41,6 +41,7 @@ const rows = async (run, table) => { const answer = await call(run.page, 'GET', 
 const modelNames = async run => (await rows(run, MODELS)).filter(row => row.TypeModele !== 'reglages').map(row => row.Nom).sort();
 const byName = async run => Object.fromEntries((await rows(run, MODELS)).map(row => [row.Nom, row]));
 const has = (list, who) => JSON.stringify(list || []).includes(who);
+const shot = (frame, name) => pdfShot(frame, `partager-espaces-${lang}-${scheme}-${name}`);
 
 async function waitReload(page, old) {
   for (let i = 0; i < 240 && !old.isDetached(); i++) await page.waitForTimeout(250);
@@ -88,6 +89,37 @@ async function playScreen(run, frame, keyA) {
     given.some(row => row.Personne === OWNER && row.Droit === 'ecriture'), given);
   const seenSpace = (await rows(run, 'GFS_Espaces')).find(row => row.Cle === made.Cle);
   check('l\'espace voit l\'éditeur (membre du groupe Achats), pas le lecteur', has(seenSpace.Voit, EDITOR) && !has(seenSpace.Voit, VIEWER), seenSpace);
+  // « Ajouter un groupe » > « Créer le groupe … » (demande du 25/11) : sans impasse, le nom tapé crée le groupe et l'ajoute à l'espace en lecture, dans UNE écriture ; il naît sans personne.
+  await frame.locator('[data-fk="manage-space-add-group"]').click();
+  await frame.locator('[data-fk="pick-search"]').fill('Ventes');
+  check('« Créer le groupe … » est dans la liste, disponible, avec le nom tapé', await frame.locator('[data-fk="pick-create"]').getAttribute('aria-disabled') === null &&
+    (await frame.locator('[data-fk="pick-create"]').innerText()).includes('Ventes'));
+  check('la liste tient à 700 × 400 avec « Créer… » visible', await fits(frame, '.mod.pk') && await frame.locator('[data-fk="pick-create"]').isVisible());
+  await shot(frame, 'groupe-creer-liste');
+  await frame.locator('[data-fk="pick-create"]').click();
+  await frame.locator('.mod.mg .rr[data-space-group="Ventes"]').waitFor({ timeout: 15000 });
+  const ventes = (await rows(run, 'GFS_Groupes')).find(row => row.Nom === 'Ventes');
+  check('le groupe Ventes est créé, sans personne', ventes && ventes.Nb === 0 && !ventes.PersonnesIci, ventes);
+  const entered = (await rows(run, 'GFS_Partages')).find(row => row.Cible === `espace:${made.Cle}` && row.Personne === '#Ventes');
+  check('il entre dans l\'espace en lecture, la ligne est valide', entered && entered.Droit === 'lecture' && entered.Valide === true, entered);
+  const said = (await frame.locator('.mod.mg .mod-note').innerText()).replace(/\s+/g, ' ');
+  check('le pied dit où ajouter ses personnes', said === t('manage.spaces.created', { name: 'Ventes', tab: t('manage.tab.groups') }), said);
+  await shot(frame, 'groupe-creer-espace');
+  // ses personnes, une à la fois (demande du 25/11) : le groupe neuf se complète, et l'espace voit la personne
+  await frame.locator('[data-fk="manage-tab-groups"]').click();
+  await frame.locator('[data-fk="manage-edit-Ventes"]').click();
+  await frame.locator('[data-fk="manage-group-people"]').fill(VIEWER);
+  await frame.locator('[data-fk="manage-group-people"]').press('Enter');
+  await frame.locator(`.mg-chip[data-person="${VIEWER}"]`).waitFor();
+  await shot(frame, 'groupe-pastille');
+  await frame.locator('[data-fk="manage-group-save"]').click();
+  await frame.locator('.rr[data-group="Ventes"]').filter({ hasText: '1' }).waitFor({ timeout: 15000 });
+  const filled = (await rows(run, 'GFS_Groupes')).find(row => row.Nom === 'Ventes');
+  check('le groupe compte la personne tapée en pastille (une adresse par ligne dans la table)', filled && filled.Nb === 1 && filled.PersonnesIci === VIEWER, filled);
+  const seenByVentes = (await rows(run, 'GFS_Espaces')).find(row => row.Cle === made.Cle);
+  check('l\'espace voit maintenant le lecteur (membre du groupe Ventes)', has(seenByVentes.Voit, VIEWER), seenByVentes);
+  await frame.locator('[data-fk="manage-tab-spaces"]').click();
+  await frame.locator(`[data-fk="manage-space-${made.Cle}"]`).click();
   await frame.locator('[data-fk="manage-space-remove"]').click();
   await frame.locator('[data-fk="ask-yes"]').click();
   await frame.locator('.mod.mg .rr[data-space]').filter({ hasText: 'Équipe UI' }).waitFor({ state: 'detached', timeout: 15000 });
@@ -152,7 +184,36 @@ async function playExplorer(run, frame) {
   check('la personne lit le fichier rangé dans ce dossier (Grist le calcule)', has(withLea.GFS_Lecteurs, 'lea@example.com'), withLea.GFS_Calc);
   await frame.locator('[data-fk="share-close"]').click();
   await frame.locator('.mod.sh').waitFor({ state: 'detached' });
-  await frame.locator('nav.crumbs button[data-path="Espaces"]').waitFor();
+  // « Partager… » sur la ligne de l'espace entier (demande du 25/11) : la fenêtre de l'espace s'ouvre (plus de grisé « les droits d'un espace se règlent dans Gérer les partages ») ; un droit donné à
+  // une personne s'écrit sur « espace:achats » et lui donne les fichiers rangés dans l'espace
+  await frame.locator('nav.crumbs button[data-path="Espaces"]').click();
+  const spaceRow = frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats"]');
+  await spaceRow.waitFor();
+  await spaceRow.hover();
+  await spaceRow.locator('.rb.mn').click();
+  const shareItem = frame.getByRole('menuitem', { name: new RegExp(`^${t('share.menu')}`) });
+  check('« Partager… » est libre sur la ligne d\'un espace', await shareItem.getAttribute('aria-disabled') !== 'true');
+  await shareItem.click();
+  await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 15000 });
+  const spaceHead = (await frame.locator('.mod.sh .mod-head').innerText()).replace(/\s+/g, ' ');
+  check('la fenêtre porte le nom de l\'espace et « Espace » en sous-titre', spaceHead.includes(t('share.title', { name: 'Achats' })) && spaceHead.includes(t('share.space.kind')), spaceHead);
+  check('elle tient à 700 × 400', await fits(frame, '.mod.sh'));
+  await shot(frame, 'espace-partager');
+  await frame.locator('[data-fk="share-add"]').click();
+  await frame.locator('[data-fk="share-add"]').fill('marc@example.com');
+  await frame.locator('[data-fk="share-pick-marc@example.com"]').click();
+  await frame.locator('[data-fk="share-confirm"]').click();
+  await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: 'marc@example.com' }).waitFor({ timeout: 15000 });
+  const spaceGiven = (await rows(run, 'GFS_Partages')).find(line => line.Cible === 'espace:achats' && line.Personne === 'marc@example.com');
+  check('un droit donné dans la fenêtre de l\'espace s\'écrit sur « espace:achats », valide', spaceGiven && spaceGiven.Droit === 'lecture' && spaceGiven.Valide === true, spaceGiven);
+  const withMarc = (await byName(run))[NAMES.F];
+  check('la personne lit le fichier rangé dans l\'espace (Grist le calcule)', has(withMarc.GFS_Lecteurs, 'marc@example.com'), withMarc.GFS_Calc);
+  const spacesNow = (await rows(run, 'GFS_Espaces')).find(line => line.Cle === 'achats');
+  check('l\'espace dit qui le voit : la personne y est', has(spacesNow.Voit, 'marc@example.com'), spacesNow);
+  await frame.locator('[data-fk="share-close"]').click();
+  await frame.locator('.mod.sh').waitFor({ state: 'detached' });
+  await spaceRow.dblclick();
+  await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats/Contrats"]').waitFor();
   const personal = frame.locator('.tr-row[data-path=""]');
   await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats/Contrats"]').dblclick();
   await frame.locator('.ls-row:not(.folder)').filter({ hasText: NAMES.F }).waitFor();

@@ -88,3 +88,14 @@ test('sans la preuve d\'être propriétaire, ou sans table technique (fenêtre f
   await closeTechnicalTables({ transfer: { isOwner: async () => true }, docApi: () => docWith(['GFS_Fichiers', 'Clients'], applied) });
   assert.deepEqual(applied, [], 'rien n\'a été créé : la structure reste comme elle est');
 });
+
+test('un espace entier ne part pas dans un autre document : l\'onglet est grisé avec sa raison (« Partager… » sur la ligne d\'un espace, 25/11), même pour un propriétaire', async () => {
+  const space = { key: 'espace:achats', name: 'Achats', space: { key: 'achats', name: 'Achats' }, wholeSpace: true };
+  // un fichier rangé dans un espace porte aussi `space` : il ne devient pas un espace entier (régression mesurée dans un vrai Grist le 25/11)
+  assert.equal(whyNot(t, { file: { ...file, space: 'achats' }, state: { owner: true } }), null);
+  assert.equal(whyNot(t, { file: space, state: { owner: true } }), 'share.other.why.space');
+  assert.equal(limitOf(t, 'fr', space), null);
+  const tab = make({ writeBlock: () => null }).tab(space, { owner: true });
+  assert.equal(tab.why, 'share.other.why.space');
+  assert.deepEqual(await tab.onLevel(link, 'live'), { ok: false, message: 'share.other.why.space' }, 'aucun niveau ne s\'écrit pour un espace');
+});

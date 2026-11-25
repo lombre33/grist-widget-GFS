@@ -41,13 +41,15 @@ function groupItems(x, key) {
     ...(row.pending ? [item(t('rx.folder.answer'), 'check', () => void x.shared.askFolder(row))] : [])];
 }
 
-// « Partager… » d'un dossier (js/sharing/share-control.js) : seuls les dossiers d'un espace se partagent ; les autres l'article reste, grisé, et le clic dit
-// pourquoi.
+// « Partager… » d'un dossier ou d'un espace (js/sharing/share-control.js) : les dossiers et les espaces se partagent (la ligne d'un espace ouvre le partage de
+// l'espace, demande du 25/11) ; les autres, l'article reste grisé et le clic dit pourquoi.
 function shareFolderItem(x, path) {
   const { t, opts } = x;
   const { sharing } = opts;
-  const why = x.choice ? t('ex.choose.newOff') : (sharing && sharing.whyNotFolder ? sharing.whyNotFolder(path) : t('share.unsupported'));
-  return { label: t('share.menu'), icon: 'user', greyed: why !== null, run: () => (why ? opts.notice(why) : void sharing.open(sharing.folderFile(path))) };
+  const whyNot = sharing && (sharing.whyNotShareFolder || sharing.whyNotFolder);
+  const fileOf = sharing && (sharing.shareFolderFile || sharing.folderFile);
+  const why = x.choice ? t('ex.choose.newOff') : (whyNot ? whyNot.call(sharing, path) : t('share.unsupported'));
+  return { label: t('share.menu'), icon: 'user', greyed: why !== null, run: () => (why ? opts.notice(why) : void sharing.open(fileOf.call(sharing, path))) };
 }
 
 // Le lien porte la clé du dossier : pour un dossier de « Moi », le numéro de sa ligne d'état (le lien suit le dossier quand on le renomme), que GFS écrit au

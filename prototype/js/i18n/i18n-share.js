@@ -61,6 +61,8 @@ export const SHARE_STRINGS = Object.freeze({
     'share.folder.inMine': 'Dossier de « {name} »',
     'share.folder.noAddress': 'GFS ne connaît pas encore votre adresse dans ce document : ce dossier ne peut pas être partagé pour l’instant.',
     'share.folder.space': 'Les droits d’un espace se règlent dans « Gérer les partages… », onglet Espaces.',
+    // « Partager… » sur la ligne d'un espace (demande du porteur du 25/11) : le sous-titre de la fenêtre.
+    'share.space.kind': 'Espace',
     'share.right.aucun': 'Aucun accès',
     'share.right.aucun.hint': 'Cache ce fichier à cette personne ou à ce groupe, même s’il y a accès par un groupe ou par l’espace',
     'share.right.aucun.category': 'Aucun accès se donne à une personne ou à un groupe, pas à une catégorie.',
@@ -178,6 +180,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.folder.inMine': 'Folder of “{name}”',
     'share.folder.noAddress': 'GFS does not know your address in this document yet: this folder cannot be shared for now.',
     'share.folder.space': 'A space’s rights are set in “Manage sharing…”, Spaces tab.',
+    'share.space.kind': 'Space',
     'share.right.aucun': 'No access',
     'share.right.aucun.hint': 'Hides this file from this person or group, even if they reach it through a group or the space',
     'share.right.aucun.category': 'No access is given to a person or a group, not to a category.',

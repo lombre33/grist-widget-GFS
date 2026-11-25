@@ -8,7 +8,7 @@ import { icon } from '../ui/icons.js';
 import { openModal } from '../ui/modal.js';
 import { openMenu } from '../ui/menu.js';
 import { CATEGORIES } from './sharing-model.js';
-import { withAddress } from './group-suggest.js';
+import { addressField } from './address-field.js';
 import { otherManageTab } from './manage-other-tab.js';
 import { replaceKeepingFocus, tabList } from '../ui/tabs.js';
 
@@ -45,22 +45,25 @@ function groupRow(ctx, group) {
     h('span', { class: 'nm' }, h('b', null, group.name), h('small', null, notes.join(' · '))), edit, remove);
 }
 
-// Le formulaire d'un groupe tapé dans GFS : son nom (fixe à la modification) et ses adresses, une par ligne.
+// Le formulaire d'un groupe tapé dans GFS : son nom (fixe à la modification) et ses personnes, une à la fois en pastilles (js/sharing/address-field.js ; la
+// zone « plusieurs adresses à la fois » est une option).
 function groupForm(ctx, group) {
   const { t } = ctx;
   const name = h('input', { type: 'text', autocomplete: 'off', 'aria-label': t('manage.groups.name'), placeholder: t('manage.groups.name'),
     disabled: group ? true : null, dataset: { fk: 'manage-group-name' } });
   name.value = group ? group.name : '';
-  const people = h('textarea', { rows: '3', 'aria-label': t('manage.groups.people'), placeholder: t('manage.groups.people'), spellcheck: 'false',
-    dataset: { fk: 'manage-group-people' } });
-  people.value = group ? group.here : '';
+  const people = addressField({ t, value: group ? group.here : '' });
+  name.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); people.focus(); } });
   const yes = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'manage-group-save' } },
     group ? t('manage.groups.save') : t('manage.groups.create'));
   const no = h('button', { type: 'button', class: 'btn', dataset: { fk: 'manage-group-cancel' } }, t('share.cancel'));
   no.addEventListener('click', () => ctx.edit(null));
-  yes.addEventListener('click', () => void ctx.saveGroup(group, { name: name.value, people: people.value }));
-  return h('div', { class: 'sg-new' }, h('div', { class: 'field' }, icon('users'), name), h('div', { class: 'field mg-area' }, people),
-    h('p', { class: 'fine' }, t('manage.groups.people.hint')), h('p', { class: 'sg-actions mg-form' }, ...suggestButtons(ctx, people), no, yes));
+  yes.addEventListener('click', () => {
+    const text = people.take();
+    if (text !== null) void ctx.saveGroup(group, { name: name.value, people: text });
+  });
+  return h('div', { class: 'sg-new' }, h('div', { class: 'field' }, icon('users'), name), people.node,
+    h('p', { class: 'sg-actions mg-form' }, ...suggestButtons(ctx, people), no, yes));
 }
 
 // Les adresses à proposer en tapant (choix du 13/11) : une liste des adresses connues, et le choix d'une colonne d'adresses d'une table (grisé sans table qui
@@ -70,9 +73,9 @@ function suggestButtons(ctx, people) {
   const { t, state } = ctx;
   const known = h('button', { type: 'button', class: 'btn sm', dataset: { fk: 'manage-group-suggest' } }, icon('plus'), t('manage.suggest.button'));
   known.addEventListener('click', async () => {
-    const address = await ctx.suggest(people.value);
-    if (address) people.value = withAddress(people.value, address);
-    people.focus({ preventScroll: true });
+    const address = await ctx.suggest(people.text());
+    if (address) people.add(address);
+    people.focus();
   });
   const hasTable = Boolean(state.mail && state.mail.length);
   const column = h('button', { type: 'button', class: 'btn sm mg-more', 'aria-disabled': hasTable ? null : 'true', dataset: { fk: 'manage-group-column' } },
@@ -188,7 +191,9 @@ export function manageBody(ctx) {
 // opts : { container, t, inertTargets, load() → état, onAddGroup(state, { name, people }), onUpdateGroup(id, people), onRemoveGroup(id), onReadTable(state),
 //   onSuggest(state, typed) → l'adresse choisie (ou null), onColumn(state) → { ok, label?, message? } (la colonne d'adresses des suggestions), onRoot(state,
 //   who, right), onStructure(), onConfirmRemove(name),
-//   onAddSpace(state), onRemoveSpace(state, space), onSpaceGroup(state, space, group, right), onPickGroup(state, space), onLinks() → les documents reliés
+//   onAddSpace(state), onRemoveSpace(state, space), onSpaceGroup(state, space, group, right), onPickGroup(state, space) (un nom de groupe, { create: nom } ou
+//   null),
+//   onNewSpaceGroup(state, space, name) (créer le groupe et l'ajouter à l'espace), onLinks() → les documents reliés
 //   (js/sharing/share-links.js), onNewLink() (relier un document, sans fichier ; rend quand sa fenêtre est fermée), onStopLink(link) → { ok, message? }
 //   (confirmé par
 //   l'appelant) }.
@@ -236,8 +241,15 @@ export function openManage(opts) {
   ctx.removeSpace = async space => {
     const answer = await opts.onRemoveSpace(ctx.state, space); if (answer && answer.ok) ctx.space = null;
     if (answer) { ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' })); if (answer.ok) await reload(); } };
+  // Un groupe de l'espace : celui qu'on choisit, ou celui qu'on crée là (le nom tapé dans la liste) ; la phrase du pied dit ce qui reste à faire pour un groupe
+  // neuf.
   ctx.addGroupTo = async space => {
-    const group = await opts.onPickGroup(ctx.state, space); if (group) await write(() => opts.onSpaceGroup(ctx.state, space, group, 'lecture')); };
+    const group = await opts.onPickGroup(ctx.state, space);
+    if (!group) return;
+    if (!group.create) return void (await write(() => opts.onSpaceGroup(ctx.state, space, group, 'lecture')));
+    const answer = await write(() => opts.onNewSpaceGroup(ctx.state, space, group.create));
+    if (answer && answer.ok) ctx.say(t('manage.spaces.created', { name: group.create, tab: t('manage.tab.groups') }));
+  };
   ctx.spaceGroup = (space, group, right) => write(() => opts.onSpaceGroup(ctx.state, space, group, right));
   ctx.edit = group => {
     ctx.editing = group === null ? null : group; draw(); const field = body.querySelector('[data-fk="manage-group-name"]');

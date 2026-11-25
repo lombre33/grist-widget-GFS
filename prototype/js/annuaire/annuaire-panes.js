@@ -7,7 +7,7 @@ import { icon } from '../ui/icons.js';
 import { initials, levelLabel, headsOf, telHref } from './annuaire-items.js';
 import { fieldLabel } from './annuaire-config.js';
 
-// Combien de valeurs un filtre montre avant « +n » (le reste se choisit dans une liste avec recherche).
+// Combien de personnes une relation montre avant « +n » (une ligne de la fiche).
 export const CHIPS_SHOWN = 6;
 
 // Une valeur lue d'une colonne, dite à la personne : un oui/non en toutes lettres, une date dans sa langue.
@@ -79,9 +79,18 @@ export function personRow(person, { selected, tabStop, extra = [], cells = null 
 }
 
 // La ligne de titres au-dessus des lignes d'une liste à colonnes : le nom, puis le libellé de chaque colonne (même grille que les lignes).
-export function columnHead(columns, t) {
-  return h('div', { class: 'an-cols-head', role: 'presentation' }, h('span', null), h('span', { class: 'an-ch' }, t('an.col.name')),
-    ...columns.map(col => h('span', { class: 'an-ch', title: col.label }, col.label)), h('span', null));
+// Chaque titre est un bouton : un clic trie par cette colonne (croissant, puis décroissant, puis plus de tri), une flèche dit le sens du tri en cours.
+export function columnHead(columns, t, sort = null) {
+  const cell = (key, label) => {
+    const on = Boolean(sort) && sort.key === key;
+    const name = on ? t(sort.dir === 'desc' ? 'an.sort.desc' : 'an.sort.asc', { col: label }) : t('an.sort.by', { col: label });
+    return h('button', { type: 'button', class: `an-ch${on ? ' is-sorted' : ''}`, title: name, 'aria-label': name,
+      dataset: { act: 'sort', key, fk: `sort:${key}` } },
+      h('span', { class: 'an-ch-t' }, label), on ? icon(sort.dir === 'desc' ? 'chev-down' : 'chev-up') : null);
+  };
+  return h('div', { class: 'an-cols-head', role: 'presentation' }, h('span', null), cell('name', t('an.col.name')),
+    ...columns.map(col => cell(col.key, col.label)),
+    h('span', null));
 }
 
 // Une carte de contact (la vue « Cartes ») : l'avatar, le nom, le poste, les deux derniers niveaux, l'adresse et le téléphone.
@@ -202,22 +211,47 @@ export function nodeFiche(node, ctx) {
     h('button', { type: 'button', class: 'btn sm an-see', dataset: { act: 'node-list', id: node.id, fk: 'node-list' } }, icon('list'), t('an.seePeople')));
 }
 
-// Les filtres des champs : un groupe par champ, une pastille par valeur (les plus nombreuses d'abord), « +n » pour les autres.
-// `options` : voir `filterOptions` ; `filters` : { colonne: Set(valeurs) } ; `ctx` : { t, locale }.
-export function filterBar(options, filters, ctx) {
-  const groups = options.filter(option => option.values.length).map(option => {
-    const on = filters[option.col] || new Set();
-    const chosen = option.values.filter(entry => on.has(entry.value));
-    const visible = [...chosen, ...option.values.filter(entry => !on.has(entry.value))].slice(0, CHIPS_SHOWN);
-    const rest = option.values.length - visible.length;
-    const chip = entry => h('button', { type: 'button', class: 'an-chip', 'aria-pressed': String(on.has(entry.value)),
-      title: shown(entry.value, option.genre, ctx),
-      dataset: { act: 'filter', col: option.col, value: entry.value, fk: `fl:${option.col}:${entry.value}` } },
-    h('span', { class: 'an-chip-t' }, shown(entry.value, option.genre, ctx)), h('b', null, String(entry.count)));
-    return h('div', { class: 'an-fgroup', role: 'group', 'aria-label': option.label || option.col },
-      h('span', { class: 'an-flabel' }, option.label || option.col), ...visible.map(chip),
-      rest > 0 ? h('button', { type: 'button', class: 'an-chip an-more', title: ctx.t('an.filter.more', { n: rest }),
-        dataset: { act: 'filter-more', col: option.col, fk: `fm:${option.col}` } }, `+${rest}`) : null);
-  });
-  return h('div', { class: 'an-filters' }, ...groups);
+// Combien de valeurs un filtre montre dans le panneau avant « Voir les n autres… » (le reste se choisit dans la liste avec recherche).
+export const VALUES_SHOWN = 8;
+
+// Un filtre ouvert par défaut : celui qui a une valeur choisie, sinon les deux premiers (la maquette du porteur : les premiers filtres dépliés, les autres
+// repliés avec le nombre de leurs valeurs).
+export function sectionOpen(option, index, filters, opened) {
+  if (opened.has(option.col)) return opened.get(option.col);
+  return index < 2 || (filters[option.col] && filters[option.col].size > 0);
+}
+
+// Une ligne du panneau des filtres : une case, la valeur, son nombre de personnes (retour du porteur, 25/11 : le bouton « Filtres » ouvre un panneau, comme la
+// maquette de l'annuaire, au lieu d'une barre de pastilles).
+function valueRow(option, entry, on, ctx) {
+  const text = shown(entry.value, option.genre, ctx);
+  return h('button', { type: 'button', class: 'an-fv', role: 'checkbox', 'aria-checked': String(on), title: text,
+    dataset: { act: 'filter', col: option.col, value: entry.value, fk: `fl:${option.col}:${entry.value}` } },
+  h('span', { class: 'an-box', 'aria-hidden': 'true' }, on ? icon('check') : null), h('span', { class: 'an-fv-t' }, text),
+    h('span', { class: 'an-fv-n' }, String(entry.count)));
+}
+
+// Un filtre du panneau : son titre (un bouton qui le replie ou le déplie, avec le nombre de choix ou de valeurs) puis ses valeurs, les plus nombreuses
+// d'abord ; une valeur choisie reste visible même au-delà des premières.
+function sectionOf(option, index, filters, ctx) {
+  const on = filters[option.col] || new Set();
+  const open = sectionOpen(option, index, filters, ctx.opened);
+  const label = option.label || option.col;
+  const visible = option.values.filter((entry, at) => at < VALUES_SHOWN || on.has(entry.value));
+  const rest = option.values.length - visible.length;
+  const head = h('button', { type: 'button', class: 'an-fsec-h', 'aria-expanded': String(open),
+    dataset: { act: 'fsec', col: option.col, fk: `fs:${option.col}` } },
+    icon(open ? 'chev-down' : 'chev-right'), h('span', { class: 'an-fsec-t' }, label),
+    on.size ? h('b', { class: 'an-badge' }, String(on.size)) : h('span', { class: 'an-fsec-n' }, ctx.t('an.filter.values', { n: option.values.length })));
+  return h('section', { class: 'an-fsec' }, head, open ? h('div', { class: 'an-fvals', role: 'group', 'aria-label': label },
+    ...visible.map(entry => valueRow(option, entry, on.has(entry.value), ctx)),
+    rest > 0 ? h('button', { type: 'button', class: 'an-fv an-fmore', dataset: { act: 'filter-more', col: option.col, fk: `fm:${option.col}` } },
+      h('span', { class: 'an-fv-t' }, ctx.t('an.filter.more', { n: rest })), icon('chev-right')) : null) : null);
+}
+
+// Le panneau des filtres : un titre et ses valeurs par filtre (un par niveau de la hiérarchie, puis un par champ réglé « Filtre »).
+// `options` : voir `filterOptions` ; `filters` : { colonne: Set(valeurs) } ; `ctx` : { t, locale, opened (Map : colonne -> déplié ou non, ce que la personne a
+//   décidé) }.
+export function filterPanel(options, filters, ctx) {
+  return h('div', { class: 'an-fp' }, ...options.filter(option => option.values.length).map((option, index) => sectionOf(option, index, filters, ctx)));
 }

@@ -28,7 +28,7 @@ export class AnnuaireControl {
     this.#store = new AnnuaireStore({ port: opts.port, consent });
     this.#window = new AnnuaireWindow({ container: opts.container, t: opts.t, locale: opts.locale, inertTargets: opts.inertTargets,
       onSwitch: () => void this.#switch(), onConfigure: () => void this.#configure(), onNew: () => void this.#create(),
-      onFilterMore: (col, option) => this.#more(col, option), onClose: () => {} });
+      onFilterMore: (col, option) => this.#more(col, option), onSortPick: (keys, sort) => this.#pickSort(keys, sort), onClose: () => {} });
   }
 
   get isOpen() { return this.#window.isOpen; }
@@ -157,6 +157,17 @@ export class AnnuaireControl {
       this.#o.notice(this.#o.t('an.needsAccess'));
       return null;
     }
+  }
+
+  // Les colonnes qu'on peut trier : la liste avec recherche ; le premier geste trie en croissant, le second en décroissant. « Ordre de l'annuaire » rend
+  // l'ordre par nom.
+  #pickSort(keys, sort) {
+    const t = this.#o.t;
+    const items = [{ value: '__none', label: t('an.sort.none'), glyph: 'sort', alt: false },
+      ...keys.map(entry => ({ value: entry.key, label: entry.label, glyph: 'sort' }))];
+    return pickFrom({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, title: t('an.sort.title'), items,
+      current: sort ? sort.key : '__none',
+      none: t('an.noneFound'), alt: { icon: 'chev-down', label: item => t('an.sort.descFor', { col: item.label }), text: () => t('an.sort.descShort') } });
   }
 
   // Les valeurs d'un filtre au-delà des pastilles : la liste avec recherche.

@@ -37,7 +37,7 @@ function orgSnap() {
   const text = node => node.textContent.replace(/\s+/g, ' ').trim();
   const shown = node => node && node.getClientRects().length > 0;
   const none = org.querySelector('.an-org-none');
-  const host = document.querySelector('.an-filters-host');
+  const panel = document.querySelector('.an-fpanel');
   return { frame: box(org.querySelector('.an-org-scroll')), zoom: text(org.querySelector('.an-zoom')),
     cards: [...org.querySelectorAll('.an-oc')].map(card => ({ id: card.dataset.id, title: text(card.querySelector('.an-oc-title')), person: card.classList.contains('is-person'),
       dim: card.classList.contains('is-dim'), height: card.parentElement.offsetHeight, box: box(card), cut: card.querySelector('.an-oc-title').scrollWidth > card.querySelector('.an-oc-title').clientWidth + 1 })),
@@ -45,7 +45,7 @@ function orgSnap() {
     folds: [...org.querySelectorAll('.an-fold')].map(fold => ({ id: fold.dataset.id, expanded: fold.getAttribute('aria-expanded') })),
     tools: [...org.querySelectorAll('.an-org-tools button')].map(button => ({ fk: button.dataset.fk, text: text(button), pressed: button.getAttribute('aria-pressed'), title: button.title,
       disabled: button.getAttribute('aria-disabled') === 'true', box: box(button) })),
-    chips: shown(host) ? [...host.querySelectorAll('.an-chip')].map(chip => ({ fk: chip.dataset.fk, text: text(chip), pressed: chip.getAttribute('aria-pressed') === 'true' })) : [],
+    chips: shown(panel) ? [...panel.querySelectorAll('.an-fv')].map(chip => ({ fk: chip.dataset.fk, text: text(chip), pressed: chip.getAttribute('aria-checked') === 'true' })) : [],
     none: shown(none) ? text(none) : null, foot: text(document.querySelector('.an-foot')), stored: (() => { try { return window.localStorage.getItem('gfs.annuaire.orgPeople'); } catch (error) { return 'x'; } })(),
     focused: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk || null : null };
 }
@@ -179,6 +179,8 @@ export async function orgFiltersProblems(page, t, note, click, inspectNow, frame
   if (snap.folds.some(fold => fold.expanded !== 'true')) note('organigramme', `${where} : une branche est repliée après un filtre (tout se déplie de nouveau)`);
   await frame(`${where}, filtré par niveau`);
   // Un niveau et un champ se cumulent : Louis Girard n'est pas contractuel, plus personne.
+  // Le panneau se souvient des filtres que la personne a dépliés : on ne déplie « Contrat » que s'il est replié.
+  if (!(await page.run(orgSnap)).chips.some(chip => chip.fk === 'fl:Contrat:Contractuelle')) await click('[data-fk="fs:Contrat"]');
   await click('[data-fk="fl:Contrat:Contractuelle"]');
   snap = await page.run(orgSnap);
   if (snap.cards.length || !snap.none || !snap.none.includes(t('an.list.none'))) note('organigramme', `${where} : sans personne qui passe les filtres l'organigramme dit « ${snap.none} » avec ${snap.cards.length} cartes (« ${t('an.list.none')} » attendu, aucune carte)`);
@@ -218,4 +220,97 @@ async function finish(page, click) {
   if (people_ && people_.pressed === 'true') await click('[data-fk="org-people"]');
   await click('[data-fk="v:list"]');
   await delay(100);
+}
+
+// ---------- le tri de la liste ----------
+
+// Ce que la liste et les boutons de tri disent du tri en cours.
+function sortSnap() {
+  const box = node => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
+  const text = node => node.textContent.replace(/\s+/g, ' ').trim();
+  const list = document.querySelector('.an-list');
+  const button = document.querySelector('.an-crumb [data-fk="sort-pick"]');
+  const rows = [...list.querySelectorAll('.an-person, .an-pcard')];
+  return { names: rows.map(row => text(row.querySelector('.an-pe-name'))), subs: rows.map(row => (row.querySelector('.an-pe-sub') ? text(row.querySelector('.an-pe-sub')) : '')),
+    mails: rows.map(row => { const cell = row.querySelector('.an-pe-col'); return cell ? text(cell) : ''; }),
+    head: [...list.querySelectorAll('.an-ch')].map(cell => ({ fk: cell.dataset.fk, sorted: cell.classList.contains('is-sorted'), label: cell.getAttribute('aria-label'),
+      arrow: Boolean(cell.querySelector('.ic')), height: cell.getBoundingClientRect().height })),
+    button: button ? { text: text(button), on: button.classList.contains('is-on'), label: button.getAttribute('aria-label'), box: box(button), main: box(document.querySelector('.an-main')) } : null,
+    pick: [...document.querySelectorAll('.pk [data-fk]')].map(node => node.dataset.fk), focused: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk || null : null };
+}
+
+const COLLATOR = new Intl.Collator('fr-FR', { numeric: true, sensitivity: 'base' });
+
+// Les valeurs non vides dans l'ordre demandé (`sign` 1 : croissant, -1 : décroissant), les vides à la fin.
+function ordered(values, sign) {
+  const filled = values.filter(Boolean);
+  const emptyAtEnd = values.slice(filled.length).every(value => !value) && values.slice(0, filled.length).every(Boolean);
+  return emptyAtEnd && filled.every((value, at) => at === 0 || sign * COLLATOR.compare(filled[at - 1], value) <= 0);
+}
+
+// Ouvre la liste « Trier par » : le bouton, puis les choix (« Ordre de l'annuaire », les colonnes) ; un choix par son clavier de liste.
+async function openPick(page, click, note, where) {
+  await click('.an-crumb [data-fk="sort-pick"]');
+  await delay(120);
+  const snap = await page.run(sortSnap);
+  if (!snap.pick.includes('pick-name') || !snap.pick.includes('pick-__none') || !snap.pick.includes('pick-title')) note('tri', `${where} : la liste « Trier par » ne propose pas « nom », « poste » et « ordre de l'annuaire » (${snap.pick.join(' ')})`);
+  return snap;
+}
+
+// Les titres de colonne triés au clic, le bouton « Trier » et sa liste : croissant, décroissant, plus de tri ; les deux disent le tri en cours ; le bouton se mesure à chaque largeur.
+export async function sortProblems(page, t, note, click, { width, mode }) {
+  const where = `le tri à ${width} px (${mode})`;
+  let snap = await page.run(sortSnap);
+  const start = snap.names;
+  if (!snap.button) { note('tri', `${where} : le bouton « Trier » manque dans le fil de la liste`); return; }
+  if (snap.button.box.height < 24 || snap.button.box.left < snap.button.main.left || snap.button.box.right > snap.button.main.right + 1) note('tri', `${where} : le bouton « Trier » mesure ${Math.round(snap.button.box.width)} × ${Math.round(snap.button.box.height)} ou sort du volet`);
+  if (snap.button.on) note('tri', `${where} : le bouton dit un tri avant tout choix (« ${snap.button.text} »)`);
+  if (width === 700) {
+    // Large : les titres de colonne sont des boutons.
+    await page.view({ width: 1200, scale: 1, mode });
+    await delay(150);
+    snap = await page.run(sortSnap);
+    if (!snap.head.length) { note('tri', 'à 1200 px : les titres de colonne ne sont pas là'); } else {
+      if (snap.head.some(cell => cell.height < 20)) note('cible trop petite', `à 1200 px : un titre de colonne mesure ${Math.round(Math.min(...snap.head.map(cell => cell.height)))} px de haut`);
+      await click('[data-fk="sort:email"]');
+      snap = await page.run(sortSnap);
+      const mail = snap.head.find(cell => cell.fk === 'sort:email');
+      if (!mail || !mail.sorted || !mail.arrow) note('tri', 'à 1200 px : après un clic le titre « E-mail » ne dit pas qu\'il trie (flèche absente)');
+      if (!ordered(snap.mails, 1)) note('tri', `à 1200 px : un clic sur « E-mail » ne trie pas en croissant (${snap.mails.join(' | ')})`);
+      if (!snap.button.on || snap.focused !== 'sort:email') note('tri', `à 1200 px : après le clic le bouton est « ${snap.button.text} » (allumé : ${snap.button.on}) et le clavier sur « ${snap.focused} » (« sort:email » attendu)`);
+      await click('[data-fk="sort:email"]');
+      snap = await page.run(sortSnap);
+      if (!ordered(snap.mails, -1)) note('tri', `à 1200 px : un second clic sur « E-mail » ne trie pas en décroissant (${snap.mails.join(' | ')})`);
+      await click('[data-fk="sort:email"]');
+      snap = await page.run(sortSnap);
+      if (snap.names.join() !== start.join() || snap.head.some(cell => cell.sorted)) note('tri', 'à 1200 px : un troisième clic ne rend pas l\'ordre de l\'annuaire');
+    }
+    await page.view({ width, scale: 1, mode });
+    await delay(150);
+  }
+  // Le bouton : « Poste » en croissant (Entrée), en décroissant (le second geste), puis « Ordre de l'annuaire ».
+  await openPick(page, click, note, where);
+  await click('[data-fk="pick-title"]');
+  await delay(120);
+  snap = await page.run(sortSnap);
+  if (!snap.button.on) note('tri', `${where} : le bouton ne dit pas le tri choisi (« ${snap.button.text} »)`);
+  if (!ordered(snap.subs, 1)) note('tri', `${where} : « Poste » ne trie pas en croissant (${snap.subs.join(' | ')})`);
+  if (snap.focused !== 'sort-pick') note('clavier', `${where} : après le choix le clavier est sur « ${snap.focused} » (le bouton « Trier » attendu)`);
+  await openPick(page, click, note, where);
+  await click('[data-fk="pick-alt-title"]');
+  await delay(120);
+  snap = await page.run(sortSnap);
+  if (!ordered(snap.subs, -1)) note('tri', `${where} : le second geste sur « Poste » ne trie pas en décroissant (${snap.subs.join(' | ')})`);
+  if (!/décroissant|descending/.test(snap.button.label)) note('tri', `${where} : le bouton ne dit pas le sens (« ${snap.button.label} »)`);
+  // Les cartes ont le même bouton.
+  await click('[data-fk="v:cards"]');
+  await delay(150);
+  snap = await page.run(sortSnap);
+  if (!snap.button || !snap.button.on) note('tri', `${where} : le tri ne suit pas dans la vue en cartes (« ${snap.button ? snap.button.text : 'pas de bouton'} »)`);
+  await click('[data-fk="v:list"]');
+  await openPick(page, click, note, where);
+  await click('[data-fk="pick-__none"]');
+  await delay(120);
+  snap = await page.run(sortSnap);
+  if (snap.names.join() !== start.join() || snap.button.on) note('tri', `${where} : « Ordre de l'annuaire » ne rend pas l'ordre par nom`);
 }

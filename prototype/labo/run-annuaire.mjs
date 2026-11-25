@@ -259,17 +259,54 @@ check('la recherche trouve un niveau de la hiérarchie et un contrat', (await se
 await page.keyboard.press('Control+A');
 await page.keyboard.press('Backspace');
 await frame.locator('.an-tb', { hasText: T.name }).click();
-check('les filtres sont repliés au départ (la liste garde la place)', await frame.locator('.an-filters-host').isHidden());
+check('le panneau des filtres est fermé au départ (la liste garde la place)', (await frame.locator('.an-fpanel').count()) === 0);
 await frame.locator('[data-fk="filters"]').click();
 await settleUi();
-const chips = frame.locator('.an-filters .an-chip');
-check('les champs « filtre » donnent des pastilles', (await chips.count()) >= 4, await chips.allInnerTexts());
-await frame.locator('.an-filters .an-chip', { hasText: 'Contractuelle' }).first().click();
+check('le panneau s’ouvre sous le bouton, sur la case d’un filtre (le clavier y est)', (await frame.locator('.an-fpanel').count()) === 1
+  && /^f[ls]:/.test(await frame.evaluate(() => document.activeElement.dataset.fk || '')), await frame.evaluate(() => document.activeElement.dataset.fk));
+const boxes = frame.locator('.an-fpanel .an-fv');
+check('les deux premiers filtres (les niveaux) sont dépliés, avec le nombre de personnes par valeur', (await boxes.count()) >= 6 && (await frame.locator('.an-fsec-h[aria-expanded="true"]').count()) === 2,
+  await boxes.allInnerTexts());
+await frame.locator('[data-fk="fs:Contrat"]').click();
 await settleUi();
-check('un filtre réduit la liste', (await rows().count()) > 0 && (await rows().count()) < 18, await rows().count());
-await frame.locator('.an-filters .an-chip[aria-pressed="true"]').first().click();
+check('un filtre replié se déplie d’un clic (« Contrat »)', (await frame.locator('.an-fpanel .an-fv', { hasText: 'Contractuelle' }).count()) >= 1, await boxes.allInnerTexts());
+await frame.locator('.an-fpanel .an-fv', { hasText: 'Contractuelle' }).first().click();
+await settleUi();
+check('une case filtre la liste sans fermer le panneau ; le bouton compte 1', (await rows().count()) > 0 && (await rows().count()) < 18 && (await frame.locator('.an-fpanel').count()) === 1
+  && /1/.test(await frame.locator('.an-crumb [data-fk="filters"]').innerText()), [await rows().count(), await frame.locator('.an-crumb [data-fk="filters"]').innerText()]);
+check('le pied dit les valeurs choisies et propose « Réinitialiser »', (await frame.locator('.an-foot-t').innerText()).includes('Contractuelle') && (await frame.locator('[data-fk="filters-reset"]').count()) === 1,
+  await frame.locator('.an-foot').innerText());
+await lab.shotPanel(run, '8a-filtre-choisi');
+await frame.locator('[data-fk="filters-reset"]').click();
+await settleUi();
+check('« Réinitialiser » retire les choix et rend toute la liste', (await rows().count()) === 18 && (await frame.locator('[data-fk="filters-reset"]').count()) === 0, await rows().count());
 await frame.locator('[data-fk="filters"]').click();
+await settleUi();
+check('« Filtres » rouvre le panneau, sans choix', (await frame.locator('.an-fpanel').count()) === 1 && (await frame.locator('.an-fpanel .an-fv[aria-checked="true"]').count()) === 0);
+await frame.locator('[data-fk="filters"]').click();
+await settleUi();
+check('un second clic sur « Filtres » range le panneau', (await frame.locator('.an-fpanel').count()) === 0);
 await lab.shotPanel(run, '8-filtres');
+const firstNames = async () => (await frame.locator('.an-person .an-pe-name').allInnerTexts());
+const byName = await firstNames();
+await frame.locator('[data-fk="sort-pick"]').click();
+await settleUi();
+await frame.locator('[data-fk="pick-name"]').click();
+await settleUi();
+check('« Trier » : choisir le nom trie la liste en croissant ; le bouton dit la colonne', (await firstNames()).join('|') === byName.join('|')
+  && /Nom|Name/i.test(await frame.locator('[data-fk="sort-pick"]').innerText()), await frame.locator('[data-fk="sort-pick"]').innerText());
+await frame.locator('[data-fk="sort-pick"]').click();
+await settleUi();
+await frame.locator('[data-fk="pick-alt-name"]').click();
+await settleUi();
+const desc = await firstNames();
+check('le second geste (la flèche) trie en décroissant, du dernier au premier', desc.join('|') === [...byName].reverse().join('|'), desc);
+await frame.locator('[data-fk="sort-pick"]').click();
+await settleUi();
+await frame.locator('[data-fk="pick-__none"]').click();
+await settleUi();
+check('« Ordre de l’annuaire » rend l’ordre du début', (await firstNames()).join('|') === byName.join('|'));
+await lab.shotPanel(run, '8b-tri');
 await frame.locator('[data-fk="v:cards"]').click();
 await settleUi();
 check('les cartes de contact : une par personne', (await frame.locator('.an-pcard').count()) === 18, await frame.locator('.an-pcard').count());
@@ -310,7 +347,7 @@ await settleUi();
 // Les filtres de l'organigramme sont ceux de la liste (niveaux d'abord) ; « Personnes » dessine une petite carte par personne sans clic de plus, et se retient.
 await frame.locator('.an-org-tools [data-fk="filters"]').click();
 await settleUi();
-await frame.locator('.an-filters .an-chip', { hasText: 'Pôle Numérique' }).first().click();
+await frame.locator('.an-fpanel .an-fv', { hasText: 'Pôle Numérique' }).first().click();
 await settleUi();
 const structuresDrawn = () => frame.locator('.an-oc:not(.is-person) .an-oc-title').allInnerTexts();
 check('un filtre de niveau réduit l’organigramme à sa branche (l’annuaire, le pôle et ses deux directions)', (await structuresDrawn()).length === 4 && (await structuresDrawn()).includes('Pôle Numérique'), await structuresDrawn());
@@ -320,8 +357,14 @@ check('« Personnes » dessine les quatre personnes du pôle, une petite carte c
   && (await frame.locator('.an-oc.is-person .an-oc-title').allInnerTexts()).includes('Louis Girard'), await frame.locator('.an-oc.is-person .an-oc-title').allInnerTexts());
 check('le choix « Personnes » est retenu sur le navigateur', (await frame.evaluate(() => window.localStorage.getItem('gfs.annuaire.orgPeople'))) === '1');
 await lab.shotPanel(run, '10c-organigramme-filtre');
-await frame.locator('.an-filters .an-chip[aria-pressed="true"]').first().click();
 await frame.locator('.an-org-tools [data-fk="filters"]').click();
+await settleUi();
+await frame.locator('.an-fpanel .an-fv[aria-checked="true"]').first().click();
+await settleUi();
+await page.keyboard.press('Escape');
+await settleUi();
+check('Échap range le panneau et rend le clavier au bouton « Filtres »', (await frame.locator('.an-fpanel').count()) === 0
+  && (await frame.evaluate(() => document.activeElement.dataset.fk)) === 'filters', await frame.evaluate(() => document.activeElement.dataset.fk));
 await frame.locator('[data-fk="search"]').click();
 await page.keyboard.type('camille');
 await settleUi();

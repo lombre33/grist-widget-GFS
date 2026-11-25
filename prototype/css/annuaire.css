@@ -36,7 +36,7 @@
 .an-seg-b[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); }
 .an-seg-b[aria-disabled="true"] { background: var(--surface-sunken); color: var(--text-muted); }
 .an-name:focus-visible, .an-ib:focus-visible, .an-seg-b:focus-visible, .an-tb:focus-visible, .an-tt:focus-visible, .an-person:focus-visible, .an-pcard:focus-visible,
-.an-chip:focus-visible, .an-oc:focus-visible, .an-fold:focus-visible, .an-link-b:focus-visible, .an-link:focus-visible, .an-pickbtn:focus-visible, .an-org-scroll:focus-visible
+.an-reset:focus-visible, .an-ch:focus-visible, .an-oc:focus-visible, .an-fold:focus-visible, .an-link-b:focus-visible, .an-link:focus-visible, .an-pickbtn:focus-visible, .an-org-scroll:focus-visible
 { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Le corps : le fond gris clair des maquettes, les volets sont des cartes. */
@@ -85,23 +85,45 @@
 .an-main > [hidden] { display: none; }
 .an-crumb { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 14px 6px; }
 .an-crumb h3 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-head); }
-.an-ftoggle { flex: none; }
-.an-ftoggle .ic { width: 13px; height: 13px; }
+/* Les boutons de la barre (« Filtres », « Personnes ») : les boutons communs, allumés d'un accent quand ils servent (retour du porteur, 25/11 : ils doivent ressembler
+   à ceux de la maquette de l'annuaire et du suivi de projet). Le nombre de choix d'un filtre est une pastille pleine. */
+.an-tbtn { flex: none; min-width: 0; max-width: 100%; }
+.an-tbtn .ic { width: 13px; height: 13px; }
+.an-tb-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.an-tbtn.is-on, .an-tbtn[aria-pressed="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); }
+.an-badge { flex: none; min-width: 16px; height: 16px; padding: 0 5px; border-radius: 8px; background: var(--accent-solid); color: var(--on-accent); font-size: max(10.5px, var(--fs-min));
+  font-weight: 700; line-height: 16px; text-align: center; font-variant-numeric: tabular-nums; }
 .an-count { margin-left: auto; flex: none; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
-.an-filters-host { flex: none; max-height: 104px; overflow: auto; padding: 2px 14px 8px; border-bottom: 1px solid var(--border); }
-.an-filters-host[hidden] { display: none; }
-.an-filters { display: flex; flex-direction: column; gap: 4px; }
-.an-filters:empty { display: none; }
-.an-fgroup { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 2px 0; }
-.an-flabel { flex: none; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
-.an-chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface);
-  color: var(--text); font: inherit; font-size: max(12px, var(--fs-min)); font-weight: 600; white-space: nowrap; cursor: pointer; }
-.an-chip { max-width: 100%; min-width: 0; }
-.an-chip-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.an-chip b { flex: none; font-weight: 600; color: var(--text-muted); }
-.an-chip:hover { background: var(--surface-sunken); }
-.an-chip[aria-pressed="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); }
-.an-chip[aria-pressed="true"] b { color: var(--accent-ink); }
+/* Le panneau des filtres (js/annuaire/annuaire-filters.js, posé par le menu commun) : un titre par filtre, une case par valeur avec son nombre de personnes ; les
+   filtres au-delà des deux premiers sont repliés avec le nombre de leurs valeurs (la maquette de l'annuaire). Il défile quand la fenêtre est basse. */
+.menu-panel:has(> .an-fpanel) { max-width: calc(100% - 8px); padding: 4px; }
+.an-fpanel { width: 300px; max-width: 100%; overflow-y: auto; font-size: max(12.5px, var(--fs-min)); }
+.an-fsec + .an-fsec { margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--border); }
+.an-fsec-h { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 28px; padding: 2px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted);
+  font: inherit; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; text-align: left; cursor: pointer; }
+.an-fsec-h:hover, .an-fsec-h:focus-visible { background: var(--surface-sunken); color: var(--text); }
+.an-fsec-h .ic { flex: none; width: 12px; height: 12px; }
+.an-fsec-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-fsec-n { flex: none; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.an-fv { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 28px; padding: 3px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--text);
+  font: inherit; text-align: left; cursor: pointer; }
+.an-fv:hover, .an-fv:focus-visible, .an-fv[aria-checked="true"] { background: var(--surface-sunken); }
+.an-fv[aria-checked="true"] { font-weight: 600; }
+.an-fv:hover .an-fv-n, .an-fv:focus-visible .an-fv-n, .an-fv[aria-checked="true"] .an-fv-n { color: var(--text); }
+.an-fv-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-fv-n { flex: none; font-size: max(11px, var(--fs-min)); font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.an-box { flex: none; display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1.5px solid var(--border-strong); border-radius: 4px; background: var(--surface);
+  color: var(--on-accent); }
+.an-box .ic { width: 11px; height: 11px; }
+.an-fv[aria-checked="true"] .an-box { border-color: var(--accent-solid); background: var(--accent-solid); }
+.an-fmore { color: var(--accent-ink); }
+.an-fmore .an-fv-t { padding-left: 24px; }
+.an-fmore .ic { flex: none; width: 12px; height: 12px; }
+/* Le pied : le nombre de personnes, les valeurs choisies, et « Réinitialiser » pour les retirer d'un clic. */
+.an-foot { display: flex; align-items: center; gap: 8px; }
+.an-foot-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-reset { flex: none; height: 24px; padding: 0 6px; border: 0; border-radius: 4px; background: transparent; color: var(--accent-ink); font: inherit; font-weight: 600; cursor: pointer; }
+.an-reset:hover { background: var(--accent-soft); }
 .an-list { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 4px 8px 8px; }
 .an-list > .an-note { padding: 10px 6px; }
 .an-person { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: calc(var(--radius-lg) * 1.25); background: transparent; color: var(--text);
@@ -120,8 +142,11 @@
 .an-cols-head, .an-person.has-cols { display: grid; grid-template-columns: 32px minmax(150px, 1.7fr) repeat(var(--n), minmax(96px, 1fr)) minmax(0, 140px); align-items: center;
   column-gap: 10px; min-width: var(--minw); }
 .an-cols-head { position: sticky; top: 0; z-index: 1; padding: 4px 8px; background: var(--surface); border-bottom: 1px solid var(--border); }
-.an-ch { min-width: 0; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap; }
+.an-ch { display: flex; align-items: center; gap: 4px; min-width: 0; min-height: 24px; padding: 2px 0; border: 0; background: transparent; font: inherit; font-size: max(11px, var(--fs-min)); font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; text-align: left; color: var(--text-muted); white-space: nowrap; cursor: pointer; }
+.an-ch-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.an-ch .ic { flex: none; width: 11px; height: 11px; }
+.an-ch:hover, .an-ch.is-sorted { color: var(--text); }
 .an-pe-col { min-width: 0; font-size: max(12px, var(--fs-min)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .an-person.has-cols .an-pe-pills { max-width: none; }
 @container anmain (max-width: 560px) {
@@ -149,13 +174,10 @@
   .an-main { grid-row: 2; }
   .an-side { grid-row: 1 / -1; }
   .an-body[data-side="true"] .an-tree, .an-body[data-side="true"] .an-main { display: none; }
-  /* Le volet du milieu défile d'un bloc (le nœud, les filtres, la liste) : ouvrir les filtres ne laisse pas la liste sans place. */
+  /* Le volet du milieu défile d'un bloc (le nœud, la liste). */
   .an-main:not([data-view="org"]) { overflow: auto; }
   .an-main:not([data-view="org"]) .an-list { flex: none; overflow: visible; }
   .an-main:not([data-view="org"]) .an-crumb { position: sticky; top: 0; z-index: 1; background: var(--surface); }
-  .an-main .an-filters-host { max-height: none; overflow: visible; }
-  /* L'organigramme ne défile pas d'un bloc : ses filtres gardent une hauteur bornée, sinon ils prendraient toute la place du dessin. */
-  .an-main[data-view="org"] .an-filters-host { max-height: 96px; overflow: auto; }
 }
 
 /* La vue « Cartes » : une carte de contact par personne. */
@@ -236,8 +258,14 @@
 .an-org-tools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 /* Étroit : « Filtres » et « Personnes » ne gardent que leur icône (le nom reste en info-bulle et pour la lecture d'écran), pour que la barre tienne sur deux lignes. */
 @container anmain (max-width: 520px) {
-  .an-org-tools .an-chip-t { display: none; }
-  .an-org-tools .an-chip { padding: 0 8px; }
+  .an-org-tools .an-tb-t { display: none; }
+  .an-org-tools .an-tbtn { padding: 0 8px; }
+}
+/* Étroit, « Trier » ne garde que son icône tant qu'aucun tri n'est choisi ; un tri choisi dit sa colonne, coupée au besoin. */
+@container anmain (max-width: 560px) {
+  .an-sbtn:not(.is-on) .an-tb-t { display: none; }
+  .an-sbtn:not(.is-on) { padding: 0 8px; }
+  .an-sbtn .an-tb-t { max-width: 84px; }
 }
 .an-fold { position: absolute; left: 50%; bottom: -11px; display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 20px; padding: 0 6px; border: 1px solid var(--border-strong);
   border-radius: 999px; background: var(--surface); color: var(--text-muted); font: inherit; font-size: max(11px, var(--fs-min)); font-weight: 700; transform: translateX(-50%); cursor: pointer; }

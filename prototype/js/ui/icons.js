@@ -91,6 +91,8 @@ const ICONS = {
   minus: '<path d="M5 12h14"/>',
   // Les filtres de la liste de l'annuaire : un entonnoir.
   filter: '<path d="M4 5h16l-6 7v6l-4 2v-8z"/>',
+  // Trier : une flèche qui monte et une qui descend (le bouton « Trier » de l'annuaire).
+  sort: '<path d="M8 20V4M4.5 7.5 8 4l3.5 3.5M16 4v16M12.5 16.5 16 20l3.5-3.5"/>',
   fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   org: '<rect x="8.5" y="3" width="7" height="5" rx="1"/><rect x="2.5" y="16" width="7" height="5" rx="1"/><rect x="14.5" y="16" width="7" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/>',
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1.5 1.5 0 0 1-1.5 1.5A15.5 15.5 0 0 1 3.5 5.5 1.5 1.5 0 0 1 5 4Z"/>',

@@ -9,11 +9,13 @@ import { mountWindow, giveBackFocus, tabStops, LIST_SHOWN } from '../ui/modal.js
 import { keyStore } from '../shell/stored-choice.js';
 import { findNode, peopleIn, filterPeople, filterOptions, fieldGenres } from './annuaire-model.js';
 import { pathIds, levelLabel, listColumns } from './annuaire-items.js';
-import { treeList, personRow, personCard, fiche, nodeFiche, filterBar, columnHead, listedTexts, columnTexts } from './annuaire-panes.js';
+import { treeList, personRow, personCard, fiche, nodeFiche, columnHead, listedTexts, columnTexts } from './annuaire-panes.js';
 import { PEOPLE_MAX, orgSignature, orgData, reducedTree } from './annuaire-org-data.js';
 import { relationsOf, relationIndex, cardLines, cardLineCount } from './annuaire-relations.js';
 import { OrgView } from './annuaire-org-view.js';
 import { copyText } from './annuaire-copy.js';
+import { FilterMenu } from './annuaire-filters.js';
+import { sortPeople, nextSort, sortKeys, sortButton } from './annuaire-sort.js';
 
 const FOCUSABLE = 'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), [tabindex="0"], a[href]';
 const VIEWS = Object.freeze([['list', 'list', 'an.view.list'], ['cards', 'tiles', 'an.view.cards'], ['org', 'org', 'an.view.org']]);
@@ -34,7 +36,8 @@ export class AnnuaireWindow {
   #person = null; // le numéro de ligne de la personne dont la fiche est ouverte
   #struct = null; // l'identifiant du nœud dont la fiche est ouverte (l'organigramme des structures)
   #open = new Set(['']);
-  #filtersOpen = false;
+  #menu; // le bouton « Filtres » et son panneau (js/annuaire/annuaire-filters.js)
+  #sort = null; // le tri de la liste et des cartes : { key, dir }, ou rien (l'ordre de l'annuaire : par nom ; js/annuaire/annuaire-sort.js)
   #note = '';
   #store;
   #orgPeople = false; // l'organigramme des structures dessine aussi les personnes (le bouton « Personnes »)
@@ -45,6 +48,7 @@ export class AnnuaireWindow {
     this.#o = opts;
     this.#store = keyStore((opts.container && opts.container.ownerDocument && opts.container.ownerDocument.defaultView) || globalThis, PEOPLE_KEY);
     this.#orgPeople = this.#store.read() === '1';
+    this.#menu = new FilterMenu({ host: () => this.#root, t: () => this.#o.t, locale: () => this.#o.locale() });
   }
 
   get isOpen() { return this.#root !== null; }
@@ -62,6 +66,7 @@ export class AnnuaireWindow {
 
   close() {
     if (!this.#root) return;
+    this.#menu.close();
     const { opener, unmount } = this.#mounted;
     unmount();
     this.#root = null;
@@ -73,6 +78,7 @@ export class AnnuaireWindow {
 
   // La langue de GFS a changé : une fenêtre ouverte réécrit ses textes, une fenêtre fermée prendra les nouveaux à son ouverture.
   relocalize({ t }) {
+    this.#menu.close();
     this.#o = { ...this.#o, t };
     if (this.#org) this.#org.relabel(t);
     this.#paint();
@@ -98,11 +104,12 @@ export class AnnuaireWindow {
     this.#node = '';
     this.#query = '';
     this.#filters = {};
+    this.#sort = null;
     this.#person = null;
     this.#struct = null;
     this.#note = '';
     this.#open = new Set(['']);
-    this.#filtersOpen = false;
+    this.#menu.close();
     if (this.#refs) this.#refs.search.value = '';
   }
 
@@ -116,7 +123,7 @@ export class AnnuaireWindow {
       search: h('input', { type: 'search', autocomplete: 'off', dataset: { fk: 'search' } }),
       views: h('div', { class: 'an-seg', role: 'group' }), config: h('button', { type: 'button', class: 'an-ib',
         dataset: { act: 'configure', fk: 'configure' } }, icon('sliders')),
-      filters: h('div', { class: 'an-filters-host' }), crumb: h('div', { class: 'an-crumb' }), list: h('div', { class: 'an-list' }),
+      crumb: h('div', { class: 'an-crumb' }), list: h('div', { class: 'an-list' }),
       body: h('div', { class: 'mod-body an-body' }), state: h('div', { class: 'an-state' }), tree: h('nav', { class: 'an-card an-tree' }),
         main: h('div', { class: 'an-card an-main' }), side: h('aside', { class: 'an-card an-side' }),
       note: h('p', { class: 'mod-note an-foot', 'aria-live': 'polite' }), close: h('button',
@@ -124,7 +131,7 @@ export class AnnuaireWindow {
     };
     this.#org = new OrgView({ t, onPick: item => this.#orgPick(item), onMode: id => this.#orgMode(id),
       onTool: (act, data) => { const handler = ACTIONS[act]; if (handler) handler(this, data); } });
-    refs.main.append(refs.crumb, refs.filters, refs.list, this.#org.element);
+    refs.main.append(refs.crumb, refs.list, this.#org.element);
     refs.body.append(refs.state, refs.tree, refs.main, refs.side);
     this.#refs = refs;
     const section = h('section', { class: 'mod an', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'an-title' },
@@ -238,23 +245,6 @@ export class AnnuaireWindow {
     return { options, active };
   }
 
-  // Le bouton « Filtres » (un seul, dans l'en-tête de la liste ou dans la barre de l'organigramme) ; rien quand aucun filtre n'est réglé.
-  #filterButton({ options, active }) {
-    if (!options.length) return null;
-    const label = this.#o.t('an.filters');
-    return h('button', { type: 'button', class: 'an-chip an-ftoggle', 'aria-pressed': String(this.#filtersOpen || active > 0),
-      'aria-expanded': String(this.#filtersOpen),
-      'aria-label': active ? `${label} (${active})` : label, title: label, dataset: { act: 'filters', fk: 'filters' } }, icon('filter'),
-        h('span', { class: 'an-chip-t' }, label),
-    active ? h('b', null, String(active)) : null);
-  }
-
-  #paintFilters(model) {
-    const { filters } = this.#refs;
-    filters.hidden = !model.options.length || !this.#filtersOpen;
-    filters.replaceChildren(filterBar(model.options, this.#filters, { t: this.#o.t, locale: this.#o.locale() }));
-  }
-
   #paintList() {
     const t = this.#o.t;
     const { current, data } = this.#show;
@@ -264,10 +254,10 @@ export class AnnuaireWindow {
     const level = !searching && node.level >= 0 ? levelLabel(levels[node.level]) : '';
     const model = this.#filterModel(base);
     this.#refs.crumb.replaceChildren(...[h('h3', null, searching ? t('an.results') : node.name), level ? h('span', { class: 'an-pill' }, level) : null,
-      h('span', { class: 'an-count' }, t('an.count', { n: found.length })), this.#filterButton(model)].filter(Boolean));
-    this.#paintFilters(model);
+      h('span', { class: 'an-count' }, t('an.count', { n: found.length })), sortButton(this.#sort, sortKeys(data.config, t), t),
+      this.#menu.button(model, this.#filters)].filter(Boolean));
     const ctx = { t, locale: this.#o.locale() };
-    const rows = found.slice(0, LIST_SHOWN);
+    const rows = sortPeople(found, this.#sort, this.#o.locale()).slice(0, LIST_SHOWN);
     const cards = this.#view === 'cards';
     const columns = cards ? [] : listColumns(data.config, t);
     const genres = fieldGenres(data.config, current.table, data.schema);
@@ -277,7 +267,7 @@ export class AnnuaireWindow {
     const { list } = this.#refs;
     list.className = `${cards ? 'an-list an-grid' : 'an-list'}${columns.length ? ' has-cols' : ''}`;
     list.style.setProperty('--n', String(columns.length));
-    list.replaceChildren(...(columns.length ? [columnHead(columns, t)] : []), ...rows.map((person, i) => (cards ? personCard : personRow)(person,
+    list.replaceChildren(...(columns.length ? [columnHead(columns, t, this.#sort)] : []), ...rows.map((person, i) => (cards ? personCard : personRow)(person,
       { selected: person.row === this.#person, tabStop: i === at, extra: extraOf(person), cells: columns.length ? cellsOf(person) : null })),
     ...(found.length > rows.length ? [h('p', { class: 'an-note' }, t('work.more', { n: LIST_SHOWN, total: found.length }))] : []),
     ...(found.length ? [] : [h('p', { class: 'an-note' }, t(data.people.length ? 'an.list.none' : 'an.list.empty'))]));
@@ -290,10 +280,10 @@ export class AnnuaireWindow {
     const t = this.#o.t;
     const many = found > PEOPLE_MAX;
     const on = this.#orgPeople && !many;
-    const people = mode !== 'structures' ? null : h('button', { type: 'button', class: 'an-chip an-ptoggle', 'aria-pressed': String(on),
+    const people = mode !== 'structures' ? null : h('button', { type: 'button', class: 'btn sm an-tbtn an-ptoggle', 'aria-pressed': String(on),
       'aria-disabled': many ? 'true' : null, 'aria-label': t('an.org.people'), title: many ? t('an.org.peopleMany', { n: found }) : t('an.org.peopleTip'),
-      dataset: { act: 'org-people', fk: 'org-people' } }, icon('users'), h('span', { class: 'an-chip-t' }, t('an.org.people')));
-    this.#org.tools.replaceChildren(...[this.#filterButton(model), people].filter(Boolean));
+      dataset: { act: 'org-people', fk: 'org-people' } }, icon('users'), h('span', { class: 'an-tb-t' }, t('an.org.people')));
+    this.#org.tools.replaceChildren(...[this.#menu.button(model, this.#filters), people].filter(Boolean));
   }
 
   // L'organigramme : celui des structures (l'arbre des niveaux), ou celui des responsables quand l'annuaire dit qui est le responsable de chacun. Il montre
@@ -307,7 +297,6 @@ export class AnnuaireWindow {
     const relations = relationsOf(data.config, t);
     const index = relationIndex(data.people, relations);
     const model = this.#filterModel(data.people);
-    this.#paintFilters(model);
     const { roots, found, withPeople, signature } = orgData({ mode, data, query: this.#query, filters: this.#filters, wantPeople: this.#orgPeople,
       linesOf: person => cardLines(person, relations, index) });
     const person = this.#person === null ? '' : `p${this.#person}`;
@@ -341,14 +330,21 @@ export class AnnuaireWindow {
     this.#refs.side.replaceChildren(...(body ? [closer, body] : []));
   }
 
+  // Le pied : combien de personnes passent la recherche et les filtres et, quand des valeurs sont choisies, lesquelles, avec le moyen de les retirer d'un clic
+  // (« 10 sur 16 personnes · Titulaire, Siège · Réinitialiser » : la maquette du porteur).
   #paintFoot() {
     const t = this.#o.t;
     const { state, data } = this.#show;
-    if (this.#note) { this.#refs.note.textContent = this.#note; return; }
-    if (state !== 'ready' || !data) { this.#refs.note.textContent = ''; return; }
+    const note = this.#refs.note;
+    if (this.#note) { note.textContent = this.#note; return; }
+    if (state !== 'ready' || !data) { note.textContent = ''; return; }
     const total = data.people.length;
     const found = this.#view === 'org' ? this.#matching().length : this.#scope().found.length;
-    this.#refs.note.textContent = found === total ? t('an.foot.all', { n: total }) : t('an.foot.some', { n: found, total });
+    const chosen = this.#menu.summary(this.#filterModel(data.people), this.#filters);
+    const text = found === total ? t('an.foot.all', { n: total }) : t('an.foot.some', { n: found, total });
+    note.replaceChildren(...[h('span', { class: 'an-foot-t' }, chosen ? `${text} · ${chosen}` : text),
+      chosen ? h('button', { type: 'button', class: 'an-reset', dataset: { act: 'filters-reset', fk: 'filters-reset' } }, t('an.filters.reset')) :
+        null].filter(Boolean));
   }
 
   // ---------- les gestes ----------
@@ -409,6 +405,7 @@ export class AnnuaireWindow {
 
   setView(view) {
     if (view === 'org' && this.#show.state === 'ready' && !this.#orgPossible()) { this.#say(this.#o.t('an.org.noHierarchy')); return; }
+    this.#menu.close();
     this.#view = view;
     this.#note = '';
     this.#paint();
@@ -431,10 +428,37 @@ export class AnnuaireWindow {
     this.#paintHead();
   }
 
-  toggleFilters() {
-    this.#filtersOpen = !this.#filtersOpen;
+  // Un clic sur le titre d'une colonne : croissant, décroissant, puis plus de tri.
+  sortBy(key) {
+    this.#sort = nextSort(this.#sort, key);
     this.#paintBody();
-    this.#focus('filters');
+    this.#focus(`sort:${key}`, 'search');
+  }
+
+  // Le bouton « Trier » : la liste des colonnes (js/ui/pick-window.js, ouverte par le contrôle) ; Entrée trie en croissant, le second geste en décroissant.
+  pickSort() {
+    const { data } = this.#show;
+    void this.#o.onSortPick(sortKeys(data.config, this.#o.t), this.#sort).then(result => {
+      if (result === null) return;
+      this.#sort = result.value === '__none' ? null : { key: result.value, dir: result.alt ? 'desc' : 'asc' };
+      this.#paintBody();
+      this.#focus('sort-pick', 'search');
+    });
+  }
+
+  // Le bouton « Filtres » : ouvre ou ferme le panneau, posé sous lui.
+  toggleFilters() { this.#menu.toggle(); }
+
+  // Un filtre qu'on replie ou déplie dans le panneau.
+  toggleFilterSection(col) { this.#menu.toggleSection(col); }
+
+  // Le bouton « Réinitialiser » du pied : plus aucune valeur choisie.
+  resetFilters() {
+    this.#filters = {};
+    this.#note = '';
+    this.#paintBody();
+    this.#paintFoot();
+    this.#focus('filters', 'search');
   }
 
   // Le bouton « Personnes » de l'organigramme : dessiner ou non les personnes sous leur structure, sans clic de plus ; le choix est retenu sur le navigateur.
@@ -463,6 +487,7 @@ export class AnnuaireWindow {
   moreFilter(col) {
     const { current, data } = this.#show;
     const option = filterOptions(this.#scope().base, data.config, data.schema, current.table).find(each => each.col === col);
+    this.#menu.close();
     if (option) void this.#o.onFilterMore(col, option).then(value => { if (value !== null) this.toggleFilter(col, value); });
   }
 
@@ -503,7 +528,8 @@ export class AnnuaireWindow {
   #keydown(event) {
     if (this.#covered()) return;
     const doc = this.#root.ownerDocument;
-    if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); this.close(); return; }
+    if (doc.activeElement && doc.activeElement.closest('[data-popover]')) return; // le panneau des filtres garde Échap et Tab
+    if (event.key === 'Escape') { this.#escape(event); return; }
     if (event.key === 'Tab') { this.#tab(event, doc); return; }
     const active = doc.activeElement;
     if (!active || !active.closest) return;
@@ -513,6 +539,15 @@ export class AnnuaireWindow {
       const first = this.#refs.list.querySelector('.an-person, .an-pcard');
       if (first && !this.#refs.list.hidden) { event.preventDefault(); first.focus(); }
     }
+  }
+
+  // Échap : range d'abord le panneau des filtres quand il est ouvert (le clavier revient à son bouton), sinon ferme la fenêtre.
+  #escape(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (!this.#menu.isOpen) { this.close(); return; }
+    this.#menu.close();
+    this.#focus('filters', 'search');
   }
 
   #tab(event, doc) {
@@ -564,6 +599,10 @@ const ACTIONS = Object.freeze({
   'tree-toggle': (window_, data) => window_.toggleNode(data.id),
   person: (window_, data) => window_.pickPerson(Number(data.row)),
   filters: window_ => window_.toggleFilters(),
+  sort: (window_, data) => window_.sortBy(data.key),
+  'sort-pick': window_ => window_.pickSort(),
+  fsec: (window_, data) => window_.toggleFilterSection(data.col),
+  'filters-reset': window_ => window_.resetFilters(),
   'org-people': window_ => window_.toggleOrgPeople(),
   filter: (window_, data) => window_.toggleFilter(data.col, data.value),
   'filter-more': (window_, data) => window_.moreFilter(data.col),

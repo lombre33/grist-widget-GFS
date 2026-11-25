@@ -110,6 +110,9 @@
 :root[data-ambiance="renforcee"] .an-tb { height: var(--target); }
 :root[data-ambiance="renforcee"] .an-pickbtn { height: var(--target); }
 :root[data-ambiance="renforcee"] :is(.an-link, .an-link-b) { display: inline-flex; align-items: center; }
+/* La fenêtre de réglage et celle d'une table ou d'une colonne à créer : les onglets, les champs de saisie, le pli « Avancé » et les suggestions de nom prennent aussi 36 px. */
+:root[data-ambiance="renforcee"] :is(.an-tab, .an-disclose-b) { min-height: var(--target); }
+:root[data-ambiance="renforcee"] :is(.an-set-input, .an-sug) { height: var(--target); }
 /* Le dessin de l'organigramme se réduit avec le zoom (`--z`) : le pli grandit d'autant pour que sa taille à l'écran reste de 36 px (jusqu'au double, sinon il couvrirait les cartes). */
 :root[data-ambiance="renforcee"] .an-fold { --fold: min(calc(var(--target) / var(--z, 1)), calc(var(--target) * 2)); min-width: var(--fold); height: var(--fold); bottom: calc(var(--fold) / -2); }
 

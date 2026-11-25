@@ -161,11 +161,12 @@ async function noneProblems(page, t, note, click, { width }) {
   await click('[data-act="insert"]');
   const snap = await page.until(menuSnap).catch(() => null);
   if (!snap) { note('insérer', `${where} : le menu ne s'ouvre pas sans app`); return; }
-  if (snap.items.length !== 1 || !snap.items[0].greyed || snap.items[0].label !== t('an.link.noneLine') || snap.items[0].tip !== t('an.link.none')) note('insérer', `${where} : le menu dit « ${snap.items.map(item => item.label).join('|')} » (une ligne grisée « ${t('an.link.noneLine')} » attendue, sa phrase au survol)`);
+  if (snap.items.length !== 1 || !snap.items[0].greyed || snap.items[0].label !== t('an.link.noneLine') || snap.items[0].tip !== t('an.link.noneTip')) note('insérer', `${where} : le menu dit « ${snap.items.map(item => item.label).join('|')} » (une ligne grisée « ${t('an.link.noneLine')} » attendue, sa phrase au survol)`);
   if (!inside(snap.box, pageBox(snap.viewport))) note('hors de la page', `${where} : le menu sort de la page`);
   await click('.menu-item');
   await delay(150);
-  if (!(await page.run(ficheSnap)).foot.includes(t('an.link.none'))) note('insérer', `${where} : le clic ne redit pas pourquoi dans le pied`);
+  if ((await page.run(() => window.__annuaireApps)) !== 1) note('insérer', `${where} : un clic sur « ${t('an.link.noneLine')} » n'ouvre pas la fenêtre des apps`);
+  if (await page.run(() => document.querySelector('.menu') !== null)) note('insérer', `${where} : le menu reste ouvert après le clic sur « ${t('an.link.noneLine')} »`);
   await page.press('Escape');
 }
 

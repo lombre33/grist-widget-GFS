@@ -25,7 +25,7 @@ export class AppSession {
   #gaveUp = false; // l'app n'a rien dit après le délai, copie figée comprise : « ne répond pas »
 
   // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, live, lang, onStatus, envelopeHandlers(session),
-  //   authorize(manifest, opens), viewOptions }
+  //   authorize(manifest, opens), viewOptions, onApplied(session, actions, result) (un lot que l'app a écrit est appliqué : js/broker/created-files.js) }
   constructor(ctx) {
     this.ctx = ctx;
     this.manifest = ctx.manifest;
@@ -65,6 +65,7 @@ export class AppSession {
       declared: this.policy.reglages, onConfigure: settings => { this.hasCustomOptions = Boolean(settings.hasCustomOptions); },
       authorize: ctx.authorize ? opens => ctx.authorize(this.manifest, opens) : undefined,
       viewOptions: ctx.viewOptions, onSaved: saved => this.sendSaved(saved),
+      onApplied: (actions, result) => { if (ctx.onApplied) ctx.onApplied(this, actions, result); },
     };
     this.#peer = new AppPeer({
       send: msg => this.frameWindow.postMessage(msg, '*'),

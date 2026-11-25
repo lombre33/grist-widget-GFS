@@ -5,8 +5,9 @@
 .mod-scrim { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: var(--scrim); }
 /* Une fenêtre posée par-dessus une autre (« Gérer les partages » depuis « Partager ») cache celle du dessous, voile compris : un seul voile, une seule fenêtre à lire. */
 .mod-scrim.is-under { visibility: hidden; }
-/* Les trois largeurs de la charte (section 1, « une nouvelle fenêtre choisit l'une des trois ») : 400 px (question, saisie), 480 px (formulaire), grande (liste ou tableau : 960 px plafonnés au panneau). */
-:root { --win-s: 400px; --win-m: 480px; --win-l: 960px; }
+/* Les trois largeurs de la charte (section 1, « une nouvelle fenêtre choisit l'une des trois ») : 400 px (question, saisie), 480 px (formulaire), grande (liste ou tableau : 960 px plafonnés au panneau).
+   Une quatrième, très large (1440 px plafonnés au panneau), pour l'Annuaire seul (demande du porteur du 25/11 : « une version plus large par défaut »). */
+:root { --win-s: 400px; --win-m: 480px; --win-l: 960px; --win-xl: 1440px; }
 .mod { display: flex; flex-direction: column; width: min(var(--win-l), 100%); max-height: 100%; overflow: hidden; background: var(--surface); color: var(--text);
   border: var(--bw) solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-float); font-family: var(--font-ui); font-size: max(13px, var(--fs-min)); line-height: 1.35; }
 

@@ -4,7 +4,7 @@
    et le pied restent en place, seuls les volets défilent. Les classes de ce module portent toutes `an-` : aucune ne rejoint celles de l'explorateur. */
 
 .mod-scrim.an-scrim { padding: 6px; }
-.mod.an { width: min(1440px, 100%); height: 100%; container: an / inline-size; }
+.mod.an { width: min(var(--win-xl), 100%); height: 100%; container: an / inline-size; }
 
 /* L'en-tête : le titre, l'annuaire montré, la recherche, l'affichage, les réglages. */
 .an-head { padding: 8px 12px; }

@@ -1,4 +1,4 @@
-// Le garde-fou des lectures complètes (25/11, choix du porteur après la mesure d'un GFS très chargé : faits vérifiés 161 et 162). Au-delà d'environ 500 Mo
+// Le garde-fou des lectures complètes (25/11, choix du porteur après la mesure d'un GFS très chargé : faits vérifiés 161 et 166). Au-delà d'environ 500 Mo
 // dans une table, Grist ne sait plus l'envoyer en entier : il coupe la connexion de la page, la page se reconnecte, Grist reconstruit le cadre de GFS, GFS
 // redémarre et redemande la table, toutes les 8 s et sans fin. Mesuré : la lecture demandée ne rend ni réponse ni refus avant la fin du cadre, et rien ne
 // distingue ce redémarrage d'une page que la personne recharge (même type de navigation, mêmes événements `pagehide` et `unload`). Ce que GFS sait, c'est

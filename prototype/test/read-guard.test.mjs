@@ -1,4 +1,4 @@
-// Le garde-fou des lectures complètes (js/explorer/read-guard.js) : une table dont la lecture entière ne finit jamais (Grist coupe la connexion et reconstruit le cadre de GFS, faits vérifiés 161 et 162)
+// Le garde-fou des lectures complètes (js/explorer/read-guard.js) : une table dont la lecture entière ne finit jamais (Grist coupe la connexion et reconstruit le cadre de GFS, faits vérifiés 161 et 166)
 // n'est pas redemandée sans fin. Un « onglet » de doublure garde les notes d'une page à la suivante, comme `sessionStorage` ; ce que Grist fait vraiment se mesure au labo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

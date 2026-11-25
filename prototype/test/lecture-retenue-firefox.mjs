@@ -1,7 +1,7 @@
 // La phrase du garde-fou des lectures complètes sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; choix du porteur du 25/11 : le garde-fou
 // contre le redémarrage en boucle, js/explorer/read-guard.js). Quand GFS cesse de relancer la lecture d'une table que Grist coupe, la liste se montre sans les fichiers de l'app et un bandeau le dit, par
 // la voie des apps qu'on n'a pas pu lire (`setStatus`, `problems`). La phrase est longue : elle doit tenir en entier dans la largeur, à 700 × 400, en alerte, sans chasser la liste. Ce que Grist fait
-// vraiment (la coupure, le cadre reconstruit) se mesure dans un vrai Grist (faits vérifiés, 162).
+// vraiment (la coupure, le cadre reconstruit) se mesure dans un vrai Grist (faits vérifiés, 166).
 import { createI18n } from '../js/i18n/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
 

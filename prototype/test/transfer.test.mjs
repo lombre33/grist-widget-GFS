@@ -9,12 +9,12 @@ const BASE = 'https://pages.exemple.fr/gfs/index.html';
 const GIVEN = { token: 'test+jeton/=', baseUrl: 'https://grist.exemple.fr/o/docs/api/docs/DOC123/' };
 
 // Une doublure du cadre : à la poignée de main elle reçoit le port, dit `ready` (sauf `mute`) et répond à chaque requête par `answer(requête)`.
-function fakeFrames({ answer = request => ({ id: request.id, ok: true, value: 5 }), mute = false } = {}) {
+function fakeFrames({ answer = request => ({ id: request.id, ok: true, value: 5 }), mute = false, loaded = Promise.resolve() } = {}) {
   const frames = { created: [], requests: [], removed: 0, ports: [] };
   const createFrame = url => {
     frames.created.push(url);
     return {
-      loaded: Promise.resolve(),
+      loaded,
       remove: () => { frames.removed += 1; },
       window: {
         postMessage(message, origin, ports) {
@@ -37,7 +37,7 @@ function fakeFrames({ answer = request => ({ id: request.id, ok: true, value: 5 
 function setup(options = {}) {
   const { frames, createFrame } = fakeFrames(options.frame);
   const asked = [];
-  const doc = { getAccessToken: async request => { asked.push(request); if (options.tokenError) throw options.tokenError; return options.given || GIVEN; } };
+  const doc = { getAccessToken: async request => { asked.push(request); if (options.tokenError) throw options.tokenError; if (options.tokenNever) return new Promise(() => {}); return options.given || GIVEN; } };
   const transfer = new Transfer({ doc, base: BASE, createFrame });
   return { transfer, frames, asked };
 }
@@ -129,6 +129,27 @@ test('un cadre qui ne dit jamais « ready » (page absente, politique de sécuri
   t.mock.timers.tick(8000);
   await again;
   finish(run);
+});
+
+test('un cadre qui ne se charge jamais (aucun événement « load ») : « frame » au bout du délai, sans attendre sans fin, et le cadre est retiré', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const run = setup({ frame: { loaded: new Promise(() => {}) } });
+  const attempt = run.transfer.sql('SELECT 1');
+  await new Promise(resolve => setImmediate(resolve));
+  t.mock.timers.tick(15000);
+  await assert.rejects(attempt, error => error instanceof TransferError && error.kind === 'frame');
+  assert.equal(run.frames.removed, 1, 'le cadre qui ne se charge pas est retiré');
+  assert.deepEqual(run.frames.requests, [], 'aucune requête n\'est partie');
+});
+
+test('un jeton que Grist ne rend jamais : « token » au bout du délai, le cadre ne s\'ouvre même pas', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const run = setup({ tokenNever: true });
+  const attempt = run.transfer.sql('SELECT 1');
+  await new Promise(resolve => setImmediate(resolve));
+  t.mock.timers.tick(30000);
+  await assert.rejects(attempt, error => error instanceof TransferError && error.kind === 'token' && /délai/.test(error.message));
+  assert.deepEqual(run.frames.created, []);
 });
 
 test('un transfert trop long : « timeout » ; close() fait échouer ce qui attend et le suivant repart d\'un cadre neuf', async t => {

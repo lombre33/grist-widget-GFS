@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-haip3tVFRKK3peQd9qHU9sbkiiYOIHlmD4tMw2NCyhQ='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-0/UTZqHy8GEekdWdLz+FARq65VRs7wdwWrIQg2MISS4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=ab090ade63">
 <link rel="stylesheet" href="css/explorer.css?v=c460d6176d">
 <link rel="stylesheet" href="css/modules.css?v=cdff2d7389">
@@ -350,7 +350,7 @@
     "./kit/js/synchro/textes.js": "./kit/js/synchro/textes.js?v=9c4f1753a5",
     "./kit/js/synchro/version.js": "./kit/js/synchro/version.js?v=58b4f0311b",
     "./kit/js/theme.js": "./kit/js/theme.js?v=55b9ccfb58",
-    "./kit/js/violations-message.js": "./kit/js/violations-message.js?v=566f6c2560",
+    "./kit/js/violations-message.js": "./kit/js/violations-message.js?v=eced12eb2a",
     "./kit/js/violations-pose.js": "./kit/js/violations-pose.js?v=42826f2d54",
     "./kit/js/violations-start.js": "./kit/js/violations-start.js?v=ebb25b673e",
     "./kit/js/violations.js": "./kit/js/violations.js?v=5dca5d589e"

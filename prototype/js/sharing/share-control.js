@@ -8,7 +8,7 @@ import { GROUPS_TABLE, PLACE_TABLE, ROOT, SHARES_TABLE, SPACES_TABLE, STAMP, TAR
   spaceTarget } from './sharing-model.js';
 import { listOf } from './direct-shares.js';
 import { idKey, keysOf } from './folder-identity.js';
-import { openShare } from './share-window.js';
+import { openLazily } from '../shell/lazy-window.js';
 import { runAction, writeActions } from '../rights/rights-actions.js';
 import { ask } from '../ui/ask-window.js';
 import { locate } from './spaces-filing.js';
@@ -197,7 +197,7 @@ export class ShareControl {
   // Ouvre la fenêtre du fichier ; rend la promesse de sa fermeture.
   open(file) {
     const { t, container, inertTargets } = this.#o;
-    return openShare({
+    const options = {
       container, t, locale: this.#o.locale(), inertTargets, other: state => this.#o.other(file, state),
         file: { key: file.key, name: file.name, app: this.#appLabel(file) }, startTab: 'here',
       load: () => this.load(file), onManage: () => this.#o.manage.open(),
@@ -206,6 +206,8 @@ export class ShareControl {
       onRemove: id => this.#write([['RemoveRecord', SHARES_TABLE, id]]),
       onActivate: async () => runAction({ kind: 'sharing', plans: await this.#o.writer.plans(), t, ask: options => ask({ container, inertTargets, ...options }),
         writer: this.#o.writer, resume: `share:${file.key}` }),
-    });
+    };
+    // le code de la fenêtre ne se charge qu'au premier clic (js/shell/lazy-window.js)
+    return openLazily(this.#o, 'Partager', () => import('./share-window.js'), ({ openShare }) => openShare(options));
   }
 }

@@ -6,7 +6,7 @@ import { rowsOf } from '../rights/rights.js';
 import { actionsOf } from '../rights/rights-plan.js';
 import { runAction, writeActions } from '../rights/rights-actions.js';
 import { ask } from '../ui/ask-window.js';
-import { openManage } from './manage-window.js';
+import { openLazily } from '../shell/lazy-window.js';
 import { pickFrom } from '../ui/pick-window.js';
 import { CATEGORIES, GROUPS_TABLE, PLACE_TABLE, ROOT, SHARES_TABLE, SPACES_TABLE, groupRecord, groupsOf, isIdent, planGroupAdd, planGroupsRead, planSpaceAdd,
   planSpaceGroup, planSpaceRemove, shareRecord, spacesOf } from './sharing-model.js';
@@ -220,7 +220,7 @@ export class ManageControl {
     this.#fixed = null;
     this.#dirty = false;
     this.#column = null;
-    const closed = (this.#o.openWindow || openManage)({
+    const options = {
       onLinks: () => (this.#o.otherLinks ? this.#o.otherLinks() : []), onStopLink: link => this.stopLink(link),
         onNewLink: () => (this.#o.otherNew ? this.#o.otherNew() : null),
       container, t, inertTargets, load: () => this.load(), onAddGroup: (state, group) => this.addGroup(state, group),
@@ -232,7 +232,10 @@ export class ManageControl {
         onStructure: () => this.structure(),
       onConfirmRemove: name => ask({ container, inertTargets, title: t('manage.groups.remove.title', { name }), message: t('manage.groups.remove.message'),
         confirmLabel: t('manage.groups.remove.confirm'), cancelLabel: t('rights.ask.cancel'), safeFirst: true }),
-    });
+    };
+    // le code de la fenêtre ne se charge qu'au premier clic (js/shell/lazy-window.js) ; les essais donnent la leur
+    const closed = this.#o.openWindow ? this.#o.openWindow(options)
+      : openLazily(this.#o, 'Gérer', () => import('./manage-window.js'), ({ openManage }) => openManage(options));
     return Promise.resolve(closed).then(value => {
       if (this.#dirty && this.#o.refresh) void Promise.resolve(this.#o.refresh()).catch(error =>
         console.warn('GFS : relecture des fichiers impossible', error));

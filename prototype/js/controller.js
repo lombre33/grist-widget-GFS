@@ -15,7 +15,7 @@ import { createI18n } from './i18n/i18n.js';
 import { LanguageSetting, browserStore, languageOfGrist, localeFor, watchStorage } from './shell/language.js';
 import { ThemeSetting, browserStores } from './theme/theme.js';
 import { ThemeHost } from './theme/theme-apply.js';
-import { ThemeWindow } from './theme/theme-window.js';
+import { openLazily } from './shell/lazy-window.js';
 import { AppStorage, browserBackend, storageHandlers } from './broker/app-storage.js';
 import { installSprite } from './ui/icons.js';
 import { loadFiles } from './explorer/explorer-data.js';
@@ -56,7 +56,6 @@ import { loadReceived } from './sharing/received-files.js';
 import { publicationQuestion, sharedLinkQuestion } from './broker/publication-window.js';
 import { ModulesWindow, rowKey } from './apps/modules-window.js';
 import { TemplatesControl } from './apps/templates-control.js';
-import { DependenciesControl } from './apps/dependencies-control.js';
 import { AppContext } from './broker/app-context.js';
 import { Refus, ERR, levelOf } from './broker/filter.js';
 
@@ -392,26 +391,30 @@ export class GfsController {
   // La ligne « Thème » du menu « Réglages » de l'explorateur : l'ambiance et la couleur de GFS et de ses apps (js/theme/theme-window.js). La fenêtre suit le
   // mode de la page : ses vignettes se repeignent quand Grist passe du clair au sombre.
   openTheme() {
-    if (!this.themeWindow) {
-      this.themeWindow = new ThemeWindow({
-        container: this.$('stage'), i18n: this.i18n, locale: this.locale, setting: this.theme, mode: () => this.themeHost.mode,
-        inertTargets: this.inertTargets,
-      });
-      this.themeHost.onMode(() => this.themeWindow.refresh());
-    }
-    this.themeWindow.open();
+    return openLazily(this, 'Thème', () => import('./theme/theme-window.js'), ({ ThemeWindow }) => {
+      if (!this.themeWindow) {
+        this.themeWindow = new ThemeWindow({
+          container: this.$('stage'), i18n: this.i18n, locale: this.locale, setting: this.theme, mode: () => this.themeHost.mode,
+          inertTargets: this.inertTargets,
+        });
+        this.themeHost.onMode(() => this.themeWindow.refresh());
+      }
+      this.themeWindow.open();
+    });
   }
 
   // La ligne « Dépendances… » du menu « Réglages » : la fenêtre des bibliothèques que GFS sert, avec le choix de leur source et l'export du rapport
   // (js/apps/dependencies-control.js).
   openDependencies() {
-    this.dependencies ??= new DependenciesControl({ container: this.$('stage'), inertTargets: this.inertTargets, t: this.t, locale: () => this.locale,
-      lang: () => this.lang,
-      base: this.doc.baseURI, model: () => this.registry.model(), catalogue: () => this.registry.catalogue, readJson, relay: () => this.relay.snapshot(),
-      readBytes: async address => (await readFile(address)).arrayBuffer(), blocked: () => this.writeBlock(), ask: opts => this.ask(opts), doc: this.doc,
-      apply: (plan, mode) => Promise.all(plan.map(({ app, extensions, natives }) =>
-        this.#saved(this.registry.setSources(app, { extensions, natives }, mode)))) });
-    void this.dependencies.open();
+    return openLazily(this, 'Dépendances', () => import('./apps/dependencies-control.js'), ({ DependenciesControl }) => {
+      this.dependencies ??= new DependenciesControl({ container: this.$('stage'), inertTargets: this.inertTargets, t: this.t, locale: () => this.locale,
+        lang: () => this.lang,
+        base: this.doc.baseURI, model: () => this.registry.model(), catalogue: () => this.registry.catalogue, readJson, relay: () => this.relay.snapshot(),
+        readBytes: async address => (await readFile(address)).arrayBuffer(), blocked: () => this.writeBlock(), ask: opts => this.ask(opts), doc: this.doc,
+        apply: (plan, mode) => Promise.all(plan.map(({ app, extensions, natives }) =>
+          this.#saved(this.registry.setSources(app, { extensions, natives }, mode)))) });
+      void this.dependencies.open();
+    });
   }
 
   // ---------- la fenêtre « Apps et extensions » ----------

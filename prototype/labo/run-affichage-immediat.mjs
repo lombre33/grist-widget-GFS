@@ -34,7 +34,7 @@ const FORBIDDEN = 'Interdit';
 // Le courtier refuse (pour de faux) toute écriture qui nomme le dossier « Interdit » : l'erreur que l'appel rendrait si Grist disait non.
 const patches = [
   { fichier: 'broker/broker.js', de: "const doc = grist.rpc.getStub('GristDocAPI@grist');", vers: "const doc = __refusing(grist.rpc.getStub('GristDocAPI@grist'));", },
-  { fichier: 'broker/broker.js', de: 'export function createPort(grist, cache = null) {', vers: `function __refusing(doc) {
+  { fichier: 'broker/broker.js', de: 'export function createPort(grist) {', vers: `function __refusing(doc) {
   return new Proxy(doc, { get(target, key) {
     const value = target[key];
     if (key !== 'applyUserActions') return value;
@@ -45,7 +45,7 @@ const patches = [
     };
   } });
 }
-export function createPort(grist, cache = null) {` },
+export function createPort(grist) {` },
 ];
 
 const gfsFrame = page => page.frames().find(f => /prototype\/index\.html/.test(f.url()) && /access=full/.test(f.url()));

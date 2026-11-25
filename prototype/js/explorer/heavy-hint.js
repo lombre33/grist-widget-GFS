@@ -1,7 +1,8 @@
 // Le souvenir d'un document lourd (24/11, choix du porteur : « Liste plus vite au démarrage »). L'explorateur ne sait qu'après avoir lu ses fichiers en entier
 // si le document est lourd (js/explorer/explorer-sql.js) : sur 42 Mo, cette première lecture prend 3 s à chaque ouverture de la page. Quand une visite
 // précédente a vu le document lourd, la page le sait d'avance et lit d'emblée en lecture légère (0,9 s) ; les tables ne se lisent pas pour autant en entier
-// derrière la liste : l'app qui s'ouvre lit la sienne (24/11 soir : cette lecture en fond a été retirée, voir js/broker/table-cache.js).
+// derrière la liste : l'app qui s'ouvre lit la sienne (24/11 soir : cette lecture en fond a été retirée ; 25/11 : la copie de la table
+// gardée pour l'app l'a été aussi, fait 157).
 //
 // Ce qui se garde : un seul nombre par document lourd (son poids en octets), sur le navigateur de GFS, sous la clé `gfs.heavy.<identifiant du document>`. Aucun
 // contenu, aucun nom : l'identifiant du document est celui que Grist donne à la page. Rien n'est jamais obligatoire : sans souvenir (premier passage,

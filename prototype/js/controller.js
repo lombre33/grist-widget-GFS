@@ -5,7 +5,6 @@ import { CATALOGUE } from './apps/catalogue.js';
 import { loadAll, label } from './apps/manifest.js';
 import { GristState } from './broker/state.js';
 import { createPort } from './broker/broker.js';
-import { TableCache } from './broker/table-cache.js';
 import { ViewOptions, addressOf } from './broker/view-options.js';
 import { ownSectionHandlers } from './broker/own-section.js';
 import { ViewLink, LINK_KEY } from './broker/view-link.js';
@@ -101,9 +100,7 @@ export class GfsController {
     this.state = new GristState();
     // Les choix de chaque app (contrats 5.3) : un espace par app dans le navigateur de GFS, jamais dans le document.
     this.appStorage = new AppStorage({ backend: browserBackend(window) });
-    // la copie d'une table lourde que l'explorateur lit, rendue à l'app qu'il ouvre (js/broker/table-cache.js) ; son empreinte vient du cadre d'envoi, plus bas
-    this.tableCache = new TableCache({ head: () => this.#stateHead() });
-    this.port = createPort(grist, this.tableCache);
+    this.port = createPort(grist);
     this.readonly = this.params.get('readonly') === 'true';
     // Les réglages des apps s'écrivent dans la vue, sans « Enregistrer » (contrats 7.3) : GFS retrouve sa section par son adresse et sa table.
     this.viewOptions = new ViewOptions({
@@ -149,7 +146,7 @@ export class GfsController {
     this.#buildSharing();
     this.pending = new Pending(); // les gestes de rangement affichés avant d'être écrits (js/explorer/pending.js) ; l'explorateur se redessine à chacun
     this.#reading = new FilesReading({
-      pending: this.pending, cache: this.tableCache, noteBin: id => { if (this.appFiles) this.appFiles.noteBin(id); }, port: this.port,
+      pending: this.pending, noteBin: id => { if (this.appFiles) this.appFiles.noteBin(id); }, port: this.port,
         apps: () => this.validApps(), fullAccess: () => this.fullAccess,
         rangement: this.rangement,
         reader: this.fileReader,
@@ -381,14 +378,6 @@ export class GfsController {
       this.session.show(true);
       this.session.focus();
     }
-  }
-
-  // L'empreinte de l'état du document (`GET /states`, le dernier : elle change à chaque écriture, de qui qu'elle vienne) ; rien quand le serveur ne la rend
-  // pas.
-  async #stateHead() {
-    const { body } = await this.transfer.rest('GET', '/states', { writable: false, params: { limit: 1 } });
-    const [state] = (body && body.states) || [];
-    return state && typeof state.h === 'string' ? state.h : null;
   }
 
   // Une seule lecture des fichiers fait foi, la dernière lancée (js/explorer/files-reading.js). `quiet` : sans « Lecture des fichiers… ».

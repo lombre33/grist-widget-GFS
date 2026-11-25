@@ -17,13 +17,13 @@
 // corbeille, puis le supprimer pour de bon, n'ôte rien à la copie).
 
 import { OwnTable } from './own-table.js';
-import { FILES_TABLE, FILES_COLUMNS, FILES_COLUMN_IDS, TRASH_COLUMN_IDS, sameName, freeName, newId, newRecord, replacementRecord, trashRecord,
+import { filesNames, filesNamesOfColumns, filesColumns, filesColumnIds, trashColumnIds, sameName, freeName, newId, newRecord, replacementRecord, trashRecord,
   restoreRecord } from './gfs-files.js';
 
 const cell = (data, column, i) => (Array.isArray(data[column]) ? data[column][i] : undefined);
 const text = value => (typeof value === 'string' ? value : '');
 
-// La pièce jointe d'une cellule `Contenu` : `['L', numéro, …]`, le premier numéro ; null quand il n'y en a pas.
+// La pièce jointe d'une cellule `content` (`Contenu` dans un document d'avant) : `['L', numéro, …]`, le premier numéro ; null quand il n'y en a pas.
 function attachmentOf(value) {
   return Array.isArray(value) && value[0] === 'L' && Number.isInteger(value[1]) ? value[1] : null;
 }
@@ -31,16 +31,16 @@ function attachmentOf(value) {
 // Les fichiers d'une table lue : [{ row, id, name, ts, by, size, origin, attachment, trashed }]. Une ligne sans identifiant est ignorée (GFS ne sait pas la
 // désigner). `trashed` : { ts, by } (la date du geste, son auteur) quand le fichier est à la corbeille, sinon null ; une table plus ancienne n'a pas ces
 // colonnes : aucun fichier n'y est à la corbeille.
-export function filesOf(data) {
+export function filesOf(data, names = filesNames()) {
   const files = [];
   const rows = (data && Array.isArray(data.id)) ? data.id : [];
   rows.forEach((row, i) => {
-    const id = text(cell(data, 'Identifiant', i));
-    const deleted = cell(data, 'SupprimeLe', i);
-    const trashed = typeof deleted === 'number' && deleted > 0 ? { ts: deleted, by: text(cell(data, 'SupprimePar', i)) } : null;
-    const size = cell(data, 'Taille', i);
-    if (id) files.push({ row, id, name: text(cell(data, 'Nom', i)), ts: cell(data, 'Date', i), by: text(cell(data, 'Auteur', i)),
-      size: Number.isFinite(size) ? size : 0, origin: text(cell(data, 'Origine', i)), attachment: attachmentOf(cell(data, 'Contenu', i)), trashed });
+    const id = text(cell(data, names.id, i));
+    const deleted = cell(data, names.deletedAt, i);
+    const trashed = typeof deleted === 'number' && deleted > 0 ? { ts: deleted, by: text(cell(data, names.deletedBy, i)) } : null;
+    const size = cell(data, names.size, i);
+    if (id) files.push({ row, id, name: text(cell(data, names.name, i)), ts: cell(data, names.date, i), by: text(cell(data, names.author, i)),
+      size: Number.isFinite(size) ? size : 0, origin: text(cell(data, names.origin, i)), attachment: attachmentOf(cell(data, names.content, i)), trashed });
   });
   return files;
 }
@@ -57,7 +57,8 @@ export function receivedName(name) {
 
 export class FilesStore {
   #port;
-  #table;
+  #consent;
+  #tables = new Map();
   #transfer;
   #identity;
   #now;
@@ -71,7 +72,15 @@ export class FilesStore {
     this.#transfer = transfer;
     this.#identity = identity;
     this.#now = now;
-    this.#table = new OwnTable({ port, name: FILES_TABLE, columns: FILES_COLUMNS, consent });
+    this.#consent = consent;
+  }
+
+  // La table des fichiers sous les noms que le document utilise (`filesNames`, dits à l'ouverture, après la mise à jour des noms).
+  get #table() {
+    const names = filesNames();
+    if (!this.#tables.has(names)) this.#tables.set(names, new OwnTable({ port: this.#port, name: names.table, columns: filesColumns(names),
+      consent: this.#consent }));
+    return this.#tables.get(names);
   }
 
   // Un seul geste d'écriture à la fois : le suivant part de la table telle que le précédent l'a laissée.
@@ -87,7 +96,7 @@ export class FilesStore {
   // id, name, row }. TableDeclined quand la personne refuse de créer la table.
   add({ file, name, decide, onUpload = () => {}, origin = 'import' }) {
     return this.#exclusive(async () => {
-      const state = await this.#table.ready(FILES_COLUMN_IDS);
+      const state = await this.#table.ready(filesColumnIds());
       const present = filesOf(state.data).filter(alive);
       const existing = present.find(other => sameName(other.name, name)) || null;
       const copy = freeName(name, present.map(other => other.name));
@@ -124,7 +133,7 @@ export class FilesStore {
   // n'est plus là ou est à la corbeille. Lève quand il n'a pas de contenu.
   copy(file) {
     return this.#exclusive(async () => {
-      const state = await this.#table.existing(FILES_COLUMN_IDS);
+      const state = await this.#table.existing(filesColumnIds());
       const all = state ? filesOf(state.data) : [];
       const found = all.find(other => other.id === file.id && !other.trashed);
       if (!found) return null;
@@ -141,7 +150,7 @@ export class FilesStore {
   // rien ne s'efface. Rend false quand le fichier n'est plus là, ou y est déjà.
   trash(file) {
     return this.#exclusive(async () => {
-      const state = await this.#table.existing(TRASH_COLUMN_IDS);
+      const state = await this.#table.existing(trashColumnIds());
       const found = state && filesOf(state.data).find(other => other.id === file.id);
       if (!found || found.trashed) return false;
       await this.#port.doc.applyUserActions([['UpdateRecord', this.#table.id, found.row, trashRecord({ now: this.#now(), author: this.#identity() })]]);
@@ -161,7 +170,7 @@ export class FilesStore {
       const taken = all.filter(alive).map(other => other.name);
       const name = taken.some(other => sameName(other, found.name)) ? freeName(found.name, taken) : found.name;
       await this.#port.doc.applyUserActions([['UpdateRecord', this.#table.id, found.row,
-        { ...restoreRecord(), ...(name === found.name ? {} : { Nom: name }) }]]);
+        { ...restoreRecord(), ...(name === found.name ? {} : { [filesNames().name]: name }) }]]);
       return { name, renamed: name !== found.name };
     });
   }
@@ -179,11 +188,13 @@ export class FilesStore {
   }
 
   // Le contenu d'un fichier : { blob, name }. La ligne est relue (un fichier retiré par une autre personne, ou une cellule sans pièce jointe, est dit) ; rien
-  // n'est écrit. Un fichier reçu d'un autre document (`file.received`, js/sharing/received-files.js) est lu dans sa table `GFS_Recus*`, par le numéro de sa
-  // ligne.
+  // n'est écrit. Un fichier reçu d'un autre document (`file.received`, js/sharing/received-files.js) est lu dans sa table `GFS_Received*` (ou `GFS_Recus*`),
+  // par le numéro de sa ligne.
   async download(file) {
     const stored = file.received ? await this.#port.doc.fetchTable(file.received.table) : (await this.#table.load()).data;
-    const found = filesOf(stored).find(other => (file.received ? other.row === file.received.row : other.id === file.id));
+    // une table reçue a les colonnes de l'envoyeur, françaises ou anglaises (js/sharing/received-files.js)
+    const found = filesOf(stored, file.received ? filesNamesOfColumns(Object.keys(stored || {})) :
+      filesNames()).find(other => (file.received ? other.row === file.received.row : other.id === file.id));
     if (!found) throw new Error('Ce fichier n’est plus dans le document.');
     if (found.trashed) throw new Error('Ce fichier est à la corbeille.');
     if (found.attachment === null) throw new Error('Ce fichier n’a pas de contenu.');

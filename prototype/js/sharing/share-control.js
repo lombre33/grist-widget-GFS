@@ -3,10 +3,11 @@
 // js/rights/rights-actions.js). Le premier lot couvre les PDF que GFS garde ; les fichiers d'une app attendent leurs colonnes d'aide.
 
 import { rowsOf } from '../rights/rights.js';
-import { FILES_TABLE } from '../files/gfs-files.js';
-import { GROUPS_TABLE, PLACE_TABLE, ROOT, SHARES_TABLE, SPACES_TABLE, STAMP, TARGETS, folderTarget, groupsOf, personalTarget, sharesOf,
+import { filesNames } from '../files/gfs-files.js';
+import { GROUPS_TABLE, PLACE_TABLE, ROOT, SHARES_TABLE, SPACES_TABLE, STAMP, defaultTargets, folderTarget, groupsOf, personalTarget, sharesOf,
   spaceTarget } from './sharing-model.js';
 import { listOf } from './direct-shares.js';
+import { aliased } from './helper-names.js';
 import { idKey, keysOf } from './folder-identity.js';
 import { openShare } from './share-window.js';
 import { runAction, writeActions } from '../rights/rights-actions.js';
@@ -65,8 +66,8 @@ export class ShareControl {
 
   // La table de fichiers que le partage couvre pour ce fichier (un PDF de GFS, ou le fichier d'une app qui déclare sa table), ou null.
   #target(file) {
-    const targets = this.#o.targets ? this.#o.targets() : TARGETS;
-    return file ? targets.find(item => item.prefix === `${file.app}:` && item.table === (file.table || FILES_TABLE)) || null : null;
+    const targets = this.#o.targets ? this.#o.targets() : defaultTargets();
+    return file ? targets.find(item => item.prefix === `${file.app}:` && item.table === (file.table || filesNames().table)) || null : null;
   }
 
   // Pourquoi ce fichier ne se partage pas (une phrase), ou null quand il se partage.
@@ -158,14 +159,15 @@ export class ShareControl {
 
   // L'auteur d'un fichier (d'une app ou un PDF), ou `{ extend }` quand sa table n'est pas prête au partage. La table de fichiers porte-t-elle les colonnes
   // d'aide ? Sinon le partage n'y est pas étendu (une app ajoutée après coup) ; si elle porte celles d'avant les espaces ou d'avant le dossier de « Moi » (pas
-  // `GFS_Directs`, pas `GFS_Dossier`, pas `GFS_Vus`, pas `GFS_Ids`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
+  // `GFS_Direct`, pas `GFS_Folder`, pas `GFS_Seen`, pas `GFS_Ids`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
   async #authorOf(file, target) {
-    const table = await this.#try(() => this.#o.port.doc.fetchTable(target.table), null);
+    // les colonnes d'avant d'une table que Sync+ tient se lisent aussi
+    const table = aliased(await this.#try(() => this.#o.port.doc.fetchTable(target.table), null));
     const has = name => Boolean(table) && Object.prototype.hasOwnProperty.call(table, name);
-    if (target.stamped && !has('GFS_Lecteurs')) return { extend: true };
-    if (has('GFS_Lecteurs') && !(has('GFS_Directs') && has('GFS_Dossier') && has('GFS_Vus') && has('GFS_Ids'))) return { extend: 'upgrade' };
+    if (target.stamped && !has('GFS_Readers')) return { extend: true };
+    if (has('GFS_Readers') && !(has('GFS_Direct') && has('GFS_Folder') && has('GFS_Seen') && has('GFS_Ids'))) return { extend: 'upgrade' };
     // un partage d'avant l'auteur protégé des PDF : « compléter » reprend l'auteur de la colonne « Auteur »
-    if (target.stamped && has('GFS_Lecteurs') && !has(STAMP)) return { extend: 'upgrade' };
+    if (target.stamped && has('GFS_Readers') && !has(STAMP)) return { extend: 'upgrade' };
     return { author: target.stamped ? lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]) : lower(file.by) };
   }
 

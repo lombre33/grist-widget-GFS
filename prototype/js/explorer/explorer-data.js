@@ -14,6 +14,7 @@ import { SHARES_TABLE } from '../sharing/sharing-model.js';
 import { rowsOf } from '../rights/rights.js';
 import { loadReceived } from '../sharing/received-files.js';
 import { neededColumns } from './explorer-sql.js';
+import { aliased, wantedBoth } from '../sharing/helper-names.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -27,7 +28,7 @@ function lightPlan(tables, apps) {
   const plan = [{ table: nameIn(tables, BIN_TABLE), wanted: BIN_LIGHT }];
   for (const { manifest } of apps) {
     for (const spec of manifest.fichiers || []) {
-      plan.push({ table: nameIn(tables, spec.table), wanted: neededColumns(spec) });
+      plan.push({ table: nameIn(tables, spec.table), wanted: wantedBoth(neededColumns(spec)) });
       for (const rule of (spec.poids && spec.poids.liees) || []) plan.push({ table: nameIn(tables, rule.table), wanted: [rule.colonne] });
     }
   }
@@ -53,9 +54,9 @@ const nameIn = (tables, tableId) => (tables && tables.find(name => sameName(name
 async function readTable(port, tables, tableId, light = null, wanted = null) {
   if (tables && !tables.some(name => sameName(name, tableId))) return { data: null };
   const found = nameIn(tables, tableId);
-  const one = light && wanted ? await light.read(found, wanted) : null;
-  if (one) return one;
-  try { return { data: await port.doc.fetchTable(found) }; } catch (error) { return { error }; }
+  const one = light && wanted ? await light.read(found, wantedBoth(wanted)) : null;
+  if (one) return { ...one, data: aliased(one.data) };
+  try { return { data: aliased(await port.doc.fetchTable(found)) }; } catch (error) { return { error }; }
 }
 
 // Les tables liées aux fichiers d'une table (`poids.liees`, contrats 2.4, point 5) : [{ table, fichier, bytes }], `bytes` les octets des lignes de la table

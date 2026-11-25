@@ -63,7 +63,7 @@ async function playScreen(run, frame, keyA) {
   await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: EDITOR }).waitFor({ timeout: 15000 });
   const first = (await byName(run))[FIRST];
   const mine = (await rows(run, 'GFS_Shares')).find(row => row.Target === `publipostage:${first.id}` && row.Person === EDITOR);
-  check('« Aucun accès » à editor@ s\'écrit, et Grist le met dans la liste des refus', mine && mine.Right === 'aucun' && has(first.GFS_Refus, EDITOR), mine);
+  check('« Aucun accès » à editor@ s\'écrit, et Grist le met dans la liste des refus', mine && mine.Right === 'aucun' && has(first.GFS_Denied, EDITOR), mine);
   // l'onglet Espaces
   await frame.locator('[data-fk="share-manage"]').click();
   await frame.locator('.mod.mg .rt-content').waitFor();
@@ -149,7 +149,7 @@ async function playExplorer(run, frame) {
   const given = (await rows(run, 'GFS_Shares')).find(line => line.Target === 'dossier:achats/Contrats' && line.Person === 'lea@example.com');
   check('un droit donné dans la fenêtre du dossier s\'écrit sur « dossier:achats/Contrats »', given && given.Right === 'lecture', given);
   const withLea = (await byName(run))[NAMES.F];
-  check('la personne lit le fichier rangé dans ce dossier (Grist le calcule)', has(withLea.GFS_Lecteurs, 'lea@example.com'), withLea.GFS_Calc);
+  check('la personne lit le fichier rangé dans ce dossier (Grist le calcule)', has(withLea.GFS_Readers, 'lea@example.com'), withLea.GFS_Calc);
   await frame.locator('[data-fk="share-close"]').click();
   await frame.locator('.mod.sh').waitFor({ state: 'detached' });
   await frame.locator('nav.crumbs button[data-path="Espaces"]').waitFor();
@@ -194,7 +194,7 @@ async function playOwner(run) {
   const tables = ((await call(page, 'GET', `/api/docs/${run.docId}/tables`)).json.tables || []).map(table => table.id);
   check('GFS_Spaces et GFS_Placement sont créées avec le partage', tables.includes('GFS_Spaces') && tables.includes('GFS_Placement') && tables.includes('GFS_Groups'), tables);
   const columns = ((await call(page, 'GET', `/api/docs/${run.docId}/tables/${MODELS}/columns`)).json.columns || []).map(column => column.id);
-  check('la table de l\'app porte GFS_Calc, GFS_Refus et les listes d\'aide', ['GFS_Calc', 'GFS_Refus', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins'].every(id => columns.includes(id)), columns);
+  check('la table de l\'app porte GFS_Calc, GFS_Denied et les listes d\'aide', ['GFS_Calc', 'GFS_Denied', 'GFS_Readers', 'GFS_Writers', 'GFS_Admins'].every(id => columns.includes(id)), columns);
   await frame.locator('[data-fk="share-close"]').click();
 
   say('--- 2. le décor : groupe, espace, placement, partages ---');
@@ -221,15 +221,15 @@ async function playOwner(run) {
   say('--- 3. les listes que Grist calcule pour chaque fichier ---');
   const all = await byName(run);
   const calc = letter => all[NAMES[letter]];
-  check('A : l\'éditeur écrit (dossier Contrats, personne), le lecteur ne voit rien', has(calc('A').GFS_Lecteurs, EDITOR) && has(calc('A').GFS_Ecrivains, EDITOR) && !has(calc('A').GFS_Lecteurs, VIEWER), calc('A').GFS_Calc);
-  check('B : « Aucun accès » au fichier retire l\'éditeur, malgré l\'espace et le dossier', has(calc('B').GFS_Refus, EDITOR) && !has(calc('B').GFS_Lecteurs, EDITOR) && !has(calc('B').GFS_Ecrivains, EDITOR), calc('B').GFS_Calc);
-  check('C : « Aucun accès » au groupe sur le fichier le retire à l\'éditeur (le fichier passe avant l\'espace)', has(calc('C').GFS_Refus, EDITOR) && !has(calc('C').GFS_Lecteurs, EDITOR), calc('C').GFS_Calc);
-  check('D : le sous-dossier (groupe en lecture) est plus précis que Contrats (personne en écriture) : lecture seule', has(calc('D').GFS_Lecteurs, EDITOR) && !has(calc('D').GFS_Ecrivains, EDITOR), calc('D').GFS_Calc);
-  check('D : le lecteur lit par son partage direct sur le fichier, sans être dans l\'espace', has(calc('D').GFS_Lecteurs, VIEWER) && !has(calc('D').GFS_Ecrivains, VIEWER), calc('D').GFS_Calc);
-  check('A : l\'éditeur y est « donné » par son adresse (dossier Contrats, écrit par le propriétaire) ; le groupe ne compte pas', has(calc('A').GFS_Directs, `${EDITOR}>${OWNER}`) && !has(calc('A').GFS_Directs, VIEWER), calc('A').GFS_Calc);
-  check('D : le lecteur y est « donné » par son adresse ; l\'éditeur non (le sous-dossier du groupe est plus précis)', has(calc('D').GFS_Directs, `${VIEWER}>${OWNER}`) && !has(calc('D').GFS_Directs, EDITOR), calc('D').GFS_Calc);
-  check('B, C, E : personne n\'y est « donné » (refus, groupe, rien)', ['B', 'C', 'E'].every(letter => !has(calc(letter).GFS_Directs, '>')), ['B', 'C', 'E'].map(letter => calc(letter).GFS_Directs));
-  check('E : hors espace, non partagé : le propriétaire seul', !has(calc('E').GFS_Lecteurs, EDITOR) && !has(calc('E').GFS_Lecteurs, VIEWER) && has(calc('E').GFS_Lecteurs, OWNER), calc('E').GFS_Calc);
+  check('A : l\'éditeur écrit (dossier Contrats, personne), le lecteur ne voit rien', has(calc('A').GFS_Readers, EDITOR) && has(calc('A').GFS_Writers, EDITOR) && !has(calc('A').GFS_Readers, VIEWER), calc('A').GFS_Calc);
+  check('B : « Aucun accès » au fichier retire l\'éditeur, malgré l\'espace et le dossier', has(calc('B').GFS_Denied, EDITOR) && !has(calc('B').GFS_Readers, EDITOR) && !has(calc('B').GFS_Writers, EDITOR), calc('B').GFS_Calc);
+  check('C : « Aucun accès » au groupe sur le fichier le retire à l\'éditeur (le fichier passe avant l\'espace)', has(calc('C').GFS_Denied, EDITOR) && !has(calc('C').GFS_Readers, EDITOR), calc('C').GFS_Calc);
+  check('D : le sous-dossier (groupe en lecture) est plus précis que Contrats (personne en écriture) : lecture seule', has(calc('D').GFS_Readers, EDITOR) && !has(calc('D').GFS_Writers, EDITOR), calc('D').GFS_Calc);
+  check('D : le lecteur lit par son partage direct sur le fichier, sans être dans l\'espace', has(calc('D').GFS_Readers, VIEWER) && !has(calc('D').GFS_Writers, VIEWER), calc('D').GFS_Calc);
+  check('A : l\'éditeur y est « donné » par son adresse (dossier Contrats, écrit par le propriétaire) ; le groupe ne compte pas', has(calc('A').GFS_Direct, `${EDITOR}>${OWNER}`) && !has(calc('A').GFS_Direct, VIEWER), calc('A').GFS_Calc);
+  check('D : le lecteur y est « donné » par son adresse ; l\'éditeur non (le sous-dossier du groupe est plus précis)', has(calc('D').GFS_Direct, `${VIEWER}>${OWNER}`) && !has(calc('D').GFS_Direct, EDITOR), calc('D').GFS_Calc);
+  check('B, C, E : personne n\'y est « donné » (refus, groupe, rien)', ['B', 'C', 'E'].every(letter => !has(calc(letter).GFS_Direct, '>')), ['B', 'C', 'E'].map(letter => calc(letter).GFS_Direct));
+  check('E : hors espace, non partagé : le propriétaire seul', !has(calc('E').GFS_Readers, EDITOR) && !has(calc('E').GFS_Readers, VIEWER) && has(calc('E').GFS_Readers, OWNER), calc('E').GFS_Calc);
   frame = await playScreen(run, frame, key('A'));
   frame = await playExplorer(run, frame);
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));

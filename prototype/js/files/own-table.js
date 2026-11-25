@@ -7,6 +7,7 @@
 // des noms n'a pas eu lieu (propriétaire absent, refus), GFS ne crée rien et n'ajoute aucune colonne.
 
 import { isLegacyForm } from './gfs-names.js';
+import { aliased } from '../sharing/helper-names.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -88,7 +89,9 @@ export class OwnTable {
     this.#seen = found;
     const fetched = (guess && found === known && (await guess)) || (await this.#port.doc.fetchTable(found));
     const columns = Object.keys(fetched || {});
-    return { exists: true, columns, data: fetched, legacy: isLegacyForm(this.#name, tables, columns) };
+    // Les colonnes d'aide d'une table que Sync+ tient gardent leur nom d'avant dans `columns` ; `data` les rend aussi sous celui d'arrivée
+    // (js/sharing/helper-names.js).
+    return { exists: true, columns, data: aliased(fetched), legacy: isLegacyForm(this.#name, tables, columns) };
   }
 
   // La table prête à être écrite, relue juste avant, avec les colonnes `needed` : sans table, l'accord de la personne, puis la création. `created` : la table

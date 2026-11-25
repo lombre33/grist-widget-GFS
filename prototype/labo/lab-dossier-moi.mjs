@@ -7,23 +7,23 @@ import { gfsFrame } from './lab-droits.mjs';
 import { call, rowsOf } from './lab-rest.mjs';
 
 const { t } = createI18n(process.env.LAB_LANG || 'fr');
-export const FILES = 'GFS_Fichiers', SHARES = 'GFS_Shares', FILING = 'GFS_Filing';
+export const FILES = 'GFS_Files', SHARES = 'GFS_Shares', FILING = 'GFS_Filing';
 
 export const has = (value, who) => JSON.stringify(value ?? null).toLowerCase().includes(who);
-export const fileRow = async (run, name) => ((await rowsOf(run, FILES)) || []).find(row => row.Nom === name);
-export const keyOf = row => `gfs-fichiers:${row.Identifiant}`;
+export const fileRow = async (run, name) => ((await rowsOf(run, FILES)) || []).find(row => row.Name === name);
+export const keyOf = row => `gfs-fichiers:${row.FileId}`;
 // La cible d'un partage de dossier de « Moi » à l'ancienne mode (le chemin) ; `idTarget`, celle d'aujourd'hui (le numéro de la ligne d'état du dossier).
 export const personal = (who, path) => `dossier:moi:${who}/${path}`;
 export const idTarget = (who, id) => `dossier:moi:${who}//${id}`;
 
 // Un fichier de plus dans la table des fichiers (une ligne sans pièce jointe : la liste et le partage ne lisent que les lignes), à l'adresse de la session de la page : Grist écrit l'auteur.
 export async function addFile(run, name, id, who) {
-  const answer = await call(run.page, 'POST', `/api/docs/${run.docId}/tables/${FILES}/records`, { records: [{ fields: { Identifiant: id, Nom: name, Type: 'application/pdf', Auteur: who, Taille: 1000, Origine: 'import' } }] });
+  const answer = await call(run.page, 'POST', `/api/docs/${run.docId}/tables/${FILES}/records`, { records: [{ fields: { FileId: id, Name: name, Type: 'application/pdf', Author: who, Size: 1000, Origin: 'import' } }] });
   check(`« ${name} » est ajouté (auteur écrit par Grist)`, answer.status === 200, answer.text);
   return fileRow(run, name);
 }
 // La ligne de rangement d'une personne : où ELLE range ce fichier.
-export const filing = (who, row, folder) => ['AddRecord', FILING, null, { User: who, App: 'gfs-fichiers', File: row.Identifiant, Folder: folder, Favorite: false }];
+export const filing = (who, row, folder) => ['AddRecord', FILING, null, { User: who, App: 'gfs-fichiers', File: row.FileId, Folder: folder, Favorite: false }];
 
 export async function openShareFor(frame, name) {
   await openRowMenu(frame, name);

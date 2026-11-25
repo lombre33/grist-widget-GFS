@@ -2,9 +2,10 @@
 // aux noms anglais, en un seul lot, par la fenêtre commune du kit (`NamesUpdate`, js/files/names-update.js). Ce module ne parle ni à Grist ni à la page : il
 // dit ce qui change, calcule le lot d'après les noms du document et reconnaît un document qui n'a pas encore été mis à jour.
 //
-// Ce qui ne change pas (décision du porteur, 25/11) : les tables que Sync+ tient (`GFS_Fichiers` partagée, `GFS_Recus*`, `GFS_Synchro`, `GFS_Journal_*`)
-// gardent leurs noms d'avant, et avec elles leurs colonnes et les colonnes d'aide que GFS pose sur les tables des apps : un lien de Sync+ ne se rompt jamais
-// (faits vérifiés, 160). Les valeurs que GFS écrit (les droits `lecture`, `ecriture`, `admin`, les clés `dossier:…`) ne sont pas des noms et ne changent pas.
+// Ce qui ne change pas (décision du porteur, 25/11) : les tables que Sync+ tient (`GFS_Fichiers` quand elle est envoyée, `GFS_Recus*`, `GFS_Synchro`,
+// `GFS_Journal_*`) gardent leurs noms d'avant, et avec elles leurs colonnes et les colonnes d'aide que GFS pose dessus : un lien de Sync+ ne se rompt jamais
+// (faits vérifiés, 160). Le kit les écarte du lot (`keepOut`) ; ici, une table d'avant que Sync+ tient n'est pas « d'avant » : elle est à jour sous son nom.
+// Les valeurs que GFS écrit (les droits `lecture`, `ecriture`, `admin`, les clés `dossier:…`) ne sont pas des noms et ne changent pas.
 
 // Une entrée par table : `table` (le nom d'arrivée), `before` (le nom d'avant ; le même quand seules les colonnes changent) et `columns` (colonne d'avant ->
 // colonne d'arrivée ; une colonne qui ne change pas n'y est pas).
@@ -23,7 +24,14 @@ export const GFS_RENAMES = Object.freeze([
   { table: 'GFS_Trash', before: 'GFS_Corbeille', columns: {
     Identifiant: 'EntryId', FichierId: 'FileId', Nom: 'Name', Auteur: 'Author', SupprimeLe: 'DeletedAt', SupprimePar: 'DeletedBy', Instantane: 'Snapshot' } },
   { table: 'GFS_Directories', before: 'GFS_Annuaires', columns: { Nom: 'Name', Fiches: 'Copy' } },
+  // Les PDF que GFS garde (js/files/gfs-files.js, `FILES_NAMES`) : renommée quand Sync+ ne l'utilise pas, laissée telle quelle sinon (ci-dessous).
+  { table: 'GFS_Files', before: 'GFS_Fichiers', columns: { Identifiant: 'FileId', Nom: 'Name', Auteur: 'Author', Contenu: 'Content', Taille: 'Size',
+    Origine: 'Origin',
+    SupprimeLe: 'DeletedAt', SupprimePar: 'DeletedBy', Dossier_partage: 'SharedFolder' } },
 ]);
+
+import { syncTables } from '../../kit/js/names-update/plan.js';
+import { helperRenames, helperSetOf, inSet } from '../sharing/helper-names.js';
 
 const lower = value => String(value ?? '').toLowerCase();
 
@@ -43,9 +51,10 @@ function findTable(schema, name) {
 // telle quelle. Rien d'écrit quand le document est déjà à jour (ou n'a pas de table de GFS) : null.
 export function planGfsNames(schema) {
   const actions = [];
+  const held = syncTables(schema);
   for (const entry of GFS_RENAMES) {
     const old = findTable(schema, entry.before);
-    if (!old) continue;
+    if (!old || held.has(lower(old.id))) continue; // une table que Sync+ tient garde ses noms : le kit l'écarterait de toute façon (`keepOut`)
     const renamed = lower(entry.before) !== lower(entry.table);
     if (renamed) actions.push(['RenameTable', old.id, entry.table]);
     const have = columnSet(old.columns);
@@ -53,16 +62,30 @@ export function planGfsNames(schema) {
       if (have.has(lower(before)) && !have.has(lower(after))) actions.push(['RenameColumn', renamed ? entry.table : old.id, before, after]);
     }
   }
+  actions.push(...helperActions(schema, held));
   return actions.length ? actions : null;
+}
+
+// Les colonnes d'aide du partage (js/sharing/helper-names.js) de chaque table qui en porte sous leur nom d'avant : celles des tables de GFS et celles des
+// tables des apps, sur le nom que la table aura après le lot. Une table que Sync+ tient garde les siennes.
+function helperActions(schema, held) {
+  const out = [];
+  for (const [id, columns] of Object.entries((schema && schema.tables) || {})) {
+    if (held.has(lower(id))) continue;
+    const entry = GFS_RENAMES.find(item => lower(item.before) === lower(id));
+    out.push(...helperRenames(entry ? entry.table : id, columns || []));
+  }
+  return out;
 }
 
 // Le document porte-t-il encore une table de GFS sous la forme d'avant ? Rend les noms d'arrivée des tables concernées (vide : à jour). Une table est d'avant
 // quand elle porte son ancien nom (sans la nouvelle), ou, pour `GFS_Placement` dont le nom ne change pas, une colonne d'avant sans sa colonne d'arrivée.
 export function legacyTables(schema) {
   const found = [];
+  const held = syncTables(schema);
   for (const entry of GFS_RENAMES) {
     const old = findTable(schema, entry.before);
-    if (!old) continue;
+    if (!old || held.has(lower(old.id))) continue;
     if (lower(entry.before) !== lower(entry.table)) {
       if (!findTable(schema, entry.table)) found.push(entry.table);
       continue;
@@ -85,11 +108,11 @@ export function isLegacyForm(name, tables, columns = null) {
   return Object.entries(entry.columns).some(([before, after]) => have.has(lower(before)) && !have.has(lower(after)));
 }
 
-// Les formules (mesuré dans Grist 1.7.19, labo/run-noms-gfs.mjs) : Grist réécrit seul `$colonne`, `rec.colonne`, les arguments d'un `lookupRecords(Colonne=…)` et
-// ce qui se lit sur le résultat d'un `lookupOne`, mais PAS ce qui se lit sur la variable d'une boucle (`for p in GFS_Shares.lookupRecords(…): p.Droit`) : la
-// formule resterait à l'ancien nom et rendrait `AttributeError`, donc plus aucun droit de lecture. Les formules de GFS n'ont que trois variables de boucle, chacune
-// sur une table de GFS (`test/gfs-names.test.mjs` garde cette liste contre les formules du code) : `p` (partages), `l` (placement), `r` (rangement). `r` sert
-// aussi, dans `Members`, à lire la table d'une source de groupes, qui n'est pas à nous : cette formule n'est jamais réécrite ici.
+// Les formules (mesuré dans Grist 1.7.19, labo/run-noms-gfs.mjs) : Grist réécrit seul `$colonne`, `rec.colonne`, les arguments d'un `lookupRecords(Colonne=…)`
+// et ce qui se lit sur le résultat d'un `lookupOne`, mais PAS ce qui se lit sur la variable d'une boucle (`for p in GFS_Shares.lookupRecords(…): p.Droit`) : la
+// formule resterait à l'ancien nom et rendrait `AttributeError`, donc plus aucun droit de lecture. Les formules de GFS n'ont que trois variables de boucle,
+// chacune sur une table de GFS (`test/gfs-names.test.mjs` garde cette liste contre les formules du code) : `p` (partages), `l` (placement), `r` (rangement).
+// `r` sert aussi, dans `Members`, à lire la table d'une source de groupes, qui n'est pas à nous : cette formule n'est jamais réécrite ici.
 export const LOOP_VARIABLES = Object.freeze({ p: 'GFS_Shares', l: 'GFS_Placement', r: 'GFS_Filing' });
 
 const columnsRenamedOf = table => (GFS_RENAMES.find(entry => entry.table === table) || { columns: {} }).columns;
@@ -99,20 +122,51 @@ const columnsRenamedOf = table => (GFS_RENAMES.find(entry => entry.table === tab
 export function rewriteFormula(text) {
   let out = String(text ?? '');
   for (const [variable, table] of Object.entries(LOOP_VARIABLES)) {
-    for (const [before, after] of Object.entries(columnsRenamedOf(table))) out = out.replace(new RegExp(`(?<![\\w.])${variable}\\.${before}\\b`, 'g'), `${variable}.${after}`);
+    for (const [before, after] of Object.entries(columnsRenamedOf(table))) out = out.replace(new RegExp(`(?<![\\w.])${variable}\\.${before}\\b`, 'g'),
+      `${variable}.${after}`);
   }
   return out;
 }
 
-// Les formules à reprendre : `formulas` : { '<table>.<colonne>': formule } (les colonnes à formule du document, `readSchema`) ; `owned(table, colonne)` dit celles
-// que GFS a écrites (les tables de partage, les colonnes d'aide). Rend [{ table, column, formula }] avec la formule réécrite, seulement pour celles qui changent.
-export function staleFormulas(formulas, owned) {
+// `AdminsBase` (js/sharing/sharing-model.js, `shareColumns`) lit l'auteur de chaque fichier par une variable, `found`, que chaque branche rebinde à la table de
+// ses fichiers. Quand les tables ne sont pas toutes renommées pareil (Sync+ en tient une : elle garde `GFS_Auteur`, les autres passent à `GFS_Author`), Grist
+// suit le renommage d'après une seule des tables et laisse les autres branches à l'ancien nom (mesuré dans Grist 1.7.19, labo/run-noms-gfs.mjs : le calcul des
+// administrateurs tombait en erreur). Ici, chaque branche dit l'auteur de SA table, d'après les colonnes que la table porte (`tables` : { '<table>':
+// ['<colonne>', …] }).
+export function authorsMended(text, tables) {
+  const known = Object.entries(tables || {});
+  return String(text ?? '').replace(/(found = (\w+)\.lookupOne\([^\n]*\n  if found:\n    out\.add\(str\(found\.)(\w+)(\))/g,
+    (whole, head, table, column, tail) => {
+    const mine = known.find(([name]) => lower(name) === lower(table));
+    return mine && /^GFS_(Author|Auteur)$/i.test(column) ? `${head}${inSet('GFS_Author', helperSetOf(mine[1]))}${tail}` : whole;
+  });
+}
+
+// Les formules à reprendre : `formulas` : { '<table>.<colonne>': formule } (les colonnes à formule du document, `readSchema`) ; `owned(table, colonne)` dit
+// celles que GFS a écrites (les tables de partage, les colonnes d'aide) ; `tables` : les colonnes de chaque table (pour `authorsMended`). Rend [{ table,
+// column, formula }] avec la formule réécrite, seulement pour celles qui changent.
+export function staleFormulas(formulas, owned, tables = null) {
   const out = [];
   for (const [key, text] of Object.entries(formulas || {})) {
     const at = key.indexOf('.');
     const table = key.slice(0, at); const column = key.slice(at + 1);
-    const formula = rewriteFormula(text);
+    const formula = authorsMended(rewriteFormula(text), tables);
     if (owned(table, column) && formula !== text) out.push({ table, column, formula });
+  }
+  return out;
+}
+
+// Les pages (mesuré dans Grist 1.7.19) : renommer une table ne renomme pas sa page, qui garde son titre d'avant (« GFS_Rangement » à gauche, pour une table
+// `GFS_Filing`) : un nom français encore visible. `views` : [{ id, name }] (`_grist_Views`) ; `tables` : les noms des tables du document. Rend [{ id, name }]
+//   pour les pages dont le titre est un nom de table d'avant (casse ignorée) dont la table d'arrivée existe, sans qu'une page porte déjà le nom d'arrivée.
+export function stalePages(views, tables) {
+  const have = new Set((tables || []).map(lower));
+  const named = new Set((views || []).map(view => lower(view.name)));
+  const out = [];
+  for (const entry of GFS_RENAMES) {
+    if (lower(entry.before) === lower(entry.table) || !have.has(lower(entry.table)) || named.has(lower(entry.table))) continue;
+    for (const view of views || []) if (lower(view.name) === lower(entry.before) &&
+      !out.some(item => item.id === view.id)) out.push({ id: view.id, name: entry.table });
   }
   return out;
 }

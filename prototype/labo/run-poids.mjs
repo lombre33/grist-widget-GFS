@@ -31,7 +31,7 @@ const locale = lang === 'en' ? 'en-GB' : 'fr-FR';
 const TAG = `poids-${lang}-${scheme}`;
 const MODELS = 'Publipostage_Modeles';
 const PREFS = 'Publipostage_PreferencesModeles';
-const FILES = 'GFS_Fichiers';
+const FILES = 'GFS_Files';
 const BIN = 'GFS_Trash';
 const VERSIONS = 'Publipostage_Versions';
 const show = bytes => formatBytes(bytes, locale, t);
@@ -52,10 +52,10 @@ async function expectedFiles(run) {
     const linked = row.Jeton ? byToken.get(row.Jeton) || 0 : 0;
     return { name: row.Nom, folder: folderOf.get(row.id) ?? '', bytes: rowBytes(row) + linked, linked, pieces: linked ? [[`liee:${VERSIONS}:${row.Jeton}`, linked]] : [] };
   });
-  for (const row of (await run.rest.rows(FILES)).filter(each => !each.SupprimeLe)) {
-    const [id] = attachmentIds(row.Contenu);
+  for (const row of (await run.rest.rows(FILES)).filter(each => !each.DeletedAt)) {
+    const [id] = attachmentIds(row.Content);
     const size = sizes.get(id) ?? 0;
-    list.push({ name: row.Nom, folder: '', bytes: rowBytes(row) + size, pieces: [[String(id), size]], linked: 0, taille: row.Taille, size });
+    list.push({ name: row.Name, folder: '', bytes: rowBytes(row) + size, pieces: [[String(id), size]], linked: 0, taille: row.Size, size });
   }
   return list;
 }
@@ -82,7 +82,7 @@ async function prepare(run) {
   await page.waitForTimeout(800);
   const files = await expectedFiles(run);
   check('les fichiers sont là : 18 modèles, trois modèles lourds, trois PDF', files.length === 24 && files.filter(file => file.pieces.length).length === 3, files.map(file => file.name));
-  check('la taille que GFS garde d\'un PDF (`Taille`) est celle que Grist garde de sa pièce jointe', files.filter(file => file.pieces.length).every(file => file.taille === file.size && file.size > 0), files.filter(file => file.pieces.length).map(file => [file.name, file.taille, file.size]));
+  check('la taille que GFS garde d\'un PDF (`Size`) est celle que Grist garde de sa pièce jointe', files.filter(file => file.pieces.length).every(file => file.taille === file.size && file.size > 0), files.filter(file => file.pieces.length).map(file => [file.name, file.taille, file.size]));
 }
 
 // ----- 1. Le poids de chaque fichier, de chaque dossier, et le total du pied.
@@ -200,9 +200,9 @@ async function playTrash(run) {
 const PHOTOS = 'Photos';
 
 // Ce que Grist compte des pièces jointes que nul fichier de l'explorateur ne cite : SQL, la formule de Grist (`fileIdent` distincts, `timeDeleted` vide, la plus grande taille), sans les `fileIdent` des
-// pièces que citent les fichiers de GFS, vivants ou à la corbeille (leurs numéros viennent de `GFS_Fichiers`, toutes lignes).
+// pièces que citent les fichiers de GFS, vivants ou à la corbeille (leurs numéros viennent de `GFS_Files`, toutes lignes).
 async function exactOthers(run) {
-  const own = (await run.rest.rows(FILES)).flatMap(row => attachmentIds(row.Contenu));
+  const own = (await run.rest.rows(FILES)).flatMap(row => attachmentIds(row.Content));
   const [row] = await sql(run, `SELECT COUNT(*) AS n, COALESCE(SUM(len), 0) AS octets FROM (SELECT MAX(meta.fileSize) AS len FROM _grist_Attachments AS meta WHERE meta.timeDeleted IS NULL AND meta.fileIdent NOT IN (SELECT fileIdent FROM _grist_Attachments WHERE id IN (${own.length ? own.join(',') : '0'})) GROUP BY meta.fileIdent)`);
   return { bytes: row.octets, count: row.n };
 }
@@ -352,7 +352,7 @@ async function attachmentsTrash(run, { base, first }) {
   await rowOf(frame, 'Devis.pdf').click();
   await page.keyboard.press('Delete');
   await frame.locator('.mod.ask').waitFor({ timeout: 3000 }).then(() => frame.locator('[data-fk="ask-yes"]').click()).catch(() => {});
-  await waitFor(page, 'le PDF est à la corbeille', async () => (await run.rest.rows(FILES)).some(row => row.Nom === 'Devis.pdf' && row.SupprimeLe));
+  await waitFor(page, 'le PDF est à la corbeille', async () => (await run.rest.rows(FILES)).some(row => row.Name === 'Devis.pdf' && row.DeletedAt));
   const trashed = await exactOthers(run);
   const listNow = await listBytes(run);
   await waitForTotal(frame, show(listNow + trashed.bytes));
@@ -360,7 +360,7 @@ async function attachmentsTrash(run, { base, first }) {
   await goTo(frame, new RegExp(`^\\s*${t('trash.view')}`));
   await rowOf(frame, 'Devis.pdf').click();
   await page.keyboard.press('Enter');
-  await waitFor(page, 'le PDF est revenu', async () => (await run.rest.rows(FILES)).some(row => row.Nom === 'Devis.pdf' && !row.SupprimeLe));
+  await waitFor(page, 'le PDF est revenu', async () => (await run.rest.rows(FILES)).some(row => row.Name === 'Devis.pdf' && !row.DeletedAt));
   await goHome(frame);
   await waitForWeights(frame, 8);
   await waitForTotal(frame, show(base + first.bytes));

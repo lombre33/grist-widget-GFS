@@ -97,9 +97,9 @@ async function seedSub(grist, seed) {
   const read = presenceView(await seed.read(parent), { admin: true });
   const made = await seed.createSub({ name: 'Pôle Ressources', parent, sub: { key: levelKey(0), label: 'Pôle', values: ['Pôle Ressources'] }, read,
     at: '2026-11-20T09:30:00.000Z' });
-  const columns = ['GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Refus'];
+  const columns = ['GFS_Readers', 'GFS_Writers', 'GFS_Admins', 'GFS_Denied'];
   await applyUserActions(columns.map(id => ['AddColumn', ANNUAIRES_TABLE, id, { type: 'ChoiceList', isFormula: false }]));
-  await applyUserActions([['UpdateRecord', ANNUAIRES_TABLE, made.row, { GFS_Ecrivains: ['L', 'ecrivain@exemple.fr'] }]]);
+  await applyUserActions([['UpdateRecord', ANNUAIRES_TABLE, made.row, { GFS_Writers: ['L', 'ecrivain@exemple.fr'] }]]);
 }
 
 // Les apps du menu « Insérer dans… » de `?links=1` (test/annuaire-links-firefox.mjs) : deux qui reçoivent une personne, une qu'il faut d'abord activer, une qui ne sait

@@ -4,7 +4,7 @@
 // la personne, une phrase, la relecture de la liste) et l'explorateur l'interroge pour ne rien savoir lui-même d'un PDF.
 
 import { isAcceptedReceived } from '../sharing/received-files.js';
-import { FILES_APP, FILES_MANIFEST, PDF_EXTENSION, PDF_MIME, cleanName, looksLikePdf } from './gfs-files.js';
+import { FILES_APP, filesManifest, PDF_EXTENSION, PDF_MIME, cleanName, looksLikePdf } from './gfs-files.js';
 import { importFormats, acceptsFile, pickFile } from './import-file.js';
 import { TransferError } from '../broker/transfer.js';
 import { TableDeclined } from './own-table.js';
@@ -83,7 +83,7 @@ export class KeptFiles {
   importEntries() {
     const { t, lang } = this.#opts;
     const lock = this.#lock();
-    return importFormats(FILES_MANIFEST).map(({ item, type }) => ({
+    return importFormats(filesManifest()).map(({ item, type }) => ({
       app: FILES_APP, type: type.valeur, icon: type.icone, family: familyOf(type.couleur) || null, greyed: Boolean(lock), focus: null,
         reason: lock ? lock.text : '',
       valeur: item.valeur, extensions: item.extensions, label: label(item.nom, lang()), hint: lock ? (lock.hint || lock.text) : t('files.import.hint'),

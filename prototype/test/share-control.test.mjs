@@ -14,7 +14,7 @@ const control = ({ fetch, full = true, me = 'moi@x.fr' } = {}) => new ShareContr
   port: { doc: { fetchTable: fetch || (async () => { throw new Error('absente'); }) } },
 });
 const model = { app: 'publipostage', table: 'Publipostage_Modeles', row: 2, by: 'dernier@x.fr', key: 'publipostage:2' };
-const pdf = { app: 'gfs-fichiers', table: 'GFS_Fichiers', row: 1, by: 'Moi@x.fr', key: 'gfs-fichiers:abc' };
+const pdf = { app: 'gfs-fichiers', table: 'GFS_Files', row: 1, by: 'Moi@x.fr', key: 'gfs-fichiers:abc' };
 
 test('se partagent : les PDF de GFS et les fichiers d\'une app qui déclare sa table ; le reste est grisé avec sa phrase, et sans l\'accès complet aussi', () => {
   const share = control();
@@ -33,8 +33,8 @@ test('la table d\'une app sans colonnes d\'aide : « étendre », pas « activer
   assert.deepEqual([none.active, none.extend], [false, false]);
 });
 
-test('une table d\'app couverte : l\'auteur est celui que Grist a écrit (GFS_Auteur de la ligne), non le dernier qui l\'a modifiée', async () => {
-  const fetch = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [], GFS_Calc: [[], [], []], GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', 'Auteur@x.fr', ''] }));
+test('une table d\'app couverte : l\'auteur est celui que Grist a écrit (GFS_Author de la ligne), non le dernier qui l\'a modifiée', async () => {
+  const fetch = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [], GFS_Calc: [[], [], []], GFS_Readers: [[], [], []], GFS_Author: ['a@x.fr', 'Auteur@x.fr', ''] }));
   const state = await control({ fetch }).load(model);
   assert.equal(state.active, true);
   assert.equal(state.author, 'auteur@x.fr');
@@ -43,31 +43,31 @@ test('une table d\'app couverte : l\'auteur est celui que Grist a écrit (GFS_Au
   assert.equal(mine.me, 'auteur@x.fr');
 });
 
-test('un PDF de GFS : l\'auteur est celui que Grist a écrit (GFS_Auteur de la ligne), non « Auteur » que l\'explorateur réécrit à chaque remplacement (audit du 09/11)', async () => {
-  const fetch = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [], GFS_Calc: [[], [], []], GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', 'Createur@x.fr', ''] }));
+test('un PDF de GFS : l\'auteur est celui que Grist a écrit (GFS_Author de la ligne), non « Auteur » que l\'explorateur réécrit à chaque remplacement (audit du 09/11)', async () => {
+  const fetch = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [], GFS_Calc: [[], [], []], GFS_Readers: [[], [], []], GFS_Author: ['a@x.fr', 'Createur@x.fr', ''] }));
   const state = await control({ fetch }).load({ ...pdf, row: 2 });
   assert.equal(state.author, 'createur@x.fr', `pas « ${pdf.by.toLowerCase()} », le dernier qui a modifié`);
   assert.equal((await control({ fetch, me: 'moi@x.fr' }).load(pdf)).canManage, true, 'le propriétaire gère');
 });
 
-test('un partage de PDF d\'avant l\'auteur protégé (colonnes d\'aide sans GFS_Auteur) : « compléter », rien n\'est lu de la colonne « Auteur »', async () => {
-  const old = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [], GFS_Calc: [[], [], []], GFS_Lecteurs: [[], [], []] }));
+test('un partage de PDF d\'avant l\'auteur protégé (colonnes d\'aide sans GFS_Author) : « compléter », rien n\'est lu de la colonne « Auteur »', async () => {
+  const old = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [], GFS_Calc: [[], [], []], GFS_Readers: [[], [], []] }));
   const state = await control({ fetch: old }).load(pdf);
   assert.deepEqual([state.active, state.extend, state.author], [false, 'upgrade', '']);
 });
 
-test('un partage d\'avant les liens entre espaces (colonnes d\'aide sans GFS_Vus) : « compléter »', async () => {
-  const old = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Directs: [], GFS_Dossier: [], GFS_Calc: [[], [], []],
-    GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', '', ''] }));
+test('un partage d\'avant les liens entre espaces (colonnes d\'aide sans GFS_Seen) : « compléter »', async () => {
+  const old = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Direct: [], GFS_Folder: [], GFS_Calc: [[], [], []],
+    GFS_Readers: [[], [], []], GFS_Author: ['a@x.fr', '', ''] }));
   const state = await control({ fetch: old }).load(pdf);
   assert.deepEqual([state.active, state.extend], [false, 'upgrade']);
 });
 
 test('un partage d\'avant les espaces (colonnes d\'aide sans GFS_Calc) : « compléter », pour une app comme pour les PDF de GFS', async () => {
-  const old = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', '', ''] }));
+  const old = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Readers: [[], [], []], GFS_Author: ['a@x.fr', '', ''] }));
   const app = await control({ fetch: old }).load(model);
   assert.deepEqual([app.active, app.extend, app.owner], [false, 'upgrade', true]);
-  const files = await control({ fetch: async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Lecteurs: [[]] })) }).load(pdf);
+  const files = await control({ fetch: async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Readers: [[]] })) }).load(pdf);
   assert.equal(files.extend, 'upgrade');
 });
 
@@ -107,7 +107,7 @@ const shareRows = { id: [1, 2, 3, 4, 5, 6], Target: ['pdf:1', 'pdf:1', 'pdf:1', 
 const stamped = (extra = {}) => async name => {
   if (name === 'GFS_Shares') return { ...shareRows, ...extra };
   if (name === 'GFS_Groups') return { id: [1, 2], Name: ['Achats', null], Count: ['3', 'x'], Source: ['@x', null], People: ['a;b', null] };
-  return table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [], GFS_Calc: [[], [], []], GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', 'Auteur@x.fr', ''] });
+  return table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [], GFS_Calc: [[], [], []], GFS_Readers: [[], [], []], GFS_Author: ['a@x.fr', 'Auteur@x.fr', ''] });
 };
 const file = { ...pdf, key: 'pdf:1', row: 2 };
 
@@ -136,7 +136,7 @@ test('load : le fichier ne rend que ses lignes de partage ; la table des partage
 });
 
 test('load : la table de fichiers illisible, pour un fichier dont GFS pose l\'auteur, veut dire « étendre » ; pour un fichier dont l\'app tient l\'auteur, le partage reste actif', async () => {
-  const lost = async name => { if (name === 'GFS_Fichiers') throw new Error('absente'); return stamped()(name); };
+  const lost = async name => { if (name === 'GFS_Files') throw new Error('absente'); return stamped()(name); };
   const state = await control({ fetch: lost }).load(file);
   assert.deepEqual([state.active, state.extend], [false, true]);
   const own = new ShareControl({ t, targets: () => [{ table: 'Notes', prefix: 'notes:', author: 'Auteur', stamped: false }], fullAccess: () => true, identity: () => 'moi@x.fr', writeBlock: () => null, reader: { owner: async () => false }, port: { doc: { fetchTable: async name => { if (name === 'Notes') throw new Error('absente'); return stamped()(name); } } } });
@@ -155,7 +155,7 @@ test('load : qui gère les partages : le propriétaire, l\'auteur du fichier, un
   assert.equal((await make({ me: 'inconnu@x.fr' }).load(file)).canManage, false);
   assert.equal((await make({ me: 'auteur@x.fr', blocked: 'bloqué' }).load(file)).canManage, false, 'écriture bloquée');
   const noAuthor = stamped();
-  assert.equal((await make({ me: '', fetch: async name => (name === 'GFS_Fichiers' ? table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [], GFS_Calc: [[]], GFS_Lecteurs: [[]], GFS_Auteur: ['', '', ''] }) : noAuthor(name)) }).load(file)).canManage, false, 'sans identité, un auteur vide ne gère pas');
+  assert.equal((await make({ me: '', fetch: async name => (name === 'GFS_Files' ? table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [], GFS_Calc: [[]], GFS_Readers: [[]], GFS_Author: ['', '', ''] }) : noAuthor(name)) }).load(file)).canManage, false, 'sans identité, un auteur vide ne gère pas');
   const inactive = stamped({ Active: [true, true, true, true, false, true], Valid: [true, true, true, true, true, true] });
   assert.equal((await make({ me: 'ann@x.fr', fetch: inactive }).load(file)).canManage, false, 'une admin qui n\'est plus active ne gère plus');
 });
@@ -166,7 +166,7 @@ test('load : un fichier placé dans un espace hérite de l\'espace puis de chaqu
     if (name === 'GFS_Shares') return shares;
     if (name === 'GFS_Placement') { if (place instanceof Error) throw place; return place; }
     if (name === 'GFS_Spaces') { if (spaces instanceof Error) throw spaces; return spaces; }
-    return table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [], GFS_Calc: [[]], GFS_Lecteurs: [[]], GFS_Auteur: ['a@x.fr', 'a@x.fr', ''] });
+    return table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [], GFS_Calc: [[]], GFS_Readers: [[]], GFS_Author: ['a@x.fr', 'a@x.fr', ''] });
   };
   const placed = { id: [1, 2], Target: ['autre', 'pdf:1'], Space: ['x', 'achats'], Folder: ['', 'Contrats/Sous'] };
   const inherited = async setup => (await control({ fetch: fetchFor(setup) }).load(file)).shares.map(item => [item.who, item.from.kind, item.from.name]).sort();
@@ -178,7 +178,7 @@ test('load : un fichier placé dans un espace hérite de l\'espace puis de chaqu
 });
 
 test('un fichier rangé dans un dossier (« folder » est son dossier, un texte) se partage comme un autre : seul le dossier d\'espace de folderFile est traité en dossier', async () => {
-  const fetch = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [], GFS_Calc: [[]], GFS_Lecteurs: [[]], GFS_Auteur: ['a@x.fr', 'a@x.fr', ''] }));
+  const fetch = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [], GFS_Calc: [[]], GFS_Readers: [[]], GFS_Author: ['a@x.fr', 'a@x.fr', ''] }));
   const state = await control({ fetch }).load({ ...model, folder: 'Contrats' });
   assert.equal(state.active, true);
   assert.equal(state.author, 'a@x.fr');
@@ -193,7 +193,7 @@ test('load : les tables se lisent ensemble (un seul aller-retour avec Grist, pas
     inFlight += 1; most = Math.max(most, inFlight);
     await new Promise(resolve => setTimeout(resolve, 5));
     inFlight -= 1;
-    return name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [], GFS_Calc: [[], [], []], GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', 'Createur@x.fr', ''] });
+    return name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [], GFS_Calc: [[], [], []], GFS_Readers: [[], [], []], GFS_Author: ['a@x.fr', 'Createur@x.fr', ''] });
   };
   const state = await control({ fetch }).load({ ...pdf, row: 2 });
   assert.ok(most >= 3, `les lectures partent ensemble (${most} en même temps)`);
@@ -228,7 +228,7 @@ test('un fichier hors d\'un espace hérite des dossiers de « Moi » que son aut
   const rows = [{ Target: 'dossier:moi:moi@x.fr/Perso', Person: 'marc@x.fr', Right: 'lecture' }, { Target: 'dossier:moi:moi@x.fr/Perso/Sous', Person: 'lea@x.fr', Right: 'lecture' }];
   const make = (me, { placement } = {}) => new ShareControl({ t, targets: () => targetsOf([PP]), fullAccess: () => true, identity: () => me, writeBlock: () => null,
     reader: { owner: async () => false }, port: { doc: { fetchTable: async name => (name === 'GFS_Shares' ? sharesTable(rows) : (name === 'GFS_Placement' ? (placement || { id: [] }) :
-      (name === 'GFS_Fichiers' ? table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [], GFS_Calc: [[], [], []], GFS_Lecteurs: [[], [], []], GFS_Auteur: ['moi@x.fr', 'moi@x.fr', 'moi@x.fr'] }) : { id: [] }))) } } });
+      (name === 'GFS_Files' ? table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [], GFS_Calc: [[], [], []], GFS_Readers: [[], [], []], GFS_Author: ['moi@x.fr', 'moi@x.fr', 'moi@x.fr'] }) : { id: [] }))) } } });
   const file = { ...pdf, by: 'moi@x.fr', folder: 'Perso/Sous' };
   const mine = await make('moi@x.fr').load(file);
   assert.deepEqual(mine.shares.map(item => [item.who, item.inherited, item.from && item.from.name]).sort(), [['lea@x.fr', true, 'Sous'], ['marc@x.fr', true, 'Perso']]);
@@ -240,8 +240,8 @@ test('un fichier hors d\'un espace hérite des dossiers de « Moi » que son aut
 
 test('administrer par un groupe : la personne qui en est membre gère les partages (Grist dit qui administre la cible, `AdminsTarget`) ; un autre éditeur non', async () => {
   const rows = [{ Target: 'gfs-fichiers:abc', Person: '#Achats', Right: 'admin', AdminsTarget: ['membre@x.fr', 'auteur@x.fr'] }];
-  const fetch = async name => (name === 'GFS_Shares' ? sharesTable(rows) : (name === 'GFS_Fichiers' ?
-    table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [], GFS_Calc: [[], [], []], GFS_Lecteurs: [[], [], []], GFS_Auteur: ['auteur@x.fr', 'auteur@x.fr', 'auteur@x.fr'] }) : { id: [] }));
+  const fetch = async name => (name === 'GFS_Shares' ? sharesTable(rows) : (name === 'GFS_Files' ?
+    table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [], GFS_Calc: [[], [], []], GFS_Readers: [[], [], []], GFS_Author: ['auteur@x.fr', 'auteur@x.fr', 'auteur@x.fr'] }) : { id: [] }));
   const make = me => new ShareControl({ t, targets: () => targetsOf([PP]), fullAccess: () => true, identity: () => me, writeBlock: () => null,
     reader: { owner: async () => false }, port: { doc: { fetchTable: fetch } } });
   assert.equal((await make('Membre@X.fr').load(pdf)).canManage, true);
@@ -269,8 +269,8 @@ test('le dossier de « Moi » : la fenêtre lit les partages par son numéro ET 
 
 test('un fichier rangé dans un dossier de « Moi » hérite aussi des partages posés par numéro', async () => {
   const rows = [{ Target: 'dossier:moi:moi@x.fr//11', Person: 'marc@x.fr', Right: 'lecture' }];
-  const fetch = async name => (name === 'GFS_Shares' ? sharesTable(rows) : (name === 'GFS_Fichiers' ? table({ GFS_Directs: [], GFS_Vus: [], GFS_Ids: [], GFS_Dossier: [],
-    GFS_Calc: [[], [], []], GFS_Lecteurs: [[], [], []], GFS_Auteur: ['moi@x.fr', 'moi@x.fr', 'moi@x.fr'] }) : { id: [] }));
+  const fetch = async name => (name === 'GFS_Shares' ? sharesTable(rows) : (name === 'GFS_Files' ? table({ GFS_Direct: [], GFS_Seen: [], GFS_Ids: [], GFS_Folder: [],
+    GFS_Calc: [[], [], []], GFS_Readers: [[], [], []], GFS_Author: ['moi@x.fr', 'moi@x.fr', 'moi@x.fr'] }) : { id: [] }));
   const share = new ShareControl({ t, targets: () => targetsOf([PP]), fullAccess: () => true, identity: () => 'moi@x.fr', writeBlock: () => null, reader: { owner: async () => false },
     rangement: { folderRows: async () => [{ id: 11, path: 'Perso' }] }, port: { doc: { fetchTable: fetch } } });
   const state = await share.load({ ...pdf, by: 'moi@x.fr', folder: 'Perso' });
@@ -292,8 +292,8 @@ test('keyOf : un dossier de « Moi » reçoit la clé de sa ligne d\'état (écr
 });
 
 test('un partage d\'avant GFS_Ids (colonnes d\'aide sans elle) : « compléter », la clé par numéro ne vaudrait rien', async () => {
-  const old = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Directs: [], GFS_Vus: [], GFS_Dossier: [], GFS_Calc: [[], [], []],
-    GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', 'a@x.fr', ''] }));
+  const old = async name => (name === 'GFS_Shares' ? table({ Target: [], Person: [] }) : table({ GFS_Direct: [], GFS_Seen: [], GFS_Folder: [], GFS_Calc: [[], [], []],
+    GFS_Readers: [[], [], []], GFS_Author: ['a@x.fr', 'a@x.fr', ''] }));
   const state = await control({ fetch: old }).load(pdf);
   assert.deepEqual([state.active, state.extend], [false, 'upgrade']);
 });

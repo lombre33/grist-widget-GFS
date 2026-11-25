@@ -114,7 +114,7 @@ async function createSub(run, start) {
   await frame.locator('.an-person').first().waitFor({ timeout: 25000 });
   const columns = (await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Directories/columns`)).json;
   const ids = ((columns && columns.columns) || []).map(column => column.id);
-  check('les colonnes du verrou sont dans GFS_Directories (lecteurs, refus)', ids.includes('GFS_Lecteurs') && ids.includes('GFS_Refus'), ids);
+  check('les colonnes du verrou sont dans GFS_Directories (lecteurs, refus)', ids.includes('GFS_Readers') && ids.includes('GFS_Denied'), ids);
   await startNew(frame);
   await fillSub(frame, page);
   await frame.locator('.mod.sh').waitFor({ timeout: 30000 });
@@ -144,9 +144,9 @@ async function playOwner(run) {
   const copy = JSON.parse(sub.Fiches || '{}');
   const people = Array.isArray(copy) ? copy : (copy.people || copy.fiches || []);
   check('la copie porte les sept personnes du pôle (et non les dix-huit)', people.length === 7, people.length);
-  check('l\'éditeur est lecteur de la copie, le lecteur du document ne l\'est pas', JSON.stringify(sub.GFS_Lecteurs).includes(EDITOR) && !JSON.stringify(sub.GFS_Lecteurs).includes(VIEWER), sub.GFS_Lecteurs);
+  check('l\'éditeur est lecteur de la copie, le lecteur du document ne l\'est pas', JSON.stringify(sub.GFS_Readers).includes(EDITOR) && !JSON.stringify(sub.GFS_Readers).includes(VIEWER), sub.GFS_Readers);
   const main = list.filter(row => row.Name !== SUB);
-  check('les annuaires principaux n\'ont aucun lecteur nommé (lisibles par tous)', main.every(row => !row.GFS_Lecteurs || row.GFS_Lecteurs.length <= 1), main.map(row => row.GFS_Lecteurs));
+  check('les annuaires principaux n\'ont aucun lecteur nommé (lisibles par tous)', main.every(row => !row.GFS_Readers || row.GFS_Readers.length <= 1), main.map(row => row.GFS_Readers));
   say('--- 3. la liste des annuaires et la vue réunie ---');
   await page.reload();
   frame = await gfsFrame(page);

@@ -33,8 +33,8 @@ const PLACE = 'GFS_Placement';
 const unexpected = run => run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
 const refused = answer => answer.status >= 400 || /error|refus|denied|forbidden|not allowed|blocked/i.test(answer.text || '');
 const goHome = frame => goTo(frame, new RegExp(`^\\s*${t('ex.me')}\\s*\\d*\\s*$`));
-const readers = async (run, name) => (await fileRow(run, name))?.GFS_Lecteurs;
-const dossierOf = async (run, name) => (await fileRow(run, name))?.GFS_Dossier;
+const readers = async (run, name) => (await fileRow(run, name))?.GFS_Readers;
+const dossierOf = async (run, name) => (await fileRow(run, name))?.GFS_Folder;
 
 // Les gestes de la personne : F2 puis le nouveau nom, Ctrl+X puis Ctrl+V dans un dossier, Suppr.
 async function renameFolder(run, frame, from, to) {
@@ -69,7 +69,7 @@ async function playOwner(run) {
   check('la colonne d\'aide GFS_Ids (les numéros des lignes d\'état du dossier de chaque fichier) est dans la table des fichiers', columns.includes('GFS_Ids'), columns);
   const facture = await fileRow(run, 'Facture.pdf');
   const devis = await fileRow(run, 'Devis.pdf');
-  let answer = await apply(run, [['UpdateRecord', FILES, facture.id, { GFS_Auteur: OWNER }], ['UpdateRecord', FILES, devis.id, { GFS_Auteur: OWNER }]]);
+  let answer = await apply(run, [['UpdateRecord', FILES, facture.id, { GFS_Author: OWNER }], ['UpdateRecord', FILES, devis.id, { GFS_Author: OWNER }]]);
   check('un propriétaire écrit l\'auteur des deux fichiers importés avant l\'activation', answer.status === 200, answer.text);
   const named = {};
   for (const [name, id] of [['Contrat.pdf', 'lab-contrat'], ['Archive.pdf', 'lab-archive'], ['Ancien.pdf', 'lab-ancien'], ['F1.pdf', 'lab-f1'], ['F2.pdf', 'lab-f2'], ['Fb1.pdf', 'lab-fb1'], ['Fb2.pdf', 'lab-fb2'],
@@ -268,7 +268,7 @@ async function playAfter(run) {
   const archive = await fileRow(run, 'Archive.pdf');
   const facture = await fileRow(run, 'Facture.pdf');
   check('ce partage n\'ouvre rien : la ligne d\'état de l\'éditeur ne compte pas pour les fichiers du propriétaire (« Facture.pdf » n\'est pas lu du lecteur)',
-    !has(facture.GFS_Lecteurs, VIEWER) && !has(archive.GFS_Lecteurs, VIEWER), [facture.GFS_Lecteurs, archive.GFS_Lecteurs]);
+    !has(facture.GFS_Readers, VIEWER) && !has(archive.GFS_Readers, VIEWER), [facture.GFS_Readers, archive.GFS_Readers]);
   const counted = (facture.GFS_Ids || []).slice(1).map(pair => pair[1]);
   check('GFS_Ids de « Facture.pdf » ne compte que les lignes d\'état du propriétaire (le numéro de « Marchés », pas celui de la ligne de l\'éditeur au même chemin)',
     counted.includes(state.contratsId) && !counted.includes(state.forgedId), facture.GFS_Ids);

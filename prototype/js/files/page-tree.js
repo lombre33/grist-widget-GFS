@@ -26,7 +26,8 @@ const isOwn = tableId => String(tableId).toLowerCase().startsWith(OWN_PREFIX.toL
 // La liste que dit la marque (des identifiants de tables, en texte), ou null quand GFS n'a encore rien noté : une marque illisible vaut « rien noté ».
 export function handledOf(allOptions) {
   const value = gfsPart(allOptions)[PAGES_KEY];
-  return Array.isArray(value) ? value.filter(item => typeof item === 'string').map(renamedOf) : null;
+  // Les noms d'avant ET ceux d'arrivée : une table que Sync+ tient garde son nom d'avant (`GFS_Fichiers`), une autre a changé (`GFS_Rangement` → `GFS_Filing`).
+  return Array.isArray(value) ? [...new Set(value.filter(item => typeof item === 'string').flatMap(item => [item, renamedOf(item)]))] : null;
 }
 
 function parseOptions(text) {

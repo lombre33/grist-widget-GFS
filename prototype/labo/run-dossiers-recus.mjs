@@ -1,6 +1,6 @@
 // Les DOSSIERS reçus (js/sharing/received-folders.js ; choix du porteur, 11/11 : « le dossier, à accepter d'un coup »), joués dans le VRAI GFS à 700 × 400, à la vraie souris et au vrai clavier, dans un VRAI Grist
 // (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`). Le premier document envoie par les fonctions du moteur (comme run-partages-recus.mjs) : un fichier seul, puis, avec la colonne
-// `Dossier_partage` ajoutée à l'export (mesure : run-dossier-colonne.mjs), deux fichiers d'un dossier « Contrats » ; le second ouvre GFS :
+// `SharedFolder` ajoutée à l'export (mesure : run-dossier-colonne.mjs), deux fichiers d'un dossier « Contrats » ; le second ouvre GFS :
 //   1. « Partagés avec moi » : le dossier « Contrats » en tête (grisé, « 2 fichiers à accepter »), le fichier seul dessous ; le volet et la cloche comptent 3 fichiers, la cloche nomme le DOSSIER d'une ligne ;
 //   2. un double clic entre dans le dossier : fil d'Ariane « Moi › Partagés avec moi › Contrats », ses deux fichiers grisés, la barre « Accepter le dossier… » ; Retour arrière revient à « Partagés avec moi » ;
 //   3. « Accepter le dossier… » : la fenêtre dit le dossier, le nombre et le poids ; Échap n'écrit rien (ni marque, ni colonne) ; « Accepter » : les deux fichiers ne sont plus grisés, une seule écriture, le fichier seul attend toujours ;
@@ -24,8 +24,8 @@ const shot = (frame, name) => pdfShot(frame, `dossiers-${lang}-${scheme}-${name}
 const RACE = /KeyError 'GFS_Synchro'/; // connu (faits vérifiés 71) : voir run-partager-recevoir.mjs
 const races = [];
 const unexpected = run => run.problems.filter(problem => !run.allow.some(known => known.test(problem)) && (RACE.test(problem) ? (races.push(problem), false) : true));
-const COLUMNS = ['Identifiant', 'Nom', 'Type', 'Date', 'Auteur', 'Contenu', 'Taille', 'Origine'];
-const FOLDER = 'Dossier_partage';
+const COLUMNS = ['FileId', 'Name', 'Type', 'Date', 'Author', 'Content', 'Size', 'Origin'];
+const FOLDER = 'SharedFolder';
 const text = async (frame, selector) => (await frame.locator(selector).innerText()).replace(/\s+/g, ' ');
 const rail = frame => frame.locator('.tr-row', { hasText: t('rx.view') });
 const badge = async frame => ((await rail(frame).locator('.cnt').count()) ? (await rail(frame).locator('.cnt').innerText()).trim() : '');
@@ -47,9 +47,9 @@ try {
   const target = await openGfs(context, { lang });
   await startEngine(source.frame);
   await startEngine(target.frame);
-  const files = await source.rest.rows('GFS_Fichiers');
-  const idOf = name => files.find(row => row.Nom === name).Identifiant;
-  const rowIdOf = name => files.find(row => row.Nom === name).id;
+  const files = await source.rest.rows('GFS_Files');
+  const idOf = name => files.find(row => row.Name === name).FileId;
+  const rowIdOf = name => files.find(row => row.Name === name).id;
   const first = await handshake(source, target, { name: 'Lot', ids: [idOf('Facture.pdf')], columns: COLUMNS, options: { archive: true } });
   const alive = async run => {
     try { await run.frame.evaluate(() => true); } catch (error) {
@@ -66,11 +66,11 @@ try {
     await alive(target);
     await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
     await target.frame.evaluate(() => window.__try(() => window.__s.consolidateAll({ reread: true })));
-    return target.rest.rows('GFS_Recus');
+    return target.rest.rows('GFS_Received');
   };
   const until = async (test, tries = 40) => { let rows = []; for (let i = 0; i < tries; i += 1) { rows = await pass(); if (test(rows)) return rows; await source.page.waitForTimeout(1500); } return rows; };
   const editExport = ids => source.frame.evaluate(args => window.__try(async () => {
-    const selection = [{ table: 'GFS_Fichiers', columns: args.columns, filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: args.ids }] } }];
+    const selection = [{ table: 'GFS_Files', columns: args.columns, filter: { mode: 'all', conds: [{ id: 'FileId', op: 'in', values: args.ids }] } }];
     const done = await window.__s.saveChosenExport({ exp: args.exp, name: args.exp.name, selection });
     return window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
   }), { exp: first.exp, columns: [...COLUMNS, FOLDER], ids });
@@ -82,14 +82,14 @@ try {
     return run;
   };
 
-  await until(list => list.length === 1 && list[0].Contenu);
+  await until(list => list.length === 1 && list[0].Content);
   // L'envoyeur donne un dossier : la colonne, le nom du dossier sur deux fichiers, la condition étendue (mesuré : run-dossier-colonne.mjs).
-  await source.frame.evaluate(column => grist.docApi.applyUserActions([['AddColumn', 'GFS_Fichiers', column, { type: 'Text', isFormula: false }]]), FOLDER);
-  await patch(source, 'GFS_Fichiers', rowIdOf('Devis.pdf'), { [FOLDER]: 'Contrats' });
-  await patch(source, 'GFS_Fichiers', rowIdOf('Contrat.pdf'), { [FOLDER]: 'Contrats' });
+  await source.frame.evaluate(column => grist.docApi.applyUserActions([['AddColumn', 'GFS_Files', column, { type: 'Text', isFormula: false }]]), FOLDER);
+  await patch(source, 'GFS_Files', rowIdOf('Devis.pdf'), { [FOLDER]: 'Contrats' });
+  await patch(source, 'GFS_Files', rowIdOf('Contrat.pdf'), { [FOLDER]: 'Contrats' });
   await editExport([idOf('Facture.pdf'), idOf('Devis.pdf'), idOf('Contrat.pdf')]);
-  const rows = await until(list => list.length === 3 && list.every(row => row.Contenu));
-  check('trois fichiers arrivés, deux d\'un dossier « Contrats »', rows.length === 3 && rows.filter(row => row[FOLDER] === 'Contrats').length === 2, rows.map(row => [row.Nom, row[FOLDER]]));
+  const rows = await until(list => list.length === 3 && list.every(row => row.Content));
+  check('trois fichiers arrivés, deux d\'un dossier « Contrats »', rows.length === 3 && rows.filter(row => row[FOLDER] === 'Contrats').length === 2, rows.map(row => [row.Name, row[FOLDER]]));
 
   say('--- 1. « Partagés avec moi » : le dossier en tête, le fichier seul dessous ---');
   let ui = await view();
@@ -140,17 +140,17 @@ try {
   await shot(frame, '3-question');
   await page.keyboard.press('Escape');
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
-  const bare = await target.rest.rows('GFS_Recus');
-  check('Échap n\'écrit rien : aucune colonne de marque, aucune ligne touchée', !Object.keys(bare[0]).some(key => /^(Accepte|Refuse)$/.test(key)), Object.keys(bare[0]));
+  const bare = await target.rest.rows('GFS_Received');
+  check('Échap n\'écrit rien : aucune colonne de marque, aucune ligne touchée', !Object.keys(bare[0]).some(key => /^(Accepted|Refused)$/.test(key)), Object.keys(bare[0]));
   await frame.locator('.trash-bar .btn').click();
   await frame.locator('.mod.so').waitFor();
   await frame.locator('[data-fk="rx-accept"]').click();
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
   await frame.waitForFunction(() => !document.querySelector('.trash-bar') && !document.querySelector('.ls-row.lk'), null, { timeout: 15000 });
   check('les deux fichiers ne sont plus grisés, la barre est partie, la phrase le dit', !(await greyed(frame, 'Contrat.pdf')) && !(await greyed(frame, 'Devis.pdf')) && (await toast(frame)).includes(t('rx.folder.accepted', { name: 'Contrats', n: 2 })), { toast: await toast(frame) });
-  const marked = await target.rest.rows('GFS_Recus');
-  const mark = name => marked.find(row => row.Nom === name);
-  check('les marques sont sur les deux lignes du dossier, pas sur le fichier seul', mark('Contrat.pdf').Accepte === true && mark('Devis.pdf').Accepte === true && mark('Facture.pdf').Accepte !== true, marked.map(row => [row.Nom, row.Accepte]));
+  const marked = await target.rest.rows('GFS_Received');
+  const mark = name => marked.find(row => row.Name === name);
+  check('les marques sont sur les deux lignes du dossier, pas sur le fichier seul', mark('Contrat.pdf').Accepted === true && mark('Devis.pdf').Accepted === true && mark('Facture.pdf').Accepted !== true, marked.map(row => [row.Name, row.Accepted]));
   await shot(frame, '3-accepte');
   await page.keyboard.press('Backspace');
   await frame.waitForFunction(() => document.querySelectorAll('.ls-row.folder').length === 1, null, { timeout: 10000 });
@@ -159,9 +159,9 @@ try {
 
   say('--- 4. un fichier de plus dans le dossier ---');
   await alive(source);
-  await patch(source, 'GFS_Fichiers', rowIdOf('Avenant.pdf'), { [FOLDER]: 'Contrats' });
+  await patch(source, 'GFS_Files', rowIdOf('Avenant.pdf'), { [FOLDER]: 'Contrats' });
   await editExport([idOf('Facture.pdf'), idOf('Devis.pdf'), idOf('Contrat.pdf'), idOf('Avenant.pdf')]);
-  await until(list => list.some(row => row.Nom === 'Avenant.pdf' && row.Contenu), 60);
+  await until(list => list.some(row => row.Name === 'Avenant.pdf' && row.Content), 60);
   ui = await view();
   ({ page, frame } = ui);
   await frame.waitForFunction(() => document.querySelectorAll('.ls-row.folder').length === 1, null, { timeout: 15000 });
@@ -195,8 +195,8 @@ try {
   await frame.locator('[data-fk="rx-refuse"]').click();
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
   await frame.waitForFunction(() => document.querySelectorAll('.ls-row:not(.folder)').length === 2, null, { timeout: 15000 });
-  const refused = await target.rest.rows('GFS_Recus');
-  check('« Avenant.pdf » (le seul qui attendait) est refusé ; « Contrat.pdf » et « Devis.pdf » restent acceptés', refused.find(row => row.Nom === 'Avenant.pdf').Refuse === true && refused.find(row => row.Nom === 'Contrat.pdf').Accepte === true && refused.find(row => row.Nom === 'Devis.pdf').Refuse !== true, refused.map(row => [row.Nom, row.Accepte, row.Refuse]));
+  const refused = await target.rest.rows('GFS_Received');
+  check('« Avenant.pdf » (le seul qui attendait) est refusé ; « Contrat.pdf » et « Devis.pdf » restent acceptés', refused.find(row => row.Name === 'Avenant.pdf').Refused === true && refused.find(row => row.Name === 'Contrat.pdf').Accepted === true && refused.find(row => row.Name === 'Devis.pdf').Refused !== true, refused.map(row => [row.Name, row.Accepted, row.Refused]));
   if (races.length) say(`(connu : ${races.length} erreur « KeyError 'GFS_Synchro' », sans suite)`);
   check('aucune erreur de GFS dans la console', [source, target, ...views].every(run => unexpected(run).length === 0), [source, target, ...views].map(run => unexpected(run).map(each => each.slice(each.indexOf('was delivered'), each.indexOf('was delivered') + 220))));
 } finally {

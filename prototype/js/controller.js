@@ -42,7 +42,7 @@ import { createFollower } from './sharing/share-follow.js';
 import { resumeSharing } from './sharing/sync-resume.js';
 import { whenReceived } from './sharing/sync-service.js';
 import { WeightControl } from './weight/weight-control.js';
-import { FILES_APP, FILES_MANIFEST } from './files/gfs-files.js';
+import { FILES_APP, filesManifest, filesNamesOfTables, useFilesNames } from './files/gfs-files.js';
 import { ANNUAIRES_APP, ANNUAIRES_MANIFEST } from './files/annuaire-files.js';
 import { Transfer, buildTransferFrame } from './broker/transfer.js';
 import { Attach } from './broker/attach.js';
@@ -240,7 +240,7 @@ export class GfsController {
 
   appById(id) { return this.names.adaptItem(this.apps.find(item => item.app.id === id && item.ok) || null); }
   // Le manifeste d'une app installable, ou celui des fichiers que GFS garde lui-même (js/files/gfs-files.js) : null quand l'id n'est ni l'un ni l'autre.
-  manifestOf = id => (id === FILES_APP ? FILES_MANIFEST : id === ANNUAIRES_APP ? ANNUAIRES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
+  manifestOf = id => (id === FILES_APP ? filesManifest() : id === ANNUAIRES_APP ? ANNUAIRES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
   appName = id => { const manifest = this.manifestOf(id); return manifest ? label(manifest.nom, this.lang) : id; };
   validApps() { return this.apps.filter(item => item.ok).map(item => this.names.adaptItem(item)); }
   typeLabel = file => (file.typeInfo ? label(file.typeInfo.nom, this.lang) : (file.type || '—'));
@@ -302,6 +302,8 @@ export class GfsController {
     const outcome = await updateNames({ doc: this.port.doc, isOwner: () => this.transfer.isOwner(), readOnly: () => this.readonly, language: () => this.lang,
       container: this.$('stage'), inertTargets: () => [this.$('frames'), this.$('floaters')].filter(Boolean) });
     this.legacyTables = outcome.legacy;
+    // La table des PDF sous les noms que le document porte (celle d'une réception Sync+ d'avant garde les siens : js/files/gfs-files.js).
+    useFilesNames(filesNamesOfTables(outcome.tables));
   }
 
   // L'arrivée (cahier 6.2, point 2 ; js/broker/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon

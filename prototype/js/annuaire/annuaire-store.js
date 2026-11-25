@@ -10,6 +10,7 @@ import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, annuairesOf, newRecord, addAction, 
 import { SHARES_TABLE, PLACE_TABLE } from '../sharing/sharing-model.js';
 import { TABLE as FILING_TABLE } from '../files/rangement.js';
 import { schemaOf, tablesNeeded, targetOf } from './annuaire-schema.js';
+import { aliased } from '../sharing/helper-names.js';
 import { buildPeople, buildTree } from './annuaire-model.js';
 import { isSub, unpackFiches, subRecord, refreshRecord } from './annuaire-sub.js';
 
@@ -89,7 +90,7 @@ export class AnnuaireStore {
   }
 
   // Une table du document, en tableaux de colonnes (pour les exemples du réglage).
-  table(name) { return this.#port.doc.fetchTable(name); }
+  table(name) { return this.#port.doc.fetchTable(name).then(aliased); }
 
   // Ajoute la colonne `name` (vide, du type `type` : « Text », « Ref:Personnes »…) à `table` : { id }. Grist choisit l'identifiant (il peut différer du nom) :
   // on le relit dans sa réponse. Le geste vient d'une fenêtre qui a dit ce qui s'écrit (js/annuaire/annuaire-setup-path.js).

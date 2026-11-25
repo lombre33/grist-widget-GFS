@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { loadFiles } from '../js/explorer/explorer-data.js';
 import { createLightReader, neededColumns, rowsStatement, schemaStatement, readRows, HEAVY_BYTES } from '../js/explorer/explorer-sql.js';
 import { rowWeigher } from '../js/weight/weight.js';
-import { FILES_ENTRY, FILES_MANIFEST } from '../js/files/gfs-files.js';
+import { filesEntry, filesManifest } from '../js/files/gfs-files.js';
 import { BIN_COLUMNS } from '../js/files/gfs-trash.js';
 import { DocNames } from '../js/apps/doc-names.js';
 import { publipostage, form, bi } from './helpers.mjs';
@@ -80,10 +80,10 @@ const document = () => ({
   Publipostage_Versions: { colonnes: [{ id: 'Jeton', type: 'Text' }, { id: 'Contenu', type: 'Text' }, { id: 'Numero', type: 'Int' }], lignes: [
     { Jeton: 'j1', Contenu: heavy(2000), Numero: 1 }, { Jeton: 'j1', Contenu: heavy(500), Numero: 2 }, { Jeton: 'j2', Contenu: heavy(90), Numero: 1 }, { Jeton: '', Contenu: 'orpheline', Numero: 7 },
   ] },
-  GFS_Fichiers: { colonnes: [{ id: 'Identifiant', type: 'Text' }, { id: 'Nom', type: 'Text' }, { id: 'Type', type: 'Text' }, { id: 'Date', type: 'DateTime:UTC' }, { id: 'Auteur', type: 'Text' },
-    { id: 'Contenu', type: 'Attachments' }, { id: 'Taille', type: 'Int' }, { id: 'Origine', type: 'Text' }, { id: 'SupprimeLe', type: 'DateTime:UTC' }, { id: 'SupprimePar', type: 'Text' }], lignes: [
-    { Identifiant: 'aa', Nom: 'A.pdf', Type: 'pdf', Date: 10, Auteur: 'p', Contenu: '[7]', Taille: 90000, Origine: 'import' },
-    { Identifiant: 'bb', Nom: 'B.pdf', Type: 'pdf', Date: 20, Auteur: 'p', Contenu: '[8]', Taille: 500, Origine: 'import', SupprimeLe: 1762000000, SupprimePar: 'paul@exemple.fr' },
+  GFS_Files: { colonnes: [{ id: 'FileId', type: 'Text' }, { id: 'Name', type: 'Text' }, { id: 'Type', type: 'Text' }, { id: 'Date', type: 'DateTime:UTC' }, { id: 'Author', type: 'Text' },
+    { id: 'Content', type: 'Attachments' }, { id: 'Size', type: 'Int' }, { id: 'Origin', type: 'Text' }, { id: 'DeletedAt', type: 'DateTime:UTC' }, { id: 'DeletedBy', type: 'Text' }], lignes: [
+    { FileId: 'aa', Name: 'A.pdf', Type: 'pdf', Date: 10, Author: 'p', Content: '[7]', Size: 90000, Origin: 'import' },
+    { FileId: 'bb', Name: 'B.pdf', Type: 'pdf', Date: 20, Author: 'p', Content: '[8]', Size: 500, Origin: 'import', DeletedAt: 1762000000, DeletedBy: 'paul@exemple.fr' },
   ] },
   GFS_Trash: { colonnes: BIN_COLUMNS.map(column => ({ id: column.id, type: column.type })), lignes: [
     { EntryId: 'x1', App: 'publipostage', Table: 'Publipostage_Modeles', FileId: '9', Name: 'Vieux modèle', Type: 'document', Date: 5, Author: 'p', DeletedAt: 1762000500, DeletedBy: 'p', Snapshot: heavy(1200) },
@@ -94,7 +94,7 @@ const document = () => ({
 test('neededColumns : les colonnes que readFiles lit, d\'après le manifeste, sans `id` ni doublon', () => {
   assert.deepEqual(neededColumns(publipostage().fichiers[0]), ['Nom', 'TypeModele', 'DateModif', 'ModifiePar', 'Jeton']);
   assert.deepEqual(neededColumns(form().fichiers[0]), ['Nom', 'TypeFormulaire', 'DateModif', 'ModifiePar']);
-  assert.deepEqual(neededColumns(FILES_MANIFEST.fichiers[0]), ['Identifiant', 'Nom', 'Type', 'Date', 'Auteur', 'SupprimeLe', 'SupprimePar', 'Contenu', 'Taille']);
+  assert.deepEqual(neededColumns(filesManifest().fichiers[0]), ['FileId', 'Name', 'Type', 'Date', 'Author', 'DeletedAt', 'DeletedBy', 'Content', 'Size']);
 });
 
 test('rowsStatement : la cellule lourde n\'est jamais lue, seulement comptée ; les colonnes voulues et les nombres le sont ; les noms viennent de Grist et restent entre guillemets', () => {
@@ -112,12 +112,12 @@ test('rowsStatement : la cellule lourde n\'est jamais lue, seulement comptée ; 
 // Le pare-feu devant le Grist de la DINUM refuse en 403, sans en-tête CORS, la lecture des colonnes écrite `substr(…) <> …` (sonde du porteur, 25/11, faits vérifiés 173) : GFS lit alors
 // tous les fichiers en entier et la console se remplit d'un « CORS manquant » à chaque affichage. La forme `NOT LIKE` et `!=` y passe (200) : elle garde les mêmes colonnes.
 test('schemaStatement : la forme que le pare-feu de la DINUM laisse passer (ni `substr(` ni `<>`), et les mêmes colonnes qu\'avant', { skip }, async () => {
-  const statement = schemaStatement(['GFS_Fichiers', 'Publipostage_Modeles']);
+  const statement = schemaStatement(['GFS_Files', 'Publipostage_Modeles']);
   assert.ok(!/substr\s*\(|<>/i.test(statement), `forme refusée par le pare-feu : ${statement}`);
   assert.match(statement, /c\.colId NOT LIKE 'gristHelper%' AND c\.colId != 'manualSort'/);
-  const db = makeDb({ GFS_Fichiers: { colonnes: [{ id: 'Nom', type: 'Text' }, { id: 'Taille', type: 'Int' }], lignes: [] }, Autre: { colonnes: [{ id: 'X', type: 'Text' }], lignes: [] } });
+  const db = makeDb({ GFS_Files: { colonnes: [{ id: 'Name', type: 'Text' }, { id: 'Size', type: 'Int' }], lignes: [] }, Autre: { colonnes: [{ id: 'X', type: 'Text' }], lignes: [] } });
   const rows = (await db.sql(statement)).map(row => ({ ...row }));
-  assert.deepEqual(rows, [{ tableId: 'GFS_Fichiers', colId: 'Nom', type: 'Text' }, { tableId: 'GFS_Fichiers', colId: 'Taille', type: 'Int' }],
+  assert.deepEqual(rows, [{ tableId: 'GFS_Files', colId: 'Name', type: 'Text' }, { tableId: 'GFS_Files', colId: 'Size', type: 'Int' }],
     'ni `manualSort` ni `gristHelper_Display`, et seulement les tables demandées');
 });
 
@@ -131,14 +131,14 @@ test('readRows : une liste de Grist se lit comme fetchTable la rend ; un texte q
 test('les deux lectures donnent les mêmes fichiers, le même poids et les mêmes lignes liées, à l\'octet près, pour chaque manifeste (SQLite réel)', { skip }, async () => {
   const db = makeDb(document());
   const reader = createLightReader({ sql: db.sql, threshold: 0 });
-  await reader.prepare(['Publipostage_Modeles', 'Publipostage_Versions', 'GFS_Fichiers', 'GFS_Trash'].map(table => ({ table, wanted: [] })));
+  await reader.prepare(['Publipostage_Modeles', 'Publipostage_Versions', 'GFS_Files', 'GFS_Trash'].map(table => ({ table, wanted: [] })));
   reader.learn(1);
-  for (const manifest of [publipostage(), FILES_MANIFEST]) {
+  for (const manifest of [publipostage(), filesManifest()]) {
     const spec = manifest.fichiers[0];
     const full = db.fetchTable(spec.table);
     const light = await reader.read(spec.table, neededColumns(spec));
     assert.deepEqual(light.weights, full.id.map((unused, i) => rowWeigher(full)(i)), `${spec.table} : les poids des lignes`);
-    assert.ok(!('Contenu' in light.data) || spec.table === 'GFS_Fichiers', 'la cellule lourde n\'est pas rendue');
+    assert.ok(!('Content' in light.data) || spec.table === 'GFS_Files', 'la cellule lourde n\'est pas rendue');
   }
   const versions = db.fetchTable('Publipostage_Versions');
   const lightVersions = await reader.read('Publipostage_Versions', ['Jeton']);
@@ -147,7 +147,7 @@ test('les deux lectures donnent les mêmes fichiers, le même poids et les même
 
 test('loadFiles : la toute première lecture d\'un document est déjà légère, sans toucher aux tables lourdes ; elle rend exactement ce que rend la lecture complète, au même poids, et la suivante reste légère', { skip }, async () => {
   const db = makeDb(document());
-  const apps = [{ manifest: publipostage() }, { manifest: form() }, FILES_ENTRY];
+  const apps = [{ manifest: publipostage() }, { manifest: form() }, filesEntry()];
   const first = await loadFiles(db.port, apps, ''); // la lecture complète, sans lecture légère : ce qu'il faut retrouver
   assert.equal(first.stats.light, false);
   assert.ok(first.stats.bytes >= 1000 && db.calls.includes('fetchTable Publipostage_Modeles'));
@@ -197,7 +197,7 @@ test('un document aux noms anglais : la lecture complète et la lecture légère
   const names = new DocNames({ doc: { fetchTable: name => rowsOf(name === '_grist_Tables' ? 'SELECT id, tableId FROM _grist_Tables' : 'SELECT id, parentId, colId FROM _grist_Tables_column') } });
   const item = { manifest: publipostage() };
   await names.refresh([item]);
-  const apps = [names.adaptItem(item), FILES_ENTRY];
+  const apps = [names.adaptItem(item), filesEntry()];
   assert.equal(apps[0].manifest.fichiers[0].table, 'Publipostage_Templates');
   const reader = createLightReader({ sql: db.sql, threshold: 1000 });
   const first = await loadFiles(db.port, apps, ''); // la lecture complète
@@ -209,7 +209,7 @@ test('un document aux noms anglais : la lecture complète et la lecture légère
   assert.deepEqual(second.files, first.files);
   assert.deepEqual(second.trash, first.trash);
   assert.equal(second.stats.bytes, first.stats.bytes);
-  const legacy = await loadFiles(makeDb(document()).port, [{ manifest: publipostage() }, FILES_ENTRY], '');
+  const legacy = await loadFiles(makeDb(document()).port, [{ manifest: publipostage() }, filesEntry()], '');
   assert.deepEqual(first.files.map(file => [file.key, file.name, file.type, file.weight]), legacy.files.map(file => [file.key, file.name, file.type, file.weight]),
     'le même document sous les deux jeux de noms : les mêmes fichiers, au même poids');
   assert.deepEqual(first.trash.map(file => file.key), legacy.trash.map(file => file.key), 'et la même corbeille : ses entrées portent le nom du manifeste');
@@ -240,7 +240,7 @@ test('un document que le souvenir dit léger ne demande rien de SQL, jamais ; un
   assert.deepEqual(db.calls.filter(call => call.startsWith('SELECT')), []);
   const empty = makeDb({ Clients: { colonnes: [{ id: 'Nom', type: 'Text' }], lignes: [{ Nom: 'Dupont' }] } });
   const reader = createLightReader({ sql: empty.sql });
-  const found = await loadFiles(empty.port, [{ manifest: publipostage() }, { manifest: form() }, FILES_ENTRY], '', reader);
+  const found = await loadFiles(empty.port, [{ manifest: publipostage() }, { manifest: form() }, filesEntry()], '', reader);
   assert.deepEqual([found.files, found.problems, empty.calls], [[], [], []], 'ni cadre d\'envoi ni jeton pour un document où aucune app n\'a encore de table');
   assert.equal(reader.isActive(), false, 'zéro octet : léger');
 });
@@ -256,7 +256,7 @@ test('une app illisible à la première lecture : son poids manque, « léger »
   partial.learn(100, true);
   assert.equal(partial.isActive(), true, 'un compte partiel au-dessus du seuil dit « lourd », et le reste');
   const reader = createLightReader({ sql, warn: () => {} });
-  const found = await loadFiles({ doc: { listTables: db.port.doc.listTables, fetchTable } }, [{ manifest: publipostage() }, FILES_ENTRY], '', reader);
+  const found = await loadFiles({ doc: { listTables: db.port.doc.listTables, fetchTable } }, [{ manifest: publipostage() }, filesEntry()], '', reader);
   assert.equal(found.problems.length, 1);
   reader.learn(100, true);
   assert.equal(found.stats.light, false, 'la lecture légère s\'est éteinte au refus');
@@ -267,7 +267,7 @@ test('un refus de Grist (403 : qui ne peut pas tout copier), une lecture coupée
     const db = makeDb(document());
     let asked = 0;
     const reader = createLightReader({ sql: async () => { asked += 1; throw failure; }, threshold: 0 });
-    const apps = [{ manifest: publipostage() }, FILES_ENTRY];
+    const apps = [{ manifest: publipostage() }, filesEntry()];
     const first = await loadFiles(db.port, apps, '', reader);
     const second = await loadFiles(db.port, apps, '', reader);
     assert.equal(second.stats.light, false);
@@ -305,7 +305,7 @@ test('les lectures de lignes partent ensemble, après la structure : un seul tou
     try { return await db.sql(statement); } finally { inFlight -= 1; }
   };
   const reader = createLightReader({ sql, threshold: 0 });
-  const apps = [{ manifest: publipostage() }, FILES_ENTRY];
+  const apps = [{ manifest: publipostage() }, filesEntry()];
   const second = await loadFiles(db.port, apps, '', reader); // la première lecture est déjà légère
   assert.equal(second.stats.light, true);
   assert.equal(peak, 4, 'les quatre lectures de lignes (modèles, versions, fichiers de GFS, corbeille) sont en vol en même temps');

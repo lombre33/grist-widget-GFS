@@ -8,7 +8,7 @@ import { createI18n } from '../js/i18n/i18n.js';
 import { importFormats } from '../js/files/import-file.js';
 import { label } from '../js/apps/manifest.js';
 import { familyOf } from '../js/explorer/explorer-model.js';
-import { FILES_MANIFEST } from '../js/files/gfs-files.js';
+import { filesManifest } from '../js/files/gfs-files.js';
 import { publipostage } from './helpers.mjs';
 import { Run } from './corbeille-firefox.mjs';
 
@@ -28,7 +28,7 @@ function importEntries(language) {
   });
   return [
     ...importFormats(manifest).map(format => asEntry(manifest.id, format, `${label(format.type.nom, language)} · ${label(manifest.nom, language)}`)),
-    ...importFormats(FILES_MANIFEST).map(format => asEntry('gfs-files', format, t('files.import.hint'))),
+    ...importFormats(filesManifest()).map(format => asEntry('gfs-files', format, t('files.import.hint'))),
     { action: 'receive', icon: 'download', family: null, greyed: false, reason: '', focus: null, label: t('sr.entry'), hint: t('sr.entry.hint') },
   ];
 }

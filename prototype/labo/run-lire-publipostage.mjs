@@ -84,7 +84,7 @@ async function waitForReading(run, pages, ms = 90000) {
 }
 
 // L'état du document que la lecture ne doit pas changer : les PDF de GFS (lignes et pièces jointes) ; les tables servent à dire lesquelles sont nées.
-const documentState = async rest => ({ rows: (await rest.rows('GFS_Fichiers')).length, attachments: (await rest.attachments()).length, tables: await rest.tables() });
+const documentState = async rest => ({ rows: (await rest.rows('GFS_Files')).length, attachments: (await rest.attachments()).length, tables: await rest.tables() });
 
 // ----- 1. Avant l'extension : « Lire » grisé, la raison, ce qui débloque.
 async function playBeforeExtension(run) {
@@ -183,7 +183,7 @@ async function playAlreadyOpen(run) {
   const read = await waitFor(page, 'le second PDF', async () => { const seen = await appSays(app); return seen.pdf && seen.pdf.name === 'Devis.pdf' && seen.sheets.length === 1 && seen.sheets[0].drawn; });
   const seen = await appSays(app);
   check('le second PDF est lu : 1 page, son titre, de l\'encre, le coin d\'état le dit', read && seen.sheets[0].text.includes(pageTitle('Devis', 1)) && seen.sheets[0].ink > 50 && seen.status === SAYS.opened('Devis.pdf', 1), seen);
-  check('l\'app tient l\'identifiant que GFS a donné à ce PDF', seen.pdf.id === (await run.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Devis.pdf').Identifiant, seen.pdf);
+  check('l\'app tient l\'identifiant que GFS a donné à ce PDF', seen.pdf.id === (await run.rest.rows('GFS_Files')).find(row => row.Name === 'Devis.pdf').FileId, seen.pdf);
   check('le même cadre, non rechargé : l\'app l\'a lu par l\'appel `ouvrir`', appFrame(page) === app && await app.evaluate(() => window.gfsLabMarker) === 'avant');
   check('l\'explorateur s\'est refermé', await frame.locator('.ex').isHidden());
   await shot(frame, 'lire-pp-5-second');

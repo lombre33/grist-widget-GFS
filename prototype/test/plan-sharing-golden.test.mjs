@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { planSharing, planUnsharing, targetsOf } from '../js/sharing/sharing-model.js';
-import { FILES_COLUMNS } from '../js/files/gfs-files.js';
+import { filesColumns } from '../js/files/gfs-files.js';
 import { BUILT_IN, base, withFiles, applied } from './sharing-fixtures.mjs';
 
 const GOLDEN = fileURLToPath(new URL('./golden/plan-sharing.json', import.meta.url));
@@ -26,7 +26,7 @@ const compact = value => {
 // Une action par ligne : un diff de la fixture montre l'action qui change.
 const written = golden => `{\n${Object.entries(golden).map(([name, one]) => ` ${JSON.stringify(name)}: {\n${Object.entries(one).map(([key, value]) => (key === 'actions'
   ? `  "actions": [\n${value.map(action => `   ${JSON.stringify(action)}`).join(',\n')}\n  ]` : `  ${JSON.stringify(key)}: ${JSON.stringify(value)}`)).join(',\n')}\n }`).join(',\n')}\n}\n`;
-const plan = (existing, targets) => planSharing(existing, FILES_COLUMNS, targets);
+const plan = (existing, targets) => planSharing(existing, filesColumns(), targets);
 
 function scenarios() {
   const out = {};
@@ -35,12 +35,15 @@ function scenarios() {
   const hand = (resource, memo = 'écrite à la main') => ({ id: 90, resource, aclFormula: '', permissionsText: '-D', memo });
   record('document vierge', base());
   record('table de fichiers déjà là', withFiles());
-  record('une colonne d\'aide déjà là', withFiles([{ parentId: 7, colId: 'GFS_Lecteurs' }]));
-  record('colonne d\'aide d\'auteur déjà là', withFiles([{ parentId: 7, colId: 'GFS_Auteur' }]));
-  record('table de fichiers sans « Auteur »', { ...withFiles(), columns: [{ parentId: 7, colId: 'Identifiant' }] });
+  record('une colonne d\'aide déjà là', withFiles([{ parentId: 7, colId: 'GFS_Readers' }]));
+  record('colonne d\'aide d\'auteur déjà là', withFiles([{ parentId: 7, colId: 'GFS_Author' }]));
+  // Une table que Sync+ tient garde ses colonnes d'aide d'avant : le plan les complète sous leurs noms d'avant (jamais deux colonnes pour la même chose).
+  record('colonnes d\'aide d\'avant (table que Sync+ tient)', withFiles([{ parentId: 7, colId: 'GFS_Lecteurs' }, { parentId: 7, colId: 'GFS_Auteur' }]));
+  record('colonne d\'aide d\'auteur d\'avant', withFiles([{ parentId: 7, colId: 'GFS_Auteur' }]));
+  record('table de fichiers sans « Author »', { ...withFiles(), columns: [{ parentId: 7, colId: 'FileId' }] });
   record('déjà activé', done);
-  record('règle d\'un autre auteur sur la table de partages', { ...base(), tables: [{ id: 3, tableId: 'GFS_Fichiers' }], resources: [{ id: 1, tableId: '', colIds: '' }, { id: 2, tableId: 'GFS_Fichiers', colIds: '*' }], rules: [{ ...BUILT_IN }, hand(2)] });
-  record('règle d\'un autre auteur sur une table de fichiers', { ...withFiles(), resources: [{ id: 1, tableId: '', colIds: '' }, { id: 2, tableId: 'GFS_Fichiers', colIds: '*' }], rules: [{ ...BUILT_IN }, hand(2)] });
+  record('règle d\'un autre auteur sur la table de partages', { ...base(), tables: [{ id: 3, tableId: 'GFS_Files' }], resources: [{ id: 1, tableId: '', colIds: '' }, { id: 2, tableId: 'GFS_Files', colIds: '*' }], rules: [{ ...BUILT_IN }, hand(2)] });
+  record('règle d\'un autre auteur sur une table de fichiers', { ...withFiles(), resources: [{ id: 1, tableId: '', colIds: '' }, { id: 2, tableId: 'GFS_Files', colIds: '*' }], rules: [{ ...BUILT_IN }, hand(2)] });
   record('avec une app', withApp());
   record('avec une app et ses numéros de lignes', withApp({ files: { Publipostage_Modeles: [3, 5, 8] } }));
   record('avec une app sans ses numéros', withApp({ files: undefined }));
@@ -54,17 +57,17 @@ function scenarios() {
   const old = { ...done, tables: done.tables.filter(row => !['GFS_Spaces', 'GFS_Placement'].includes(row.tableId)) };
   const goneResources = done.resources.filter(row => ['GFS_Spaces', 'GFS_Placement'].includes(row.tableId)).map(row => row.id);
   old.resources = done.resources.filter(row => !goneResources.includes(row.id));
-  old.rules = done.rules.filter(rule => !goneResources.includes(rule.resource) && !String(rule.aclFormula || '').includes('GFS_Refus'));
-  old.columns = done.columns.filter(col => !['GFS_Calc', 'GFS_Refus'].includes(col.colId));
+  old.rules = done.rules.filter(rule => !goneResources.includes(rule.resource) && !String(rule.aclFormula || '').includes('GFS_Denied'));
+  old.columns = done.columns.filter(col => !['GFS_Calc', 'GFS_Denied'].includes(col.colId));
   record('partagé avant les espaces', old);
   record('sans la table des groupes', { ...done, tables: done.tables.filter(row => row.tableId !== 'GFS_Groups') });
   record('sans les règles des espaces', { ...done, rules: done.rules.filter(rule => !done.resources.some(res => res.id === rule.resource && res.tableId === 'GFS_Spaces')) });
-  record('sans la règle des refus', { ...done, rules: done.rules.filter(rule => !String(rule.aclFormula || '').includes('GFS_Refus')) });
-  record('sans une colonne d\'aide d\'une app', { ...later, columns: later.columns.filter(col => col.colId !== 'GFS_Lecteurs') });
+  record('sans la règle des refus', { ...done, rules: done.rules.filter(rule => !String(rule.aclFormula || '').includes('GFS_Denied')) });
+  record('sans une colonne d\'aide d\'une app', { ...later, columns: later.columns.filter(col => col.colId !== 'GFS_Readers') });
   record('sans la table de rangement', { ...done, tables: done.tables.filter(row => row.tableId !== 'GFS_Filing') });
   record('cibles données à part', base(), targetsOf([ids]));
   record('fichiers rangés avant', { ...withFiles(), fileIds: [4, 9] });
-  record('fichiers rangés par table', { ...withFiles(), files: { GFS_Fichiers: [2, 3] } });
+  record('fichiers rangés par table', { ...withFiles(), files: { GFS_Files: [2, 3] } });
   return JSON.parse(JSON.stringify(out, (key, value) => (value === undefined ? null : value)));
 }
 

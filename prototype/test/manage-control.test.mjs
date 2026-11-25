@@ -99,7 +99,7 @@ test('les règles d\'accès se lisent une fois par ouverture, sans les tables de
   assert.deepEqual(reads, [{ files: false }], 'raw() une seule fois, sans les fichiers');
   assert.equal(first.structure.kind, 'close');
   assert.equal(fetched.filter(name => name === 'GFS_Shares').length, 2, 'les tables du partage se relisent, chacune une fois par lecture');
-  assert.equal(fetched.filter(name => name.startsWith('_grist_') || name === 'GFS_Fichiers').length, 0, 'ni tables internes ni fichiers par le contrôleur : tout passe par raw()');
+  assert.equal(fetched.filter(name => name.startsWith('_grist_') || name === 'GFS_Files').length, 0, 'ni tables internes ni fichiers par le contrôleur : tout passe par raw()');
 });
 
 test('à la fermeture, l\'explorateur relit ses fichiers si la fenêtre a écrit quelque chose (un espace créé s\'y voit sans recharger la page), et pas sinon', async () => {

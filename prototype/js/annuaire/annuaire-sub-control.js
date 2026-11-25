@@ -47,7 +47,7 @@ export class SubControl {
       return done ? this.#locked(false) : false;
     }
     const table = plan.reason === 'already' ? await this.#o.store.table(ANNUAIRES_TABLE) : null;
-    const covered = Boolean(table) && Array.isArray(table.GFS_Lecteurs) && Array.isArray(table.GFS_Refus);
+    const covered = Boolean(table) && Array.isArray(table.GFS_Readers) && Array.isArray(table.GFS_Denied);
     if (!covered) this.#o.notice(t(plan.reason === 'foreign' || plan.reason === 'already' ? 'an.sub.foreign' : 'an.sub.noRules'));
     return covered;
   }

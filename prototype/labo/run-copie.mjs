@@ -25,7 +25,7 @@ const { t } = createI18n(lang);
 const TAG = `copie-${lang}-${scheme}`;
 const ME = 'essai@example.com';
 const MODELS = 'Publipostage_Modeles';
-const FILES = 'GFS_Fichiers';
+const FILES = 'GFS_Files';
 const FILING = 'GFS_Filing';
 const APP_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/apps/publipostage/`;
 const sorted = list => [...list].sort();
@@ -45,7 +45,7 @@ const apply = (run, actions) => run.page.evaluate(async ([docId, body]) => (awai
 const modelRows = run => run.rest.rows(MODELS);
 const byName = (rows, name) => rows.find(row => row.Nom === name);
 const withoutIdentity = row => { const { id, Nom, Jeton, Resume, ...data } = row; return data; }; // ce que la copie garde de l'original : tout, sauf son numéro, son nom, son jeton et sa formule
-const pdfShape = row => { const { id, Identifiant, Nom, Date, Auteur, ...data } = row; return data; }; // ce que la copie d'un PDF garde de l'original : la pièce jointe, la taille, l'origine
+const pdfShape = row => { const { id, FileId, Name, Date, Author, ...data } = row; return data; }; // ce que la copie d'un PDF garde de l'original : la pièce jointe, la taille, l'origine
 const textOf = async locator => ((await locator.count()) ? locator.first().textContent() : null);
 const selectedName = frame => textOf(frame.locator('.ls-row[aria-selected="true"] .nm .t'));
 const goHome = frame => goTo(frame, new RegExp(`^\\s*${t('ex.me')}\\s*\\d*\\s*$`));
@@ -180,18 +180,18 @@ async function playCutPaste(run) {
   say('--- 5. Ctrl+X puis Ctrl+V ---');
   await goHome(frame);
   const pdfs = await run.rest.rows(FILES);
-  const devis = pdfs.find(row => row.Nom === 'Devis.pdf');
+  const devis = pdfs.find(row => row.Name === 'Devis.pdf');
   await rowOf(frame, 'Devis.pdf').click();
   await page.keyboard.press('Control+x');
   const cut = await said(frame, 'clip.cut', { name: 'Devis.pdf' });
   await folderRow(frame, 'Stock').dblclick();
   await page.keyboard.press('Control+v');
   const moved = await said(frame, 'clip.moved', { name: 'Devis.pdf', folder: 'Stock' });
-  const lines = await filingOf(run, 'gfs-fichiers', devis.Identifiant);
+  const lines = await filingOf(run, 'gfs-fichiers', devis.FileId);
   check('couper puis coller déplace le PDF : les phrases le disent, une ligne de rangement dans « Stock », aucun PDF de plus', cut === t('clip.cut', { name: 'Devis.pdf' }) && moved === t('clip.moved', { name: 'Devis.pdf', folder: 'Stock' }) && lines.length === 1 && lines[0].Folder === 'Stock' && lines[0].User === ME && (await run.rest.rows(FILES)).length === pdfs.length, [moved, lines]);
   check('le PDF est dans « Stock », prend le clavier, et n\'est plus à la racine', await rowOf(frame, 'Devis.pdf').count() === 1 && await selectedName(frame) === 'Devis.pdf');
   await page.keyboard.press('Control+v');
-  check('rien n\'est resté à coller : la phrase le dit, rien n\'est écrit', await said(frame, 'clip.empty') === t('clip.empty') && (await filingOf(run, 'gfs-fichiers', devis.Identifiant)).length === 1);
+  check('rien n\'est resté à coller : la phrase le dit, rien n\'est écrit', await said(frame, 'clip.empty') === t('clip.empty') && (await filingOf(run, 'gfs-fichiers', devis.FileId)).length === 1);
   // Un modèle épinglé garde son favori quand il change de dossier.
   await goHome(frame);
   const support = byName(await modelRows(run), 'Support de session');
@@ -228,15 +228,15 @@ async function playPdf(run) {
   say('--- 6. un PDF ---');
   await goHome(frame);
   const attachments = (await run.rest.attachments()).length;
-  const original = (await run.rest.rows(FILES)).find(row => row.Nom === 'Facture.pdf');
+  const original = (await run.rest.rows(FILES)).find(row => row.Name === 'Facture.pdf');
   await duplicate(run, 'Facture.pdf');
   const done = await said(frame, 'copy.done', { as: 'Facture (1).pdf' });
   const rows = await run.rest.rows(FILES);
-  const copy = rows.find(row => row.Nom === 'Facture (1).pdf');
+  const copy = rows.find(row => row.Name === 'Facture (1).pdf');
   check('la phrase dit le nom de la copie ; la liste a les deux PDF ; la copie prend le clavier', done === t('copy.done', { as: 'Facture (1).pdf' }) && Boolean(await rowOf(frame, 'Facture (1).pdf').count()) && await selectedName(frame) === 'Facture (1).pdf', done);
-  check('la copie a son propre identifiant et ce que le PDF est (type, pièce jointe, taille, origine)', Boolean(copy) && /^[0-9a-f]{12}$/.test(copy.Identifiant) && copy.Identifiant !== original.Identifiant && same(pdfShape(copy), pdfShape(original)), [copy, original]);
-  check('elle est de la personne que Grist donne, d\'aujourd\'hui (l\'original, importé avant que GFS la connaisse, n\'a pas d\'auteur : la copie ne le reprend pas)', copy.Auteur === ME && original.Auteur === '' && Math.abs(copy.Date - Date.now() / 1000) < 120, [copy.Auteur, original.Auteur, copy.Date]);
-  check('aucun octet de plus : le document a le même nombre de pièces jointes, les deux lignes citent la même', (await run.rest.attachments()).length === attachments && same(copy.Contenu, original.Contenu), [copy && copy.Contenu, original.Contenu]);
+  check('la copie a son propre identifiant et ce que le PDF est (type, pièce jointe, taille, origine)', Boolean(copy) && /^[0-9a-f]{12}$/.test(copy.FileId) && copy.FileId !== original.FileId && same(pdfShape(copy), pdfShape(original)), [copy, original]);
+  check('elle est de la personne que Grist donne, d\'aujourd\'hui (l\'original, importé avant que GFS la connaisse, n\'a pas d\'auteur : la copie ne le reprend pas)', copy.Author === ME && original.Author === '' && Math.abs(copy.Date - Date.now() / 1000) < 120, [copy.Author, original.Author, copy.Date]);
+  check('aucun octet de plus : le document a le même nombre de pièces jointes, les deux lignes citent la même', (await run.rest.attachments()).length === attachments && same(copy.Content, original.Content), [copy && copy.Content, original.Content]);
   // L'original part pour de bon : la copie reste lisible.
   await rowOf(frame, 'Facture.pdf').click();
   await page.keyboard.press('Delete');
@@ -248,9 +248,9 @@ async function playPdf(run) {
   await frame.locator('[data-fk="ask-yes"]').click();
   await said(frame, 'trash.purged', { name: 'Facture.pdf' });
   const left = await run.rest.rows(FILES);
-  check('l\'original supprimé pour de bon : sa ligne est partie, celle de la copie reste', !left.some(row => row.Nom === 'Facture.pdf') && left.some(row => row.Nom === 'Facture (1).pdf'));
+  check('l\'original supprimé pour de bon : sa ligne est partie, celle de la copie reste', !left.some(row => row.Name === 'Facture.pdf') && left.some(row => row.Name === 'Facture (1).pdf'));
   await goHome(frame);
-  const stored = await run.rest.attachment(copy.Contenu[1]);
+  const stored = await run.rest.attachment(copy.Content[1]);
   check('la pièce jointe de la copie est toujours là, sans changement (même empreinte)', stored.status === 200 && stored.hash === run.facture.hash, stored);
   await openRowMenu(frame, 'Facture (1).pdf');
   const [download] = await Promise.all([page.waitForEvent('download'), frame.getByRole('menuitem', { name: new RegExp(`^${t('files.download')}`) }).click()]);

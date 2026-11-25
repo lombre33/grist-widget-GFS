@@ -58,7 +58,7 @@ async function addGroup(frame, group) {
 const openManage = async frame => { await frame.locator('[data-fk="share-manage"]').click(); await frame.locator('.mod.mg .rt-content').waitFor(); };
 const closeManage = async frame => { await frame.locator('.mod.mg [data-fk="manage-close"]').click(); await frame.locator('.mod.mg').waitFor({ state: 'detached' }); };
 const inModels = async run => { const all = await rows(run, MODELS); return Object.fromEntries(all.map(row => [row.Nom, row])); };
-const readers = row => JSON.stringify(row && row.GFS_Lecteurs);
+const readers = row => JSON.stringify(row && row.GFS_Readers);
 
 async function playOwner(run) {
   const { page } = run;
@@ -133,7 +133,7 @@ async function playOwner(run) {
   await shot(frame, '4-liste');
   await addGroup(frame, 'Achats');
   const rowA = (await inModels(run))[PRIVATE_A];
-  check('la colonne d\'aide GFS_Lecteurs du modèle contient l\'éditeur (le groupe est développé par Grist)', readers(rowA).includes(EDITOR) && readers(rowA).includes(OWNER), rowA && rowA.GFS_Lecteurs);
+  check('la colonne d\'aide GFS_Readers du modèle contient l\'éditeur (le groupe est développé par Grist)', readers(rowA).includes(EDITOR) && readers(rowA).includes(OWNER), rowA && rowA.GFS_Readers);
   const shareRow = (await rows(run, 'GFS_Shares')).find(row => row.Person === '#Achats');
   check('la ligne de partage vise « #Achats », valide', shareRow && shareRow.Valid === true && shareRow.Right === 'lecture', shareRow);
   const text = (await frame.locator('.mod.sh').innerText()).replace(/\s+/g, ' ');
@@ -143,7 +143,7 @@ async function playOwner(run) {
   await openShareFor(frame, PRIVATE_L);
   await addGroup(frame, 'Lecteurs');
   const rowL = (await inModels(run))[PRIVATE_L];
-  check('le groupe lu d\'une table est développé : GFS_Lecteurs contient le lecteur', readers(rowL).includes(VIEWER), rowL && rowL.GFS_Lecteurs);
+  check('le groupe lu d\'une table est développé : GFS_Readers contient le lecteur', readers(rowL).includes(VIEWER), rowL && rowL.GFS_Readers);
   await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: 'Lecteurs' }).locator('button.lvl').click();
   const adminItem = frame.getByRole('menuitemradio', { name: new RegExp(t('share.right.admin')) }).first();
   const greyed = await adminItem.getAttribute('aria-disabled');
@@ -160,7 +160,7 @@ async function playOwner(run) {
   await frame.locator('[data-fk="manage-group-save"]').click();
   await frame.locator('.rr[data-group="Achats"]').filter({ hasText: '2' }).waitFor({ timeout: 15000 });
   const rowA2 = (await inModels(run))[PRIVATE_A];
-  check('le modèle suit : le lecteur est maintenant dans GFS_Lecteurs', readers(rowA2).includes(VIEWER) && readers(rowA2).includes(EDITOR), rowA2 && rowA2.GFS_Lecteurs);
+  check('le modèle suit : le lecteur est maintenant dans GFS_Readers', readers(rowA2).includes(VIEWER) && readers(rowA2).includes(EDITOR), rowA2 && rowA2.GFS_Readers);
 
   say('--- 6. catégories : « Lecture » aux éditeurs sur tout le document ---');
   await frame.locator('[data-fk="manage-tab-cats"]').click();

@@ -9,13 +9,13 @@ export const ANNUAIRES_TABLE = 'GFS_Directories';
 export const ANNUAIRE_TYPE = 'annuaire';
 // La colonne que Grist écrit à la création d'une ligne, quand le partage a étendu la table (`STAMP`, js/sharing/sharing-model.js, qui importe ce module : la
 // valeur est redite ici plutôt qu'importée).
-const AUTHOR = 'GFS_Auteur';
+const AUTHOR = 'GFS_Author';
 
 const bilingual = (fr, en) => Object.freeze({ fr, en });
 
 // Le manifeste de ces fichiers, de la forme de celui d'une app (contrats 2.4, 2.7) : le fichier est la ligne de l'annuaire (son numéro, `id`, en est
 // l'identifiant : un annuaire ne se renomme pas par sa clé), son nom est la colonne `Name` ; sans date ni auteur propres, l'auteur est celui que Grist écrit
-// (`GFS_Auteur`, js/sharing/sharing-model.js) quand le partage a étendu la table. `integre` : il est dans le code de GFS, hors du catalogue des apps.
+// (`GFS_Author`, js/sharing/sharing-model.js) quand le partage a étendu la table. `integre` : il est dans le code de GFS, hors du catalogue des apps.
 export const ANNUAIRES_MANIFEST = Object.freeze({
   id: ANNUAIRES_APP,
   nom: bilingual('Annuaire', 'Directory'),

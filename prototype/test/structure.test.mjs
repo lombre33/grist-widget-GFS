@@ -18,7 +18,7 @@ const isMark = action => Boolean(action[3]) && action[3].File === 'structure';
 const gesture = () => ({ app: 'x', file: '1', pinned: true, folder: '' });
 
 test('le numéro lu : un entier de 1 ou plus, sinon rien ; ce qu\'il dit de cette version', () => {
-  assert.equal(STRUCTURE, 1);
+  assert.equal(STRUCTURE, 2);
   assert.equal(structureFrom({ structure: 3 }), 3);
   for (const bad of [null, undefined, {}, [], 'x', { structure: 0 }, { structure: -1 }, { structure: 1.5 }, { structure: '2' }, [{ structure: 2 }]]) {
     assert.equal(structureFrom(bad), null, JSON.stringify(bad));
@@ -33,7 +33,7 @@ test('le premier geste qui écrit note le numéro, dans un lot à part, après l
   const { port, tables, actions, batches } = fakeGrist();
   await new Rangement({ port, consent: accept(), ...noProbe }).update(() => ({ publipostage: { extensions: [] } }));
   assert.deepEqual(actions.map(action => action[0]), ['AddTable', 'AddRecord', 'AddRecord']);
-  assert.deepEqual(actions[2].slice(1), [TABLE, null, { ...STRUCTURE_ROW, Value: '{"structure":1}' }]);
+  assert.deepEqual(actions[2].slice(1), [TABLE, null, { ...STRUCTURE_ROW, Value: '{"structure":2}' }]);
   assert.equal(batches.at(-1).length, 1, 'le lot du geste est parti avant : un refus de la note ne le défait pas');
   assert.deepEqual(tables[TABLE].rows.map(line => [line.User, line.App, line.File]), [['@document', 'gfs', 'apps'], ['@document', 'gfs', 'structure']]);
 });
@@ -53,7 +53,7 @@ test('le numéro est noté aussi par un rangement de fichier (setFiling), une se
 test('une ligne du numéro sans le numéro est complétée en gardant le reste ; une valeur illisible n\'est pas touchée et le geste part quand même', async () => {
   const partial = fakeGrist({ [TABLE]: { columns: full, rows: [marked({ autre: 'gardé' })] } });
   await new Rangement({ port: partial.port, consent: accept(), ...noProbe }).setFiling([gesture()]);
-  assert.deepEqual(partial.actions.at(-1), ['UpdateRecord', TABLE, 9, { Value: '{"autre":"gardé","structure":1}' }]);
+  assert.deepEqual(partial.actions.at(-1), ['UpdateRecord', TABLE, 9, { Value: '{"autre":"gardé","structure":2}' }]);
   const broken = fakeGrist({ [TABLE]: { columns: full, rows: [marked('{pas du json')] } });
   assert.equal(await new Rangement({ port: broken.port, consent: accept(), ...noProbe }).setFiling([gesture()]), true);
   assert.equal(broken.tables[TABLE].rows[0].Value, '{pas du json');

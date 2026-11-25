@@ -4,46 +4,70 @@
 // l'identifiant d'un fichier et l'enregistrement qu'on écrit. Du code sans effet de bord.
 
 export const FILES_APP = 'gfs-fichiers';
-export const FILES_TABLE = 'GFS_Fichiers';
 export const PDF_TYPE = 'pdf';
 export const PDF_EXTENSION = '.pdf';
 export const PDF_MIME = 'application/pdf';
 
-// Les colonnes de la table. `Identifiant` est le nom du fichier pour GFS (rangement, liens) : il ne change jamais, ni au renommage ni au remplacement, et n'est
-// pas le numéro de ligne, que Grist réutilise après une suppression. `Contenu` : la pièce jointe. `Origine` : d'où vient le fichier (« import » ; plus tard le
-// nom de l'app qui l'a rangé). `SupprimeLe` et `SupprimePar` : la corbeille (contrats 6.6, point 7). Un fichier à la corbeille garde sa ligne, marquée de la
-// date et de l'auteur du geste ; la pièce jointe reste citée, Grist ne l'efface pas. Un document dont la table est plus ancienne reçoit ces deux colonnes au
-// premier fichier mis à la corbeille.
-export const FILES_COLUMNS = Object.freeze([
-  { id: 'Identifiant', type: 'Text' }, { id: 'Nom', type: 'Text' }, { id: 'Type', type: 'Text' }, { id: 'Date', type: 'DateTime:UTC' },
-    { id: 'Auteur', type: 'Text' },
-  { id: 'Contenu', type: 'Attachments' }, { id: 'Taille', type: 'Int' }, { id: 'Origine', type: 'Text' }, { id: 'SupprimeLe', type: 'DateTime:UTC' },
-    { id: 'SupprimePar', type: 'Text' },
-].map(column => Object.freeze(column)));
-export const FILES_COLUMN_IDS = Object.freeze(FILES_COLUMNS.map(column => column.id));
-export const TRASH_COLUMN_IDS = Object.freeze(['SupprimeLe', 'SupprimePar']);
-// Le nom du dossier d'un fichier partagé avec un autre document Grist (« Partager un dossier », 11/11) : une colonne de PLUS, ajoutée par GFS au premier
-// dossier partagé (ce n'est pas une colonne de `FILES_COLUMNS` : un document qui ne partage aucun dossier n'en a pas). Le moteur de partage l'envoie avec le
-// fichier, et l'autre document y lit le dossier (js/sharing/received-folders.js).
-export const SHARED_FOLDER_COLUMN = 'Dossier_partage';
+// Les noms de la table et de ses colonnes, en deux jeux (retour n° 1 du porteur, 25/11 : tout en anglais) : `en`, ceux que GFS pose dans un document neuf ;
+// `fr`, ceux d'avant, que GFS lit et écrit encore dans un document dont la table est utilisée par Sync+ (une table que Sync+ envoie ne se renomme jamais : un
+// lien se romprait, faits vérifiés 160). `id` est le nom du fichier pour GFS (rangement, liens) : il ne change jamais, ni au renommage ni au remplacement, et
+// n'est pas le numéro de ligne, que Grist réutilise après une suppression. `content` : la pièce jointe. `origin` : d'où vient le fichier (« import » ; plus
+// tard le nom de l'app qui l'a rangé). `deletedAt` et `deletedBy` : la corbeille (contrats 6.6, point 7). Un fichier à la corbeille garde sa ligne, marquée de
+// la date et de l'auteur du geste ; la pièce jointe reste citée, Grist ne l'efface pas. Un document dont la table est plus ancienne reçoit ces deux colonnes au
+// premier fichier mis à la corbeille. `folder` : le nom du dossier d'un fichier partagé avec un autre document Grist (« Partager un dossier », 11/11), une
+// colonne de PLUS, ajoutée par GFS au premier dossier partagé (elle n'est pas dans `filesColumns` : un document qui ne partage aucun dossier n'en a pas) ; le
+// moteur de partage l'envoie avec le fichier, et l'autre document y lit le dossier (js/sharing/received-folders.js). `accepted` et `refused` : les deux marques
+// d'une réception (js/sharing/received-files.js).
+export const FILES_NAMES = Object.freeze({
+  en: Object.freeze({ language: 'en', table: 'GFS_Files', id: 'FileId', name: 'Name', type: 'Type', date: 'Date', author: 'Author', content: 'Content',
+    size: 'Size',
+    origin: 'Origin', deletedAt: 'DeletedAt', deletedBy: 'DeletedBy', folder: 'SharedFolder', accepted: 'Accepted', refused: 'Refused' }),
+  fr: Object.freeze({ language: 'fr', table: 'GFS_Fichiers', id: 'Identifiant', name: 'Nom', type: 'Type', date: 'Date', author: 'Auteur', content: 'Contenu',
+    size: 'Taille', origin: 'Origine', deletedAt: 'SupprimeLe', deletedBy: 'SupprimePar', folder: 'Dossier_partage', accepted: 'Accepte', refused: 'Refuse' }),
+});
+
+const lower = value => String(value ?? '').toLowerCase();
+
+// Les noms que le document utilise : une seule table de fichiers par document, sous l'un ou l'autre jeu (`useFilesNames` le dit une fois pour toutes à
+// l'ouverture, après la mise à jour des noms). Sans table, ou avec les deux, l'anglais.
+let current = FILES_NAMES.en;
+export const filesNames = () => current;
+export const useFilesNames = (names = FILES_NAMES.en) => { current = names; };
+export function filesNamesOfTables(tables) {
+  const have = new Set((tables || []).map(lower));
+  return have.has(lower(FILES_NAMES.fr.table)) && !have.has(lower(FILES_NAMES.en.table)) ? FILES_NAMES.fr : FILES_NAMES.en;
+}
+// Les noms d'une table de fichiers d'après ses colonnes (une table reçue prend celles de l'envoyeur : elle peut être française dans un document anglais).
+export function filesNamesOfColumns(columns) {
+  const have = new Set((columns || []).map(lower));
+  return have.has(lower(FILES_NAMES.fr.id)) && !have.has(lower(FILES_NAMES.en.id)) ? FILES_NAMES.fr : FILES_NAMES.en;
+}
+
+const TYPES = { id: 'Text', name: 'Text', type: 'Text', date: 'DateTime:UTC', author: 'Text', content: 'Attachments', size: 'Int', origin: 'Text',
+  deletedAt: 'DateTime:UTC',
+  deletedBy: 'Text' };
+export const filesColumns = (names = current) => Object.freeze(Object.entries(TYPES).map(([key, type]) => Object.freeze({ id: names[key], type })));
+export const filesColumnIds = (names = current) => filesColumns(names).map(column => column.id);
+export const trashColumnIds = (names = current) => [names.deletedAt, names.deletedBy];
 
 const bilingual = (fr, en) => Object.freeze({ fr, en });
 
-// Le manifeste de ces fichiers, de la forme de celui d'une app (contrats 2.4, 2.7) : l'explorateur les lit comme les autres, avec les mêmes colonnes déclarées.
-// `integre` : il est dans le code de GFS, hors du catalogue des apps (rien à installer, aucun cadre, aucune permission à donner).
-export const FILES_MANIFEST = Object.freeze({
+// Le manifeste de ces fichiers, de la forme de celui d'une app (contrats 2.4, 2.7) : l'explorateur les lit comme les autres, avec les mêmes colonnes déclarées,
+// sous les noms que le document utilise (`filesNames`). `integre` : il est dans le code de GFS, hors du catalogue des apps (rien à installer, aucun cadre,
+// aucune permission à donner).
+export const filesManifest = (names = current) => Object.freeze({
   id: FILES_APP,
   nom: bilingual('GFS', 'GFS'),
   integre: true,
   fichiers: Object.freeze([Object.freeze({
-    table: FILES_TABLE,
-    colonnes: Object.freeze({ id: 'Identifiant', nom: 'Nom', type: 'Type', date: 'Date', par: 'Auteur' }),
+    table: names.table,
+    colonnes: Object.freeze({ id: names.id, nom: names.name, type: names.type, date: names.date, par: names.author }),
     // `corbeille` : les deux colonnes qui disent qu'un fichier est à la corbeille (la date du geste, son auteur). Sans cette clé, le manifeste d'une app n'a
     //   pas de corbeille de cette forme.
-    corbeille: Object.freeze({ date: 'SupprimeLe', par: 'SupprimePar' }),
+    corbeille: Object.freeze({ date: names.deletedAt, par: names.deletedBy }),
     typeParDefaut: PDF_TYPE,
-    // `poids.pieces` : le fichier EST une pièce jointe (contrats 2.4) ; son poids est celui de la pièce, que dit la colonne `Taille`.
-    poids: Object.freeze({ pieces: Object.freeze({ colonne: 'Contenu', taille: 'Taille' }) }),
+    // `poids.pieces` : le fichier EST une pièce jointe (contrats 2.4) ; son poids est celui de la pièce, que dit la colonne `size`.
+    poids: Object.freeze({ pieces: Object.freeze({ colonne: names.content, taille: names.size }) }),
     types: Object.freeze([Object.freeze({ valeur: PDF_TYPE, nom: bilingual('PDF', 'PDF'), icone: 'pdf', couleur: 'pdf' })]),
   })]),
   actions: Object.freeze({
@@ -52,7 +76,7 @@ export const FILES_MANIFEST = Object.freeze({
 });
 
 // La forme que la lecture des fichiers attend pour une app installée (`{ manifest }`, js/explorer/explorer-data.js).
-export const FILES_ENTRY = Object.freeze({ manifest: FILES_MANIFEST });
+export const filesEntry = (names = current) => Object.freeze({ manifest: filesManifest(names) });
 
 // Un nom est pris quand un autre lui est égal, casse et espaces autour ignorés (la règle de Publipostage+, `Templates.sameName`).
 export const sameName = (a, b) => String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
@@ -95,18 +119,19 @@ export function looksLikePdf(bytes) {
 
 // Les valeurs communes d'un enregistrement : la date en secondes (c'est ce que Grist garde d'une colonne DateTime), l'auteur (l'adresse de la personne, ou rien
 // tant que GFS ne la connaît pas).
-const stamp = ({ now, author, size }) => ({ Date: Math.floor(now / 1000), Auteur: author || '', Taille: size });
+const stamp = ({ now, author, size }, names) => ({ [names.date]: Math.floor(now / 1000), [names.author]: author || '', [names.size]: size });
 
 // Un nouveau fichier : la ligne à ajouter. `attachment` : le numéro de la pièce jointe que Grist a rendu à l'envoi.
-export const newRecord = ({ id, name, attachment, size, author, now, origin }) => ({
-  Identifiant: id, Nom: name, Type: PDF_TYPE, Contenu: ['L', attachment], Origine: origin, ...stamp({ now, author, size }),
+export const newRecord = ({ id, name, attachment, size, author, now, origin }, names = current) => ({
+  [names.id]: id, [names.name]: name, [names.type]: PDF_TYPE, [names.content]: ['L', attachment], [names.origin]: origin,
+    ...stamp({ now, author, size }, names),
 });
 
 // Un fichier remplacé : le même fichier (même identifiant, même nom, donc même place et mêmes favoris), un autre contenu.
-export const replacementRecord = ({ attachment, size, author, now, origin }) => (
-  { Contenu: ['L', attachment], Origine: origin, ...stamp({ now, author, size }) });
+export const replacementRecord = ({ attachment, size, author, now, origin }, names = current) => (
+  { [names.content]: ['L', attachment], [names.origin]: origin, ...stamp({ now, author, size }, names) });
 
 // Mettre un fichier à la corbeille : la date du geste (en secondes) et son auteur. Sortir de la corbeille : les deux colonnes se vident, le fichier est tel
 // qu'il était.
-export const trashRecord = ({ now, author }) => ({ SupprimeLe: Math.floor(now / 1000), SupprimePar: author || '' });
-export const restoreRecord = () => ({ SupprimeLe: null, SupprimePar: '' });
+export const trashRecord = ({ now, author }, names = current) => ({ [names.deletedAt]: Math.floor(now / 1000), [names.deletedBy]: author || '' });
+export const restoreRecord = (names = current) => ({ [names.deletedAt]: null, [names.deletedBy]: '' });

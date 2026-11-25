@@ -11,10 +11,10 @@
 //              personne a comparé le code ;
 //   abort()    défait ce qui a été préparé.
 // Le premier lot ne couvre que les PDF que GFS garde (`GFS_Fichiers`).
-import { PASS_MS, PASSES, SENT_COLUMNS, selectionFor } from './share-links.js';
+import { PASS_MS, PASSES, sentColumns, selectionFor } from './share-links.js';
 import { RECEIVED_TABLE } from './received-files.js';
 
-export { PASS_MS, PASSES, SENT_COLUMNS };
+export { PASS_MS, PASSES, sentColumns };
 // Les colonnes d'aide que le moteur pose dans la table des fichiers et la table technique qu'il crée (pour le texte de l'accord ; leurs noms sont ceux du
 // protocole entre deux documents).
 export const HELPER_COLUMNS = Object.freeze(['id_sync', 'MajLe', 'RecalculLe']);

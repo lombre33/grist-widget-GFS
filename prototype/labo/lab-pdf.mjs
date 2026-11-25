@@ -161,7 +161,7 @@ export async function importSamples(run) {
   await frame.locator('[data-fk="ask-yes"]').click();
   check('le PDF de 3 pages est dans l\'explorateur', JSON.stringify(await waitForNames(frame, ['Facture.pdf'])) === '["Facture.pdf"]');
   await waitForToast(frame, /GFS/);
-  run.id = (await run.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Facture.pdf').Identifiant;
+  run.id = (await run.rest.rows('GFS_Files')).find(row => row.Name === 'Facture.pdf').FileId;
   run.devis = pdfFile('Devis.pdf', 1, 'Devis');
   await importPdf(page, frame, run.devis.file);
   await waitForNames(frame, ['Devis.pdf', 'Facture.pdf']);

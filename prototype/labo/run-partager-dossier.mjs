@@ -3,7 +3,7 @@
 // l'essai avec les fonctions du moteur, puis rouvert dans GFS pour voir ce que la personne y verra.
 //   0. un dossier « Contrats » de « Moi » (la table du rangement naît avec l'accord de la personne) et deux PDF dedans ; un premier lien « à jour » par un fichier hors dossier (Facture) ;
 //   1. « Partager… » sur le dossier : l'article est libre, la fenêtre s'ouvre sur « Dans un autre document Grist » (l'onglet « Dans ce document » dit que « Moi » n'a pas de droits), le dossier est « Pas partagé » ;
-//   2. « Copie à jour » : la colonne `Dossier_partage` naît dans la table des fichiers (une écriture), porte « Contrats » sur les deux PDF du dossier et rien sur les autres ; les deux fichiers arrivent chez l'autre avec le
+//   2. « Copie à jour » : la colonne `SharedFolder` naît dans la table des fichiers (une écriture), porte « Contrats » sur les deux PDF du dossier et rien sur les autres ; les deux fichiers arrivent chez l'autre avec le
 //      nom du dossier, sans nouveau code, Facture reste sans dossier ; rouvert, GFS de l'autre montre le dossier « Contrats » grisé, « 2 à accepter » ;
 //   3. « Arrêter la copie » : le dossier sort de la condition (Facture reste), les copies restent chez l'autre avec leur dossier ; les noms RESTENT écrits chez l'envoyeur (effacés, ils partaient chez l'autre avec l'archive) ;
 //   4. un fichier du dossier partagé à part : le dossier est « Une partie du dossier » ; « Copie à jour » complète le dossier ;
@@ -28,7 +28,7 @@ const shot = (frame, name) => pdfShot(frame, `partager-dossier-${lang}-${scheme}
 const RACE = /KeyError 'GFS_Synchro'/; // connu (faits vérifiés 71) : voir run-partager-recevoir.mjs
 const races = [];
 const unexpected = run => run.problems.filter(problem => !run.allow.some(known => known.test(problem)) && (RACE.test(problem) ? (races.push(problem), false) : true));
-const FOLDER = 'Dossier_partage';
+const FOLDER = 'SharedFolder';
 const exact = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 const text = async (frame, selector) => (await frame.locator(selector).innerText()).replace(/\s+/g, ' ');
 const webhooks = ({ page, docId }) => page.evaluate(async id => (await (await fetch(`/api/docs/${id}/webhooks`)).json()).webhooks.length, docId);
@@ -81,12 +81,12 @@ try {
   await startEngine(target.frame);
   const pass = async () => {
     await target.frame.evaluate(() => window.__s.consolidateAll({ reread: true }));
-    return target.rest.rows('GFS_Recus');
+    return target.rest.rows('GFS_Received');
   };
   const until = async (test, tries = 60) => { let rows = []; for (let i = 0; i < tries; i += 1) { rows = await pass(); if (test(rows)) return rows; await page.waitForTimeout(1500); } return rows; };
-  const has = (rows, name) => rows.some(row => row.Nom === name && row.Contenu);
-  const folderOf = (rows, name) => (rows.find(row => row.Nom === name) || {})[FOLDER];
-  const sourceFolders = async () => Object.fromEntries((await source.rest.rows('GFS_Fichiers')).map(row => [row.Nom, row[FOLDER]]));
+  const has = (rows, name) => rows.some(row => row.Name === name && row.Content);
+  const folderOf = (rows, name) => (rows.find(row => row.Name === name) || {})[FOLDER];
+  const sourceFolders = async () => Object.fromEntries((await source.rest.rows('GFS_Files')).map(row => [row.Name, row[FOLDER]]));
   const waitSource = async (test, tries = 40) => { let now = {}; for (let i = 0; i < tries; i += 1) { now = await sourceFolders(); if (test(now)) return now; await page.waitForTimeout(1000); } return now; };
 
   say('--- 0. un dossier « Contrats » et un premier lien ---');
@@ -107,7 +107,7 @@ try {
   await goHome(frame);
   await folderRow(frame, 'Contrats').waitFor();
   check('le dossier « Contrats » est dans « Moi » avec ses deux PDF, Facture et Devis restent à la racine', (await folderRow(frame, 'Contrats').locator('.pill').innerText()).includes('2') && (await rowOf(frame, 'Facture.pdf').count()) === 1, await folderRow(frame, 'Contrats').innerText());
-  check('la table des fichiers n\'a pas encore la colonne du nom de dossier', !(await source.rest.columns('GFS_Fichiers')).some(each => each.id === FOLDER), (await source.rest.columns('GFS_Fichiers')).map(each => each.id));
+  check('la table des fichiers n\'a pas encore la colonne du nom de dossier', !(await source.rest.columns('GFS_Files')).some(each => each.id === FOLDER), (await source.rest.columns('GFS_Files')).map(each => each.id));
 
   await openFileTab(frame, 'Facture.pdf');
   await frame.locator('[data-fk="other-new"]').click();
@@ -117,7 +117,7 @@ try {
   const code = await frame.locator('[data-fk="so-code"]').inputValue();
   const invitation = await target.frame.evaluate(value => window.__try(() => window.__s.readInvitation(value)), code);
   const made = await target.frame.evaluate(invite => window.__try(async () => {
-    const reception = await window.__s.createReception(invite, invite.tables.map(tb => ({ tb, dest: 'GFS_Recus' })), { reserve: true, options: { archive: true } });
+    const reception = await window.__s.createReception(invite, invite.tables.map(tb => ({ tb, dest: 'GFS_Received' })), { reserve: true, options: { archive: true } });
     return { journal: reception.journal, note: reception.note };
   }), invitation.value);
   check('l\'autre document lit l\'invitation et crée sa réception (en archive)', invitation.ok && made.ok, { invitation, made });
@@ -134,7 +134,7 @@ try {
   await reopenedFrame(source);
   frame = source.frame;
   let rows = await until(list => has(list, 'Facture.pdf'));
-  check('Facture est chez l\'autre, sans dossier (la colonne n\'existe pas encore chez l\'envoyeur)', has(rows, 'Facture.pdf') && rows.length === 1 && !(FOLDER in rows[0]), rows.map(row => row.Nom));
+  check('Facture est chez l\'autre, sans dossier (la colonne n\'existe pas encore chez l\'envoyeur)', has(rows, 'Facture.pdf') && rows.length === 1 && !(FOLDER in rows[0]), rows.map(row => row.Name));
 
   say('--- 1. « Partager… » sur le dossier ---');
   await goHome(frame);
@@ -158,18 +158,18 @@ try {
   await frame.locator('.mod.sh .rr[data-link]').waitFor();
 
   say('--- 2. « Copie à jour » : le dossier arrive chez l\'autre ---');
-  const before = await source.rest.rows('GFS_Fichiers');
+  const before = await source.rest.rows('GFS_Files');
   await pickLevel(frame, t('so.level.live'));
   await waitLevel(frame, 'live');
   check('aucune fenêtre d\'envoi (pas de nouveau code)', (await frame.locator('.mod.so').count()) === 0);
-  const columns = await source.rest.columns('GFS_Fichiers');
-  check('la colonne « Dossier_partage » est née dans la table des fichiers (une colonne de plus, rien d\'autre)', columns.some(each => each.id === FOLDER) && before.length === (await source.rest.rows('GFS_Fichiers')).length, columns.map(each => each.id));
+  const columns = await source.rest.columns('GFS_Files');
+  check('la colonne « SharedFolder » est née dans la table des fichiers (une colonne de plus, rien d\'autre)', columns.some(each => each.id === FOLDER) && before.length === (await source.rest.rows('GFS_Files')).length, columns.map(each => each.id));
   const labeled = await waitSource(now => now['Contrat.pdf'] === 'Contrats' && now['Avenant.pdf'] === 'Contrats');
   check('« Contrats » est écrit sur les deux PDF du dossier, et rien sur Facture ni Devis', labeled['Contrat.pdf'] === 'Contrats' && labeled['Avenant.pdf'] === 'Contrats' && !labeled['Facture.pdf'] && !labeled['Devis.pdf'], labeled);
   check('la condition du lien porte les trois fichiers (Facture et les deux du dossier)', (await text(frame, '.mod.sh .rr[data-link]')).includes(t('so.link.sub', { n: 3 })), await text(frame, '.mod.sh .rr[data-link]'));
   rows = await until(list => has(list, 'Contrat.pdf') && has(list, 'Avenant.pdf') && FOLDER in list[0]);
-  check('les deux PDF sont arrivés chez l\'autre avec leur contenu et le nom du dossier', has(rows, 'Contrat.pdf') && has(rows, 'Avenant.pdf') && folderOf(rows, 'Contrat.pdf') === 'Contrats' && folderOf(rows, 'Avenant.pdf') === 'Contrats', rows.map(row => [row.Nom, row[FOLDER]]));
-  check('Facture, déjà là, est restée sans dossier', has(rows, 'Facture.pdf') && !folderOf(rows, 'Facture.pdf'), rows.map(row => [row.Nom, row[FOLDER]]));
+  check('les deux PDF sont arrivés chez l\'autre avec leur contenu et le nom du dossier', has(rows, 'Contrat.pdf') && has(rows, 'Avenant.pdf') && folderOf(rows, 'Contrat.pdf') === 'Contrats' && folderOf(rows, 'Avenant.pdf') === 'Contrats', rows.map(row => [row.Name, row[FOLDER]]));
+  check('Facture, déjà là, est restée sans dossier', has(rows, 'Facture.pdf') && !folderOf(rows, 'Facture.pdf'), rows.map(row => [row.Name, row[FOLDER]]));
   await shot(frame, '3-a-jour');
   await closeAll(page, frame);
 
@@ -192,7 +192,7 @@ try {
   await waitLevel(frame, 'none');
   check('Facture reste dans la condition du lien (un fichier à la racine, hors du dossier)', (await text(frame, '.mod.sh .rr[data-link]')).includes(t('so.link.sub', { n: 1 })), await text(frame, '.mod.sh .rr[data-link]'));
   rows = await until(list => list.filter(row => row.Supprimee_a_la_source).length === 2, 30);
-  check('les deux PDF restent chez l\'autre avec leur dossier, marqués « supprimés à la source » (réception en archive)', has(rows, 'Contrat.pdf') && has(rows, 'Avenant.pdf') && folderOf(rows, 'Contrat.pdf') === 'Contrats' && folderOf(rows, 'Avenant.pdf') === 'Contrats' && rows.length === 3 && rows.filter(row => row.Supprimee_a_la_source).length === 2, rows.map(row => [row.Nom, row[FOLDER], row.Supprimee_a_la_source]));
+  check('les deux PDF restent chez l\'autre avec leur dossier, marqués « supprimés à la source » (réception en archive)', has(rows, 'Contrat.pdf') && has(rows, 'Avenant.pdf') && folderOf(rows, 'Contrat.pdf') === 'Contrats' && folderOf(rows, 'Avenant.pdf') === 'Contrats' && rows.length === 3 && rows.filter(row => row.Supprimee_a_la_source).length === 2, rows.map(row => [row.Name, row[FOLDER], row.Supprimee_a_la_source]));
   check('les noms de dossier restent écrits chez l\'envoyeur (un nom vidé partirait chez l\'autre avec l\'archive)', (await sourceFolders())['Contrat.pdf'] === 'Contrats' && (await sourceFolders())['Avenant.pdf'] === 'Contrats', await sourceFolders());
   await closeAll(page, frame);
 
@@ -225,7 +225,7 @@ try {
   const followed = await waitSource(now => now['Annexe.pdf'] === 'Contrats');
   check('Annexe, déplacée dans le dossier, porte son nom sans rien demander à la personne', followed['Annexe.pdf'] === 'Contrats', followed);
   rows = await until(list => has(list, 'Annexe.pdf'));
-  check('Annexe arrive chez l\'autre avec son contenu et son dossier, les autres n\'ont pas bougé', has(rows, 'Annexe.pdf') && folderOf(rows, 'Annexe.pdf') === 'Contrats' && rows.length === 4, rows.map(row => [row.Nom, row[FOLDER]]));
+  check('Annexe arrive chez l\'autre avec son contenu et son dossier, les autres n\'ont pas bougé', has(rows, 'Annexe.pdf') && folderOf(rows, 'Annexe.pdf') === 'Contrats' && rows.length === 4, rows.map(row => [row.Name, row[FOLDER]]));
   await goHome(frame);
   await openFolderShare(frame, 'Contrats');
   check('le dossier est « Copie à jour » avec ses trois fichiers, Facture en plus dans la condition', (await level(frame)) === 'live' && (await text(frame, '.mod.sh .rr[data-link]')).includes(t('so.link.sub', { n: 4 })), await text(frame, '.mod.sh .rr[data-link]'));
@@ -245,8 +245,8 @@ try {
     if (!sub.includes(t('so.link.sub', { n: 3 }))) await page.waitForTimeout(1500);
   }
   check('Annexe, à la corbeille, sort de la condition (trois fichiers restent)', sub.includes(t('so.link.sub', { n: 3 })), sub);
-  rows = await until(list => list.filter(row => row.Nom === 'Annexe.pdf' && row.Supprimee_a_la_source).length === 1, 30);
-  check('sa copie reste chez l\'autre, marquée « supprimée à la source », avec son dossier', has(rows, 'Annexe.pdf') && folderOf(rows, 'Annexe.pdf') === 'Contrats' && rows.filter(row => row.Supprimee_a_la_source).length === 1, rows.map(row => [row.Nom, row[FOLDER], row.Supprimee_a_la_source]));
+  rows = await until(list => list.filter(row => row.Name === 'Annexe.pdf' && row.Supprimee_a_la_source).length === 1, 30);
+  check('sa copie reste chez l\'autre, marquée « supprimée à la source », avec son dossier', has(rows, 'Annexe.pdf') && folderOf(rows, 'Annexe.pdf') === 'Contrats' && rows.filter(row => row.Supprimee_a_la_source).length === 1, rows.map(row => [row.Name, row[FOLDER], row.Supprimee_a_la_source]));
   await goHome(frame);
 
   say('--- 5. « Une copie, une fois » ---');
@@ -269,12 +269,12 @@ try {
   check('le dossier n\'est plus suivi (la ligne du rangement s\'en est allée)', (await follows()).length === 0, await follows());
   check('les deux fichiers sont sortis de la condition tout seuls (le dossier est « Pas partagé »), Facture y est restée', out && (await text(frame, '.mod.sh .rr[data-link]')).includes(t('so.link.sub', { n: 1 })), await text(frame, '.mod.sh .rr[data-link]'));
   rows = await until(() => false, 4);
-  check('la copie garde son dossier chez l\'autre', has(rows, 'Contrat.pdf') && folderOf(rows, 'Contrat.pdf') === 'Contrats' && folderOf(rows, 'Avenant.pdf') === 'Contrats', rows.map(row => [row.Nom, row[FOLDER]]));
+  check('la copie garde son dossier chez l\'autre', has(rows, 'Contrat.pdf') && folderOf(rows, 'Contrat.pdf') === 'Contrats' && folderOf(rows, 'Avenant.pdf') === 'Contrats', rows.map(row => [row.Name, row[FOLDER]]));
   await closeAll(page, frame);
 
   say('--- 6. la console ---');
   check('aucune erreur de GFS dans la console', unexpected(source).length === 0 && unexpected(target).length === 0, [...unexpected(source), ...unexpected(target)]);
-  check('rien d\'autre n\'a bougé chez l\'envoyeur : les cinq PDF sont là (Annexe à la corbeille), un seul lien', (await source.rest.rows('GFS_Fichiers')).map(row => row.Nom).sort().join() === 'Annexe.pdf,Avenant.pdf,Contrat.pdf,Devis.pdf,Facture.pdf' && (await webhooks(source)) === 1);
+  check('rien d\'autre n\'a bougé chez l\'envoyeur : les cinq PDF sont là (Annexe à la corbeille), un seul lien', (await source.rest.rows('GFS_Files')).map(row => row.Name).sort().join() === 'Annexe.pdf,Avenant.pdf,Contrat.pdf,Devis.pdf,Facture.pdf' && (await webhooks(source)) === 1);
   if (races.length) say(`(courses connues, faits vérifiés 71 : ${races.length})`);
 } finally {
   await browser.close();

@@ -58,22 +58,22 @@ test(`la boucle s'arrête : après ${LIMIT} lectures de suite que la page n'a pa
   let asked = 0;
   await assert.rejects(guard.run('Publipostage_Modeles', async () => { asked += 1; }), error => error instanceof ReadHeldError && error.held === true && error.count === LIMIT);
   assert.equal(asked, 0, 'la table retenue n\'est pas demandée à Grist');
-  assert.deepEqual(await guard.run('GFS_Fichiers', async () => 'lue'), 'lue', 'une autre table se lit');
+  assert.deepEqual(await guard.run('GFS_Files', async () => 'lue'), 'lue', 'une autre table se lit');
   await assert.rejects(guard.run('Publipostage_Modeles', async () => { asked += 1; }), ReadHeldError, 'ni à la lecture suivante de la même page');
   assert.equal(asked, 0);
 });
 
 test('plusieurs tables étaient en vol quand Grist a coupé : au démarrage suivant elles se lisent une à une, celle qui coupe se désigne et les autres sont blanchies', async () => {
   const t = tab();
-  await dies(t, ['Publipostage_Modeles', 'Publipostage_PreferencesModeles', 'GFS_Fichiers']);
-  assert.deepEqual(Object.keys(t.values).sort(), [keyOf('GFS_Fichiers'), keyOf('Publipostage_Modeles'), keyOf('Publipostage_PreferencesModeles')].sort());
+  await dies(t, ['Publipostage_Modeles', 'Publipostage_PreferencesModeles', 'GFS_Files']);
+  assert.deepEqual(Object.keys(t.values).sort(), [keyOf('GFS_Files'), keyOf('Publipostage_Modeles'), keyOf('Publipostage_PreferencesModeles')].sort());
   // démarrage 2 : une table innocente d'abord (elle finit), puis celle qui coupe ; la troisième attend son tour et n'est jamais lancée
   const second = t.page();
   const order = [];
   let release;
   const first = second.run('Publipostage_PreferencesModeles', () => { order.push('préférences'); return new Promise(resolve => { release = resolve; }); });
   void second.run('Publipostage_Modeles', () => { order.push('modèles'); return never(); }).catch(() => {});
-  void second.run('GFS_Fichiers', () => { order.push('fichiers'); return never(); }).catch(() => {});
+  void second.run('GFS_Files', () => { order.push('fichiers'); return never(); }).catch(() => {});
   const fresh = second.run('GFS_Filing', async () => { order.push('rangement'); return 'lue'; });
   await settle();
   assert.deepEqual([...order].sort(), ['préférences', 'rangement'], 'une seule table suspecte en vol ; une table sans note n\'attend personne');
@@ -84,12 +84,12 @@ test('plusieurs tables étaient en vol quand Grist a coupé : au démarrage suiv
   assert.deepEqual([...order].sort(), ['modèles', 'préférences', 'rangement'], 'la suivante part quand la première a rendu ; la troisième attend encore');
   assert.equal(t.values[keyOf('Publipostage_PreferencesModeles')], undefined, 'la table qui a rendu est blanchie');
   assert.equal(t.values[keyOf('Publipostage_Modeles')].split(':')[0], '2');
-  assert.equal(t.values[keyOf('GFS_Fichiers')].split(':')[0], '1', 'une table qui n\'a pas été lancée ne compte pas une lecture de plus');
+  assert.equal(t.values[keyOf('GFS_Files')].split(':')[0], '1', 'une table qui n\'a pas été lancée ne compte pas une lecture de plus');
   t.clock.now += 9000;
   await dies(t, ['Publipostage_Modeles']); // démarrage 3 : elle coupe encore
   const fourth = t.page();
   await assert.rejects(fourth.run('Publipostage_Modeles', async () => 'lue'), ReadHeldError);
-  assert.equal(await fourth.run('GFS_Fichiers', async () => 'lue'), 'lue', 'la table qui attendait se lit enfin, seule');
+  assert.equal(await fourth.run('GFS_Files', async () => 'lue'), 'lue', 'la table qui attendait se lit enfin, seule');
   assert.deepEqual(Object.keys(t.values), [keyOf('Publipostage_Modeles')]);
 });
 
@@ -165,23 +165,23 @@ const manifest = publipostage();
 const spec = manifest.fichiers[0];
 const data = () => ({
   [spec.table]: { id: [1], Nom: ['Convocation'], TypeModele: [''], DateModif: [0], ModifiePar: [''] },
-  GFS_Fichiers: { id: [1], Identifiant: ['aa'], Nom: ['A.pdf'], Type: ['pdf'], Date: [10], Auteur: ['p'], Contenu: [['L', 7]], Taille: [900], Origine: ['import'], SupprimeLe: [null], SupprimePar: [''] },
+  GFS_Files: { id: [1], FileId: ['aa'], Name: ['A.pdf'], Type: ['pdf'], Date: [10], Author: ['p'], Content: [['L', 7]], Size: [900], Origin: ['import'], DeletedAt: [null], DeletedBy: [''] },
 });
 
 test('loadFiles : toutes les lectures complètes des tables de fichiers passent par le garde-fou ; une table retenue est le problème de son app (`held`), et les fichiers des autres se montrent', async () => {
-  const { FILES_ENTRY } = await import('../js/files/gfs-files.js');
+  const { filesEntry } = await import('../js/files/gfs-files.js');
   const tables = data();
   const asked = [];
   const port = { doc: { listTables: async () => Object.keys(tables), fetchTable: async name => { asked.push(name); return tables[name]; } } };
   const t = tab();
   for (let start = 1; start <= LIMIT; start += 1) await dies(t, [spec.table]);
-  const found = await loadFiles(port, [{ manifest }, FILES_ENTRY], '', null, t.page());
+  const found = await loadFiles(port, [{ manifest }, filesEntry()], '', null, t.page());
   assert.equal(asked.includes(spec.table), false, 'la table retenue n\'est pas demandée à Grist');
   assert.deepEqual(found.problems.map(problem => [problem.app, problem.held]), [['publipostage', true]]);
   assert.deepEqual(found.files.map(file => file.name), ['A.pdf'], 'les fichiers de GFS sont là');
-  const free = await loadFiles(port, [{ manifest }, FILES_ENTRY], '', null, tab().page());
+  const free = await loadFiles(port, [{ manifest }, filesEntry()], '', null, tab().page());
   assert.deepEqual([free.problems, free.files.map(file => file.name).sort()], [[], ['A.pdf', 'Convocation']]);
   const refused = { doc: { listTables: port.doc.listTables, fetchTable: async name => { if (name === spec.table) throw new Error('accès refusé'); return tables[name]; } } };
-  const plain = await loadFiles(refused, [{ manifest }, FILES_ENTRY], '', null, tab().page());
+  const plain = await loadFiles(refused, [{ manifest }, filesEntry()], '', null, tab().page());
   assert.deepEqual(plain.problems.map(problem => [problem.app, problem.held, problem.reason]), [['publipostage', false, 'accès refusé']], 'un refus ordinaire de Grist garde sa phrase');
 });

@@ -76,8 +76,8 @@ test('lire les liens : le dossier d\'un lien est un dossier de l\'espace, un lie
 });
 
 const file = (id, extra = {}) => ({ key: `gfs-fichiers:${id}`, row: id, name: `F${id}.pdf`, folder: '', space: null, ...extra });
-const data = { id: [1, 2, 3], GFS_Auteur: ['marie@x.fr', 'marie@x.fr', 'marie@x.fr'],
-  GFS_Vus: [['L', 'ventes/Contrats achats'], ['L', 'ventes/Contrats achats/Sous', 'ventes/Divers'], []] };
+const data = { id: [1, 2, 3], GFS_Author: ['marie@x.fr', 'marie@x.fr', 'marie@x.fr'],
+  GFS_Seen: [['L', 'ventes/Contrats achats'], ['L', 'ventes/Contrats achats/Sous', 'ventes/Divers'], []] };
 
 test('les copies : un fichier lié se montre aussi sous son lien (même clé, même ligne), sans espace propre ; Grist donne le chemin, l\'espace doit être lu', () => {
   const files = [file(1), file(2), file(3)];
@@ -89,7 +89,7 @@ test('les copies : un fichier lié se montre aussi sous son lien (même clé, m�
   assert.ok(copies.every(item => item.row === Number(item.key.split(':')[1])), 'même ligne : c\'est le même fichier');
   assert.ok(copies.every(item => item.search.includes('espaces')), 'la recherche suit le nouveau chemin');
   const root = [file(7)];
-  applyLinks(root, { id: [7], GFS_Auteur: ['marie@x.fr'], GFS_Vus: [['L', 'ventes/']] }, info(), 'luc@x.fr');
+  applyLinks(root, { id: [7], GFS_Author: ['marie@x.fr'], GFS_Seen: [['L', 'ventes/']] }, info(), 'luc@x.fr');
   assert.equal(root.find(item => item.linked).folder, 'Espaces/Ventes', 'un fichier lié à la racine de l\'espace : pas de barre en trop');
   const unread = [file(1)];
   applyLinks(unread, data, { ...info(), spaces: info().spaces.filter(item => item.key !== 'ventes') }, 'luc@x.fr');
@@ -104,11 +104,11 @@ test('l\'original d\'un fichier lié disparaît de la racine de « Moi » de qui
   assert.equal(kept({ folder: 'Perso' }), true, 'rangé par la personne');
   assert.equal(kept({ direct: { by: 'marie@x.fr' } }), true, 'donné par son adresse');
   const files = [file(1)];
-  applyLinks(files, { ...data, GFS_Auteur: undefined }, info(), 'luc@x.fr');
+  applyLinks(files, { ...data, GFS_Author: undefined }, info(), 'luc@x.fr');
   assert.equal(files.some(item => !item.linked), true, 'sans auteur connu, rien ne disparaît');
 });
 
-test('sans lien, sans colonne GFS_Vus ou sans espaces : la liste ne change pas', () => {
+test('sans lien, sans colonne GFS_Seen ou sans espaces : la liste ne change pas', () => {
   const same = () => [file(1), file(2)];
   for (const [rows, spaces] of [[data, null], [{ id: [1, 2] }, info()], [data, readSpaces(SPACES, table({ Target: [], Space: [], Folder: [] }))]]) {
     const files = same();

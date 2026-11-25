@@ -29,9 +29,9 @@ const hostOf = origin => { try { return new URL(origin).host; } catch (error) { 
 export function createTargetFlow({ engine, onReplied = () => {} }) {
   const state = { invitation: null, known: null, table: null, made: null, relinked: false, replied: false };
 
-  // La table où arrivent les fichiers de cette réception : une destination ne reçoit les fichiers que d'un seul partage (règle du moteur), donc `GFS_Recus`
-  // pour le premier, puis `GFS_Recus_2`, `GFS_Recus_3`… ; une table qui existe déjà n'est jamais reprise (ses lignes ne sont pas à nous). Une réception
-  // déjà là garde la sienne.
+  // La table où arrivent les fichiers de cette réception : une destination ne reçoit les fichiers que d'un seul partage (règle du moteur), donc `GFS_Received`
+  // pour le premier, puis `GFS_Received_2`, `GFS_Received_3`… (jamais les `GFS_Recus*` d'avant : ils sont à leurs liens) ; une table qui existe déjà n'est
+  // jamais reprise (ses lignes ne sont pas à nous). Une réception déjà là garde la sienne.
   async function destination(known) {
     if (known) return ((known.note.tables || [])[0] || {}).dest || RECEIVED_TABLE;
     for (let n = 1; n <= TABLES_TRIED; n += 1) {

@@ -4,7 +4,7 @@
 // droit par
 // lui-même** : à sa création, GFS écrit des lignes de partage ordinaires sur la source pour les groupes de B (`Shares` garde ceux qu'il a ajoutés, pour les
 //   retirer avec lui), et Grist les calcule comme tous les partages (le droit le plus précis gagne, « Aucun accès » d'un fichier du dossier reste gagnant). Ce
-//   qui se montre sous le lien, Grist le dit aussi : la colonne d'aide `GFS_Vus` de chaque fichier (js/sharing/sharing-model.js) donne les chemins où il se
+//   qui se montre sous le lien, Grist le dit aussi : la colonne d'aide `GFS_Seen` de chaque fichier (js/sharing/sharing-model.js) donne les chemins où il se
 //   montre, et une personne ne lit que les fichiers où elle a un droit. Ce module ne touche pas à Grist : il rend des actions et pose les chemins sur les
 //   fichiers.
 
@@ -63,13 +63,13 @@ export const linkAt = (info, path) => (info && info.links ? info.links.find(link
 export const linkWithin = (info, path) => (info && info.links ? info.links.find(link => link.source.startsWith('dossier:') &&
   (path === link.path || path.startsWith(`${link.path}/`))) || null : null);
 
-// Pose les chemins des liens sur les fichiers : pour chaque fichier, `GFS_Vus` (la colonne que Grist calcule dans `data`, la table telle que `fetchTable` la
+// Pose les chemins des liens sur les fichiers : pour chaque fichier, `GFS_Seen` (la colonne que Grist calcule dans `data`, la table telle que `fetchTable` la
 // rend) donne « <clé de l'espace>/<chemin> » ; une copie du fichier (même clé, même ligne : c'est le même fichier) se montre à ce chemin, pour les espaces que
 // la personne lit. Une copie ne se range pas (`linked`, sans `space`). L'original d'un fichier qu'une personne ne voit nulle part ailleurs (ni dans son espace,
-// ni dans un dossier à elle, ni donné par son adresse, ni de sa main : `GFS_Auteur`) se retire de la liste : il n'a pas à traîner à la racine de « Moi ». Rend
+// ni dans un dossier à elle, ni donné par son adresse, ni de sa main : `GFS_Author`) se retire de la liste : il n'a pas à traîner à la racine de « Moi ». Rend
 // la liste.
 export function applyLinks(files, data, info, identity = '') {
-  if (!info || !info.links || !info.links.length || !data || !Array.isArray(data.id) || !Array.isArray(data.GFS_Vus)) return files;
+  if (!info || !info.links || !info.links.length || !data || !Array.isArray(data.id) || !Array.isArray(data.GFS_Seen)) return files;
   const at = new Map(data.id.map((row, i) => [row, i]));
   const spaces = new Map(info.spaces.map(space => [space.key, space]));
   const me = lower(identity);
@@ -77,7 +77,7 @@ export function applyLinks(files, data, info, identity = '') {
   const gone = new Set();
   for (const file of files) {
     const index = at.get(file.row);
-    const copies = copiesOf(file, listOf(data.GFS_Vus[index]).map(String), spaces);
+    const copies = copiesOf(file, listOf(data.GFS_Seen[index]).map(String), spaces);
     shown.push(...copies);
     if (copies.length && forgettable(file, lower((data[STAMP] || [])[index]), me)) gone.add(file);
   }
@@ -86,7 +86,7 @@ export function applyLinks(files, data, info, identity = '') {
   return files;
 }
 
-// Les copies d'un fichier : une par chemin de `GFS_Vus` dont l'espace est lu par la personne (`spaces` : clé -> espace).
+// Les copies d'un fichier : une par chemin de `GFS_Seen` dont l'espace est lu par la personne (`spaces` : clé -> espace).
 function copiesOf(file, paths, spaces) {
   const copies = [];
   for (const item of paths) {

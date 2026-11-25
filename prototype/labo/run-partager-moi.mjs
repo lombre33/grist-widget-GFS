@@ -56,14 +56,14 @@ async function playOwner(run) {
   check('six règles « GFS : Partagé » sont posées sur GFS_Filing (le rangement de chacun est à lui seul)', rules.filter(rule => /^GFS : Partagé/.test(rule.memo || '')).length === 6, rules.map(rule => rule.memo));
   check('l\'activation a fermé la structure, par UNE règle « GFS : Structure fermée » (sans « Gérer les partages… »)', (await closingRules(run)).length === 1 && rules.filter(rule => /^GFS : Structure fermée/.test(rule.memo || '')).length === 1, rules.map(rule => rule.memo));
   const columns = (await run.rest.columns(FILES)).map(column => column.id);
-  check('la colonne d\'aide GFS_Dossier est dans la table des fichiers', columns.includes('GFS_Dossier'), columns);
+  check('la colonne d\'aide GFS_Folder est dans la table des fichiers', columns.includes('GFS_Folder'), columns);
 
   say('--- 2. des fichiers du propriétaire, rangés dans « Contrats » et son sous-dossier ---');
   const facture = await fileRow(run, 'Facture.pdf');
   const devis = await fileRow(run, 'Devis.pdf');
-  // Les PDF importés avant que GFS connaisse l'adresse de la personne (la sonde n'a pas encore couru) n'ont pas d'auteur : `Auteur` est vide, `GFS_Auteur` le reprend à l'activation.
-  const legacy = !has(facture.GFS_Auteur, OWNER);
-  say(`(Facture.pdf importé avant l'activation : GFS_Auteur = ${JSON.stringify(facture.GFS_Auteur)})`);
+  // Les PDF importés avant que GFS connaisse l'adresse de la personne (la sonde n'a pas encore couru) n'ont pas d'auteur : `Auteur` est vide, `GFS_Author` le reprend à l'activation.
+  const legacy = !has(facture.GFS_Author, OWNER);
+  say(`(Facture.pdf importé avant l'activation : GFS_Author = ${JSON.stringify(facture.GFS_Author)})`);
   const contrat = await addFile(run, 'Contrat.pdf', 'lab-contrat', OWNER);
   const prive = await addFile(run, 'Prive.pdf', 'lab-prive', OWNER);
   const admin = await addFile(run, 'Admin.pdf', 'lab-admin', OWNER);
@@ -75,7 +75,7 @@ async function playOwner(run) {
   frame = await gfsFrame(page);
   await frame.locator('.ls-row.folder').first().waitFor();
   check('« Contrats » est un dossier de « Moi » dans la liste', (await folderRow(frame, FOLDER).count()) === 1);
-  check('sans partage de dossier, personne d\'autre ne lit les fichiers du dossier', !has((await fileRow(run, 'Facture.pdf')).GFS_Lecteurs, EDITOR));
+  check('sans partage de dossier, personne d\'autre ne lit les fichiers du dossier', !has((await fileRow(run, 'Facture.pdf')).GFS_Readers, EDITOR));
 
   say('--- 3. « Partager… » sur le dossier : une personne en lecture ---');
   const greyed = await openFolderShare(frame, FOLDER);
@@ -94,27 +94,27 @@ async function playOwner(run) {
   if (legacy) {
     const bare = [await fileRow(run, 'Facture.pdf'), await fileRow(run, 'Devis.pdf')];
     check('sans auteur connu, un fichier ne reçoit rien d\'un dossier de « Moi » (verrou fermé par défaut : le rangement seul ne prouve pas à qui est le fichier)',
-      bare.every(row => !has(row.GFS_Lecteurs, EDITOR)), bare.map(row => row.GFS_Lecteurs));
-    answer = await apply(run, [['UpdateRecord', FILES, facture.id, { GFS_Auteur: OWNER }], ['UpdateRecord', FILES, devis.id, { GFS_Auteur: OWNER }]]);
-    check('un propriétaire écrit l\'auteur de ces deux fichiers (seuls les propriétaires changent GFS_Auteur)', answer.status === 200, answer.text);
+      bare.every(row => !has(row.GFS_Readers, EDITOR)), bare.map(row => row.GFS_Readers));
+    answer = await apply(run, [['UpdateRecord', FILES, facture.id, { GFS_Author: OWNER }], ['UpdateRecord', FILES, devis.id, { GFS_Author: OWNER }]]);
+    check('un propriétaire écrit l\'auteur de ces deux fichiers (seuls les propriétaires changent GFS_Author)', answer.status === 200, answer.text);
   }
   const f1 = await fileRow(run, 'Facture.pdf');
   const d1 = await fileRow(run, 'Devis.pdf');
-  check('les fichiers du dossier et du sous-dossier sont lus de l\'éditeur (GFS_Lecteurs)', has(f1.GFS_Lecteurs, EDITOR) && has(d1.GFS_Lecteurs, EDITOR), [f1.GFS_Lecteurs, d1.GFS_Lecteurs]);
-  check('le fichier du propriétaire resté hors du dossier ne l\'est pas', !has((await fileRow(run, 'Prive.pdf')).GFS_Lecteurs, EDITOR));
-  check('« Partagés avec moi » : l\'éditeur est dans GFS_Directs avec le propriétaire pour auteur du partage', has(f1.GFS_Directs, `${EDITOR}>${OWNER}`), f1.GFS_Directs);
+  check('les fichiers du dossier et du sous-dossier sont lus de l\'éditeur (GFS_Readers)', has(f1.GFS_Readers, EDITOR) && has(d1.GFS_Readers, EDITOR), [f1.GFS_Readers, d1.GFS_Readers]);
+  check('le fichier du propriétaire resté hors du dossier ne l\'est pas', !has((await fileRow(run, 'Prive.pdf')).GFS_Readers, EDITOR));
+  check('« Partagés avec moi » : l\'éditeur est dans GFS_Direct avec le propriétaire pour auteur du partage', has(f1.GFS_Direct, `${EDITOR}>${OWNER}`), f1.GFS_Direct);
   await closeShare(frame);
 
   say('--- 4. un fichier rangé plus tard dans le dossier est partagé aussi ; un fichier qui en sort ne l\'est plus ---');
   const nouveau = await addFile(run, 'Nouveau.pdf', 'lab-nouveau', OWNER);
-  check('avant d\'être rangé, « Nouveau.pdf » n\'est pas lu de l\'éditeur', !has(nouveau.GFS_Lecteurs, EDITOR));
+  check('avant d\'être rangé, « Nouveau.pdf » n\'est pas lu de l\'éditeur', !has(nouveau.GFS_Readers, EDITOR));
   answer = await apply(run, [filing(OWNER, nouveau, FOLDER)]);
   check('il est rangé dans « Contrats »', answer.status === 200, answer.text);
-  check('aussitôt, l\'éditeur le lit (aucune page n\'a eu à s\'ouvrir : c\'est une formule de Grist)', has((await fileRow(run, 'Nouveau.pdf')).GFS_Lecteurs, EDITOR));
+  check('aussitôt, l\'éditeur le lit (aucune page n\'a eu à s\'ouvrir : c\'est une formule de Grist)', has((await fileRow(run, 'Nouveau.pdf')).GFS_Readers, EDITOR));
   const mine = ((await rows(run, FILING)) || []).find(row => row.File === contrat.Identifiant);
   answer = await apply(run, [['UpdateRecord', FILING, mine.id, { Folder: '' }]]);
   check('« Contrat.pdf » sort du dossier', answer.status === 200, answer.text);
-  check('l\'éditeur ne le lit plus', !has((await fileRow(run, 'Contrat.pdf')).GFS_Lecteurs, EDITOR));
+  check('l\'éditeur ne le lit plus', !has((await fileRow(run, 'Contrat.pdf')).GFS_Readers, EDITOR));
 
   say('--- 5. un autre sous le même toit : le viewer lit le dossier aussi (pour l\'essai de l\'éditeur) ---');
   answer = await apply(run, [['AddRecord', SHARES, null, { Target: personal(OWNER, FOLDER), Person: VIEWER, Right: 'lecture' }]]);
@@ -145,7 +145,7 @@ async function playOwner(run) {
   answer = await apply(run, [['AddRecord', SHARES, null, { Target: keyOf(cat), Person: '@editeurs', Right: 'admin' }]]);
   check('même si on écrit la ligne « catégorie admin » à la main (propriétaire, API), elle ne vaut qu\'en écriture', answer.status === 200, answer.text);
   const catFile = await fileRow(run, 'Cat.pdf');
-  check('GFS_Admins du fichier n\'a pas l\'éditeur ; GFS_CatsEcrit dit « editeurs » (écriture, pas administration)', !has(catFile.GFS_Admins, EDITOR) && has(catFile.GFS_CatsEcrit, 'editeurs'), [catFile.GFS_Admins, catFile.GFS_CatsEcrit]);
+  check('GFS_Admins du fichier n\'a pas l\'éditeur ; GFS_CatsWrite dit « editeurs » (écriture, pas administration)', !has(catFile.GFS_Admins, EDITOR) && has(catFile.GFS_CatsWrite, 'editeurs'), [catFile.GFS_Admins, catFile.GFS_CatsWrite]);
   answer = await apply(run, [['AddRecord', SHARES, null, { Target: keyOf(autre), Person: '#Autres', Right: 'admin' }]]);
   check('« Autres » (le lecteur, pas l\'éditeur) administre Autre.pdf', answer.status === 200, answer.text);
 
@@ -190,14 +190,14 @@ async function playEditor(run) {
   answer = await apply(run, [['AddRecord', SHARES, null, { Target: `gfs-fichiers:${state.prive}`, Person: EDITOR, Right: 'lecture' }]]);
   say(`(ligne de partage du fichier privé, écrite par l'éditeur : réponse ${answer.status} ; elle doit être invalide, vérifié plus bas)`);
   const admin = await fileRow(run, 'Admin.pdf');
-  answer = await apply(run, [['UpdateRecord', FILES, admin.id, { GFS_Auteur: EDITOR }]]);
-  check('il ne peut PAS se faire auteur d\'un fichier (GFS_Auteur : seuls les propriétaires l\'écrivent)', answer.status !== 200 && !has((await fileRow(run, 'Admin.pdf')).GFS_Auteur, EDITOR), answer.text);
-  answer = await apply(run, [['ModifyColumn', FILES, 'GFS_Dossier', { formula: '$GFS_Auteur' }]]);
-  check('il ne peut PAS changer la formule de GFS_Dossier (structure fermée : réservée aux propriétaires)', answer.status !== 200, answer.text);
-  answer = await apply(run, [['RemoveColumn', FILES, 'GFS_Dossier']]);
-  check('il ne peut PAS retirer la colonne GFS_Dossier', answer.status !== 200, answer.text);
-  answer = await apply(run, [['ModifyColumn', FILES, 'GFS_Lecteurs', { formula: '["L", "editor@example.com"]' }]]);
-  check('il ne peut PAS réécrire la formule de GFS_Lecteurs pour se donner la lecture', answer.status !== 200, answer.text);
+  answer = await apply(run, [['UpdateRecord', FILES, admin.id, { GFS_Author: EDITOR }]]);
+  check('il ne peut PAS se faire auteur d\'un fichier (GFS_Author : seuls les propriétaires l\'écrivent)', answer.status !== 200 && !has((await fileRow(run, 'Admin.pdf')).GFS_Author, EDITOR), answer.text);
+  answer = await apply(run, [['ModifyColumn', FILES, 'GFS_Folder', { formula: '$GFS_Author' }]]);
+  check('il ne peut PAS changer la formule de GFS_Folder (structure fermée : réservée aux propriétaires)', answer.status !== 200, answer.text);
+  answer = await apply(run, [['RemoveColumn', FILES, 'GFS_Folder']]);
+  check('il ne peut PAS retirer la colonne GFS_Folder', answer.status !== 200, answer.text);
+  answer = await apply(run, [['ModifyColumn', FILES, 'GFS_Readers', { formula: '["L", "editor@example.com"]' }]]);
+  check('il ne peut PAS réécrire la formule de GFS_Readers pour se donner la lecture', answer.status !== 200, answer.text);
   answer = await apply(run, [['RemoveTable', SHARES]]);
   check('il ne peut PAS supprimer la table des partages', answer.status !== 200, answer.text);
   answer = await apply(run, [['BulkRemoveRecord', '_grist_ACLRules', Array.from({ length: 40 }, (_, index) => index + 1)]]);
@@ -210,8 +210,8 @@ async function playEditor(run) {
   answer = await apply(run, [['AddColumn', FILES, 'Ruse', { type: 'Text' }]]);
   check('il ne peut PAS ajouter une colonne aux fichiers', answer.status !== 200, answer.text);
   const columnsNow = (await call(run.page, 'GET', `/api/docs/${run.docId}/tables/${FILES}/columns`)).json.columns || [];
-  const lecteurs = columnsNow.find(column => column.id === 'GFS_Lecteurs');
-  check('après ces essais, GFS_Dossier existe encore et la formule de GFS_Lecteurs est celle de GFS (relue)', columnsNow.some(column => column.id === 'GFS_Dossier') && lecteurs && !String(lecteurs.fields.formula).includes(EDITOR) && !columnsNow.some(column => column.id === 'Ruse'), lecteurs && lecteurs.fields.formula);
+  const lecteurs = columnsNow.find(column => column.id === 'GFS_Readers');
+  check('après ces essais, GFS_Folder existe encore et la formule de GFS_Readers est celle de GFS (relue)', columnsNow.some(column => column.id === 'GFS_Folder') && lecteurs && !String(lecteurs.fields.formula).includes(EDITOR) && !columnsNow.some(column => column.id === 'Ruse'), lecteurs && lecteurs.fields.formula);
   check('et la table des partages est toujours là', (await rows(run, SHARES)) !== null);
   const afterForge = ((await rows(run, FILES)) || []).map(row => row.Nom);
   check('« Prive.pdf » reste illisible pour l\'éditeur après ces essais', !afterForge.includes('Prive.pdf'), afterForge);
@@ -226,7 +226,7 @@ async function playEditor(run) {
   check('il donne son dossier au lecteur : ligne acceptée', answer.status === 200, answer.text);
   const own = ((await rows(run, SHARES)) || []).find(row => row.Target === personal(EDITOR, 'Mien'));
   check('la ligne est valide, sans être propriétaire', own && own.Valid === true, own);
-  check('son fichier est lu du lecteur', has((await fileRow(run, 'Fichier editeur.pdf')).GFS_Lecteurs, VIEWER));
+  check('son fichier est lu du lecteur', has((await fileRow(run, 'Fichier editeur.pdf')).GFS_Readers, VIEWER));
 
   say('--- éditeur : administrer par un groupe (membre), pas par une catégorie ni par un groupe dont il n\'est pas ---');
   answer = await apply(run, [['AddRecord', SHARES, null, { Target: `gfs-fichiers:${state.admin}`, Person: VIEWER, Right: 'lecture' }]]);
@@ -271,7 +271,7 @@ async function playAfter(run) {
   const forged = shares.filter(row => String(row.Auteur).toLowerCase() === EDITOR && [personal(OWNER, FOLDER), `gfs-fichiers:${state.prive}`, `gfs-fichiers:${state.cat}`].includes(row.Target));
   check('les trois lignes truquées de l\'éditeur sont là et INVALIDES', forged.length >= 2 && forged.every(row => row.Valid === false), forged);
   const prive = ((await rows(run, FILES)) || []).find(row => row.Identifiant === state.prive);
-  check('« Prive.pdf » n\'est lu que de son auteur : ni l\'éditeur ni le lecteur', !has(prive.GFS_Lecteurs, EDITOR) && !has(prive.GFS_Lecteurs, VIEWER), prive.GFS_Lecteurs);
+  check('« Prive.pdf » n\'est lu que de son auteur : ni l\'éditeur ni le lecteur', !has(prive.GFS_Readers, EDITOR) && !has(prive.GFS_Readers, VIEWER), prive.GFS_Readers);
   const rangement = (await rows(run, FILING)) || [];
   check('le propriétaire lit le rangement de chacun : l\'adresse de l\'éditeur y est (les suggestions de « Gérer les partages » la proposent)', rangement.some(row => String(row.User).toLowerCase() === EDITOR),
     rangement.map(row => row.User));
@@ -281,9 +281,9 @@ async function playAfter(run) {
   const answer = await apply(run, [filing(OWNER, theirs, FOLDER)]);
   check('le propriétaire range le fichier de l\'éditeur dans « Contrats » (son rangement, il le peut)', answer.status === 200, answer.text);
   const after = ((await rows(run, FILES)) || []).find(row => row.Nom === 'Fichier editeur.pdf');
-  check('le dossier du propriétaire ne donne rien sur un fichier dont il n\'est pas l\'auteur (le lecteur ne le lit que par le dossier de l\'éditeur)', has(after.GFS_Lecteurs, VIEWER), after.GFS_Lecteurs);
+  check('le dossier du propriétaire ne donne rien sur un fichier dont il n\'est pas l\'auteur (le lecteur ne le lit que par le dossier de l\'éditeur)', has(after.GFS_Readers, VIEWER), after.GFS_Readers);
   const dossierCalc = ((await rows(run, FILES)) || []).find(row => row.Identifiant === theirs.Identifiant);
-  check('GFS_Dossier vaut le dossier de l\'AUTEUR (« Mien »), pas celui qu\'a choisi le propriétaire', dossierCalc.GFS_Dossier === 'Mien', dossierCalc.GFS_Dossier);
+  check('GFS_Folder vaut le dossier de l\'AUTEUR (« Mien »), pas celui qu\'a choisi le propriétaire', dossierCalc.GFS_Folder === 'Mien', dossierCalc.GFS_Folder);
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
 }
 

@@ -11,7 +11,7 @@ const columnar = rows => Object.fromEntries(Object.keys(rows[0]).map(key => [key
 const quiet = t => t.mock.method(console, 'warn', () => {});
 
 // Un document : des tables (id = numéro de la table, sa vue propre = 100 + id), une page par vue, la section de GFS (10) sur la page 1.
-const NAMES = ['GFS', 'GFS_Filing', 'GFS_Groups', 'GFS_Fichiers', 'GFS_Shares'];
+const NAMES = ['GFS', 'GFS_Filing', 'GFS_Groups', 'GFS_Files', 'GFS_Shares'];
 function document({ names = NAMES, other = [], options = null } = {}) {
   const tables = [{ id: 1, tableId: 'Clients', primaryViewId: 101 }];
   const sections = [{ id: 10, parentId: 1, parentKey: 'custom', tableRef: 1 }];
@@ -44,9 +44,9 @@ function applied(meta, actions) {
 test('planTidy : les pages à plat passent sous la page de GFS, dans leur ordre, et la page de GFS se replie', () => {
   const meta = document();
   const plan = planTidy(meta, 10, null);
-  assert.deepEqual(plan.moved, ['GFS_Filing', 'GFS_Groups', 'GFS_Fichiers', 'GFS_Shares']);
+  assert.deepEqual(plan.moved, ['GFS_Filing', 'GFS_Groups', 'GFS_Files', 'GFS_Shares']);
   assert.equal(plan.collapsed, true);
-  assert.deepEqual(layout(applied(meta, plan.actions)), [['GFS', 0], ['GFS_Filing', 1], ['GFS_Groups', 1], ['GFS_Fichiers', 1], ['GFS_Shares', 1]]);
+  assert.deepEqual(layout(applied(meta, plan.actions)), [['GFS', 0], ['GFS_Filing', 1], ['GFS_Groups', 1], ['GFS_Files', 1], ['GFS_Shares', 1]]);
   const [verb, table, id, values] = plan.actions.at(-1);
   assert.deepEqual([verb, table, id], ['UpdateRecord', '_grist_Pages', 1]);
   assert.deepEqual(JSON.parse(values.options), { collapsed: true });
@@ -55,7 +55,7 @@ test('planTidy : les pages à plat passent sous la page de GFS, dans leur ordre,
 test('planTidy : les pages d\'autres tables restent où elles sont ; celles de GFS viennent juste sous GFS, avant la page qui le suivait', () => {
   const meta = document({ other: [{ view: 7, pagePos: 1.5 }, { view: 8, pagePos: 9 }] });
   const rest = layout(applied(meta, planTidy(meta, 10, null).actions));
-  assert.deepEqual(rest, [['GFS', 0], ['GFS_Filing', 1], ['GFS_Groups', 1], ['GFS_Fichiers', 1], ['GFS_Shares', 1], ['vue 7', 0], ['vue 8', 0]]);
+  assert.deepEqual(rest, [['GFS', 0], ['GFS_Filing', 1], ['GFS_Groups', 1], ['GFS_Files', 1], ['GFS_Shares', 1], ['vue 7', 0], ['vue 8', 0]]);
 });
 
 test('planTidy : une page de GFS au-dessus de la page de GFS descend aussi sous elle', () => {
@@ -69,7 +69,7 @@ test('planTidy : une page de GFS déjà sous une autre page (la personne l\'a ra
   const meta = document({ other: [{ view: 7, pagePos: 1.5 }] });
   Object.assign(meta.pages.find(page => page.viewRef === 100 + 21), { indentation: 1, pagePos: 1.6 }); // GFS_Groups sous la vue 7
   const plan = planTidy(meta, 10, null);
-  assert.deepEqual(plan.moved, ['GFS_Filing', 'GFS_Fichiers', 'GFS_Shares']);
+  assert.deepEqual(plan.moved, ['GFS_Filing', 'GFS_Files', 'GFS_Shares']);
   assert.ok(plan.seen.includes('GFS_Groups'));
   assert.equal(applied(meta, plan.actions).pages.find(page => page.viewRef === 121).indentation, 1);
   assert.equal(applied(meta, plan.actions).pages.find(page => page.viewRef === 121).pagePos, 1.6);
@@ -104,7 +104,7 @@ test('planTidy : si la page de GFS est celle d\'une table de GFS (GFS posé sur 
 
 test('planTidy : la marque connaît déjà les tables : une page que la personne a sortie ne revient pas, et la page de GFS n\'est pas replongée dans un repli', () => {
   const meta = document({ options: JSON.stringify({ collapsed: false }) });
-  const known = ['GFS_Filing', 'GFS_Groups', 'GFS_Fichiers'];
+  const known = ['GFS_Filing', 'GFS_Groups', 'GFS_Files'];
   const plan = planTidy(meta, 10, known);
   assert.deepEqual(plan.moved, ['GFS_Shares']); // la seule table neuve
   assert.equal(plan.collapsed, false);
@@ -133,7 +133,9 @@ test('planTidy : rien à ranger (aucune table de GFS, ou déjà sous la page) : 
 });
 
 test('handledOf : la liste de la marque ; absente ou illisible : null (rien noté)', () => {
-  assert.deepEqual(handledOf({ [PAGES_KEY]: ['GFS_Filing', 4, 'GFS_Fichiers'] }), ['GFS_Filing', 'GFS_Fichiers']);
+  assert.deepEqual(handledOf({ [PAGES_KEY]: ['GFS_Filing', 4, 'GFS_Files'] }), ['GFS_Filing', 'GFS_Files']);
+  assert.deepEqual(handledOf({ [PAGES_KEY]: ['GFS_Rangement', 'GFS_Fichiers'] }), ['GFS_Rangement', 'GFS_Filing', 'GFS_Fichiers', 'GFS_Files'],
+    'une marque d\'avant parle des deux noms : la table que Sync+ tient garde son nom d\'avant, les autres ont changé');
   assert.equal(handledOf({}), null);
   assert.equal(handledOf({ [PAGES_KEY]: 'oui' }), null);
   assert.equal(handledOf(null), null);
@@ -166,8 +168,8 @@ test('tidy : à l\'ouverture, les pages passent sous GFS en un lot, repliées, e
   const { tree, log, live } = setup();
   await tree.tidy();
   assert.equal(log.applied.length, 1);
-  assert.deepEqual(layout(live), [['GFS', 0], ['GFS_Filing', 1], ['GFS_Groups', 1], ['GFS_Fichiers', 1], ['GFS_Shares', 1]]);
-  assert.deepEqual(log.marked, [['GFS_Filing', 'GFS_Groups', 'GFS_Fichiers', 'GFS_Shares']]);
+  assert.deepEqual(layout(live), [['GFS', 0], ['GFS_Filing', 1], ['GFS_Groups', 1], ['GFS_Files', 1], ['GFS_Shares', 1]]);
+  assert.deepEqual(log.marked, [['GFS_Filing', 'GFS_Groups', 'GFS_Files', 'GFS_Shares']]);
   assert.equal(JSON.parse(live.pages.find(page => page.id === 1).options).collapsed, true);
 });
 
@@ -175,7 +177,7 @@ test('tidy : la marque d\'un passage précédent : rien n\'est écrit, une page 
   const meta = document();
   meta.pages.forEach(page => { if (page.id > 1) Object.assign(page, { indentation: 1 }); });
   Object.assign(meta.pages.find(page => page.id === 50), { indentation: 0, pagePos: 9 }); // GFS_Filing ressortie par la personne
-  const { tree, log } = setup({ meta, options: { [PAGES_KEY]: ['GFS_Filing', 'GFS_Groups', 'GFS_Fichiers', 'GFS_Shares'] } });
+  const { tree, log } = setup({ meta, options: { [PAGES_KEY]: ['GFS_Filing', 'GFS_Groups', 'GFS_Files', 'GFS_Shares'] } });
   await tree.tidy();
   assert.deepEqual([log.applied, log.marked], [[], []]);
 });
@@ -190,7 +192,7 @@ test('tidy : une table créée plus tard se range seule, sous la page de GFS, sa
   await tree.tidy();
   assert.deepEqual(layout(live).at(-1), ['GFS_Trash', 1]);
   assert.equal(JSON.parse(live.pages.find(page => page.id === 1).options).collapsed, false);
-  assert.deepEqual(log.marked.at(-1), ['GFS_Filing', 'GFS_Groups', 'GFS_Fichiers', 'GFS_Shares', 'GFS_Trash']);
+  assert.deepEqual(log.marked.at(-1), ['GFS_Filing', 'GFS_Groups', 'GFS_Files', 'GFS_Shares', 'GFS_Trash']);
 });
 
 test('tidy : après son propre passage, GFS ne reprend pas ce que la personne a ressorti (même avant que Grist ne renvoie la marque)', async () => {

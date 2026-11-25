@@ -153,7 +153,7 @@ async function playFirstTrash(run) {
   check('GFS_Trash est née avec ses onze colonnes, dans les types voulus', same(Object.keys(types), ['EntryId', 'App', 'Table', 'FileId', 'Name', 'Type', 'Date', 'Author', 'DeletedAt', 'DeletedBy', 'Snapshot']) && types.DeletedAt === 'DateTime:UTC' && types.Snapshot === 'Text', types);
   const [entry] = await entries(run);
   const copy = JSON.parse(entry.Snapshot);
-  check('l\'entrée dit d\'où vient le fichier et qui l\'a supprimé (la date en secondes, l\'adresse que Grist donne)', entry.App === 'publipostage' && entry.Table === MODELS && entry.FileId === '16' && entry.Nom === 'Contrat de prestation' && entry.Type === 'document' && Math.abs(entry.SupprimeLe - Date.now() / 1000) < 120 && entry.SupprimePar === ME, entry);
+  check('l\'entrée dit d\'où vient le fichier et qui l\'a supprimé (la date en secondes, l\'adresse que Grist donne)', entry.App === 'publipostage' && entry.Table === MODELS && entry.FileId === '16' && entry.Nom === 'Contrat de prestation' && entry.Type === 'document' && Math.abs(entry.DeletedAt - Date.now() / 1000) < 120 && entry.DeletedBy === ME, entry);
   check('la copie garde la ligne : son numéro et ses colonnes de données, ni la formule, ni la colonne de tri', copy.format === 1 && copy.id === 16 && copy.valeurs.Nom === 'Contrat de prestation' && copy.valeurs.Jeton === 'j16' && !('Resume' in copy.valeurs) && !('manualSort' in copy.valeurs) && 'Pieces' in copy.valeurs && 'DateModif' in copy.valeurs, Object.keys(copy.valeurs));
   check('la ligne n\'est plus dans la table de l\'app, les autres n\'ont pas bougé', !byId(await modelRows(run), 16) && (await modelRows(run)).length === 18);
   run.contract = before;

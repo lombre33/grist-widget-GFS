@@ -7,8 +7,9 @@
 // « Commentaires » (ceux des apps) et « dépôt seul » attendent leurs tables ; « peut télécharger » est un confort de GFS (le bouton), jamais une protection :
 // qui lit la pièce jointe peut la copier (contrats 11.1, point 8).
 
-import { FILES_TABLE } from '../files/gfs-files.js';
+import { FILES_APP, filesNames } from '../files/gfs-files.js';
 import { ANNUAIRES_APP, ANNUAIRES_TABLE } from '../files/annuaire-files.js';
+import { helperSetOf, inSet } from './helper-names.js';
 import { TABLE as FILING_TABLE, COLUMNS as FILING_COLUMNS } from '../files/rangement.js';
 
 export const SHARES_TABLE = 'GFS_Shares';
@@ -28,12 +29,14 @@ export const isGfsNote = memo => GFS_ANY.test(String(memo ?? ''));
 // l'identifiant (null : le numéro de ligne de Grist, `colonnes.id: "id"` du manifeste) ; `author` : la colonne de l'auteur ; `stamped` : GFS pose lui-même
 // cette colonne (une formule déclenchée sur `user`, écrite par Grist à la création, que l'app n'a pas à tenir) ;
 // `open` : une condition sur la ligne (`rec`) des lignes qui ne sont pas des fichiers (`exclure` du manifeste, les réglages de l'app) et restent ouvertes comme
-//   avant. L'auteur d'un PDF est `GFS_Auteur`, que Grist écrit à la création et que seuls les propriétaires changent, comme pour les fichiers des apps. Pas
+//   avant. L'auteur d'un PDF est `GFS_Author`, que Grist écrit à la création et que seuls les propriétaires changent, comme pour les fichiers des apps. Pas
 //   `Auteur` : l'explorateur le réécrit à chaque remplacement du contenu (c'est le dernier qui a modifié), et un porteur du droit « écriture » s'y serait nommé
 //   auteur, donc administrateur (mesuré le 09/11, labo/run-partager-auteur.mjs).
-export const STAMP = 'GFS_Auteur';
-export const FILES_TARGET = Object.freeze({ table: FILES_TABLE, prefix: 'gfs-fichiers:', id: 'Identifiant', author: STAMP, stamped: true, open: '' });
-export const TARGETS = Object.freeze([FILES_TARGET]);
+export const STAMP = 'GFS_Author';
+// La table des PDF de GFS, sous les noms que le document utilise (js/files/gfs-files.js, `filesNames`).
+export const filesTarget = (names = filesNames()) => Object.freeze({ table: names.table, prefix: `${FILES_APP}:`, id: names.id, author: STAMP, stamped: true,
+  open: '' });
+export const defaultTargets = () => [filesTarget()];
 // Les annuaires (js/files/annuaire-files.js) : un annuaire principal reste ouvert comme avant (`Parent` vide) ; un sous-annuaire (`Parent` dit son annuaire
 // d'origine) n'est lu que de ceux à qui il est partagé : sa ligne porte la copie des personnes (`Copy`), donc le verrou de Grist est celui de la ligne.
 export const ANNUAIRES_TARGET = Object.freeze({ table: ANNUAIRES_TABLE, prefix: `${ANNUAIRES_APP}:`, id: null, author: STAMP, stamped: true,
@@ -55,7 +58,7 @@ export function appTargets(manifests) {
   }
   return out;
 }
-export const targetsOf = manifests => [FILES_TARGET, ANNUAIRES_TARGET, ...appTargets(manifests)];
+export const targetsOf = manifests => [filesTarget(), ANNUAIRES_TARGET, ...appTargets(manifests)];
 const idOf = target => (target.id ? `$${target.id}` : '$id');
 // La ligne d'un fichier d'après sa clé, dans une formule de la table de partages (le numéro de ligne se lit par `id`).
 const findFile = target => (target.id
@@ -70,9 +73,10 @@ const formula = (id, type, body) => column(id, type, { isFormula: true, formula:
 // La table de partages. `AuthorOwner` : l'auteur est propriétaire. `AdminsBase` : l'auteur du fichier visé et les administrateurs que des propriétaires ont
 // nommés, pour la cible. `Valid` : le partage vient d'un propriétaire ou d'un administrateur de la cible (deux niveaux : une formule ne peut pas dépendre
 // d'elle-même). `AdminsTarget` : ceux qui administrent la cible (les règles s'y fient).
-export function shareColumns(targets = TARGETS) {
+export function shareColumns(targets = defaultTargets()) {
   const author = targets.map(target =>
-    `if cible.startswith("${target.prefix}"):\n${findFile(target)}\n  if found:\n    out.add(str(found.${target.author}).strip().lower())`).join('\n');
+    `if cible.startswith("${target.prefix}"):\n${findFile(target)}\n  if found:\n    out.add(str(found.${inSet(target.author, target.set)}).strip().lower())`).join(
+      '\n');
   return [
     column('Target', 'Text'), column('Person', 'Text'), column('Right', 'Text'), column('Download', 'Bool'), column('End', 'Date'),
     stamped('Author', 'user.Email'), stamped('AuthorAccess', 'str(user.Access)'),
@@ -201,7 +205,7 @@ function folderFormula(target) {
 function idsFormula(target) {
   return [
     `author = str($${target.author}).strip().lower()`, 'out = []', 'if author:',
-    '  mine = [x for x in str($GFS_Dossier or "").split("/") if x]',
+    '  mine = [x for x in str($GFS_Folder or "").split("/") if x]',
     '  for i in range(len(mine)):',
     `    for r in ${FILING_TABLE}.lookupRecords(App="", File="", Folder="/".join(mine[:i + 1])):`,
     '      if str(r.User or "").strip().lower() == author:',
@@ -210,9 +214,9 @@ function idsFormula(target) {
 }
 
 // Les cibles qui valent pour un fichier, de la plus large (`*`, 0) à la plus précise (le fichier, 99) : l'espace où il est placé et ses dossiers, ou, hors d'un
-// espace, le dossier que son auteur lui a donné dans « Moi » (`GFS_Dossier`) : les droits de ce dossier et de ceux au-dessus valent pour lui, et pour tout
+// espace, le dossier que son auteur lui a donné dans « Moi » (`GFS_Folder`) : les droits de ce dossier et de ceux au-dessus valent pour lui, et pour tout
 // fichier que l'auteur y rangera. Le dossier d'une autre personne ne compte jamais : sa clé porte l'adresse de l'auteur. `full` : les noms de ces dossiers
-// (`GFS_Vus` en tire le chemin sous le dossier d'un lien).
+// (`GFS_Seen` en tire le chemin sous le dossier d'un lien).
 const chainLines = target => [
   `key = "${target.prefix}" + str(${idOf(target)})`,
   `author = str($${target.author}).strip().lower()`,
@@ -226,7 +230,7 @@ const chainLines = target => [
   '  for i in range(len(parts)):',
   '    chain["dossier:" + str(pl.Space) + "/" + "/".join(parts[:i + 1])] = 2 + i',
   'elif author:',
-  '  mine = [x for x in str($GFS_Dossier or "").split("/") if x]',
+  '  mine = [x for x in str($GFS_Folder or "").split("/") if x]',
   '  full = mine',
   '  for i in range(len(mine)):',
   `    chain["${PERSONAL_PREFIX}" + author + "/" + "/".join(mine[:i + 1])] = 2 + i`,
@@ -290,27 +294,32 @@ function calcFormula(target) {
 }
 
 // Les colonnes d'aide d'une table de fichiers : `GFS_Calc` (le calcul), puis les adresses qui lisent, écrivent, administrent, celles à qui l'accès est retiré
-// (`GFS_Refus`), et les catégories entières (`editeurs`, `tous`) qui lisent ou écrivent.
-export const HELPERS = Object.freeze(['GFS_Dossier', 'GFS_Ids', 'GFS_Calc', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Refus', 'GFS_Cats',
-  'GFS_CatsEcrit',
-  'GFS_Directs', 'GFS_Vus']);
-export function helperColumns(target = FILES_TARGET) {
+// (`GFS_Denied`), et les catégories entières (`editeurs`, `tous`) qui lisent ou écrivent.
+export const HELPERS = Object.freeze(['GFS_Folder', 'GFS_Ids', 'GFS_Calc', 'GFS_Readers', 'GFS_Writers', 'GFS_Admins', 'GFS_Denied', 'GFS_Cats',
+  'GFS_CatsWrite',
+  'GFS_Direct', 'GFS_Seen']);
+export function helperColumns(target = filesTarget()) {
   const part = at => `tuple(($GFS_Calc or [[], [], [], [], [], [], []])[${at}])`;
-  return [
+  return setOf(target, [
     ...(target.stamped ? [stamped(STAMP, 'user.Email')] : []),
-    formula('GFS_Dossier', 'Text', folderFormula(target)),
+    formula('GFS_Folder', 'Text', folderFormula(target)),
     formula('GFS_Ids', 'Any', idsFormula(target)),
     formula('GFS_Calc', 'Any', calcFormula(target)),
-    formula('GFS_Lecteurs', 'Any', part(0)),
-    formula('GFS_Ecrivains', 'Any', part(1)),
+    formula('GFS_Readers', 'Any', part(0)),
+    formula('GFS_Writers', 'Any', part(1)),
     formula('GFS_Admins', 'Any', part(2)),
-    formula('GFS_Refus', 'Any', part(3)),
+    formula('GFS_Denied', 'Any', part(3)),
     formula('GFS_Cats', 'Any', part(4)),
-    formula('GFS_CatsEcrit', 'Any', part(5)),
-    formula('GFS_Directs', 'Any', part(6)),
-    formula('GFS_Vus', 'Any', vusFormula(target)),
-  ];
+    formula('GFS_CatsWrite', 'Any', part(5)),
+    formula('GFS_Direct', 'Any', part(6)),
+    formula('GFS_Seen', 'Any', vusFormula(target)),
+  ]);
 }
+
+// Les noms d'une cible : ceux d'arrivée, ou ceux d'avant quand sa table les porte encore (`target.set`, posé par `planSharing` d'après les colonnes du
+// document ; js/sharing/helper-names.js). Les colonnes, les formules et les règles s'écrivent d'abord en anglais, puis se disent dans ce jeu.
+const setOf = (target, columns) => (target.set === 'fr' ? columns.map(item => ({ ...item, id: inSet(item.id, 'fr'),
+  ...(item.formula ? { formula: inSet(item.formula, 'fr') } : {}) })) : columns);
 
 const me = 'user.Email and user.Email.lower()';
 const inList = name => `user.Email and rec.${name} and user.Email.lower() in rec.${name}`;
@@ -322,7 +331,8 @@ const rule = (formulaText, rights, memo, extra = {}) => ({ formula: formulaText,
 
 // Les règles d'une table de fichiers : les propriétaires, les administrateurs, qui écrit, qui lit (par adresse ou par catégorie), la création à son nom, le
 // reste refusé.
-export function fileRules(target = FILES_TARGET) {
+export function fileRules(target = filesTarget()) {
+  const set = target.set;
   const open = target.open ? [
     rule(target.open, '+R', 'les lignes de réglages de l’app restent lisibles'),
     rule(`user.Access in [EDITOR] and (${target.open})`, '+UD', 'et modifiables par les éditeurs, comme avant'),
@@ -330,16 +340,16 @@ export function fileRules(target = FILES_TARGET) {
   return [
     rule('user.Access in [OWNER]', '+CRUD', 'les propriétaires gardent la main'),
     ...open,
-    rule(inList('GFS_Refus'), '-CRUD', 'un accès retiré à cette personne pour ce fichier'),
+    rule(inList('GFS_Denied'), '-CRUD', 'un accès retiré à cette personne pour ce fichier'),
     rule(inList('GFS_Admins'), '+CRUD', 'l’auteur et les administrateurs du fichier gèrent son partage'),
-    rule(`${inList('GFS_Ecrivains')} or (user.Access in [EDITOR] and rec.GFS_CatsEcrit and "editeurs" in rec.GFS_CatsEcrit)`, '+RU',
+    rule(`${inList('GFS_Writers')} or (user.Access in [EDITOR] and rec.GFS_CatsWrite and "editeurs" in rec.GFS_CatsWrite)`, '+RU',
       'ceux qui ont l’écriture modifient le fichier'),
-    rule(`${inList('GFS_Lecteurs')} or (rec.GFS_Cats and (("editeurs" in rec.GFS_Cats and user.Access in [EDITOR]) or ("tous" in rec.GFS_Cats and user.Access in [EDITOR, VIEWER])))`,
+    rule(`${inList('GFS_Readers')} or (rec.GFS_Cats and (("editeurs" in rec.GFS_Cats and user.Access in [EDITOR]) or ("tous" in rec.GFS_Cats and user.Access in [EDITOR, VIEWER])))`,
       '+R', 'ceux à qui le fichier est partagé le lisent'),
     rule(`user.Access in [EDITOR] and user.Email and newRec.${target.author} and newRec.${target.author}.lower() == user.Email.lower()`, '+C',
       'chacun ajoute des fichiers à son nom'),
     rule('', '-CRUD', 'le fichier d’une autre personne n’est pas à vous'),
-  ];
+  ].map(item => ({ ...item, formula: inSet(item.formula, set) }));
 }
 
 // Les règles de la table de partages (sur la table entière), et celles qui gardent l'auteur écrit par Grist (sur ses deux colonnes seules : passent avant).
@@ -361,7 +371,7 @@ export function shareRules() {
 export const stampRules = (memo = 'l’auteur d’un partage est écrit par Grist, personne ne le change') => [rule('user.Access not in [OWNER]', '-U', memo)];
 
 // Les six règles de « Partagé » pour une table de lignes par personne (contrats 11.4, point 2), de la première à la dernière ; chacune porte sa note, que Grist
-// joint à son refus. Le partage les pose sur `GFS_Filing` : le dossier qu'une personne donne à un fichier dans « Moi » ouvre des droits (`GFS_Dossier`), et
+// joint à son refus. Le partage les pose sur `GFS_Filing` : le dossier qu'une personne donne à un fichier dans « Moi » ouvre des droits (`GFS_Folder`), et
 // n'importe quel éditeur pourrait sinon écrire la ligne de rangement d'une autre personne pour y ranger son fichier dans un dossier partagé.
 export function sharedRules() {
   const own = 'user.Email and rec.User and rec.User.lower() == user.Email.lower()';
@@ -411,16 +421,16 @@ function dropRules(existing, items) {
 }
 
 // Activer le partage : crée `GFS_Shares` (et `GFS_Fichiers`, `GFS_Filing` s'ils manquent), ajoute les colonnes d'aide aux tables de fichiers (celles que
-// GFS garde et celles des apps : `GFS_Auteur`, que Grist écrit à la création, en plus pour les apps), pose les règles. Rejoué quand une app a été ajoutée
+// GFS garde et celles des apps : `GFS_Author`, que Grist écrit à la création, en plus pour les apps), pose les règles. Rejoué quand une app a été ajoutée
 // depuis (ou après un retrait), il ne complète que ce qui manque. `existing` : { resources, rules, tables, columns, targets, files: { table: [identifiants] }
 // } ; `targets` : les tables de fichiers (`targetsOf`, js/sharing/sharing-model.js), celles des apps seulement si elles sont dans le document. Rend { ok: true,
 // actions, firstRule, creates: [tables créées], adds: [colonnes ajoutées], legacy: nombre de fichiers déjà là, laissés lisibles de tous, appTables, skipped,
 // extends } ou { ok: false, reason } : 'already' (tout est posé), 'foreign' (une règle d'un autre auteur sur une table de GFS). Une table d'app qui porte déjà
 // une règle d'un autre auteur est laissée (`skipped`) : ce qu'elle protège est à elle.
-export function planSharing(existing, filesColumns, targets = existing.targets || TARGETS) {
+export function planSharing(existing, filesColumns, targets = existing.targets || defaultTargets()) {
   const view = sharingView(existing);
   const shared = view.hasTable(SHARES_TABLE);
-  if (!shared && [SHARES_TABLE, FILES_TABLE].some(view.foreign)) return { ok: false, reason: 'foreign' };
+  if (!shared && [SHARES_TABLE, filesNames().table].some(view.foreign)) return { ok: false, reason: 'foreign' };
   const filing = view.filing();
   if (filing.foreign) return { ok: false, reason: 'foreign' };
   const picked = pickTargets(view, targets, shared);
@@ -440,7 +450,7 @@ export function planSharing(existing, filesColumns, targets = existing.targets |
     filing: !filing.covered };
 }
 
-const isFilesTarget = target => target.table === FILES_TABLE;
+const isFilesTarget = target => target.prefix === `${FILES_APP}:`;
 
 // Ce que le plan lit du document : ses tables et leurs colonnes, les règles de GFS (`mine`) et celles d'un autre auteur (`foreign`) sur une table.
 function sharingView(existing) {
@@ -462,14 +472,16 @@ function sharingView(existing) {
 // Les tables de fichiers à traiter : celles de GFS et des apps qui sont dans le document, sans celles qui portent une règle d'un autre auteur (`skipped`,
 // laissées). `todo` : celles qui ne sont pas à jour. Une table de fichiers est à jour quand elle porte toutes les colonnes d'aide et la règle des refus (celle
 // du lot 4) ; une table partagée avant, ou avant les groupes, est relue : formules d'aide reprises, règles reposées.
-function pickTargets(view, targets, shared) {
+function pickTargets(view, plain, shared) {
   const { hasTable, columnsOf, mine, foreign } = view;
+  // Chaque cible dans le jeu de noms que sa table porte (js/sharing/helper-names.js) : une table que Sync+ tient garde ses colonnes d'aide d'avant.
+  const targets = plain.map(target => ({ ...target, set: helperSetOf([...columnsOf(target.table)]) }));
   const skipped = targets.filter(target => !isFilesTarget(target) && hasTable(target.table) && foreign(target.table)).map(target => target.table);
   const here = targets.filter(target => (isFilesTarget(target) ? (!shared || hasTable(target.table)) : hasTable(target.table)) &&
     !skipped.includes(target.table));
   const hadRules = target => hasTable(target.table) && mine(target.table).length > 0;
   const covered = target => hadRules(target) && helperColumns(target).every(helper => columnsOf(target.table).has(helper.id)) &&
-    mine(target.table).some(item => String(item.aclFormula || '').includes('GFS_Refus'));
+    mine(target.table).some(item => String(item.aclFormula || '').includes(inSet('GFS_Denied', target.set)));
   return { skipped, here, hadRules, todo: here.filter(target => !covered(target)) };
 }
 
@@ -498,7 +510,7 @@ function structureActions(existing, view, filesColumns, { shared, here, hadRules
     actions.push(['AddColumn', FILING_TABLE, colId, { ...FILING_COLUMNS.find(column => column.id === colId), id: undefined }]);
     adds.push(`${FILING_TABLE}.${colId}`);
   }
-  // Les colonnes de lien du placement, avant les formules d'aide des fichiers qui les lisent (`GFS_Vus`).
+  // Les colonnes de lien du placement, avant les formules d'aide des fichiers qui les lisent (`GFS_Seen`).
   for (const colId of core.placeMissing) { actions.push(['AddColumn', PLACE_TABLE, colId, { type: 'Text' }]); adds.push(`${PLACE_TABLE}.${colId}`); }
   if (!shared) { actions.push(['AddTable', SHARES_TABLE, shareColumns(here)]); creates.push(SHARES_TABLE); }
   else if (todo.length) actions.push(['ModifyColumn', SHARES_TABLE, 'AdminsBase',
@@ -532,12 +544,14 @@ function helperActions(existing, view, target, hadRules) {
   return { actions: [...actions, ...formulas, ...dropRules(existing, view.mine(target.table))], adds };
 }
 
-// Une colonne d'aide à ajouter. Les PDF d'avant : l'auteur est repris de `Auteur` (une colonne à formule `$Auteur` qu'on rend ordinaire garde ses valeurs,
-// mesuré le 09/11), puis la formule de création reprend (`user.Email`, pour les nouvelles lignes seulement).
+// Une colonne d'aide à ajouter. Les PDF d'avant : l'auteur est repris de la colonne d'auteur (`Author`, `Auteur` dans un document d'avant ; une colonne à
+// formule qu'on rend ordinaire garde ses valeurs, mesuré le 09/11), puis la formule de création reprend (`user.Email`, pour les nouvelles lignes seulement).
 function addColumnActions(target, helper, have) {
-  if (isFilesTarget(target) && helper.id === STAMP && have.has('Auteur')) {
-    return [['AddColumn', target.table, STAMP, { type: 'Text', isFormula: true, formula: '$Auteur' }],
-      ['ModifyColumn', target.table, STAMP, { isFormula: false, formula: helper.formula, recalcWhen: 0, recalcDeps: null }]];
+  const authorColumn = filesNames().author;
+  const stamp = inSet(STAMP, target.set);
+  if (isFilesTarget(target) && helper.id === stamp && have.has(authorColumn)) {
+    return [['AddColumn', target.table, stamp, { type: 'Text', isFormula: true, formula: `$${authorColumn}` }],
+      ['ModifyColumn', target.table, stamp, { isFormula: false, formula: helper.formula, recalcWhen: 0, recalcDeps: null }]];
   }
   return [['AddColumn', target.table, helper.id, { ...helper, id: undefined }]];
 }
@@ -560,7 +574,7 @@ function ruleGroups({ sharesRules, core, todo, filing }) {
       { tableId: SHARES_TABLE, colIds: '*', rules: shareRules() }]),
     ...[...core.missing, ...core.unruled].flatMap(([name, , publicColumns, publicRules, tableRules]) =>
       [...(publicRules ? [{ tableId: name, colIds: publicColumns, rules: publicRules() }] : []), { tableId: name, colIds: '*', rules: tableRules() }]),
-    ...todo.flatMap(target => [...(target.stamped ? [{ tableId: target.table, colIds: STAMP,
+    ...todo.flatMap(target => [...(target.stamped ? [{ tableId: target.table, colIds: inSet(STAMP, target.set),
       rules: stampRules('l’auteur d’un fichier est écrit par Grist, personne ne le change') }] : []),
       { tableId: target.table, colIds: '*', rules: fileRules(target) }]),
     ...(filing.covered ? [] : [{ tableId: FILING_TABLE, colIds: '*', rules: sharedRules() }]),

@@ -125,7 +125,7 @@ export const writeConfig = config => JSON.stringify(readConfig(config));
 // (sans `hierarchy`) est lue comme allumée : seul « faux » l'éteint.
 export const effectiveConfig = config => (config.hierarchy === false ? { ...config, title: '', lead: '', levels: [] } : config);
 
-// Les adresses d'une colonne d'aide du partage (`GFS_Ecrivains`, `GFS_Admins` : js/sharing/sharing-model.js), en minuscules ; rien quand le partage n'a pas
+// Les adresses d'une colonne d'aide du partage (`GFS_Writers`, `GFS_Admins` : js/sharing/sharing-model.js), en minuscules ; rien quand le partage n'a pas
 // étendu la table.
 const addressesIn = cell => listOf(cell).map(each => String(each).trim().toLowerCase()).filter(Boolean);
 
@@ -140,7 +140,7 @@ export function annuairesOf(data) {
     const name = text(cell('Name', i));
     const table = text(cell('Table', i));
     if (name && table) found.push({ row, name, table, config: readConfig(cell('Config', i)), parent: text(cell('Parent', i)),
-      fiches: String(cell('Copy', i) ?? ''), access: { writers: addressesIn(cell('GFS_Ecrivains', i)), admins: addressesIn(cell('GFS_Admins', i)) } });
+      fiches: String(cell('Copy', i) ?? ''), access: { writers: addressesIn(cell('GFS_Writers', i)), admins: addressesIn(cell('GFS_Admins', i)) } });
   });
   return found;
 }

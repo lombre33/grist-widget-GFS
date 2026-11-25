@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Entries } from '../js/broker/entries.js';
 import { readCatalogue } from '../js/apps/libraries.js';
-import { FILES_APP, FILES_MANIFEST } from '../js/files/gfs-files.js';
+import { FILES_APP, filesManifest } from '../js/files/gfs-files.js';
 import { parseCatalogue } from '../js/apps/templates-catalogue.js';
 import { catalogue as manifestsOfGfs, readJson } from './helpers.mjs';
 
@@ -21,7 +21,7 @@ function host({ installed = {}, fullAccess = true, patch = {}, kept = [], other 
   const c = {
     lang: 'fr', t: text, fullAccess, registry,
     validApps: () => manifests.map(manifest => ({ ok: true, manifest })), manifests: () => manifests,
-    manifestOf: id => (id === FILES_APP ? FILES_MANIFEST : byId.get(id) || null), appName: id => (byId.get(id) ? byId.get(id).nom.fr : id),
+    manifestOf: id => (id === FILES_APP ? filesManifest() : byId.get(id) || null), appName: id => (byId.get(id) ? byId.get(id).nom.fr : id),
     kept: { importEntries: () => kept }, otherDocuments: { entry: () => other },
   };
   return { c, entries: new Entries(c) };

@@ -2,11 +2,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createFollower, followFolders, planFollow } from '../js/sharing/share-follow.js';
-import { FILES_APP, FILES_TABLE, SHARED_FOLDER_COLUMN } from '../js/files/gfs-files.js';
+import { FILES_APP, filesNames } from '../js/files/gfs-files.js';
 import { fakeGrist } from './fake-grist.mjs';
 
 const file = (id, extra = {}) => ({ app: FILES_APP, id, row: Number(id.slice(1)), name: `${id}.pdf`, folder: 'Contrats', trashed: null, ...extra });
-const table = () => ({ columns: ['id', 'Identifiant', 'Nom', 'Type', 'Date', 'Auteur', 'Contenu', 'Taille', 'Origine', 'SupprimeLe', 'SupprimePar'], rows: [1, 2, 3, 4].map(id => ({ id, Identifiant: `p${id}`, Nom: `p${id}.pdf` })) });
+const table = () => ({ columns: ['id', 'Identifiant', 'Nom', 'Type', 'Date', 'Auteur', 'Contenu', 'Taille', 'Origine', 'DeletedAt', 'DeletedBy'], rows: [1, 2, 3, 4].map(id => ({ id, Identifiant: `p${id}`, Nom: `p${id}.pdf` })) });
 
 test('le plan : un fichier nouveau dans le dossier entre, un fichier parti du dossier sort, un fichier retiré à part n\'est pas rajouté, un fichier déjà dans la condition n\'est pas rajouté', () => {
   assert.deepEqual(planFollow({ current: ['a', 'b', 'c'], previous: ['a', 'b'], inside: ['a', 'b'] }), { add: ['c'], drop: [] });
@@ -17,9 +17,9 @@ test('le plan : un fichier nouveau dans le dossier entre, un fichier parti du do
 });
 
 function setup({ ids = ['p1', 'p2'], inside = ['p1', 'p2', 'x'], files = [file('p1'), file('p2'), file('p3')], links = null } = {}) {
-  const grist = fakeGrist({ [FILES_TABLE]: table() });
+  const grist = fakeGrist({ [filesNames().table]: table() });
   const calls = [];
-  const engine = { saveChosenExport: async args => { calls.push(['save', args.selection[0].filter.conds[0].values, JSON.stringify(grist.tables[FILES_TABLE].rows.map(row => row[SHARED_FOLDER_COLUMN] || ''))]); return { changed: [FILES_TABLE] }; }, finishEdit: async () => { calls.push(['finish']); } };
+  const engine = { saveChosenExport: async args => { calls.push(['save', args.selection[0].filter.conds[0].values, JSON.stringify(grist.tables[filesNames().table].rows.map(row => row[filesNames().folder] || ''))]); return { changed: [filesNames().table] }; }, finishEdit: async () => { calls.push(['finish']); } };
   const memory = [];
   return {
     grist, calls, memory,

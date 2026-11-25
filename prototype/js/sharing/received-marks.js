@@ -1,26 +1,30 @@
-// Les marques « accepté » et « refusé » d'une table reçue (`Accepte`, `Refuse`, js/sharing/received-files.js) sont à CE document : l'envoyeur ne doit jamais
+// Les marques « accepté » et « refusé » d'une table reçue (`Accepted`, `Refused`, ou `Accepte`, `Refuse` dans une table d'envoyeur d'avant ;
+// js/sharing/received-files.js) sont à CE document : l'envoyeur ne doit jamais
 // les écrire. Le moteur de partage
 // remplit pourtant la table avec les colonnes que l'envoyeur déclare, et recopie une colonne envoyée dans la colonne de même nom de la destination. Mesuré dans
 // un vrai Grist (audit « contournement »
-// du 11/11, labo/run-securite-marques.mjs) : un envoyeur qui range une colonne `Accepte` vraie dans son export fait arriver ses fichiers DÉJÀ ACCEPTÉS, sans
+// du 11/11, labo/run-securite-marques.mjs) : un envoyeur qui range une colonne `Accepte` (aujourd'hui `Accepted`) vraie dans son export fait arriver ses
+// fichiers DÉJÀ ACCEPTÉS, sans
 // que la personne ait rien répondu — que la colonne
 // soit dans l'invitation ou ajoutée plus tard, tant que la table reçue n'a pas encore ses propres colonnes de marque. Une fois ces colonnes là, le moteur donne
 // un nom libre aux colonnes envoyées qui les
 // recoupent (`Accepte_2`) et ne touche à rien (mesuré aussi).
 // Deux gestes ferment le trou :
 //   - `reservedMap` : à la réception, une colonne envoyée qui porte le nom d'une marque (casse ignorée, comme Grist) arrive sous un autre nom
-//   (`Accepte_envoye`) ;
+//   (`Accepted_sent`) ;
 //   - `ensureMarks` : les deux colonnes de marque existent dans la table reçue dès la réception (additif : deux colonnes Bool), et à l'ouverture de la page par
 //   un propriétaire pour les réceptions d'avant.
 // Du code sans effet de bord, sauf `ensureMarks` (une écriture, par `applyUserActions`).
 
-import { MARK_COLUMNS, isReceivedTable } from './received-files.js';
+import { FILES_NAMES, filesNamesOfColumns } from '../files/gfs-files.js';
+import { markColumns, isReceivedTable } from './received-files.js';
 
 const lower = text => String(text).toLowerCase();
-const RESERVED = Object.freeze(MARK_COLUMNS.map(column => column.id));
+// Les marques des deux jeux de noms sont réservées : un envoyeur ne peut en poser aucune, quelle que soit la langue de ses colonnes.
+const RESERVED = Object.freeze(Object.values(FILES_NAMES).flatMap(names => markColumns(names).map(column => column.id)));
 const isReserved = id => RESERVED.some(mark => lower(mark) === lower(id));
 
-// Le nom sous lequel arrive une colonne qui porte le nom d'une marque : `Accepte_envoye`, puis `Accepte_envoye_2`… si le nom est pris (casse ignorée, par une
+// Le nom sous lequel arrive une colonne qui porte le nom d'une marque : `Accepted_sent`, puis `Accepted_sent_2`… si le nom est pris (casse ignorée, par une
 // colonne envoyée ou une marque).
 // `columns` : les colonnes que l'envoyeur déclare (des textes, ou des { id }) ; rend la correspondance { nom envoyé: nom d'ici } du moteur, vide quand rien ne
 //   recoupe.
@@ -29,8 +33,8 @@ export function reservedMap(columns) {
   const taken = new Set([...ids, ...RESERVED].map(lower));
   const map = {};
   for (const id of ids.filter(isReserved)) {
-    let name = `${id}_envoye`;
-    for (let n = 2; taken.has(lower(name)); n += 1) name = `${id}_envoye_${n}`;
+    let name = `${id}_sent`;
+    for (let n = 2; taken.has(lower(name)); n += 1) name = `${id}_sent_${n}`;
     taken.add(lower(name));
     map[id] = name;
   }
@@ -38,7 +42,9 @@ export function reservedMap(columns) {
 }
 
 // Les colonnes de marque qui manquent à une table dont `columnIds` sont les colonnes (casse ignorée).
-export const missingMarks = columnIds => MARK_COLUMNS.filter(mark => !(columnIds || []).some(id => lower(id) === lower(mark.id)));
+// Les marques sont celles du jeu de noms de la table (`filesNamesOfColumns` : ses colonnes disent la langue de l'envoyeur).
+export const missingMarks = columnIds => markColumns(filesNamesOfColumns(columnIds)).filter(mark =>
+  !(columnIds || []).some(id => lower(id) === lower(mark.id)));
 
 // Les colonnes de chaque table du document, lues dans les tables internes de Grist (petites : jamais le contenu des fichiers) : { nom de table: [colonnes] }.
 async function columnsByTable(docApi, wanted) {

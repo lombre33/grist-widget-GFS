@@ -77,13 +77,13 @@ async function playOld(run) {
   ]);
   check('A partagé à l\'éditeur, B au groupe Achats', answer.status === 200, answer.text);
   const after = await byName(run);
-  check('avant : A et B sont lus de l\'éditeur, le fichier privé non', has(after[A].GFS_Lecteurs, EDITOR) && has(after[B].GFS_Lecteurs, EDITOR) && !has(after[PRIVATE].GFS_Lecteurs, EDITOR), [after[A].GFS_Lecteurs, after[B].GFS_Lecteurs]);
+  check('avant : A et B sont lus de l\'éditeur, le fichier privé non', has(after[A].GFS_Readers, EDITOR) && has(after[B].GFS_Readers, EDITOR) && !has(after[PRIVATE].GFS_Readers, EDITOR), [after[A].GFS_Readers, after[B].GFS_Readers]);
   if (OLD_LOT === '5') {
-    check('avant : la table de l\'app a GFS_Dossier, pas encore GFS_Vus', 'GFS_Dossier' in after[A] && !('GFS_Vus' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
+    check('avant : la table de l\'app a GFS_Folder, pas encore GFS_Seen', 'GFS_Folder' in after[A] && !('GFS_Seen' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
     const placeColumns = (await run.rest.columns('GFS_Placement')).map(column => column.id);
     check('avant : le placement n\'a pas encore les colonnes du lien (Lien, Partages)', !placeColumns.includes('Link') && !placeColumns.includes('Shares'), placeColumns);
   } else if (OLD_LOT === '4') {
-    check('avant : la table de l\'app a GFS_Calc, pas encore GFS_Dossier', 'GFS_Calc' in after[A] && !('GFS_Dossier' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
+    check('avant : la table de l\'app a GFS_Calc, pas encore GFS_Folder', 'GFS_Calc' in after[A] && !('GFS_Folder' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
     const rules = (await rows(run, '_grist_ACLRules')) || [];
     check('avant : le rangement n\'a pas encore ses règles « GFS : Partagé »', !rules.some(rule => /^GFS : Partagé/.test(rule.memo || '')), rules.map(rule => rule.memo));
   } else check('avant : la table de l\'app n\'a pas GFS_Calc', !('GFS_Calc' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
@@ -114,13 +114,13 @@ async function playNew(run) {
   const shares = await rows(run, 'GFS_Shares');
   check('rien n\'est repartagé : le même nombre de lignes de partage', shares.length === before, [before, shares.length]);
   const models = await byName(run);
-  check('GFS_Directs est là : A a été donné à l\'éditeur par son adresse (par le propriétaire), B par un groupe (non compté)', has(models[A].GFS_Directs, `${EDITOR}>${OWNER}`) && !has(models[B].GFS_Directs, EDITOR), [models[A].GFS_Directs, models[B].GFS_Directs]);
-  check('GFS_Calc est là et les listes gardent les mêmes personnes (A : éditeur ; B : éditeur par le groupe)', Boolean(models[A].GFS_Calc) && has(models[A].GFS_Lecteurs, EDITOR) && has(models[B].GFS_Lecteurs, EDITOR) && !has(models[PRIVATE].GFS_Lecteurs, EDITOR), [models[A].GFS_Calc, models[B].GFS_Lecteurs]);
+  check('GFS_Direct est là : A a été donné à l\'éditeur par son adresse (par le propriétaire), B par un groupe (non compté)', has(models[A].GFS_Direct, `${EDITOR}>${OWNER}`) && !has(models[B].GFS_Direct, EDITOR), [models[A].GFS_Direct, models[B].GFS_Direct]);
+  check('GFS_Calc est là et les listes gardent les mêmes personnes (A : éditeur ; B : éditeur par le groupe)', Boolean(models[A].GFS_Calc) && has(models[A].GFS_Readers, EDITOR) && has(models[B].GFS_Readers, EDITOR) && !has(models[PRIVATE].GFS_Readers, EDITOR), [models[A].GFS_Calc, models[B].GFS_Readers]);
   if (OLD_LOT === '4' || OLD_LOT === '5') {
     const columns = (await run.rest.columns('Publipostage_Modeles')).map(column => column.id);
-    check('la colonne d\'aide GFS_Dossier est née dans la table de l\'app', columns.includes('GFS_Dossier'), columns);
+    check('la colonne d\'aide GFS_Folder est née dans la table de l\'app', columns.includes('GFS_Folder'), columns);
     const placeColumns = (await run.rest.columns('GFS_Placement')).map(column => column.id);
-    check('les liens entre espaces : GFS_Vus est née dans la table de l\'app, Lien et Partages dans le placement', columns.includes('GFS_Vus') && placeColumns.includes('Link') && placeColumns.includes('Shares'), [columns, placeColumns]);
+    check('les liens entre espaces : GFS_Seen est née dans la table de l\'app, Lien et Partages dans le placement', columns.includes('GFS_Seen') && placeColumns.includes('Link') && placeColumns.includes('Shares'), [columns, placeColumns]);
     const rules = (await rows(run, '_grist_ACLRules')) || [];
     check('les six règles « GFS : Partagé » du rangement sont posées', rules.filter(rule => /^GFS : Partagé/.test(rule.memo || '')).length === 6, rules.map(rule => rule.memo));
   }

@@ -1,12 +1,14 @@
 // Le numéro de structure du document (contrats 6.4, point 16) : un entier que GFS note dans une ligne réservée de `GFS_Filing` (`@document` / `gfs` /
-// `structure`, la valeur en JSON dans `Value` : `{ "structure": 1 }`) quand la personne fait un geste qui écrit dans cette table. Il dit quelle forme GFS a
+// `structure`, la valeur en JSON dans `Value` : `{ "structure": 2 }`) quand la personne fait un geste qui écrit dans cette table. Il dit quelle forme GFS a
 // donnée à ses tables dans CE document ; une version de GFS plus ancienne que ce numéro ne l'écrit plus (« document plus récent ») au lieu de le défaire.
 //
 // Le numéro monte quand une version change ce qu'une version plus ancienne ne sait ni relire ni ignorer (une colonne renommée, une ligne dont le sens change,
 // un format qui n'est plus lisible). Un ajout seul (une colonne, une ligne, une clé de plus) ne le monte pas : les changements restent additifs (6.1, point 3).
 // Du code sans effet de bord, sans dépendance : la lecture et l'écriture de la ligne sont dans rangement.js.
 
-export const STRUCTURE = 1;
+// 1 : les noms d'avant ; 2 (25/11) : GFS a passé tous ses noms de tables et de colonnes à l'anglais (js/files/gfs-names.js), ce qu'une version plus ancienne ne
+//   sait ni relire ni ignorer.
+export const STRUCTURE = 2;
 export const STRUCTURE_ROW = Object.freeze({ User: '@document', App: 'gfs', File: 'structure' });
 
 // Le numéro que dit la valeur de la ligne (déjà lue en JSON), ou null : pas de ligne, valeur illisible, numéro qui n'est pas un entier de 1 ou plus.

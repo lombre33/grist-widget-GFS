@@ -2,7 +2,7 @@
 // ses appels ; ce que le vrai moteur fait dans un vrai Grist est mesuré par labo/run-sync-partage.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createSourceFlow, exportName, selectionOf, SENT_COLUMNS, HELPER_COLUMNS, PASSES } from '../js/sharing/share-other-flow.js';
+import { createSourceFlow, exportName, selectionOf, sentColumns, HELPER_COLUMNS, PASSES } from '../js/sharing/share-other-flow.js';
 
 const FILE = { id: 'abc123', name: 'Facture 2026.pdf' };
 
@@ -33,11 +33,11 @@ test('le nom de l\'export est celui du fichier sans « .pdf » ; la sélection e
   assert.equal(exportName(FILE), 'Facture 2026');
   assert.equal(exportName({ id: 'x', name: '.pdf' }), '.pdf');
   const [selection] = selectionOf(FILE);
-  assert.equal(selection.table, 'GFS_Fichiers');
-  assert.deepEqual(selection.filter, { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: ['abc123'] }] });
-  assert.ok(SENT_COLUMNS.includes('Contenu') && SENT_COLUMNS.includes('Identifiant'));
-  assert.ok(!SENT_COLUMNS.includes('SupprimeLe') && !SENT_COLUMNS.includes('SupprimePar'));
-  assert.ok(HELPER_COLUMNS.every(name => !SENT_COLUMNS.includes(name)), 'les colonnes d\'aide du moteur ne sont pas des colonnes du fichier');
+  assert.equal(selection.table, 'GFS_Files');
+  assert.deepEqual(selection.filter, { mode: 'all', conds: [{ id: 'FileId', op: 'in', values: ['abc123'] }] });
+  assert.ok(sentColumns().includes('Content') && sentColumns().includes('FileId'));
+  assert.ok(!sentColumns().includes('DeletedAt') && !sentColumns().includes('DeletedBy'));
+  assert.ok(HELPER_COLUMNS.every(name => !sentColumns().includes(name)), 'les colonnes d\'aide du moteur ne sont pas des colonnes du fichier');
 });
 
 test('prepare : l\'export du seul fichier, l\'invitation, son code ; rien n\'est envoyé encore', async () => {

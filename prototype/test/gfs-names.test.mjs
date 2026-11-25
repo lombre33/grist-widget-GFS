@@ -3,14 +3,15 @@
 // (règles d'accès, formules qui suivent) se mesure dans un vrai Grist : labo/run-noms-gfs.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GFS_RENAMES, LOOP_VARIABLES, planGfsNames, legacyTables, isLegacyForm, renamedOf, rewriteFormula, staleFormulas } from '../js/files/gfs-names.js';
+import { GFS_RENAMES, LOOP_VARIABLES, planGfsNames, legacyTables, isLegacyForm, renamedOf, rewriteFormula, staleFormulas, stalePages, authorsMended } from '../js/files/gfs-names.js';
 import { OwnTable, LegacyNames, TableDeclined } from '../js/files/own-table.js';
-import { updateNames, readSchema, mendFormulas } from '../js/files/names-update.js';
+import { updateNames, readSchema, mendDocument } from '../js/files/names-update.js';
 import { COLUMNS as FILING_COLUMNS } from '../js/files/rangement.js';
 import { groupColumns, spaceColumns, placeColumns, shareColumns, helperColumns, targetsOf, HELPERS } from '../js/sharing/sharing-model.js';
 import { readFileSync } from 'node:fs';
 import { BIN_COLUMNS } from '../js/files/gfs-trash.js';
 import { ANNUAIRES_COLUMNS } from '../js/annuaire/annuaire-config.js';
+import { filesColumns, filesNames } from '../js/files/gfs-files.js';
 import { fakeGrist } from './fake-grist.mjs';
 import { fakeDoc } from '../kit/test/names-update-fake.mjs';
 
@@ -23,10 +24,11 @@ const BEFORE = {
   GFS_Partages: ['Cible', 'Personne', 'Droit', 'Telecharger', 'Fin', 'Auteur', 'AuteurAcces', 'PersonneL', 'Actif', 'Valide1', 'AdminsBase', 'Valide', 'AdminsCible'],
   GFS_Corbeille: ['Identifiant', 'App', 'Table', 'FichierId', 'Nom', 'Type', 'Date', 'Auteur', 'SupprimeLe', 'SupprimePar', 'Instantane'],
   GFS_Annuaires: ['Nom', 'Table', 'Config', 'Parent', 'Fiches'],
+  GFS_Fichiers: ['Identifiant', 'Nom', 'Type', 'Date', 'Auteur', 'Contenu', 'Taille', 'Origine', 'SupprimeLe', 'SupprimePar', 'Dossier_partage'],
 };
 const NOW = {
   GFS_Filing: FILING_COLUMNS, GFS_Groups: groupColumns(), GFS_Spaces: spaceColumns(), GFS_Placement: placeColumns(), GFS_Shares: shareColumns(), GFS_Trash: BIN_COLUMNS,
-  GFS_Directories: ANNUAIRES_COLUMNS,
+  GFS_Directories: ANNUAIRES_COLUMNS, GFS_Files: [...filesColumns(), { id: filesNames().folder }],
 };
 const idsOf = list => list.map(column => column.id);
 
@@ -74,6 +76,49 @@ test('planGfsNames ne touche ni les tables que Sync+ tient ni leurs colonnes (d�
   assert.deepEqual(planGfsNames({ tables: kept }), null);
 });
 
+// Les colonnes d'aide du partage posées sur les tables (js/sharing/helper-names.js) : celles de la table des PDF, des annuaires et des apps.
+const HELPERS_BEFORE = ['GFS_Auteur', 'GFS_Dossier', 'GFS_Ids', 'GFS_Calc', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Refus', 'GFS_Cats', 'GFS_CatsEcrit', 'GFS_Directs',
+  'GFS_Vus'];
+const HELPERS_AFTER = ['GFS_Author', 'GFS_Folder', 'GFS_Ids', 'GFS_Calc', 'GFS_Readers', 'GFS_Writers', 'GFS_Admins', 'GFS_Denied', 'GFS_Cats', 'GFS_CatsWrite', 'GFS_Direct',
+  'GFS_Seen'];
+
+test('planGfsNames : les colonnes d\'aide d\'avant passent aux noms d\'arrivée sur toute table qui en porte (apps, PDF, annuaires), sur le nom que la table aura', () => {
+  const doc = oldDocument({ Publipostage_Modeles: ['id', 'Nom', ...HELPERS_BEFORE] });
+  doc.tables.GFS_Annuaires.push(...HELPERS_BEFORE);
+  doc.tables.GFS_Fichiers.push(...HELPERS_BEFORE);
+  const actions = planGfsNames(doc);
+  const renamed = table => actions.filter(action => action[0] === 'RenameColumn' && action[1] === table && /^GFS_/.test(action[2])).map(action => [action[2], action[3]]);
+  const expected = HELPERS_BEFORE.map((before, at) => [before, HELPERS_AFTER[at]]).filter(([before, after]) => before !== after);
+  assert.deepEqual(renamed('Publipostage_Modeles'), expected);
+  assert.deepEqual(renamed('GFS_Directories'), expected, 'la table d\'annuaires est renommée avant : ses colonnes d\'aide le sont sur son nom d\'arrivée');
+  assert.deepEqual(renamed('GFS_Files'), expected);
+  assert.deepEqual(renamed('GFS_Annuaires').concat(renamed('GFS_Fichiers')), []);
+  const last = actions.findIndex(action => action[1] === 'Publipostage_Modeles');
+  assert.ok(actions.findIndex(action => action[0] === 'RenameTable' && action[2] === 'GFS_Files') < actions.findIndex(action => action[1] === 'GFS_Files' && /^GFS_/.test(action[2])),
+    'la table est renommée avant ses colonnes');
+  assert.ok(last > 0);
+  assert.equal(planGfsNames({ tables: { Clients: ['id', 'GFS_Author', 'GFS_Readers'] } }), null, 'des colonnes déjà à jour : rien');
+});
+
+test('planGfsNames : une table que Sync+ tient garde ses colonnes d\'aide d\'avant, celles des autres tables passent', () => {
+  const doc = { tables: { Publipostage_Modeles: ['id', 'Nom', 'id_sync', 'GFS_Auteur', 'GFS_Lecteurs'], Form_Modeles: ['id', 'GFS_Auteur', 'GFS_Lecteurs'],
+    GFS_Fichiers: ['id', 'Identifiant', 'GFS_Auteur', 'GFS_Lecteurs'], GFS_Synchro: ['id'] }, shared: ['GFS_Fichiers'] };
+  const actions = planGfsNames(doc);
+  assert.deepEqual(actions, [['RenameColumn', 'Form_Modeles', 'GFS_Auteur', 'GFS_Author'], ['RenameColumn', 'Form_Modeles', 'GFS_Lecteurs', 'GFS_Readers']],
+    'la table envoyée par Sync+ (id_sync) et celle des PDF (Sync+ actif) ne bougent pas');
+});
+
+test('un document d\'avant, colonnes d\'aide comprises, une fois le lot joué : aucune colonne en français sur une table qui n\'est pas à Sync+', async () => {
+  const doc = oldDocument({ Publipostage_Modeles: ['id', 'Nom', ...HELPERS_BEFORE] });
+  doc.tables.GFS_Fichiers.push(...HELPERS_BEFORE);
+  const fake = fakeDoc(Object.fromEntries(Object.entries(doc.tables).map(([name, columns]) => [name, { columns, rows: 3 }])));
+  await fake.port.apply(planGfsNames(doc));
+  const after = fake.tables();
+  assert.deepEqual(after.Publipostage_Modeles, ['id', 'Nom', ...HELPERS_AFTER]);
+  assert.deepEqual(after.GFS_Files.slice(-HELPERS_AFTER.length), HELPERS_AFTER);
+  assert.equal(planGfsNames({ tables: after }), null, 'le lot est joué : plus rien à faire');
+});
+
 test('planGfsNames : sans tenir compte de la casse ; une colonne déjà renommée ou absente n\'est pas rejouée ; une colonne que la personne a ajoutée reste', () => {
   const doc = { tables: { gfs_rangement: ['id', 'utilisateur', 'App', 'Fichier', 'Dossier', 'Colonne perso'], GFS_Partages: ['id', 'Cible', 'Target', 'Droit'] } };
   const actions = planGfsNames(doc);
@@ -91,7 +136,9 @@ test('legacyTables et isLegacyForm : un document d\'avant est reconnu, un docume
   assert.equal(isLegacyForm('GFS_Filing', ['GFS_Rangement', 'Clients']), true);
   assert.equal(isLegacyForm('GFS_Filing', ['GFS_Filing', 'GFS_Rangement']), false, 'les deux existent : la table d\'arrivée est là, GFS ne la recrée pas');
   assert.equal(isLegacyForm('GFS_Filing', ['Clients']), false);
-  assert.equal(isLegacyForm('GFS_Fichiers', ['GFS_Fichiers']), false);
+  assert.equal(isLegacyForm('GFS_Fichiers', ['GFS_Fichiers']), false, 'le nom d\'avant n\'est pas un nom d\'arrivée');
+  assert.equal(isLegacyForm('GFS_Files', ['GFS_Fichiers']), true);
+  assert.equal(isLegacyForm('GFS_Files', ['GFS_Fichiers', 'GFS_Files']), false);
   assert.equal(isLegacyForm('GFS_Placement', ['GFS_Placement'], ['id', 'Cible']), true);
   assert.equal(isLegacyForm('GFS_Placement', ['GFS_Placement'], ['id', 'Target']), false);
   assert.equal(isLegacyForm('GFS_Placement', ['GFS_Placement']), false, 'sans les colonnes, seul le nom compte : il n\'a pas changé');
@@ -101,7 +148,7 @@ test('renamedOf : une marque notée avant la mise à jour (les pages déjà rang
   assert.equal(renamedOf('GFS_Rangement'), 'GFS_Filing');
   assert.equal(renamedOf('gfs_corbeille'), 'GFS_Trash');
   assert.equal(renamedOf('GFS_Placement'), 'GFS_Placement');
-  assert.equal(renamedOf('GFS_Fichiers'), 'GFS_Fichiers');
+  assert.equal(renamedOf('GFS_Fichiers'), 'GFS_Files');
   assert.equal(renamedOf('Clients'), 'Clients');
 });
 
@@ -140,10 +187,13 @@ test('OwnTable : à jour, ou sans aucune table de GFS, elle se comporte comme av
 
 // Le document que GFS voit : `fetchTable` des tables internes de Grist et `applyUserActions`, sur le faux document du kit (lot atomique, nom pris = suffixe « 2 »).
 // `formulas` : { '<table>.<colonne>': formule } que le document porte (celles que Grist a laissées) ; une reprise (`ModifyColumn` avec `formula`) les change.
-function docOf(fake, formulas = {}) {
+// `views` : les titres de pages (`_grist_Views`) ; `UpdateRecord` d'un titre les change.
+function docOf(fake, formulas = {}, views = []) {
   const doc = {
     formulas,
+    views,
     fetchTable: async name => {
+      if (name === '_grist_Views') return { id: doc.views.map(view => view.id), name: doc.views.map(view => view.name) };
       const tables = Object.entries(fake.tables());
       if (name === '_grist_Tables') return { id: tables.map((entry, at) => at + 1), tableId: tables.map(([id]) => id) };
       const rows = tables.flatMap(([id, columns], at) => columns.map(column => ({ parentId: at + 1, colId: column, formula: doc.formulas[`${id}.${column}`] || '' })));
@@ -151,8 +201,11 @@ function docOf(fake, formulas = {}) {
         isFormula: rows.map(row => row.formula !== '') };
     },
     applyUserActions: async actions => {
-      await fake.port.apply(actions);
-      for (const [verb, table, column, values] of actions) if (verb === 'ModifyColumn' && values && values.formula !== undefined) doc.formulas[`${table}.${column}`] = values.formula;
+      await fake.port.apply(actions.filter(action => action[1] !== '_grist_Views'));
+      for (const [verb, table, column, values] of actions) {
+        if (verb === 'ModifyColumn' && values && values.formula !== undefined) doc.formulas[`${table}.${column}`] = values.formula;
+        if (verb === 'UpdateRecord' && table === '_grist_Views') doc.views.find(view => view.id === column).name = values.name;
+      }
     },
   };
   return doc;
@@ -174,7 +227,7 @@ test('updateNames : un propriétaire, un document d\'avant : la fenêtre est mon
   const show = async ({ prepared, run }) => { shownPrepared = prepared; const result = await run(); return { state: result.state, result }; };
   const outcome = await updateNames(flow(fake, { show }));
   assert.equal(shownPrepared.state, 'ready');
-  assert.equal(shownPrepared.summary.tables.length, 7 - 1, 'six tables renommées (GFS_Placement ne change que ses colonnes)');
+  assert.equal(shownPrepared.summary.tables.length, 8 - 1, 'sept tables renommées (GFS_Placement ne change que ses colonnes)');
   assert.equal(fake.applied.length, 1, 'un seul lot');
   assert.deepEqual([outcome.state, outcome.legacy], ['done', []]);
   assert.deepEqual(Object.keys(fake.tables()).sort(), [...Object.keys(NOW), 'Clients'].sort());
@@ -184,7 +237,7 @@ test('updateNames : un document à jour ne montre rien et n\'écrit rien ; une p
   const upToDate = documentOf(newDocument());
   let opened = 0;
   const show = async () => { opened++; return { state: 'done' }; };
-  assert.deepEqual(await updateNames(flow(upToDate, { show })), { state: 'none', legacy: [] });
+  assert.deepEqual(await updateNames(flow(upToDate, { show })), { state: 'none', legacy: [], tables: Object.keys(newDocument().tables) });
   const old = documentOf(oldDocument());
   const outcome = await updateNames(flow(old, { show, isOwner: () => false }));
   assert.equal(outcome.state, 'wait');
@@ -209,10 +262,10 @@ test('updateNames : « Continuer sans mettre à jour » (refus de Grist) laisse 
   fake.next = { refuse: 'Blocked by table structure access rules' };
   const show = async ({ run }) => { const result = await run(); return { state: 'skipped', result }; };
   const outcome = await updateNames(flow(fake, { show }));
-  assert.deepEqual([outcome.state, outcome.legacy.length], ['skipped', 7]);
+  assert.deepEqual([outcome.state, outcome.legacy.length], ['skipped', 8]);
   assert.deepEqual(Object.keys(fake.tables()).includes('GFS_Rangement'), true);
   const broken = { fetchTable: async () => { throw new Error('boom'); }, applyUserActions: async () => {} };
-  assert.deepEqual(await updateNames({ ...flow(fake), doc: broken }), { state: 'wait', legacy: [] });
+  assert.deepEqual(await updateNames({ ...flow(fake), doc: broken }), { state: 'wait', legacy: [], tables: [] });
 });
 
 // ---- Les formules que Grist ne suit pas (mesuré dans Grist 1.7.19 : labo/run-noms-gfs.mjs) ----
@@ -230,7 +283,7 @@ test('formules : celles que Grist a laissées à l\'ancien nom (mesurées) devie
 });
 
 test('formules : reprendre est idempotent, et ne touche que les variables de boucle des tables de GFS (jamais celle de la table d\'une source de groupes)', () => {
-  const stale = GOLDEN.stale['GFS_Fichiers.GFS_Calc'];
+  const stale = GOLDEN.stale['GFS_Files.GFS_Calc'];
   assert.notEqual(rewriteFormula(stale), stale);
   assert.equal(rewriteFormula(rewriteFormula(stale)), rewriteFormula(stale));
   assert.equal(rewriteFormula('x = p.Droit + found.Droit + pp.Droit + p.Valide1 + p.Valide'), 'x = p.Right + found.Droit + pp.Droit + p.AuthorOwner + p.Valid');
@@ -255,31 +308,62 @@ test('formules : le code d\'aujourd\'hui n\'écrit aucun ancien nom sur une vari
   }
 });
 
-// Un document dont les tables portent leurs noms d'arrivée mais dont des formules sont restées à l'ancien nom (ce que Grist laisse : mesuré).
-const staleDocument = () => ({ tables: { ...newDocument().tables, Publipostage_Modeles: ['id', 'Nom', 'GFS_Calc', 'GFS_Dossier'] } });
-const STALE = { 'GFS_Shares.Valid': 'if p.Valide and p.Actif: pass', 'Publipostage_Modeles.GFS_Calc': 'for p in GFS_Shares.lookupRecords(Target=1):\n  x = p.Droit',
-  'Publipostage_Modeles.GFS_Dossier': 'for r in GFS_Filing.lookupRecords(App="a"):\n  x = r.Utilisateur', 'GFS_Groups.Members': 'for r in T.lookupRecords(G=1):\n  x = r.Dossier' };
+// `AdminsBase` tel que Grist 1.7.19 le laisse quand Sync+ tient la table des PDF (mesuré, labo/run-noms-gfs.mjs) : il a suivi le renommage d'après la première table seulement, donc
+// les deux autres branches gardent `GFS_Auteur` alors que leurs tables ont `GFS_Author`.
+const BRANCH = (prefix, find, column) => `if cible.startswith("${prefix}"):\n${find}\n  if found:\n    out.add(str(found.${column}).strip().lower())`;
+const ADMINS_LEFT = ['cible = str($Target)', 'out = set()',
+  BRANCH('gfs-fichiers:', '  found = GFS_Fichiers.lookupOne(Identifiant=cible[13:])', 'GFS_Auteur'),
+  BRANCH('gfs-annuaires:', '  raw = cible[14:]\n  found = GFS_Directories.lookupOne(id=int(raw)) if raw.isdigit() else None', 'GFS_Auteur'),
+  BRANCH('publipostage:', '  raw = cible[13:]\n  found = Publipostage_Modeles.lookupOne(id=int(raw)) if raw.isdigit() else None', 'GFS_Auteur'),
+  'return tuple(sorted(out))'].join('\n');
+const TABLES_HELD = { GFS_Fichiers: ['id', 'Identifiant', 'GFS_Auteur'], GFS_Directories: ['id', 'Name', 'GFS_Author'], Publipostage_Modeles: ['id', 'Nom', 'GFS_Author'] };
 
-test('mendFormulas : un seul lot de ModifyColumn, rien d\'autre que le texte de formules ; une seconde fois, rien à faire', async () => {
+test('authorsMended : chaque branche d\'AdminsBase dit l\'auteur de SA table (la table que Sync+ tient garde le nom d\'avant, les autres celui d\'arrivée)', () => {
+  const mended = authorsMended(ADMINS_LEFT, TABLES_HELD);
+  assert.deepEqual([...mended.matchAll(/found\.(GFS_\w+)/g)].map(match => match[1]), ['GFS_Auteur', 'GFS_Author', 'GFS_Author']);
+  assert.equal(authorsMended(mended, TABLES_HELD), mended, 'idempotent');
+  // Aucune table que Sync+ tient : tout passe à l'arrivée ; une table que le document n'a pas : sa branche reste telle quelle.
+  const all = authorsMended(ADMINS_LEFT, { ...TABLES_HELD, GFS_Fichiers: ['id', 'Identifiant', 'GFS_Author'] });
+  assert.deepEqual([...all.matchAll(/found\.(GFS_\w+)/g)].map(match => match[1]), ['GFS_Author', 'GFS_Author', 'GFS_Author']);
+  assert.equal(authorsMended(ADMINS_LEFT, {}), ADMINS_LEFT);
+  assert.equal(authorsMended(ADMINS_LEFT, undefined), ADMINS_LEFT);
+  assert.equal(authorsMended('x = found.GFS_Auteur', TABLES_HELD), 'x = found.GFS_Auteur', 'seule une branche d\'AdminsBase est reprise');
+  assert.equal(authorsMended(undefined, TABLES_HELD), '');
+});
+
+test('staleFormulas : AdminsBase restée à l\'ancien nom d\'auteur sur deux branches est reprise, une fois, sans toucher aux formules déjà justes', () => {
+  const owned = (table, column) => table === 'GFS_Shares' || column === 'GFS_Calc';
+  const found = staleFormulas({ 'GFS_Shares.AdminsBase': ADMINS_LEFT, 'GFS_Shares.Valid': '$AuthorOwner or str($Author).strip().lower() in $AdminsBase' }, owned, TABLES_HELD);
+  assert.deepEqual(found.map(item => `${item.table}.${item.column}`), ['GFS_Shares.AdminsBase']);
+  assert.deepEqual(staleFormulas({ 'GFS_Shares.AdminsBase': found[0].formula }, owned, TABLES_HELD), []);
+  assert.deepEqual(staleFormulas({ 'GFS_Shares.AdminsBase': ADMINS_LEFT }, owned).map(item => item.column), [], 'sans les colonnes des tables, rien à dire de plus');
+});
+
+// Un document dont les tables portent leurs noms d'arrivée mais dont des formules sont restées à l'ancien nom (ce que Grist laisse : mesuré).
+const staleDocument = () => ({ tables: { ...newDocument().tables, Publipostage_Modeles: ['id', 'Nom', 'GFS_Calc', 'GFS_Folder'] } });
+const STALE = { 'GFS_Shares.Valid': 'if p.Valide and p.Actif: pass', 'Publipostage_Modeles.GFS_Calc': 'for p in GFS_Shares.lookupRecords(Target=1):\n  x = p.Droit',
+  'Publipostage_Modeles.GFS_Folder': 'for r in GFS_Filing.lookupRecords(App="a"):\n  x = r.Utilisateur', 'GFS_Groups.Members': 'for r in T.lookupRecords(G=1):\n  x = r.Dossier' };
+
+test('mendDocument : un seul lot de ModifyColumn, rien d\'autre que le texte de formules ; une seconde fois, rien à faire', async () => {
   const fake = documentOf(staleDocument());
   const doc = docOf(fake, { ...STALE });
-  assert.deepEqual(await mendFormulas(doc), { ok: true, count: 3, detail: '' });
+  assert.deepEqual(await mendDocument(doc), { ok: true, count: 3, detail: '' });
   assert.equal(fake.applied.length, 1);
   assert.ok(fake.applied[0].every(action => action[0] === 'ModifyColumn' && Object.keys(action[3]).join() === 'formula'));
   assert.equal(doc.formulas['GFS_Shares.Valid'], 'if p.Valid and p.Active: pass');
-  assert.equal(doc.formulas['Publipostage_Modeles.GFS_Dossier'], 'for r in GFS_Filing.lookupRecords(App="a"):\n  x = r.User');
+  assert.equal(doc.formulas['Publipostage_Modeles.GFS_Folder'], 'for r in GFS_Filing.lookupRecords(App="a"):\n  x = r.User');
   assert.equal(doc.formulas['GFS_Groups.Members'], STALE['GFS_Groups.Members'], 'la table d\'une source de groupes n\'est pas à GFS');
-  assert.deepEqual(await mendFormulas(doc), { ok: true, count: 0, detail: '' });
+  assert.deepEqual(await mendDocument(doc), { ok: true, count: 0, detail: '' });
   assert.equal(fake.applied.length, 1);
 });
 
-test('mendFormulas : Grist qui refuse ou qui ne répond pas rend ok: false avec le détail, sans lever', async () => {
+test('mendDocument : Grist qui refuse ou qui ne répond pas rend ok: false avec le détail, sans lever', async () => {
   const fake = documentOf(staleDocument());
   const doc = docOf(fake, { ...STALE });
   doc.applyUserActions = async () => { throw new Error('Blocked by table structure access rules'); };
-  const result = await mendFormulas(doc);
+  const result = await mendDocument(doc);
   assert.deepEqual([result.ok, /Blocked/.test(result.detail)], [false, true]);
-  assert.equal((await mendFormulas({ fetchTable: async () => { throw new Error('boom'); } })).ok, false);
+  assert.equal((await mendDocument({ fetchTable: async () => { throw new Error('boom'); } })).ok, false);
 });
 
 test('updateNames : après les noms, la même fenêtre reprend les formules ; elles échouent : résultat inconnu (« Vérifier » rejoue, les noms sont faits)', async () => {
@@ -307,7 +391,7 @@ test('updateNames : formules restées à l\'ancien nom, plus aucun nom à change
   const show = async () => { opened++; return { state: 'done' }; };
   const mine = documentOf(staleDocument());
   const doc = docOf(mine, { ...STALE });
-  assert.deepEqual(await updateNames(flow(mine, { doc, show })), { state: 'none', legacy: [] });
+  assert.deepEqual(await updateNames(flow(mine, { doc, show })), { state: 'none', legacy: [], tables: Object.keys(staleDocument().tables) });
   assert.equal(doc.formulas['GFS_Shares.Valid'], 'if p.Valid and p.Active: pass');
   assert.equal(opened, 0);
   for (const extra of [{ isOwner: () => false }, { isOwner: () => null }, { readOnly: () => true }]) {
@@ -316,4 +400,29 @@ test('updateNames : formules restées à l\'ancien nom, plus aucun nom à change
     const outcome = await updateNames(flow(other, { doc: stale, show, ...extra }));
     assert.deepEqual([outcome.state, outcome.legacy.sort(), other.applied.length], ['none', ['GFS_Shares', 'Publipostage_Modeles'], 0], JSON.stringify(Object.keys(extra)));
   }
+});
+
+test('stalePages : une page qui porte encore le nom d\'avant d\'une table renommée reprend le nom d\'arrivée ; rien d\'autre ne bouge', () => {
+  const tables = ['Clients', 'GFS_Filing', 'GFS_Trash', 'GFS_Shares', 'GFS_Placement', 'GFS_Fichiers'];
+  const views = [{ id: 1, name: 'Clients' }, { id: 2, name: 'GFS_Rangement' }, { id: 3, name: 'gfs_corbeille' }, { id: 4, name: 'GFS_Partages' }, { id: 5, name: 'GFS_Placement' },
+    { id: 6, name: 'GFS_Fichiers' }, { id: 7, name: 'GFS_Annuaires' }];
+  assert.deepEqual(stalePages(views, tables).sort((a, b) => a.id - b.id), [{ id: 2, name: 'GFS_Filing' }, { id: 3, name: 'GFS_Trash' }, { id: 4, name: 'GFS_Shares' }],
+    'GFS_Annuaires : sa table d\'arrivée n\'existe pas, la page reste ; GFS_Placement et GFS_Fichiers ne changent pas de nom');
+  assert.deepEqual(stalePages([...views, { id: 8, name: 'GFS_Filing' }], tables).map(item => item.id).sort(), [3, 4], 'une page déjà nommée ainsi : on ne double pas le nom');
+  assert.deepEqual(stalePages([{ id: 6, name: 'GFS_Fichiers' }], ['GFS_Files']), [{ id: 6, name: 'GFS_Files' }], 'la table des PDF renommée : sa page la suit');
+  assert.deepEqual(stalePages(undefined, undefined), []);
+});
+
+test('mendDocument : les titres de pages suivent les tables dans le même lot que les formules ; reprise sans fenêtre à l\'ouverture suivante', async () => {
+  const fake = documentOf(staleDocument());
+  const doc = docOf(fake, { ...STALE }, [{ id: 1, name: 'GFS_Rangement' }, { id: 2, name: 'GFS_Partages' }, { id: 3, name: 'Publipostage_Modeles' }]);
+  assert.deepEqual(await mendDocument(doc), { ok: true, count: 5, detail: '' });
+  assert.deepEqual(doc.views.map(view => view.name), ['GFS_Filing', 'GFS_Shares', 'Publipostage_Modeles']);
+  assert.equal(fake.applied.length, 1, 'un seul lot');
+  const other = documentOf(staleDocument());
+  const stale = docOf(other, {}, [{ id: 1, name: 'GFS_Rangement' }]);
+  const outcome = await updateNames(flow(other, { doc: stale, isOwner: () => false }));
+  assert.deepEqual([outcome.state, outcome.legacy, stale.views[0].name], ['none', ['GFS_Filing'], 'GFS_Rangement'], 'pas propriétaire : rien d\'écrit, GFS le dit');
+  const mine = await updateNames(flow(other, { doc: stale }));
+  assert.deepEqual([mine.state, mine.legacy, stale.views[0].name], ['none', [], 'GFS_Filing']);
 });

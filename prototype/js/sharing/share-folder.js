@@ -10,7 +10,7 @@
 //   chez l'autre avec l'archive de la copie : mesuré,
 //     labo/run-partager-dossier.mjs) ; un fichier qui repart seul plus tard garde donc le nom de son dernier dossier partagé ;
 //   - la colonne est écrite AVANT la condition : le moteur ne compose ses colonnes que d'après ce que la table porte au moment de l'enregistrement.
-import { FILES_APP, FILES_COLUMNS, FILES_TABLE, SHARED_FOLDER_COLUMN } from '../files/gfs-files.js';
+import { FILES_APP, filesColumns, filesNames } from '../files/gfs-files.js';
 import { OwnTable } from '../files/own-table.js';
 import { isTooBig } from './share-links.js';
 
@@ -35,16 +35,16 @@ export const isFolderTarget = target => Boolean(target) && typeof target.path ==
 // Le nom que les fichiers portent chez l'autre : le dernier mot du chemin.
 export const folderLabel = path => String(path || '').split('/').filter(Boolean).pop() || '';
 
-const columns = [...FILES_COLUMNS, { id: SHARED_FOLDER_COLUMN, type: 'Text' }];
-
-// Écrit `name` sur les lignes `rows` de GFS_Fichiers, la colonne ajoutée d'abord si elle manque (une colonne absente annulerait tout le lot). Rend le nombre de
-// lignes écrites (0 : la table n'est plus là).
+// Écrit `name` sur les lignes `rows` de la table des fichiers, la colonne ajoutée d'abord si elle manque (une colonne absente annulerait tout le lot). Rend le
+// nombre de lignes écrites (0 : la table n'est plus là).
 export async function writeFolderName(docApi, rows, name) {
   if (!rows.length) return 0;
-  const own = new OwnTable({ port: { doc: docApi }, name: FILES_TABLE, columns, consent: async () => false });
-  const state = await own.existing([SHARED_FOLDER_COLUMN]);
+  const names = filesNames();
+  const own = new OwnTable({ port: { doc: docApi }, name: names.table, columns: [...filesColumns(names), { id: names.folder, type: 'Text' }],
+    consent: async () => false });
+  const state = await own.existing([names.folder]);
   if (!state) return 0;
   const known = rows.filter(row => state.data.id.includes(row));
-  if (known.length) await docApi.applyUserActions([['BulkUpdateRecord', own.id, known, { [SHARED_FOLDER_COLUMN]: known.map(() => name) }]]);
+  if (known.length) await docApi.applyUserActions([['BulkUpdateRecord', own.id, known, { [names.folder]: known.map(() => name) }]]);
   return known.length;
 }

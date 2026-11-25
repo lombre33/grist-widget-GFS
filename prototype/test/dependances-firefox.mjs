@@ -14,7 +14,7 @@ import { formatBytes } from '../js/weight/weight.js';
 import { dependencyRows, groupsOf, summary, FILTERS } from '../js/apps/dependencies-model.js';
 import { allUnits, planFor, planSize } from '../js/apps/dependencies-source.js';
 import { readCatalogue } from '../js/apps/libraries.js';
-import { Run, centerOfSelector } from './corbeille-firefox.mjs';
+import { Run, centerOfSelector, closeLeftOpen } from './corbeille-firefox.mjs';
 import { centerOfMenuItem } from './copier-firefox.mjs';
 import { ROOT } from './helpers.mjs';
 
@@ -86,7 +86,7 @@ const rowAt = key => { const node = document.querySelector(`.dp-row[data-fk="dep
 const buttonAt = selector => { const node = document.querySelector(selector); if (!node) return null; node.scrollIntoView({ block: 'center' }); const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
 
 // Les lignes que la fenêtre doit montrer : celles du modèle, avec le catalogue, le relevé et les apps de la page d'essai.
-async function expectedRows(page, language) {
+export async function expectedRows(page, language) {
   const catalogue = readCatalogue(JSON.parse(readFileSync(join(ROOT, 'bibliotheques/catalogue.json'), 'utf8')));
   const releve = JSON.parse(readFileSync(join(ROOT, 'bibliotheques/releve.json'), 'utf8'));
   const modules = await page.run(() => window.__dependencyModules());
@@ -123,6 +123,9 @@ export async function dependancesProblems(page, language, tag) {
     const shownRows = installed.flatMap(group => group.rows);
     const rest = groups.filter(group => !group.installed);
     const restCount = new Set(rest.flatMap(group => group.rows.map(row => row.key))).size;
+    // La bibliothèque que seul le panneau refermé montre : celle qu'aucune app installée de la page d'essai ne demande (Publipostage+ porte docx, depuis le 19/11 : docx n'est plus orpheline).
+    const lone = (rest.flatMap(group => group.rows)[0] || { paquet: '' }).paquet;
+    if (!lone) run.note('le panneau refermé', 'la page d\'essai devait garder une bibliothèque que aucune app installée ne demande');
     const asked = (await snap()).asked;
 
     // 1. La souris ouvre la fenêtre par « Réglages » puis « Dépendances… ».
@@ -161,7 +164,7 @@ export async function dependancesProblems(page, language, tag) {
     const linked = modal.rows.filter(row => row.link);
     if (linked.length !== modal.rows.length || linked.some(row => row.ext < 24 || row.link.target !== '_blank' || !/noopener/.test(row.link.rel) || !/^https:\/\//.test(row.link.href) || !row.link.label.includes(row.name))) run.note('le lien de la ligne', 'chaque ligne devait finir par un lien https de 24 px au moins, dans un nouvel onglet, noopener, nommé par la bibliothèque');
     const plotly = modal.rows.find(row => row.name === 'plotly.js-basic-dist-min');
-    if (modal.rows.some(row => row.name === 'docx')) run.note('le panneau refermé cache', 'docx (aucune app ne le demande) ne devait pas être montré avant d\'ouvrir le panneau');
+    if (modal.rows.some(row => row.name === lone)) run.note('le panneau refermé cache', `${lone} (aucune app installée ne le demande) ne devait pas être montré avant d'ouvrir le panneau`);
     if (!plotly || !/critique|Critical/i.test(plotly.latest)) run.note('l\'avis', `la ligne de Plotly devait annoncer son avis critique (${plotly && plotly.latest})`);
     if (modal.rows.filter(row => /^(?:Active|Active)$/.test(row.sub)).length > 0 || modal.rows.some(row => !row.sub)) run.note('les mots d\'état', 'chaque ligne devait dire son état en mots');
 
@@ -185,18 +188,18 @@ export async function dependancesProblems(page, language, tag) {
     await page.press('Backspace', 'Backspace', 'Backspace');
     await expect('recherche effacée', 'effacer la recherche devait rendre toutes les lignes des apps installées', s => s.modal && s.modal.rows.length === shownRows.length && !s.modal.empty);
     // Une bibliothèque que seul le panneau refermé a : le vide le dit, le panneau garde son compte ; l'ouvrir la montre sous « Aucune app ».
-    await page.press(...'docx'.split(''));
-    const inMore = await expect('recherche : seul le panneau', 'chercher « docx » (aucune app ne le demande) devait dire qu\'aucune app installée ne correspond et compter une bibliothèque dans le panneau',
+    await page.press(...lone.split(''));
+    const inMore = await expect('recherche : seul le panneau', `chercher « ${lone} » (aucune app installée ne le demande) devait dire qu'aucune app installée ne correspond et compter une bibliothèque dans le panneau`,
       s => s.modal && s.modal.rows.length === 0 && s.modal.empty && s.modal.more && s.modal.more.text === t('dep.more', { n: 1 }));
     await page.click(...await page.run(buttonAt, '[data-fk="dep-more"]'));
-    const opened = await expect('le panneau', 'un clic sur le panneau devait l\'ouvrir, montrer docx sous « Aucune app », cacher le message vide et garder le clavier sur le bouton',
-      s => s.modal && s.modal.more && s.modal.more.expanded === 'true' && s.modal.rows.map(row => row.name).join() === 'docx' && !s.modal.empty && s.modal.focus === 'dep-more'
+    const opened = await expect('le panneau', `un clic sur le panneau devait l'ouvrir, montrer ${lone} sous « Aucune app », cacher le message vide et garder le clavier sur le bouton`,
+      s => s.modal && s.modal.more && s.modal.more.expanded === 'true' && s.modal.rows.map(row => row.name).join() === lone && !s.modal.empty && s.modal.focus === 'dep-more'
         && s.modal.groups.length === 1 && s.modal.groups[0].name === t('dep.group.none') && s.modal.groups[0].inMore);
     if (opened.modal && opened.modal.rows[0] && opened.modal.rows[0].users !== '—') run.note('le panneau : la colonne', `« ${t('dep.col.users')} » devait dire « — » pour une bibliothèque qu'aucune app ne demande (${opened.modal.rows[0].users})`);
     await page.click(...await page.run(buttonAt, '[data-fk="dep-more"]'));
     await expect('le panneau : refermer', 'un second clic devait refermer le panneau', s => s.modal && s.modal.more.expanded === 'false' && s.modal.rows.length === 0 && s.modal.empty);
     await page.click(...await page.run(centerOfSelector, '.dp-search input'));
-    await page.press(...Array(4).fill('Backspace'));
+    await page.press(...Array(lone.length).fill('Backspace'));
     await expect('recherche effacée de nouveau', 'effacer la recherche devait rendre les lignes des apps installées', s => s.modal && s.modal.rows.length === shownRows.length && !s.modal.empty);
 
     // 4. Le clavier : la flèche du bas va de la recherche à la première ligne, la flèche du haut revient à la recherche. Entrée et Espace sur un bouton ne se jouent pas sous ce Firefox sans écran
@@ -238,8 +241,7 @@ export async function dependancesProblems(page, language, tag) {
     await page.click(...await page.run(buttonAt, '.dp-verify'));
     await expect('vérifier : de nouveau', 'la copie rétablie devait être dite intacte', s => s.modal && s.modal.rows.some(row => row.detail && row.detail.integrity === t('dep.d.ok')));
     // docx : deux fichiers, une seule ligne, « n copies intactes »
-    await page.click(...await page.run(buttonAt, '[data-fk="dep-more"]'));
-    await expect('docx : le panneau', 'docx (aucune app ne le demande) devait se montrer à l\'ouverture du panneau', s => s.modal && s.modal.rows.some(row => row.name === 'docx'));
+    await expect('docx : la ligne', 'docx (portée par Publipostage+) devait se montrer sans ouvrir le panneau', s => s.modal && s.modal.rows.some(row => row.name === 'docx'));
     await page.click(...await page.run(rowAt, rows.find(row => row.paquet === 'docx').key));
     await page.click(...await page.run(buttonAt, '.dp-item.is-open:last-of-type .dp-verify, .dp-item[data-key^="docx@"] .dp-verify'));
     await expect('vérifier : deux fichiers', 'docx (deux fichiers) devait dire ses deux copies intactes', s => s.modal && s.modal.rows.some(row => row.name === 'docx' && row.detail && row.detail.integrity === t('dep.d.ok.n', { n: 2 })));
@@ -309,7 +311,7 @@ export async function dependancesProblems(page, language, tag) {
     if (all.modal && all.modal.foot2.all.title !== t('dep.all.tip.cdn')) run.note('tout : l\'info-bulle', `l'info-bulle devait suivre le bouton (${all.modal.foot2.all.title})`);
     await page.click(...await allAt());
     const askedBack = await expect('tout : le retour', 'le bouton « Tout en CDN » devait poser sa question', s => s.ask && s.ask.title === t('dep.all.title.cdn'));
-    if (askedBack.ask && askedBack.ask.text !== t('dep.all.text.cdn', { n: 2 })) run.note('tout : le retour', `la question du retour devait dire « ${t('dep.all.text.cdn', { n: 2 })} » (${askedBack.ask.text})`);
+    if (askedBack.ask && askedBack.ask.text !== t('dep.all.text.cdn', { n: planSize(wantPlan) })) run.note('tout : le retour', `la question du retour devait dire « ${t('dep.all.text.cdn', { n: planSize(wantPlan) })} » (${askedBack.ask.text})`);
     await page.click(...await page.run(centerOfSelector, '[data-fk="ask-yes"]'));
     await expect('tout : retour au CDN', 'confirmer devait défaire les deux choix en une écriture', s => !s.ask && s.writes === writes0 + 4 && !(s.modes && (s.modes.graphique || s.modes['natif:editeur'])) && s.modal.foot2.all.text === t('dep.all.copy'));
     await expect('le pied reprend sa phrase', 'le pied devait reprendre la phrase du relevé après un instant', s => s.modal && s.modal.foot === t('dep.foot', { date }));
@@ -380,7 +382,7 @@ export async function dependancesProblems(page, language, tag) {
     await expect('Fermer', '« Fermer » devait fermer la fenêtre et rendre le clavier à « Réglages »', s => closed(s) && s.onSettings);
   } catch (error) {
     run.note('la mesure a échoué', error.message.slice(0, 300));
-    await page.run(() => { for (const node of document.querySelectorAll('.mod-scrim')) node.remove(); }).catch(() => {});
+    await closeLeftOpen(page);
   }
   return found;
 }

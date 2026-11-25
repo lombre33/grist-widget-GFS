@@ -7,9 +7,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createI18n } from '../js/i18n/i18n.js';
-import { Run, centerOfSelector } from './corbeille-firefox.mjs';
+import { Run, centerOfSelector, closeLeftOpen } from './corbeille-firefox.mjs';
 import { centerOfMenuItem } from './copier-firefox.mjs';
 import { ROOT } from './helpers.mjs';
+import { expectedRows } from './dependances-firefox.mjs';
 
 // Ce que la page montre du bloc « Portées par l'app » de chaque app, et de la fenêtre autour.
 function state() {
@@ -67,8 +68,12 @@ export async function carriedProblems(page, language, tag) {
   const block = (now, group) => now.modal && now.modal.blocks.find(each => each.group === group);
   const declared = JSON.parse(readFileSync(join(ROOT, 'manifestes/publipostage.json'), 'utf8')).portees;
   const pick = key => declared.find(entry => entry.id === key);
+  // Ce que le bloc montre : une entrée dont le paquet est déjà servi par GFS à Publipostage+ est ôtée, sa ligne est celle de GFS (js/apps/dependencies-carried.js, `carriedOf`) ; l'export, lui, les garde toutes.
+  let shown = declared;
   try {
     await page.run(() => { window.__resetSettings(); window.__saved = []; window.__dependencyBlocked = null; window.__carried = true; });
+    const served = new Set((await expectedRows(page, language)).rows.filter(row => row.uses.some(use => use.app === 'publipostage')).map(row => row.paquet));
+    shown = declared.filter(entry => !(entry.paquet && served.has(entry.paquet)));
     await run.reset().catch(() => {});
     await page.click(...await page.run(settingsAt));
     await page.until(() => document.querySelector('.menu') !== null, [], 1500);
@@ -80,15 +85,15 @@ export async function carriedProblems(page, language, tag) {
     const pp = block(start, 'publipostage');
     if (!pp) return found;
     if (pp.title !== t('dep.c.title') || pp.chip !== t('dep.c.chip') || pp.note !== t('dep.c.note.top') || pp.role !== 'group' || pp.labelled !== t('dep.c.title')) run.note('le bloc', `le bloc devait dire « ${t('dep.c.title')} », « ${t('dep.c.chip')} » et sa note, étiqueté par son titre (${pp.title} | ${pp.chip} | ${pp.note})`);
-    if (pp.count !== t('dep.group.count', { n: declared.length })) run.note('le compte du bloc', `le bloc devait compter ${declared.length} bibliothèques (${pp.count})`);
+    if (pp.count !== t('dep.group.count', { n: shown.length })) run.note('le compte du bloc', `le bloc devait compter ${shown.length} bibliothèques (${pp.count})`);
     if (pp.cols.join('|') !== ['lib', 'version', 'address'].map(key => t(`dep.c.col.${key}`)).join('|') || pp.colsOver) run.note('les colonnes du bloc', `les trois titres de colonne devaient tenir dans la fenêtre (${pp.cols.join(' | ')})`);
-    if (!start.modal.count.endsWith(t('dep.count.carried', { n: declared.length + 1 }))) run.note('le sous-titre', `le sous-titre devait compter les déclarées « ${t('dep.count.carried', { n: declared.length + 1 })} » (${start.modal.count})`);
+    if (!start.modal.count.endsWith(t('dep.count.carried', { n: shown.length + 1 }))) run.note('le sous-titre', `le sous-titre devait compter les déclarées « ${t('dep.count.carried', { n: shown.length + 1 })} » (${start.modal.count})`);
     if (start.modal.apps !== t('dep.apps')) run.note('la note du bas', `la note sous la liste devait dire « ${t('dep.apps')} » (${start.modal.apps})`);
     const ppGroup = start.modal.groups.find(group => group.id === 'publipostage');
-    if (!ppGroup || ppGroup.count !== t('dep.group.count', { n: ppGroup.rows + declared.length })) run.note('le compte de l\'app', `l'app devait compter ses bibliothèques de GFS et celles qu'elle déclare (${ppGroup && ppGroup.count}, ${ppGroup && ppGroup.rows} + ${declared.length})`);
+    if (!ppGroup || ppGroup.count !== t('dep.group.count', { n: ppGroup.rows + shown.length })) run.note('le compte de l\'app', `l'app devait compter ses bibliothèques de GFS et celles qu'elle déclare (${ppGroup && ppGroup.count}, ${ppGroup && ppGroup.rows} + ${declared.length})`);
 
     // 2. Les lignes : toutes celles que l'app déclare, au démarrage d'abord ; le moment, le contenu, la version et l'hôte ; 40 px au moins, rien de coupé ni qui déborde, aucun lien.
-    if (pp.items.map(item => item.key).sort().join() !== declared.map(entry => `publipostage|portee|${entry.id}`).sort().join()) run.note('les lignes', `le bloc devait montrer les ${declared.length} bibliothèques déclarées (${pp.items.map(item => item.name).join(', ')})`);
+    if (pp.items.map(item => item.key).sort().join() !== shown.map(entry => `publipostage|portee|${entry.id}`).sort().join()) run.note('les lignes', `le bloc devait montrer les ${shown.length} bibliothèques déclarées (${pp.items.map(item => item.name).join(', ')})`);
     const ranks = pp.items.map(item => WHEN_RANK[pick(item.key.split('|')[2]).quand]);
     if (ranks.some((rank, index) => index && rank < ranks[index - 1])) run.note('l\'ordre', 'le démarrage devait passer avant le premier usage');
     for (const item of pp.items) {
@@ -117,12 +122,8 @@ export async function carriedProblems(page, language, tag) {
       if (!body('dep.c.note').includes(language === 'en' ? 'Offline editor' : 'Éditeur hors ligne')) run.note('le détail : la précision', `la précision devait être dans la langue de la personne (${body('dep.c.note')})`);
       if (tip.detail.links || tip.detail.wide) run.note('le détail déborde', 'le détail ne devait ni déborder ni offrir de lien');
     }
-    await page.click(...await page.run(buttonAt, '[data-fk="dep-publipostage|portee|marked"]'));
-    const marked = await expect('le détail : une bibliothèque que GFS garde aussi', 'un clic sur marked devait dire que GFS en garde aussi une copie', s => block(s, 'publipostage') && block(s, 'publipostage').items.some(item => item.key === 'publipostage|portee|marked' && item.detail));
-    const markedItem = marked.modal && block(marked, 'publipostage').items.find(item => item.key === 'publipostage|portee|marked');
-    if (markedItem && markedItem.detail && !markedItem.detail.facts.some(fact => fact.title === t('dep.c.gfs'))) run.note('le détail : chez GFS aussi', `marked devait dire que GFS en garde une copie (${markedItem.detail.facts.map(fact => fact.title).join(' | ')})`);
+    // Une bibliothèque que GFS garde aussi (le détail « GFS en garde aussi une copie ») n'a plus de ligne ici depuis le 19/11 : toutes celles que Publipostage+ déclare avec un paquet sont servies par GFS à l'app et prennent la ligne de GFS. Le calcul reste gardé par test/dependances-carried.test.mjs (`carriedOf`) ; l'affichage de ce détail n'a plus de cas réel dans la page d'essai.
     await page.click(...await page.run(buttonAt, '[data-fk="dep-publipostage|portee|tiptap"]'));
-    await page.click(...await page.run(buttonAt, '[data-fk="dep-publipostage|portee|marked"]'));
     await expect('le détail : refermer', 'un second clic devait refermer les détails', s => block(s, 'publipostage').items.every(item => item.expanded === 'false' && !item.detail));
 
     // 4. Une app qui déclare n'en charger aucune le dit ; celle d'une app non installée est dans le panneau refermé.
@@ -141,14 +142,14 @@ export async function carriedProblems(page, language, tag) {
     await page.click(...await page.run(centerOfSelector, '.dp-filter[data-filter="all"]'));
     await expect('filtre « Toutes »', '« Toutes » devait rendre le bloc', s => block(s, 'publipostage') && s.modal.blocks.length >= 2);
 
-    // 6. La recherche les trouve par ce qu'elles contiennent (« prosemirror » : TipTap), par l'hôte (« cdnjs »), et dit le vide quand rien ne correspond.
+    // 6. La recherche les trouve par ce qu'elles contiennent (« prosemirror » : TipTap), par l'hôte (« jsdelivr »), et dit le vide quand rien ne correspond.
     await page.click(...await page.run(centerOfSelector, '.dp-search input'));
     await page.press(...'prosemirror'.split(''));
     await expect('recherche : le contenu', 'chercher « prosemirror » devait laisser TipTap seul', s => s.modal && s.modal.blocks.length === 1 && s.modal.blocks[0].items.map(item => item.name).join() === 'TipTap' && s.modal.gfsRows.length === 0);
     await page.press(...Array(11).fill('Backspace'));
-    await page.press(...'cdnjs'.split(''));
-    await expect('recherche : l\'hôte', 'chercher « cdnjs » devait laisser les sept bibliothèques du premier usage', s => s.modal && s.modal.blocks.length === 1 && s.modal.blocks[0].items.length === declared.filter(entry => entry.quand === 'usage').length);
-    await page.press(...Array(5).fill('Backspace'));
+    await page.press(...'jsdelivr'.split(''));
+    await expect('recherche : l\'hôte', 'chercher « jsdelivr » devait laisser les bibliothèques que le bloc montre et qui sont chez jsDelivr', s => s.modal && s.modal.blocks.length === 1 && s.modal.blocks[0].items.length === shown.filter(entry => /jsdelivr/.test(entry.adresse)).length);
+    await page.press(...Array(8).fill('Backspace'));
     await page.press(...'zzz'.split(''));
     await expect('recherche : rien', 'chercher « zzz » devait ne rien montrer et le dire', s => s.modal && s.modal.blocks.length === 0 && s.modal.empty);
     await page.press('Backspace', 'Backspace', 'Backspace');
@@ -174,7 +175,7 @@ export async function carriedProblems(page, language, tag) {
     if (saved.saved.length === 2) {
       const report = JSON.parse(saved.saved[0].text);
       const entry = report.declarees.find(group => group.app === 'publipostage');
-      if (!entry || entry.nombre !== declared.length || entry.bibliotheques.length !== declared.length || entry.bibliotheques.some(item => item.verifiee !== false || item.declaree_par !== 'app')) run.note('export : le rapport', 'le rapport devait garder les bibliothèques déclarées par Publipostage+, marquées non vérifiées');
+      if (!entry || entry.nombre !== declared.length || entry.bibliotheques.length !== shown.length || entry.bibliotheques.some(item => item.verifiee !== false || item.declaree_par !== 'app')) run.note('export : le rapport', 'le rapport devait garder les bibliothèques déclarées par Publipostage+, marquées non vérifiées');
       if (!report.declarees.some(group => group.app === 'automation' && group.nombre === 0)) run.note('export : aucune', 'le rapport devait dire qu\'Automation+ déclare n\'en charger aucune');
       const bom = JSON.parse(saved.saved[1].text);
       const component = bom.components.find(each => each['bom-ref'] === 'gfs:declared:publipostage:tiptap');
@@ -184,7 +185,7 @@ export async function carriedProblems(page, language, tag) {
     await expect('Échap', 'Échap devait fermer la fenêtre', s => s.modal === null);
   } catch (error) {
     run.note('la mesure a échoué', error.message.slice(0, 300));
-    await page.run(() => { for (const node of document.querySelectorAll('.mod-scrim')) node.remove(); }).catch(() => {});
+    await closeLeftOpen(page);
   } finally {
     await page.run(() => { window.__carried = false; }).catch(() => {});
   }

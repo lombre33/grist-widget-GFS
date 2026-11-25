@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createI18n } from '../js/i18n/i18n.js';
-import { Run, centerOfSelector } from './corbeille-firefox.mjs';
+import { Run, centerOfSelector, closeLeftOpen } from './corbeille-firefox.mjs';
 import { centerOfMenuItem } from './copier-firefox.mjs';
 import { ROOT } from './helpers.mjs';
 
@@ -216,7 +216,7 @@ export async function securiteProblems(page, language, tag) {
     }
   } catch (error) {
     run.note('la mesure a échoué', error.message.slice(0, 300));
-    await page.run(() => { for (const node of document.querySelectorAll('.mod-scrim')) node.remove(); }).catch(() => {});
+    await closeLeftOpen(page);
   } finally {
     await page.run(() => { window.__carried = false; window.__security = false; window.__relay = null; }).catch(() => {});
   }

@@ -2,9 +2,10 @@
 // la recherche, les filtres et l'arbre des responsables. Sur un document fictif (test/annuaire-fixtures.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readConfig, writeConfig, annuairesOf, newRecord, addAction, ANNUAIRES_COLUMNS } from '../js/annuaire/annuaire-config.js';
+import { readConfig, writeConfig, annuairesOf, newRecord, addAction, effectiveConfig, ANNUAIRES_COLUMNS } from '../js/annuaire/annuaire-config.js';
 import { schemaOf, genreOf, targetOf, isPeopleTable, tablesNeeded, columnOf } from '../js/annuaire/annuaire-schema.js';
-import { valuesOf, followPath, buildPeople, buildTree, findNode, peopleIn, searchKey, filterPeople, filterOptions, managerTree } from '../js/annuaire/annuaire-model.js';
+import { valuesOf, followPath, buildPeople, buildTree, findNode, peopleIn, searchKey, filterPeople, filterOptions, managerTree, nameOf } from '../js/annuaire/annuaire-model.js';
+import { telHref } from '../js/annuaire/annuaire-items.js';
 import { documentFixture, configFixture, metaTables, metaColumns } from './annuaire-fixtures.mjs';
 
 const doc = documentFixture();
@@ -27,7 +28,7 @@ test('config : les niveaux sans colonne et les champs en double sont écartés, 
     fields: [{ col: 'Contrat', filter: 1 }, { col: 'Contrat' }, { col: '' }, { col: 'Site', filter: false }], inconnue: 'perdue' });
   assert.equal(config.name, 'Nom');
   assert.deepEqual(config.levels, [{ label: 'Pôle', path: ['Structure', 'Pole'] }]);
-  assert.deepEqual(config.fields, [{ col: 'Contrat', filter: true }, { col: 'Site', filter: false }]);
+  assert.deepEqual(config.fields, [{ col: 'Contrat', filter: true, list: false }, { col: 'Site', filter: false, list: false }]);
   assert.equal('inconnue' in config, false);
   assert.deepEqual(readConfig(writeConfig(config)), config);
 });
@@ -180,4 +181,69 @@ test('responsables : l\'arbre des personnes d\'après leur responsable, un cycle
   assert.deepEqual(emma.ch[1].ch.map(node => node.person.name), ['Camille Durand', 'Inès Marchand']);
   const loop = [{ row: 1, name: 'A', manager: 2 }, { row: 2, name: 'B', manager: 1 }, { row: 3, name: 'C', manager: 3 }, { row: 4, name: 'D', manager: 9 }];
   assert.equal(managerTree(loop).length, 4); // chacun est une racine : le cycle, le responsable de soi et l'absent
+});
+
+// ---------- le réglage en onglets (demande du porteur du 25/11) ----------
+
+test('config : l\'option « postes et hiérarchie » est éteinte par défaut, et allumée pour une ligne écrite avant elle qui a un poste ou des niveaux', () => {
+  assert.equal(readConfig({}).hierarchy, false);
+  assert.equal(readConfig({ name: 'Nom', email: 'Email' }).hierarchy, false);
+  assert.equal(readConfig({ levels: [{ label: 'Pôle', path: ['Pole'] }] }).hierarchy, true);
+  assert.equal(readConfig({ title: 'Poste' }).hierarchy, true);
+  assert.equal(readConfig({ lead: 'Chef' }).hierarchy, true);
+  assert.equal(readConfig({ title: 'Poste', hierarchy: false }).hierarchy, false);
+  assert.equal(readConfig({ hierarchy: 'oui' }).hierarchy, false);
+  assert.equal(readConfig(writeConfig(readConfig({ hierarchy: true }))).hierarchy, true);
+});
+
+test('config : éteinte, l\'option met de côté le poste, « responsable de sa structure » et les niveaux, qu\'elle garde écrits ; le responsable direct reste', () => {
+  const written = readConfig({ name: 'Nom', title: 'Poste', lead: 'Chef', manager: 'Responsable', levels: [{ label: 'Pôle', path: ['Pole'] }], hierarchy: false });
+  assert.equal(written.levels.length, 1);
+  const used = effectiveConfig(written);
+  assert.deepEqual([used.title, used.lead, used.levels, used.manager, used.name], ['', '', [], 'Responsable', 'Nom']);
+  assert.equal(effectiveConfig({ ...written, hierarchy: true }).levels.length, 1);
+  assert.equal(effectiveConfig({ levels: [{ label: 'x', path: ['y'] }] }).levels.length, 1, 'une configuration qui n\'a pas passé par readConfig est lue comme allumée');
+});
+
+test('config : l\'ordre du nom est celui qu\'on a dit, sinon « prénom nom » ; les champs gardent « liste »', () => {
+  assert.equal(readConfig({}).order, 'first-last');
+  assert.equal(readConfig({ order: 'last-first' }).order, 'last-first');
+  assert.equal(readConfig({ order: 'au hasard' }).order, 'first-last');
+  assert.equal(readConfig({ first: ' Prénom ' }).first, 'Prénom');
+  assert.deepEqual(readConfig({ fields: [{ col: 'Contrat', list: true }] }).fields, [{ col: 'Contrat', filter: false, list: true }]);
+});
+
+test('nom : une colonne seule, ou le prénom et le nom dans l\'ordre dit ; le tri est par nom de famille, les initiales celles du prénom et du nom', () => {
+  assert.deepEqual(nameOf('', 'Camille Martin', 'first-last'), { name: 'Camille Martin', sort: 'Camille Martin', initials: 'CM' });
+  assert.deepEqual(nameOf('Camille', 'Martin', 'first-last'), { name: 'Camille Martin', sort: 'Martin Camille', initials: 'CM' });
+  assert.deepEqual(nameOf('Camille', 'Martin', 'last-first'), { name: 'Martin Camille', sort: 'Martin Camille', initials: 'CM' });
+  assert.equal(nameOf('Élodie', 'de la Fontaine', 'first-last').initials, 'ÉD');
+  assert.equal(nameOf('Jean-Pierre', 'Roux', 'last-first').initials, 'JR');
+  assert.deepEqual(nameOf('', '', 'first-last'), { name: '', sort: '', initials: '' });
+});
+
+test('personnes : avec une colonne de prénom, le nom s\'écrit dans l\'ordre dit, la liste est triée par nom de famille et la recherche trouve les deux', () => {
+  const split = structuredClone(doc);
+  split.Personnes.Prenom = ['Camille', 'Inès', 'Nathan', 'Louis', 'Emma', 'Yanis'];
+  split.Personnes.Famille = ['Durand', 'Marchand', 'Roussel', 'Girard', 'Rolland', 'Morel'];
+  const wide = structuredClone(schema);
+  wide.Personnes.columns.push({ id: 'Prenom', type: 'Text', genre: 'text', ref: '', visible: '' }, { id: 'Famille', type: 'Text', genre: 'text', ref: '', visible: '' });
+  const config = { ...configFixture(), name: 'Famille', first: 'Prenom' };
+  const list = buildPeople(config, 'Personnes', split, wide);
+  assert.deepEqual(list.map(person => person.name), ['Louis Girard', 'Camille Durand', 'Inès Marchand', 'Yanis Morel', 'Emma Rolland', 'Nathan Roussel'].sort((a, b) =>
+    a.split(' ').at(-1).localeCompare(b.split(' ').at(-1), 'fr')));
+  assert.equal(list.find(person => person.name === 'Camille Durand').initials, 'CD');
+  const reversed = buildPeople({ ...config, order: 'last-first' }, 'Personnes', split, wide);
+  assert.equal(reversed.find(person => person.row === 1).name, 'Durand Camille');
+  assert.deepEqual(filterPeople(list, { query: 'durand camille' }).map(person => person.row), [1]);
+  assert.deepEqual(tablesNeeded(config, 'Personnes', wide).has('Personnes'), true);
+});
+
+test('numéro : le lien d\'appel ne garde que ce qui se compose (chiffres, « + » du début, sans « (0) » ni numéro de poste) ; un texte ou un numéro trop court n\'en donne pas', () => {
+  assert.equal(telHref('01 02 03 04 05'), 'tel:0102030405');
+  assert.equal(telHref('06.12.34.56.78'), 'tel:0612345678');
+  assert.equal(telHref('+33 (0)1 02 03 04 55'), 'tel:+33102030455');
+  assert.equal(telHref('01 02 03 04 55, poste 12'), 'tel:0102030455');
+  assert.equal(telHref('01 02 03 04 55 p. 12'), 'tel:0102030455');
+  for (const none of ['', null, undefined, 'poste 12', 'ext. 4455', '12', 'standard du lundi 0102030405']) assert.equal(telHref(none), null);
 });

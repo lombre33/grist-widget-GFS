@@ -4,7 +4,7 @@
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { initials, levelLabel, headsOf } from './annuaire-items.js';
+import { initials, levelLabel, headsOf, telHref } from './annuaire-items.js';
 
 // Combien de valeurs un filtre montre avant « +n » (le reste se choisit dans une liste avec recherche).
 export const CHIPS_SHOWN = 6;
@@ -44,23 +44,26 @@ export function treeList(root, ctx) {
 // Les niveaux d'une personne, du plus haut au plus bas, sans ceux qu'elle saute.
 const pathOf = person => person.levels.filter(Boolean);
 
-// Une ligne de la liste : l'avatar à initiales, le nom, le poste, et le niveau le plus bas en pastille (le chemin entier est dans l'info-bulle). Un seul
-// bouton : toute la ligne se choisit.
-export function personRow(person, { selected, tabStop }) {
+const who = person => person.initials ?? initials(person.name);
+
+// Une ligne de la liste : l'avatar à initiales, le nom, le poste, et le niveau le plus bas en pastille (le chemin entier est dans l'info-bulle) puis les champs
+// que le réglage met en liste (`extra`, des textes : décision de la fenêtre « Champs de la fiche »). Un seul bouton : toute la ligne se choisit.
+export function personRow(person, { selected, tabStop, extra = [] }) {
   return h('button', { type: 'button', class: 'an-person', 'aria-pressed': String(selected), tabindex: tabStop ? '0' : '-1',
     dataset: { act: 'person', row: String(person.row), fk: `pe:${person.row}` } },
-  h('span', { class: 'an-av' }, initials(person.name)),
+  h('span', { class: 'an-av' }, who(person)),
   h('span', { class: 'an-pe-text' }, h('span', { class: 'an-pe-name' }, person.name), person.title ? h('span', { class: 'an-pe-sub' }, person.title) : null),
-  h('span', { class: 'an-pe-pills', title: pathOf(person).join(' › ') }, ...pathOf(person).slice(-1).map(value => h('span', { class: 'an-pill' }, value))));
+  h('span', { class: 'an-pe-pills', title: [...pathOf(person), ...extra].join(' › ') },
+    ...[...pathOf(person).slice(-1), ...extra].slice(0, 3).map(value => h('span', { class: 'an-pill' }, value))));
 }
 
 // Une carte de contact (la vue « Cartes ») : l'avatar, le nom, le poste, les deux derniers niveaux, l'adresse et le téléphone.
-export function personCard(person, { selected, tabStop }) {
+export function personCard(person, { selected, tabStop, extra = [] }) {
   return h('button', { type: 'button', class: 'an-pcard', 'aria-pressed': String(selected), tabindex: tabStop ? '0' : '-1',
     dataset: { act: 'person', row: String(person.row), fk: `pe:${person.row}` } },
-  h('span', { class: 'an-av an-av-l' }, initials(person.name)),
+  h('span', { class: 'an-av an-av-l' }, who(person)),
   h('span', { class: 'an-pe-name' }, person.name), person.title ? h('span', { class: 'an-pe-sub' }, person.title) : null,
-  h('span', { class: 'an-pe-pills' }, ...pathOf(person).slice(-2).map(value => h('span', { class: 'an-pill' }, value))),
+  h('span', { class: 'an-pe-pills' }, ...[...pathOf(person).slice(-2), ...extra].slice(0, 4).map(value => h('span', { class: 'an-pill' }, value))),
   person.email ? h('span', { class: 'an-pc-line' }, icon('mail'), person.email) : null,
     person.phone ? h('span', { class: 'an-pc-line' }, icon('phone'), person.phone) : null);
 }
@@ -79,14 +82,16 @@ export function fiche(person, ctx) {
   const rows = [];
   if (person.email) rows.push(ficheRow(t('an.mail'), h('a', { class: 'an-link', href: `mailto:${person.email}`, target: '_blank', rel: 'noopener' },
     person.email), person.email, t));
-  if (person.phone) rows.push(ficheRow(t('an.phone'), person.phone, person.phone, t));
+  const call = telHref(person.phone);
+  if (person.phone) rows.push(ficheRow(t('an.phone'), call ? h('a', { class: 'an-link', href: call, title: t('an.call', { what: person.phone }),
+    target: '_blank', rel: 'noopener' }, person.phone) : person.phone, person.phone, t));
   for (const field of config.fields) {
     const values = (person.fields[field.col] || []).map(value => shown(value, ctx.genres[field.col], ctx));
     if (values.length) rows.push(ficheRow(field.col, h('span', { class: 'an-fr-vals' }, ...values.map(value => h('span', { class: 'an-pill' }, value))), '',
       t));
   }
   return h('div', { class: 'an-fiche-card' },
-    h('div', { class: 'an-fiche-head' }, h('span', { class: 'an-av an-av-xl' }, initials(person.name)),
+    h('div', { class: 'an-fiche-head' }, h('span', { class: 'an-av an-av-xl' }, who(person)),
       h('div', { class: 'an-fiche-id' }, h('h3', null, person.name), person.title ? h('p', { class: 'an-pe-sub' }, person.title) : null)),
     levels.length ? h('div', { class: 'an-fiche-levels' }, ...levels.map(each => h('span', { class: 'an-pill', title: each.label }, each.value))) : null,
     rows.length ? h('dl', { class: 'an-fiche-rows' }, ...rows) : h('p', { class: 'an-note' }, t('an.fiche.bare')));

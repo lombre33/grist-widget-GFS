@@ -11,6 +11,7 @@
 import { createI18n } from '../js/i18n/i18n.js';
 import { Run, delay } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
+import { setupProblems, savedProblems } from './annuaire-setup-firefox.mjs';
 
 const OTHER = { fr: 'en', en: 'fr' };
 const LONG_NAME = 'Jean-Baptiste de la Rochefoucauld-Montmorency';
@@ -193,7 +194,8 @@ export async function annuaireProblems(page, language, tag, { width, mode }) {
     await cardsProblems(page, t, note, click, inspectNow, { wide });
     await orgProblems(page, t, note, click, inspectNow, { wide, mode, width });
     await switchProblems(page, t, note, click, { wide });
-    await settingsProblems(page, t, note, click, { wide });
+    await settingsProblems(page, t, note, click, { wide, width, mode });
+    if (wide) await savedProblems(page, t, note, click);
     await languageProblems(page, language, t, other, note, inspectNow);
     await keyboardProblems(page, t, note, inspectNow);
     const said = await page.run(() => window.__annuaireNotices);
@@ -455,7 +457,7 @@ async function switchProblems(page, t, note, click, { wide }) {
 }
 
 // Le réglage : la fenêtre tient dans la page, ses boutons sont en place, « Annuler » la ferme sans rien écrire.
-async function settingsProblems(page, t, note, click, { wide }) {
+async function settingsProblems(page, t, note, click, { wide, width, mode }) {
   const written = await page.run(() => window.__annuaireNotices.length);
   await click('[data-fk="configure"]');
   const open = await page.until(topWindow).catch(() => null);
@@ -471,6 +473,7 @@ async function settingsProblems(page, t, note, click, { wide }) {
     else if (button.box.height < 24 || !inside(button.box, page_)) note('réglage', `${where} : le bouton « ${button.text} » sort de la page ou mesure ${Math.round(button.box.height)} px`);
   }
   await contrastProblems(page, note, where);
+  await setupProblems(page, t, note, { wide, width, mode });
   await click('[data-fk="set-cancel"]');
   await delay(150);
   if (await page.run(topWindow)) note('réglage', `${where} : « Annuler » ne ferme pas la fenêtre`);

@@ -16,12 +16,18 @@ export const CONFIG_VERSION = 1;
 const text = value => (typeof value === 'string' ? value.trim() : '');
 const path = value => (Array.isArray(value) ? value.map(text).filter(Boolean) : []);
 
-// Les colonnes de la personne que GFS lit par un nom : toutes facultatives, sauf le nom.
-export const PERSON_KEYS = Object.freeze(['name', 'title', 'email', 'phone', 'lead', 'manager']);
+// Les colonnes de la personne que GFS lit par un nom : toutes facultatives, sauf le nom. `name` est le nom complet (« Camille Martin ») ou, quand `first` est
+// dit, le nom de famille seul ; `first` est le prénom (la bonne pratique : deux colonnes, pour trier par nom, saluer par le prénom et éviter les doublons).
+export const PERSON_KEYS = Object.freeze(['name', 'first', 'title', 'email', 'phone', 'lead', 'manager']);
+// L'ordre dans lequel le nom s'écrit quand le prénom est une colonne à part.
+export const NAME_ORDERS = Object.freeze(['first-last', 'last-first']);
 
 // La configuration lue d'un texte JSON (ou d'un objet) : toujours complète, jamais d'exception. Ce que GFS ne connaît pas (une clé d'une version plus récente)
 // est ignoré à la lecture et perdu à la réécriture : `writeConfig` ne garde que ce qu'elle connaît ; une version plus récente écrit donc sa propre ligne.
-// { v, name, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], fields: [{ col, filter }] }
+// { v, name, first, order, hierarchy, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], fields: [{ col, filter, list }] }
+// `hierarchy` : l'option « postes et hiérarchie » (décision du porteur, 25/11 : par défaut seulement le nom et l'adresse). Une ligne écrite avant elle, qui a
+// déjà un poste ou des niveaux, la garde allumée : rien ne change pour elle. Éteinte, elle garde ses niveaux écrits (on les retrouve en la rallumant) mais
+// la lecture ne s'en sert pas : voir `effectiveConfig`.
 export function readConfig(source) {
   let raw = source;
   if (typeof source === 'string') {
@@ -31,15 +37,22 @@ export function readConfig(source) {
   const config = { v: CONFIG_VERSION };
   for (const key of PERSON_KEYS) config[key] = text(input[key]);
   const levels = Array.isArray(input.levels) ? input.levels : [];
+  config.order = NAME_ORDERS.includes(input.order) ? input.order : NAME_ORDERS[0];
   config.levels = levels.map(level => ({ label: text(level && level.label), path: path(level && level.path) })).filter(level => level.path.length > 0);
+  config.hierarchy = typeof input.hierarchy === 'boolean' ? input.hierarchy : Boolean(config.levels.length || config.title || config.lead);
   const fields = Array.isArray(input.fields) ? input.fields : [];
   const seen = new Set();
-  config.fields = fields.map(field => ({ col: text(field && field.col), filter: Boolean(field && field.filter) }))
+  config.fields = fields.map(field => ({ col: text(field && field.col), filter: Boolean(field && field.filter), list: Boolean(field && field.list) }))
     .filter(field => field.col && !seen.has(field.col) && seen.add(field.col));
   return config;
 }
 
 export const writeConfig = config => JSON.stringify(readConfig(config));
+
+// Ce que la lecture et les écrans utilisent : la configuration sans ce que l'option « postes et hiérarchie » éteinte met de côté (le poste, « responsable de sa
+// structure » et les niveaux). Les autres colonnes, dont le responsable direct, ne dépendent pas d'elle. Une configuration qui n'a pas passé par `readConfig`
+// (sans `hierarchy`) est lue comme allumée : seul « faux » l'éteint.
+export const effectiveConfig = config => (config.hierarchy === false ? { ...config, title: '', lead: '', levels: [] } : config);
 
 // Les annuaires d'une table lue : [{ row, name, table, config, parent }]. Une ligne sans nom ou sans table est ignorée (GFS ne saurait pas l'ouvrir).
 export function annuairesOf(data) {

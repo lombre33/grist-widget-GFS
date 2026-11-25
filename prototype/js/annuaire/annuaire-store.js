@@ -4,7 +4,7 @@
 // une ligne, peut demander à la personne de créer la table. Les gestes s'enchaînent l'un après l'autre.
 
 import { OwnTable, TableDeclined } from '../files/own-table.js';
-import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, annuairesOf, newRecord, addAction, updateAction, writeConfig } from './annuaire-config.js';
+import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, annuairesOf, newRecord, addAction, updateAction, writeConfig, effectiveConfig } from './annuaire-config.js';
 import { schemaOf, tablesNeeded } from './annuaire-schema.js';
 import { buildPeople, buildTree } from './annuaire-model.js';
 
@@ -49,14 +49,22 @@ export class AnnuaireStore {
     return state.exists ? annuairesOf(state.data) : [];
   }
 
-  // Un annuaire lu : { annuaire, schema, people, tree }. Une lecture par table (celle des personnes et celles que ses niveaux et ses champs suivent).
-  async read(annuaire, knownSchema = null) {
+  // Un annuaire lu : { annuaire, config, schema, people, tree }. `config` est celle que les écrans suivent (`effectiveConfig` : sans le poste ni les niveaux
+  // quand l'option « postes et hiérarchie » est éteinte). Une lecture par table (celle des personnes et celles que ses niveaux et ses champs suivent) ; `cache`
+  // (une Map) garde les tables lues, pour que le réglage, qui relit à chaque choix, ne les lise qu'une fois.
+  async read(annuaire, knownSchema = null, cache = null) {
     const schema = knownSchema || await this.schema();
     if (!schema[annuaire.table]) throw new MissingTable(annuaire.table);
+    const config = effectiveConfig(annuaire.config);
     const data = {};
-    await Promise.all([...tablesNeeded(annuaire.config, annuaire.table, schema)].map(async name => { data[name] = await this.#port.doc.fetchTable(name); }));
-    const people = buildPeople(annuaire.config, annuaire.table, data, schema);
-    return { annuaire, schema, people, tree: buildTree(people, annuaire.config.levels, annuaire.name) };
+    const fetch = name => {
+      if (!cache) return this.#port.doc.fetchTable(name);
+      if (!cache.has(name)) cache.set(name, this.#port.doc.fetchTable(name));
+      return cache.get(name);
+    };
+    await Promise.all([...tablesNeeded(config, annuaire.table, schema)].map(async name => { data[name] = await fetch(name); }));
+    const people = buildPeople(config, annuaire.table, data, schema);
+    return { annuaire, config, schema, people, tree: buildTree(people, config.levels, annuaire.name) };
   }
 
   #then(task) {

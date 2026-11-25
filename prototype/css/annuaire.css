@@ -195,9 +195,19 @@
 .an-org-none { margin: 24px; text-align: center; color: var(--text-muted); }
 .an-org-none[hidden] { display: none; }
 
-/* Le réglage : une fenêtre de 480 px, des sections, des lignes « libellé, choix ». Grisé, jamais masqué : un bouton sans table choisie reste là, grisé, avec sa raison au survol. */
-.mod.an-set { width: min(var(--win-m), 100%); height: 100%; }
-.mod-body.an-set-body { padding: 4px 14px 10px; }
+/* Le réglage : une fenêtre à trois onglets (Personnes, Hiérarchie, Champs de la fiche), sur la maquette. Grisé, jamais masqué : un bouton sans table choisie reste là, grisé, avec sa
+   raison au survol ; l'option « postes et hiérarchie » éteinte laisse son onglet visible, grisé. Orange (jetons `warn`) : ce qui attend un choix, comme la colonne d'un niveau. */
+.mod.an-set { width: min(664px, 100%); height: 100%; container: anset / inline-size; }
+.mod-body.an-set-body { padding: 0 14px 10px; }
+.an-tabs { flex: none; display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--surface); overflow-x: auto; }
+.an-tab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px 7px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted);
+  font: inherit; font-size: max(12.5px, var(--fs-min)); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.an-tab:hover { color: var(--text); }
+.an-tab[aria-selected="true"] { color: var(--accent-ink); border-bottom-color: var(--accent); }
+.an-tab-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn-ink); }
+.an-tab:focus-visible, .an-sw:focus-visible, .an-sug:focus-visible, .an-disclose-b:focus-visible, .an-slot:focus-visible, .an-lv-path:focus-visible, .an-lv-todo:focus-visible,
+.an-lv-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.an-tabpanel { padding-top: 4px; }
 .an-sec { padding: 10px 0 6px; border-bottom: 1px solid var(--border); }
 .an-sec:last-child { border-bottom: 0; }
 .an-sec h3 { margin: 0 0 6px; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
@@ -213,16 +223,107 @@
   border-radius: var(--radius-input); background: var(--surface); color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); text-align: left; cursor: pointer; overflow: hidden; white-space: nowrap; }
 .an-pickbtn .ic { flex: none; width: 13px; height: 13px; color: var(--text-muted); }
 .an-pickbtn[aria-disabled="true"] { background: var(--surface-sunken); color: var(--text-muted); cursor: not-allowed; }
-.an-set-lvl { display: grid; grid-template-columns: minmax(80px, 130px) minmax(0, 1fr) auto auto auto; align-items: center; gap: 4px; padding: 3px 0; }
-.an-set-fld { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
-.an-set-fname { flex: 1 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; font-size: max(12.5px, var(--fs-min)); font-weight: 600; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; }
-.an-set-fname .ic { flex: none; width: 14px; height: 14px; color: var(--text-muted); }
-.an-check { display: inline-flex; align-items: center; gap: 5px; font-size: max(12.5px, var(--fs-min)); }
-.an-check input:disabled + * { color: var(--text-muted); }
+.an-pickbtn[aria-invalid="true"], .an-set-input[aria-invalid="true"], .an-lv-todo[aria-invalid="true"], .btn[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
 .an-set-note { min-height: 1.4em; }
 .an-set-note.is-warn { color: var(--warn-ink); font-weight: 600; }
 .an-sec > .btn { margin-top: 4px; }
+.an-set-add { padding: 3px 0 3px 158px; }
+.an-set-why { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 6px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-sunken);
+  font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
+.an-set-why .ic { flex: none; width: 14px; height: 14px; margin-top: 1px; color: var(--accent-ink); }
+.an-lab { font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.an-lab-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin: 10px 0 4px; }
+
+/* Un volet qu'on déplie (« Séparer le nom et le prénom », « Plus d'options ») et la suggestion en pointillés de la maquette (« + Téléphone »). */
+.an-disclose { padding: 4px 0; }
+.an-disclose-b { display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px 2px 0; border: 0; background: transparent; color: var(--text); font: inherit;
+  font-size: max(12.5px, var(--fs-min)); font-weight: 600; cursor: pointer; }
+.an-disclose-b .ic { width: 13px; height: 13px; color: var(--text-muted); }
+.an-disclose-tag { padding: 0 7px; border: 1px solid var(--accent-soft-border); border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: max(11px, var(--fs-min));
+  font-weight: 600; }
+.an-sug { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 10px 0 6px; border: 1px dashed var(--border-strong); border-radius: 12px; background: var(--surface);
+  color: var(--accent-ink); font: inherit; font-size: max(12px, var(--fs-min)); font-weight: 600; cursor: pointer; }
+.an-sug:hover { background: var(--accent-soft); }
+.an-sug[aria-disabled="true"] { color: var(--text-muted); cursor: not-allowed; }
+.an-sug .ic { width: 12px; height: 12px; }
+
+/* L'interrupteur (un bouton à rôle « switch ») et la carte de l'option « postes et hiérarchie ». */
+.an-sw { position: relative; flex: none; width: 30px; height: 18px; padding: 0; border: 1px solid var(--text-muted); border-radius: 9px; background: var(--surface-sunken); cursor: pointer; }
+.an-sw-k { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); }
+.an-sw.is-on { border-color: var(--accent-solid); background: var(--accent-solid); }
+.an-sw.is-on .an-sw-k { left: 14px; background: var(--on-accent); }
+.an-sw[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.an-opt { display: flex; align-items: center; gap: 12px; margin: 8px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-sunken); }
+.an-opt-text { flex: 1 1 auto; min-width: 0; }
+.an-opt h3 { margin: 0 0 2px; font-size: max(13.5px, var(--fs-min)); text-transform: none; letter-spacing: normal; color: var(--text); }
+.an-opt p { margin: 0; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
+
+/* La hiérarchie : la liste des niveaux (du plus haut au plus bas) et l'aperçu de l'arbre, côte à côte. Un niveau sans colonne est orange ; le niveau qu'on vient d'ajouter est bleu. */
+.an-hier-body.is-off { opacity: .55; }
+.an-hier-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.an-hier-left, .an-hier-right { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.an-hier-left > .btn { align-self: flex-start; margin-top: 2px; }
+.an-lvl-list { display: flex; flex-direction: column; gap: 4px; }
+.an-lvrow { display: flex; flex-direction: column; gap: 0; padding: 3px 6px 4px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.an-lvrow.is-new { border-color: var(--accent); background: var(--accent-soft); }
+.an-lvrow.is-todo { border-color: var(--warn-ink); background: var(--warn-soft); }
+.an-lv-top, .an-lv-src { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.an-lv-name { flex: 1 1 auto; min-width: 0; padding: 1px 4px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--text); font: inherit;
+  font-size: max(12.5px, var(--fs-min)); font-weight: 700; }
+.an-lv-name:hover, .an-lv-name:focus { border-color: var(--border-strong); background: var(--surface); }
+.an-lv-cnt { flex: none; font-size: max(11px, var(--fs-min)); color: var(--text-muted); }
+.an-lv-path { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; padding: 1px 4px; border: 0; border-radius: 5px; background: transparent;
+  color: var(--text-muted); font: inherit; font-size: max(11.5px, var(--fs-min)); text-align: left; cursor: pointer; }
+.an-lv-path:hover { background: var(--surface-sunken); }
+.an-lv-path b { color: var(--text); font-weight: 600; }
+.an-lv-path .ic { width: 10px; height: 10px; }
+.an-lv-todo { flex: 0 1 auto; display: inline-flex; align-items: center; gap: 6px; padding: 1px 9px 1px 7px; border: 1px solid var(--warn-ink); border-radius: 999px; background: var(--surface);
+  color: var(--warn-ink); font: inherit; font-size: max(12px, var(--fs-min)); font-weight: 600; cursor: pointer; }
+.an-lv-todo .ic { width: 12px; height: 12px; }
+.an-lv-acts { flex: none; display: inline-flex; margin: -2px -2px -2px 0; }
+.an-lv-acts .an-ib { width: 24px; height: 24px; }
+.an-lv-acts .an-ib .ic { width: 13px; height: 13px; }
+.an-tag { flex: none; padding: 0 7px; border: 1px solid var(--accent-soft-border); border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: max(10.5px, var(--fs-min));
+  font-weight: 700; }
+.an-ins { display: flex; align-items: center; gap: 8px; height: 14px; color: var(--accent-ink); font-size: max(11px, var(--fs-min)); font-weight: 600; }
+.an-ins::before, .an-ins::after { content: ""; flex: 1; border-top: 1px dashed var(--accent-soft-border); }
+.an-prev { min-height: 120px; max-height: 260px; overflow: auto; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-sunken);
+  font-size: max(11.5px, var(--fs-min)); line-height: 1.35; }
+.an-prev ul { margin: 0; padding: 0 0 0 12px; list-style: none; border-left: 1px solid var(--border-strong); }
+.an-prev ul.an-prev-root { padding-left: 0; border-left: 0; }
+.an-prev li { padding: 1px 0 0; }
+.an-prev li .an-tag { margin-left: 6px; }
+.an-prev p { margin: 0; }
+@container anset (max-width: 560px) { .an-hier-grid { grid-template-columns: minmax(0, 1fr); } .an-set-row { grid-template-columns: minmax(0, 1fr); gap: 2px; } .an-set-label { padding-top: 0; }
+  .an-set-add { padding-left: 0; } }
+
+/* La fenêtre « Nouveau niveau » : le nom, puis la place parmi les niveaux (des repères en pointillés où il peut s'insérer ; celui qu'on a choisi est bleu). */
+.mod.an-nl { width: min(var(--win-m), 100%); }
+.an-slots { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.an-slot { display: flex; align-items: center; gap: 8px; min-height: 22px; padding: 0; border: 0; background: transparent; color: var(--text-muted); font: inherit;
+  font-size: max(11px, var(--fs-min)); cursor: pointer; }
+.an-slot::before, .an-slot::after { content: ""; flex: 1; border-top: 1px dashed var(--border-strong); }
+.an-slot:hover, .an-slot.is-here { color: var(--accent-ink); }
+.an-slot:hover::before, .an-slot:hover::after, .an-slot.is-here::before, .an-slot.is-here::after { border-top-color: var(--accent); }
+.an-slot.is-here { font-weight: 600; }
+.an-slot-t { max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-slot-lv { display: flex; align-items: baseline; gap: 8px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: max(12.5px, var(--fs-min)); }
+
+/* Les champs de la fiche : une ligne par champ (nom, type, « Liste », « Filtre »), les suggestions en pointillés dessous. */
+.an-ftable { display: flex; flex-direction: column; }
+.an-frow { display: grid; grid-template-columns: minmax(0, 1fr) 100px 48px 48px 76px; align-items: center; gap: 8px; min-height: 30px; padding: 0 4px; border-bottom: 1px solid var(--border);
+  font-size: max(12.5px, var(--fs-min)); }
+.an-frow.is-head { min-height: 22px; font-size: max(10.5px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.an-f-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-f-name .ic { flex: none; width: 14px; height: 14px; color: var(--text-muted); }
+.an-f-type { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-f-sw { display: flex; justify-content: center; }
+.an-f-acts { display: inline-flex; justify-content: flex-end; }
+.an-f-acts .an-ib { width: 24px; height: 24px; }
+.an-f-acts .an-ib .ic { width: 13px; height: 13px; }
+.an-sugs { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 8px; }
+.an-sug-row { display: flex; flex-wrap: wrap; gap: 6px; }
+@container anset (max-width: 520px) { .an-frow { grid-template-columns: minmax(0, 1fr) 44px 44px 76px; } .an-f-type { display: none; } }
 
 /* Le champ caché de la copie de secours (js/annuaire/annuaire-copy.js) : sélectionnable, jamais vu. */
 .an-copy-field { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; }

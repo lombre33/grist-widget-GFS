@@ -6,6 +6,7 @@
 // rangée au niveau qu'elle a (« niveau sauté »).
 
 import { columnOf } from './annuaire-schema.js';
+import { initials } from './annuaire-items.js';
 import { normalize, words, matchesWords } from '../ui/search.js';
 
 const MAX_DEPTH = 4; // les références qu'on suit pour montrer une valeur (une colonne visible qui est elle-même une référence)
@@ -73,7 +74,18 @@ export function followPath(ctx, tableId, rowAt, columns) {
   return [];
 }
 
-// Les personnes de la table : [{ row, name, title, email, phone, levels: [texte ou ''], fields: { colonne: [textes] }, lead, manager }], triées par nom.
+// Le nom qu'une personne porte : `last` seul (la colonne du nom complet), ou le prénom et le nom de famille dans l'ordre que l'annuaire dit quand le prénom est
+// une colonne à part. { name (ce qui s'écrit), sort (ce qui trie : le nom de famille d'abord), initials }.
+export function nameOf(first, last, order) {
+  if (!first) return { name: last, sort: last, initials: initials(last) };
+  const name = (order === 'last-first' ? `${last} ${first}` : `${first} ${last}`).trim();
+  return { name, sort: `${last} ${first}`.trim(), initials: (initials(first)[0] || '') + (initials(last)[0] || '') || initials(name) };
+}
+
+const bySort = (a, b) => (a.sort ?? a.name).localeCompare(b.sort ?? b.name, 'fr');
+
+// Les personnes de la table : [{ row, name, sort, initials, title, email, phone, levels: [texte ou ''], fields: { colonne: [textes] }, lead, manager }], triées
+// par nom (de famille d'abord quand le prénom est une colonne à part).
 // `lead` : la personne est responsable de sa structure (la colonne `lead` de la configuration est un oui/non, ou n'est pas vide) ; `manager` : le numéro de la
 // ligne de son responsable (la colonne `manager` est une référence à la même table), ou null.
 export function buildPeople(config, tableId, data, schema) {
@@ -84,12 +96,12 @@ export function buildPeople(config, tableId, data, schema) {
   const people = table.id.map((row, i) => {
     const managerCell = config.manager && Array.isArray(table[config.manager]) ? table[config.manager][i] : null;
     const lead = config.lead ? followPath(ctx, tableId, i, [config.lead]) : [];
-    return { row, name: one('name', i), title: one('title', i), email: one('email', i), phone: one('phone', i),
+    return { row, ...nameOf(one('first', i), one('name', i), config.order), title: one('title', i), email: one('email', i), phone: one('phone', i),
       levels: config.levels.map(level => followPath(ctx, tableId, i, level.path)[0] || ''),
       fields: Object.fromEntries(config.fields.map(field => [field.col, followPath(ctx, tableId, i, [field.col])])),
       lead: lead.length > 0 && lead[0] !== 'false', manager: typeof managerCell === 'number' && managerCell > 0 ? managerCell : null };
   });
-  return people.filter(person => person.name).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  return people.filter(person => person.name).sort(bySort);
 }
 
 // La hiérarchie : { id, name, level (-1 pour la racine), own: [personnes rangées ici], count (ici et dessous), ch: [nœuds] }. Le nœud d'un niveau s'identifie
@@ -132,7 +144,7 @@ export function peopleIn(node) {
   const all = [...node.own];
   const walk = each => { for (const child of each.ch) { all.push(...child.own); walk(child); } };
   walk(node);
-  return all.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  return all.sort(bySort);
 }
 
 // Le texte de recherche d'une personne : son nom, son poste, son adresse, ses niveaux et ses champs, comparables (js/ui/search.js).

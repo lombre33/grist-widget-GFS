@@ -7,7 +7,7 @@ const COLUMNS = [
   // [numéro, table, colId, type, colonne visible]
   [10, 1, 'Nom', 'Text', 0], [11, 1, 'Poste', 'Text', 0], [12, 1, 'Email', 'Text', 0], [13, 1, 'Tel', 'Text', 0],
   [14, 1, 'Structure', 'Ref:Structures', 20], [15, 1, 'Contrat', 'Choice', 0], [16, 1, 'Competences', 'ChoiceList', 0], [17, 1, 'Teletravail', 'Bool', 0],
-  [18, 1, 'Responsable', 'Ref:Personnes', 10], [19, 1, 'Chef', 'Bool', 0], [30, 1, 'Arrivee', 'Date', 0], [32, 1, 'Service', 'Text', 0],
+  [18, 1, 'Responsable', 'Ref:Personnes', 10], [19, 1, 'Chef', 'Bool', 0], [30, 1, 'Arrivee', 'Date', 0], [32, 1, 'Service', 'Text', 0], [33, 1, 'Site', 'Choice', 0],
   [20, 2, 'Nom', 'Text', 0], [21, 2, 'Niveau', 'Text', 0], [22, 2, 'Pole', 'Ref:Structures', 20], [23, 2, 'Direction', 'Ref:Structures', 20],
   [40, 3, 'Nom', 'Text', 0], [41, 3, 'Config', 'Text', 0], [42, 1, 'gristHelper_Display', 'Any', 0], [43, 1, 'manualSort', 'ManualSortPos', 0],
 ];
@@ -42,6 +42,7 @@ export const personnes = () => ({
   Chef: [true, false, true, true, true, false],
   Arrivee: [1456790400, null, null, null, null, null],
   Service: ['Budget', '', '', '', '', ''],
+  Site: ['Siège', 'Siège', 'Campus Nord', 'Siège', 'Siège', 'Campus Sud'],
 });
 
 export const documentFixture = () => ({ _grist_Tables: metaTables(), _grist_Tables_column: metaColumns(), Personnes: personnes(), Structures: structures() });

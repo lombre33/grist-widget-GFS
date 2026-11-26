@@ -6,6 +6,8 @@
 import { RightsReader } from './rights-reader.js';
 import { RightsWriter, RESUME_KEY } from './rights-writer.js';
 import { targetsOf } from '../sharing/sharing-model.js';
+import { fileSpecsOf } from '../files/file-specs.js';
+import { IndexControl } from './index-control.js';
 import { ShareControl } from '../sharing/share-control.js';
 import { ManageControl } from '../sharing/manage-control.js';
 import { LinkControl } from '../sharing/link-control.js';
@@ -25,7 +27,8 @@ export class RightsControl {
     this.#opts = opts;
     const manifests = opts.manifests || (() => []);
     this.targets = () => targetsOf(manifests());
-    this.reader = new RightsReader({ port: opts.port, transfer: opts.transfer, now: opts.now, targets: () => targetsOf(manifests()) });
+    this.reader = new RightsReader({ port: opts.port, transfer: opts.transfer, now: opts.now, targets: () => targetsOf(manifests()),
+      specs: () => fileSpecsOf(manifests()) });
     this.writer = new RightsWriter({ port: opts.port, reader: this.reader, store: opts.container ?
       keyStore(opts.container.ownerDocument.defaultView, RESUME_KEY) : { read: () => null, write: () => false } });
     // « Partager » : le même lecteur et le même écrivain, pour la fenêtre du fichier (js/sharing/share-control.js).
@@ -34,6 +37,8 @@ export class RightsControl {
       manage: this.manage });
     // Les liens entre espaces (js/sharing/link-control.js).
     this.links = new LinkControl({ ...opts, reader: this.reader });
+    // L'index des noms (js/rights/index-control.js) : le geste du propriétaire, « Index des noms… » du menu « Réglages ».
+    this.index = new IndexControl({ ...opts, writer: this.writer });
   }
 
   // Au retour du rechargement que Grist impose après une pose (contrats 11.5, point 3).

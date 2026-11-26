@@ -7,9 +7,8 @@
 //   - seule la lecture que l'explorateur fait déjà tourne, en silence (`quiet`) : la lecture légère (js/explorer/explorer-sql.js, les noms et le poids, jamais
 //   le
 //     contenu) quand le document est lourd, la lecture complète d'un document léger (moins de 4 Mo de fichiers) sinon ; un document lourd que Grist ne laisse
-//     lire qu'en entier (règles d'accès, `/sql` refusé) ne se relit PAS tout seul : c'est lui que la relecture épargnerait, il attend l'index des noms (carte
-//     du
-//     porteur) ;
+//     lire qu'en entier (règles d'accès, `/sql` refusé) ne se relit PAS tout seul : c'est lui que la relecture épargnerait. Avec l'index des noms
+//     (js/explorer/index-model.js, choix du porteur du 26/11), il se relit comme un document léger : le résumé que Grist tient ne porte aucun contenu ;
 //   - le rythme suit le coût : 5 s au plus vite, 15 s quand la lecture passe par l'API REST (`/sql` compte dans le plafond d'appels des offres hébergées), et
 //     jamais plus vite que 5 fois la durée de la dernière lecture ;
 //   - rien ne tourne explorateur fermé, page cachée, ni après 5 minutes sans geste ; le retour sur l'onglet et le premier geste après un calme relisent tout de
@@ -31,6 +30,7 @@ export function paceOf(stats) {
   if (!stats) return LIVE_EVERY;
   const spent = Math.max(0, Number(stats.ms) || 0) * LIVE_SLOWER;
   if (stats.light) return Math.max(LIVE_EVERY_REST, spent);
+  if (stats.indexed) return Math.max(LIVE_EVERY, spent); // l'index des noms : une lecture par la page, sans appel REST ni contenu, quel que soit le poids
   if ((Number(stats.bytes) || 0) >= HEAVY_BYTES) return null;
   return Math.max(LIVE_EVERY, spent);
 }

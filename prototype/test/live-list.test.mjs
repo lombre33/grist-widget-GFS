@@ -31,6 +31,8 @@ test('le pas : 5 s, 15 s par l\'API REST, jamais plus vite que 5 fois la durée 
   assert.equal(paceOf({ ms: 40, bytes: 1000, light: false }), LIVE_EVERY);
   assert.equal(paceOf({ ms: 3000, bytes: 1000, light: false }), 15000, 'une lecture lente espace la suivante');
   assert.equal(paceOf({ ms: 30, bytes: 900 * 1024 * 1024, light: true }), LIVE_EVERY_REST, 'la lecture légère passe par l\'API REST : plus lente');
+  assert.equal(paceOf({ ms: 30, bytes: 900 * 1024 * 1024, light: false, indexed: true }), LIVE_EVERY, 'l\'index des noms : une lecture sans contenu, même sur un gros document');
+  assert.equal(paceOf({ ms: 30, bytes: 900 * 1024 * 1024, light: false }), null, 'sans index, un gros document lu en entier ne se relit pas tout seul');
   assert.equal(paceOf({ ms: 30, bytes: HEAVY_BYTES - 1, light: false }), LIVE_EVERY);
   assert.equal(paceOf({ ms: 800, bytes: HEAVY_BYTES, light: false }), null, 'un document lourd lu en entier : jamais relu tout seul');
 });

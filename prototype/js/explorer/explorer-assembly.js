@@ -42,6 +42,7 @@ const settingsOf = c => () => settingsItems({
   langtool: () => ({ shown: c.correcteurs.state.shown, toggle: () => c.langtool.choose() }),
   place: () => c.dock.placeRow(), onAbout: () => openAbout({ t: c.t, ask: opts => c.ask(opts) }), onDependencies: () => c.openDependencies(),
   manage: () => ({ why: c.rights.manage.whyNot(), open: () => void c.rights.manage.open(), notice: text => c.notice(text) }),
+  index: () => ({ why: c.rights.index.why(), open: () => void c.rights.index.open(), notice: text => c.notice(text) }),
 });
 
 export function buildExplorer(c) {

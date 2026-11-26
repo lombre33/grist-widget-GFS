@@ -424,3 +424,42 @@ test('app avec `ecriture` : un fichier à la corbeille de GFS garde le dossier q
   const { trash } = await loadFiles(port(data), [{ manifest: recipe }], '');
   assert.deepEqual(trash.map(file => [file.id, file.folder]), [['3', 'Compta']], 'le dossier de l\'app, pas celui de GFS (Factures)');
 });
+
+// L'index des noms (js/explorer/index-reader.js, choix du porteur du 26/11) : une table d'app qui a son résumé ne se lit plus en entier.
+test('avec l\'index des noms : la table de l\'app n\'est jamais lue, les fichiers viennent du résumé (ligne d\'origine, poids du moteur), la lecture le dit', async () => {
+  const link = spec.poids.liees[0];
+  const reads = [];
+  const data = {
+    ...tables(),
+    _grist_Tables: { id: [1], tableId: [spec.table] },
+    _grist_Tables_column: { id: [1, 2, 3, 4, 5, 6], parentId: [1, 1, 1, 1, 1, 1], colId: ['Nom', 'TypeModele', 'DateModif', 'ModifiePar', 'Jeton', 'GFS_Cle'] },
+    Publipostage_Modeles_summary_GFS_Cle: { id: [1, 2], GFS_Cle: [4, 6], group: [['L', 4], ['L', 6]], count: [1, 1], Nom: ['Convocation', 'Attestation'], TypeModele: ['document', 'document'],
+      DateModif: [10, 20], ModifiePar: ['', ''], Jeton: ['j4', 'j6'], GFS_Ligne: [4, 6], GFS_Poids: [1000, 2000] },
+    [`${link.table}_summary_${link.colonne}`]: { id: [1], Jeton: ['j4'], group: [['L', 1]], count: [1], GFS_Poids: [300] },
+    [link.table]: { id: [1], Jeton: ['j4'], Contenu: ['x'] },
+    [spec.table]: { id: [4, 6], Nom: ['x', 'y'] },
+  };
+  const recording = { doc: { listTables: async () => Object.keys(data), fetchTable: async name => { reads.push(name); return data[name]; } } };
+  const found = await loadFiles(recording, [{ manifest }], '');
+  assert.ok(!reads.includes(spec.table), 'la table entière n\'est pas lue');
+  assert.ok(!reads.includes(link.table), 'la table liée non plus');
+  assert.deepEqual(found.files.map(file => [file.name, file.row, file.weight]), [['Convocation', 4, 1300], ['Attestation', 6, 2000]]);
+  assert.equal(found.stats.indexed, true);
+  assert.equal(found.stats.light, false, 'aucun appel REST');
+});
+
+test('un index qui n\'est pas sûr (deux lignes d\'origine dans un groupe) : la lecture se fait comme avant, sans le dire indexée', async () => {
+  const link = spec.poids.liees[0];
+  const data = {
+    ...tables(),
+    _grist_Tables: { id: [1], tableId: [spec.table] },
+    _grist_Tables_column: { id: [1, 2, 3, 4, 5, 6], parentId: [1, 1, 1, 1, 1, 1], colId: ['Nom', 'TypeModele', 'DateModif', 'ModifiePar', 'Jeton', 'GFS_Cle'] },
+    Publipostage_Modeles_summary_GFS_Cle: { id: [1, 2], GFS_Cle: [1, 2], group: [], count: [1, 2], Nom: ['A', 'B'], TypeModele: ['', ''], DateModif: [0, 0], ModifiePar: ['', ''], Jeton: ['', ''],
+      GFS_Ligne: [1, 2], GFS_Poids: [1, 1] },
+    [`${link.table}_summary_${link.colonne}`]: { id: [], Jeton: [], group: [], count: [], GFS_Poids: [] },
+    [link.table]: { id: [], Jeton: [], Contenu: [] },
+  };
+  const found = await loadFiles(port(data), [{ manifest }], '');
+  assert.deepEqual(found.files.map(file => file.name), ['Convocation', 'Attestation']);
+  assert.equal(found.stats.indexed, false);
+});

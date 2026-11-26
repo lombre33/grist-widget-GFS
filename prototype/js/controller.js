@@ -9,6 +9,8 @@ import { ViewOptions, addressOf } from './broker/view-options.js';
 import { ownSectionHandlers } from './broker/own-section.js';
 import { ViewLink, LINK_KEY } from './broker/view-link.js';
 import { PageTree, PAGES_KEY } from './files/page-tree.js';
+import { fileSpecsOf } from './files/file-specs.js';
+import { indexNamesOf } from './explorer/index-model.js';
 import { onTableCreated } from './files/own-table.js';
 import { AppSession } from './broker/session.js';
 import { AppStatus } from './broker/app-status.js';
@@ -227,7 +229,7 @@ export class GfsController {
       pageLink: () => this.doc.referrer || '',
       other: (file, state) => this.otherDocuments.tab(file, state), otherLinks: () => this.otherDocuments.links(),
         otherStop: link => this.otherDocuments.stop(link), otherNew: () => this.otherDocuments.link(), refresh: () => this.refreshFiles(),
-      notice: text => this.notice(text), files: () => this.explorer.files,
+      notice: text => this.notice(text), files: () => this.explorer.files, tidy: () => this.pageTree.tidy(),
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t,
       locale: () => this.locale, canRead: () => this.fullAccess, repaint: () => this.#reading.show(), notice: text => this.notice(text),
@@ -265,7 +267,7 @@ export class GfsController {
   #installPageTree() {
     this.pageTree = new PageTree({
       doc: this.port.doc, state: this.state, section: () => this.viewOptions.section(), mark: list => this.viewOptions.write([[PAGES_KEY, list]]),
-      enabled: () => this.fullAccess && !this.readonly && !isNewer(this.registry.structure),
+      enabled: () => this.fullAccess && !this.readonly && !isNewer(this.registry.structure), names: () => indexNamesOf(fileSpecsOf(this.manifests())),
     });
     onTableCreated(() => this.pageTree.tidy());
   }
@@ -418,7 +420,8 @@ export class GfsController {
     this.explorer.open();
     void this.refreshFiles();
     this.liveList.start();
-    this.rights.resume(this.explorer, { annuaire: () => void openAnnuaire(this).then(() => this.notice(this.t('an.sub.ready'))) });
+    this.rights.resume(this.explorer, { annuaire: () => void openAnnuaire(this).then(() => this.notice(this.t('an.sub.ready'))),
+      index: () => this.rights.index.done() });
   }
 
   hideExplorer() {

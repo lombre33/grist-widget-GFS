@@ -386,12 +386,12 @@ export const RANGEMENT_NEEDED = Object.freeze(['Utilisateur', 'Adresse']);
 
 const maxId = rows => rows.reduce((top, row) => Math.max(top, Number(row.id) || 0), 0);
 const byResource = existing => new Map(existing.resources.map(resource => [resource.id, resource]));
-const onTable = (existing, tableId) => {
+export const onTable = (existing, tableId) => {
   const map = byResource(existing); return existing.rules.filter(item => (map.get(item.resource) || {}).tableId === tableId); };
 
 // Les ressources et règles à écrire : une ressource par table (et une pour les colonnes écrites par Grist), les règles aux identifiants choisis, dans l'ordre
 // (rulePos).
-function rulesActions(existing, groups) {
+export function rulesActions(existing, groups) {
   let resource = maxId(existing.resources);
   let id = maxId(existing.rules);
   const actions = [];

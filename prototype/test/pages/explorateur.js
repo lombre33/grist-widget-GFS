@@ -264,6 +264,9 @@ async function mount() {
   const place = () => ({
     label: i18n.t('dock.place'), icon: 'dock-left', submenu: EDGES.map(([edge, glyph]) => ({ label: i18n.t(`dock.${edge}`), icon: glyph, check: window.__place === edge, run: () => { window.__place = edge; } })),
   });
+  // « Index des noms… » (js/rights/index-control.js) : la vraie question, sur un plan d'exemple (deux tables de fichiers, des règles à recopier, une table laissée de côté).
+  window.__indexAsk = () => void ask({ ...askOptions(i18n.t, 'index', { ok: true, tables: ['GFS_Fichiers', 'Publipostage_Modeles'], rules: true, skipped: ['Autre_Table'] }), container: stage,
+    inertTargets: () => [explorer.root] });
   window.__about = () => void ask({ title: i18n.t('about.title'), message: i18n.t('about.text'), items: aboutItems(i18n.t), confirmLabel: i18n.t('about.close'), container: stage, inertTargets: () => [explorer.root] });
   // « Apps et extensions » et « Table de travail » (js/apps/modules-window.js, js/apps/work-window.js ; test/voile-firefox.mjs) : des fenêtres à part de la base commune, dont le fond ne ferme rien non plus.
   window.__modulesWindow = () => void new ModulesWindow({ container: stage, i18n, locale, model: () => ({ items: [], active: 0, total: 0 }), blocked: () => null, inertTargets: () => [explorer.root], on: {}, onClose: () => {} }).open();
@@ -406,7 +409,8 @@ async function mount() {
     lockOf: file => (file.received ? received.lockOf(file) : (file.name === 'Autre format' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => window.__importTypes || [], canClose: () => window.__canClose !== false,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
       langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(), onDependencies: () => { window.__dependenciesAsked = (window.__dependenciesAsked || 0) + 1; void window.__dependencies(); },
-      manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
+      manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }),
+      index: () => ({ why: null, open: () => { window.__indexFromSettings = (window.__indexFromSettings || 0) + 1; window.__indexAsk(); }, notice: text => window.__notices.push(text) }) }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; }, get notices() { return window.__noticeStore; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
     onImport: entry => { window.__imported = entry.valeur; }, onTemplates: () => { window.__templatesAsked = (window.__templatesAsked || 0) + 1; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file),

@@ -15,6 +15,7 @@ import { rowsOf } from '../rights/rights.js';
 import { loadReceived } from '../sharing/received-files.js';
 import { loadNoticeSources } from '../sharing/notice-store.js';
 import { neededColumns } from './explorer-sql.js';
+import { hasIndex, readIndexedTable, readIndexedLinks } from './index-reader.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -28,6 +29,7 @@ function lightPlan(tables, apps) {
   const plan = [{ table: nameIn(tables, BIN_TABLE), wanted: BIN_LIGHT }];
   for (const { manifest } of apps) {
     for (const spec of manifest.fichiers || []) {
+      if (hasIndex(tables, spec)) continue; // l'index des noms rend ces lignes sans la lecture SQL (js/explorer/index-reader.js)
       plan.push({ table: nameIn(tables, spec.table), wanted: neededColumns(spec) });
       for (const rule of (spec.poids && spec.poids.liees) || []) plan.push({ table: nameIn(tables, rule.table), wanted: [rule.colonne] });
     }
@@ -81,14 +83,22 @@ export async function loadAttachments(port) {
   try { return { data: await port.doc.fetchTable('_grist_Attachments') }; } catch (error) { return { error }; }
 }
 
-// Les tables d'une table de fichiers d'une app, lues ensemble : { main, filing, links } (la table des fichiers, son rangement, ses tables liées).
+// Les lignes d'une table de fichiers d'après son index des noms (js/explorer/index-reader.js) : { main, links }, ou null (pas d'index, ou il n'est pas sûr).
+async function readIndexed(port, tables, spec) {
+  if (!tables || !hasIndex(tables, spec)) return null;
+  const [main, links] = await Promise.all([readIndexedTable(port.doc, tables, spec), readIndexedLinks(port.doc, tables, spec)]);
+  return main && links ? { main, links } : null;
+}
+
+// Les tables d'une table de fichiers d'une app, lues ensemble : { main, filing, links, indexed } (la table des fichiers, son rangement, ses tables liées ;
+// `indexed` : les deux premières viennent de l'index des noms, sans lire de contenu).
 async function readSpec(port, tables, spec, light) {
-  const [main, filing, links] = await Promise.all([
-    readTable(port, tables, spec.table, light, neededColumns(spec)),
-    spec.rangement ? readTable(port, tables, spec.rangement.table) : { data: null },
-    readLinked(port, tables, spec, light),
-  ]);
-  return { main, filing, links };
+  const filing = spec.rangement ? readTable(port, tables, spec.rangement.table) : { data: null };
+  const indexed = await readIndexed(port, tables, spec);
+  if (indexed) return { ...indexed, filing: await filing, indexed: true };
+  const [main, rest, links] = await Promise.all([readTable(port, tables, spec.table, light, neededColumns(spec)), filing,
+    readLinked(port, tables, spec, light)]);
+  return { main, filing: rest, links, indexed: false };
 }
 
 // Tout ce que la lecture demande à Grist, en deux temps : la liste des tables, puis toutes les tables ensemble (chacune ne dépend que de son nom, jamais d'une
@@ -104,12 +114,14 @@ async function readEverything(real, apps, reader, guard) {
   // le rangement de GFS, les espaces et les fichiers reçus se lisent pendant que la lecture légère prépare la sienne
   const own = Promise.all([readTable(port, tables, TABLE), loadSpaces(real.doc, tables), loadReceived(real, tables), loadNoticeSources(real.doc, tables)]);
   // seulement les tables que le document a : un document sans aucune table de fichiers ne demande ni cadre d'envoi ni jeton
-  if (light) await light.prepare(lightPlan(tables, apps).filter(item => tables.includes(item.table)));
+  const plan = tables ? lightPlan(tables, apps).filter(item => tables.includes(item.table)) : [];
+  if (light && plan.length) await light.prepare(plan);
   const specs = apps.flatMap(({ manifest }) => (manifest.fichiers || []).map(spec => ({ manifest, spec })));
   const [bin, ...found] = await Promise.all([readTable(port, tables, BIN_TABLE, light, BIN_LIGHT),
     ...specs.map(({ spec }) => readSpec(port, tables, spec, light))]);
   const [gfs, spaces, received, notices] = await own;
-  return { tables, light, gfs, spaces, bin, received, notices, reads: specs.map((item, index) => ({ ...item, ...found[index] })) };
+  return { tables, light, usedLight: Boolean(light && plan.length), gfs, spaces, bin, received, notices,
+    reads: specs.map((item, index) => ({ ...item, ...found[index] })) };
 }
 
 // `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas ; ou la
@@ -143,12 +155,23 @@ export async function loadFiles(port, apps, identity = '', reader = null, guard 
     stats.rows += one.found.length;
   }
   stats.bytes = [...files, ...trash].reduce((sum, file) => sum + file.weight, 0);
-  stats.light = Boolean(raw.light && raw.light.isActive());
+  stats.light = Boolean(raw.usedLight && raw.light.isActive());
+  stats.indexed = noContent(raw);
   if (reader) reader.learn(stats.bytes, problems.length > 0);
   stats.ms = Math.round(performance.now() - started);
   return { files, trash, folders, received: raw.received, spaces: raw.spaces, notices: raw.notices, problems, stats,
     gfsTable: raw.gfs.data ? nameIn(raw.tables, TABLE) : null,
     binTable: raw.bin.data ? nameIn(raw.tables, BIN_TABLE) : null };
+}
+
+// La lecture n'a lu le contenu d'aucun fichier : chaque table de fichiers que le document a vient de son index des noms, et la corbeille de GFS (qui garde une
+// copie de chaque ligne supprimée) est absente, vide ou lue par la lecture légère (js/explorer/live-list.js : seule une telle lecture se refait toute seule sur
+// un gros document).
+function noContent(raw) {
+  const present = raw.reads.filter(({ spec }) => raw.tables && raw.tables.some(name => sameName(name, spec.table)));
+  const bin = raw.bin;
+  const binRows = bin && bin.data && Array.isArray(bin.data.id) ? bin.data.id.length : 0;
+  return present.length > 0 && present.every(read => read.indexed) && (binRows === 0 || Boolean(bin.weights));
 }
 
 // Ce que la lecture range avec l'adresse de la personne : le rangement de GFS, les espaces partagés et la corbeille des apps. Rend { context, folders },

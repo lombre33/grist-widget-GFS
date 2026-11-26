@@ -2,7 +2,12 @@
 // (charte : jamais `confirm()`), le prix dit avant d'écrire (la première règle coûte l'import et la copie aux éditeurs, 11.4 point 6 ; la page de tout le monde
 // se recharge, 11.5 point 3), puis l'écriture par `RightsWriter`.
 
-const KIND = { shared: 'shared', 'remove-level': 'remove', close: 'close', open: 'open', sharing: 'sharing', unsharing: 'unsharing' };
+const KIND = { shared: 'shared', 'remove-level': 'remove', close: 'close', open: 'open', sharing: 'sharing', unsharing: 'unsharing', index: 'index' };
+
+// Ce que dit la question de l'index des noms (js/rights/index-control.js) : les tables qui en ont un, ce que Grist y ajoute et ce qui ne bouge pas.
+const indexItems = (t, plan) => [t('rights.ask.index.item1', { tables: plan.tables.join(', ') }), t('rights.ask.index.item2'),
+  ...(plan.rules ? [t('rights.ask.index.item3')] : []), t('rights.ask.index.item4'),
+  ...(plan.skipped && plan.skipped.length ? [t('rights.ask.index.skipped', { tables: plan.skipped.join(', ') })] : [])];
 
 // Les textes de la question pour `kind`, d'après son plan (le plan dit si c'est la première règle du document).
 export function askOptions(t, kind, plan) {
@@ -14,9 +19,12 @@ export function askOptions(t, kind, plan) {
   if (kind === 'sharing') items.push(...(plan.closes ? [t('rights.ask.sharing.structure'), t('rights.ask.close.item2')] : []), t('rights.ask.sharing.item1'),
     ...(plan.appTables && plan.appTables.length ? [t('rights.ask.sharing.apps', { tables: plan.appTables.join(', ') })] : []),
     ...(plan.closes ? [] : [t('rights.ask.sharing.item2')]), ...(plan.filing ? [t('rights.ask.sharing.filing')] : []));
+  if (kind === 'index') items.push(...indexItems(t, plan));
   if (plan.firstRule) items.push(t('rights.ask.firstRule'));
   const word = kind === 'sharing' && plan.extends ? `${key}.extend` : key;
-  return { title: t(`rights.ask.${word}.title`), message: t(`rights.ask.${word}.message`), items, note: t('rights.ask.reload'),
+  // L'index ne recharge la page que s'il recopie des règles ; les autres gestes écrivent toujours des règles.
+  const note = kind === 'index' ? (plan.rules ? t('rights.ask.index.reload') : '') : t('rights.ask.reload');
+  return { title: t(`rights.ask.${word}.title`), message: t(`rights.ask.${word}.message`), items, note,
     confirmLabel: t(`rights.ask.${word}.confirm`), cancelLabel: t('rights.ask.cancel'), safeFirst: true };
 }
 
@@ -28,8 +36,9 @@ export async function runAction({ kind, plans, t, ask, writer, resume }) {
   if (!(await ask(askOptions(t, kind, plan)))) return false;
   const result = await writer.apply(kind, resume);
   if (result.ok) return true;
-  const message = result.message ? t('rights.ask.failed.message', { message: result.message }) : t('rights.ask.failed.stale');
-  await ask({ title: t('rights.ask.failed.title'), message, confirmLabel: t('rights.ask.ok') });
+  const failed = kind === 'index' ? 'rights.ask.index.failed' : 'rights.ask.failed';
+  const message = result.message ? t(`${failed}.message`, { message: result.message }) : t(`${failed}.stale`);
+  await ask({ title: t(`${failed}.title`), message, confirmLabel: t('rights.ask.ok') });
   return false;
 }
 

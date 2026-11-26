@@ -243,3 +243,44 @@ test('une table que GFS crée annonce son identifiant réel, une écoute qui éc
   await second.ready();
   assert.deepEqual(created, ['GFS_Rangement2']);
 });
+
+// Un résumé de l'index des noms : Grist ne lui donne pas de vue propre (`primaryViewId` 0), seulement la page qu'on lui a créée, et une section « brute » sans page.
+function withSummary(meta, name, view, pagePos) {
+  const id = 70 + view;
+  meta.tables.push({ id, tableId: name, primaryViewId: 0 });
+  meta.sections.push({ id: 400 + view, parentId: 0, parentKey: 'record', tableRef: id }, { id: 500 + view, parentId: view, parentKey: 'record', tableRef: id });
+  meta.pages.push({ id: 90 + view, viewRef: view, indentation: 0, pagePos, options: '' });
+  return meta;
+}
+
+test('planTidy : la page d\'un résumé de l\'index des noms passe sous GFS, mais seulement quand GFS le dit sien (le nom est celui d\'une table d\'app)', () => {
+  const meta = withSummary(document({ names: ['GFS', 'GFS_Rangement'] }), 'Publipostage_Modeles_summary_GFS_Cle', 9, 10);
+  assert.deepEqual(planTidy(meta, 10, null).moved, ['GFS_Rangement'], 'sans le nom, c\'est la page de la personne : elle reste');
+  const plan = planTidy(meta, 10, null, ['publipostage_modeles_summary_gfs_cle']);
+  assert.deepEqual(plan.moved, ['GFS_Rangement', 'Publipostage_Modeles_summary_GFS_Cle']);
+  assert.deepEqual(plan.seen, ['GFS_Rangement', 'Publipostage_Modeles_summary_GFS_Cle']);
+  assert.deepEqual(layout(applied(meta, plan.actions)).slice(0, 2), [['GFS', 0], ['GFS_Rangement', 1]]);
+  assert.equal(applied(meta, plan.actions).pages.find(page => page.viewRef === 9).indentation, 1);
+});
+
+test('planTidy : un résumé dont la page montre autre chose, ou que la personne a rangé, n\'est pas touché ; la marque l\'empêche de revenir', () => {
+  const meta = withSummary(document({ names: ['GFS'] }), 'Pub_summary_GFS_Cle', 9, 10);
+  meta.sections.push({ id: 900, parentId: 9, parentKey: 'record', tableRef: 1 }); // un autre widget sur la même page
+  assert.deepEqual(planTidy(meta, 10, null, ['Pub_summary_GFS_Cle']).moved, []);
+  const own = withSummary(document({ names: ['GFS'] }), 'Pub_summary_GFS_Cle', 9, 10);
+  assert.deepEqual(planTidy(own, 10, ['Pub_summary_GFS_Cle'], ['Pub_summary_GFS_Cle']).moved, [], 'la marque connaît déjà ce résumé');
+  own.pages.find(page => page.viewRef === 9).indentation = 1;
+  assert.deepEqual(planTidy(own, 10, null, ['Pub_summary_GFS_Cle']).moved, [], 'rangé sous une autre page par la personne');
+});
+
+test('tidy : les noms de l\'index viennent de l\'environnement, à chaque passage', async t => {
+  quiet(t);
+  const meta = withSummary(document({ names: ['GFS'] }), 'Pub_summary_GFS_Cle', 9, 10);
+  const writes = [];
+  const doc = { fetchTable: async name => columnar({ _grist_Tables: meta.tables, _grist_Views_section: meta.sections, _grist_Pages: meta.pages }[name]),
+    applyUserActions: async actions => { writes.push(...actions); } };
+  const state = new GristState();
+  const tree = new PageTree({ doc, state, section: async () => ({ id: 10 }), enabled: () => true, mark: async () => {}, names: () => ['Pub_summary_GFS_Cle'] });
+  await tree.tidy();
+  assert.ok(writes.some(action => action[2] === 99 && action[3].indentation === 1), 'la page du résumé est passée sous GFS');
+});

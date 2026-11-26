@@ -163,6 +163,7 @@ function measureAboutWindow() {
     view: [document.documentElement.clientWidth, document.documentElement.clientHeight], frame: [frame.left, frame.top, frame.right, frame.bottom], title: win.querySelector('h2').textContent,
     items: [...win.querySelectorAll('.ask-items li')].map(item => item.textContent), buttons: buttons.map(button => button.dataset.fk), wide: body.scrollWidth - body.clientWidth,
     active: document.activeElement ? document.activeElement.dataset.fk || null : null, close: [first.left + first.width / 2, first.top + first.height / 2],
+    note: win.querySelector('.ask-note') ? win.querySelector('.ask-note').textContent : null, footOut: buttons.some(button => box(button).bottom > frame.bottom + 0.5 || box(button).top < frame.top),
   };
 }
 
@@ -306,7 +307,7 @@ async function columnProblems(page, width, language, tag) {
   return found;
 }
 
-// Le bouton « Réglages » à la vraie souris, puis la ligne `row` du menu (0 : Langue, 1 : Thème, 2 : Gérer les partages, 3 : Dépendances, 4 : Réglages avancés, 5 : Position de la barre, 6 : À propos) ; rend ce que le menu montrait avant ce clic.
+// Le bouton « Réglages » à la vraie souris, puis la ligne `row` du menu (0 : Langue, 1 : Thème, 2 : Gérer les partages, 3 : Index des noms, 4 : Dépendances, 5 : Réglages avancés, 6 : Position de la barre, 7 : À propos) ; rend ce que le menu montrait avant ce clic.
 async function openSettings(page, row) {
   await page.click(...await page.run(centerOfGlyph, 'sliders'));
   const shown = await page.until(measureSettingsMenu, [], 1500);
@@ -314,21 +315,23 @@ async function openSettings(page, row) {
   return shown;
 }
 
-const SETTINGS_ROWS = { fr: ['Langue', 'Thème…', 'Gérer les partages…', 'Dépendances…', 'Réglages avancés', 'Position de la barre', 'À propos…'], en: ['Language', 'Theme…', 'Manage sharing…', 'Dependencies…', 'Advanced settings', 'Bar position', 'About…'] };
+const SETTINGS_ROWS = { fr: ['Langue', 'Thème…', 'Gérer les partages…', 'Index des noms…', 'Dépendances…', 'Réglages avancés', 'Position de la barre', 'À propos…'],
+  en: ['Language', 'Theme…', 'Manage sharing…', 'Name index…', 'Dependencies…', 'Advanced settings', 'Bar position', 'About…'] };
 const ADVANCED_ROWS = { fr: ['Bouton LanguageTool'], en: ['LanguageTool button'] };
 const LANGUAGE_ROWS = { fr: ['Comme Grist (Français)', 'Français', 'English'], en: ['Same as Grist (English)', 'Français', 'English'] };
 const EDGE_ROWS = { fr: ['À gauche', 'En haut', 'À droite', 'En bas'], en: ['Left', 'Top', 'Right', 'Bottom'] };
+const INDEX_TITLE = { fr: 'Créer l’index des noms ?', en: 'Create the name index?' };
 const ABOUT_TITLE = { fr: 'À propos de Grist Factory Suite', en: 'About Grist Factory Suite' };
 const ABOUT_LINES = { fr: ['Version : ', 'Auteur : Grist Factory', 'Site : grist-factory.fr', 'Licence : GNU GPL v3.0'], en: ['Version: ', 'Author: Grist Factory', 'Site: grist-factory.fr', 'License: GNU GPL v3.0'] };
 const inside = (frame, [width, height]) => frame[0] >= -0.5 && frame[1] >= -0.5 && frame[2] <= width + 0.5 && frame[3] <= height + 0.5;
 const overlaps = (a, b) => a[0] < b[2] - 0.5 && a[2] > b[0] + 0.5 && a[1] < b[3] - 0.5 && a[3] > b[1] + 0.5;
 
-// Le menu qu'on vient d'ouvrir : ses sept lignes dans l'ordre, une seule coupure, 28 px chacune, aucun nom coupé, dans la page, sous (ou sur) le bouton sans le recouvrir.
+// Le menu qu'on vient d'ouvrir : ses huit lignes dans l'ordre, une seule coupure, 28 px chacune, aucun nom coupé, dans la page, sous (ou sur) le bouton sans le recouvrir.
 function settingsLayout(shown, language, note) {
   const { menu } = shown;
   const names = menu.items.map(item => item.label);
   if (names.join('|') !== SETTINGS_ROWS[language].join('|')) note('les lignes', `les lignes sont « ${names.join(' | ')} » au lieu de « ${SETTINGS_ROWS[language].join(' | ')} »`);
-  if (menu.items.map(item => item.popup).join() !== 'true,false,false,false,true,true,false') note('les sous-menus', 'seules « Langue », « Réglages avancés » et « Position de la barre » ouvrent un sous-menu');
+  if (menu.items.map(item => item.popup).join() !== 'true,false,false,false,false,true,true,false') note('les sous-menus', 'seules « Langue », « Réglages avancés » et « Position de la barre » ouvrent un sous-menu');
   if (names.some(name => /LanguageTool/.test(name))) note('LanguageTool : au même niveau', 'une ligne du menu nomme LanguageTool : elle doit être dans « Réglages avancés »');
   if (menu.separators !== 1) note('le séparateur', `le menu a ${menu.separators} séparateur(s) au lieu d'un, avant « À propos »`);
   for (const item of menu.items) {
@@ -361,9 +364,32 @@ async function manageProblems(page, note) {
   if (await page.run(() => Boolean(document.querySelector('.menu')))) note('« Gérer les partages » : le menu', 'le menu devait se fermer au clic sur la ligne');
 }
 
+// « Index des noms… » (26/11, choix du porteur « Index tenu par Grist ») : un clic de la vraie souris sur la ligne ferme le menu et ouvre la question du propriétaire (la page d'essai prend le plan d'un
+// document de deux tables de fichiers, avec des règles à recopier et une table laissée de côté) : son titre, ses quatre lignes et celle de la table laissée de côté, sa note sur le rechargement, ses deux boutons,
+// le tout dans la page à 700 × 400 sans texte qui déborde ; Échap la ferme et rend le clavier à « Réglages ».
+async function indexProblems(page, language, note) {
+  const already = await page.run(() => window.__indexFromSettings || 0);
+  await openSettings(page, 3);
+  const win = await page.until(measureAboutWindow, [], 1500).catch(() => null);
+  if (!win) { note('« Index des noms » sans question', 'la ligne « Index des noms… » n\'ouvre aucune fenêtre'); return; }
+  if (win.title !== INDEX_TITLE[language]) note('« Index des noms » : le titre', `le titre est « ${win.title} » au lieu de « ${INDEX_TITLE[language]} »`);
+  if (win.items.length !== 5) note('« Index des noms » : les lignes', `la question a ${win.items.length} ligne(s) au lieu de cinq : « ${win.items.join(' | ')} »`);
+  if (!win.items[0] || !win.items[0].includes('Publipostage_Modeles')) note('« Index des noms » : les tables', 'la première ligne devrait nommer les tables de fichiers');
+  if (win.buttons.join() !== 'ask-no,ask-yes' && win.buttons.join() !== 'ask-yes,ask-no') note('« Index des noms » : les boutons', `les boutons sont « ${win.buttons.join(', ')} » au lieu d'« Annuler » et du bouton qui crée`);
+  if (!win.note) note('« Index des noms » : la note', 'la question devrait dire que la page se recharge quand des règles se recopient');
+  if (!inside(win.frame, win.view)) note('« Index des noms » : hors de la page', `la fenêtre (${win.frame.map(Math.round).join(', ')}) sort de la page de ${win.view.join(' × ')} px`);
+  if (win.wide > 1) note('« Index des noms » : texte coupé', `le texte déborde de ${win.wide} px`);
+  if (win.footOut) note('« Index des noms » : le pied', 'les boutons sortent de la fenêtre : le pied doit rester en bas, la liste défile');
+  const opened = (await page.run(() => window.__indexFromSettings || 0)) - already;
+  if (opened !== 1) note('« Index des noms » : le clic', `un clic sur la ligne devait ouvrir la question une fois (ouverte ${opened} fois)`);
+  await page.press('Escape');
+  await page.until(() => !document.querySelector('.mod.ask'), [], 1500).catch(() => note('« Index des noms » : Échap', 'Échap ne ferme pas la question'));
+  if (!(await page.run(afterSettingsGesture)).onButton) note('« Index des noms » : le clavier revient', 'après Échap, le clavier n\'est pas revenu sur le bouton « Réglages »');
+}
+
 // La fenêtre « À propos », ouverte par la ligne du menu : son titre, ses quatre lignes, son seul bouton « Fermer », dans la page, le clavier sur le bouton ; le clic sur le bouton la ferme et rend le clavier à « Réglages ».
 async function aboutProblems(page, language, note) {
-  await openSettings(page, 6);
+  await openSettings(page, 7);
   const win = await page.until(measureAboutWindow, [], 1500).catch(() => null);
   if (!win) { note('« À propos » sans fenêtre', 'la ligne « À propos » n\'ouvre aucune fenêtre'); return; }
   if (win.title !== ABOUT_TITLE[language]) note('« À propos » : le titre', `le titre est « ${win.title} » au lieu de « ${ABOUT_TITLE[language]} »`);
@@ -393,29 +419,29 @@ async function settingsGestures(page, language, note) {
   if (!now.onButton) note('Langue : le clavier', 'après le choix d\'une langue, le clavier n\'est pas revenu sur le bouton « Réglages »');
   // « Réglages avancés » : son sous-menu n'a que « Bouton LanguageTool », une case à cocher décochée ; un clic à la souris la coche, les menus se ferment et le clavier revient
   // au bouton « Réglages » ; rouvert, le sous-menu la montre cochée.
-  await openSettings(page, 4);
+  await openSettings(page, 5);
   const advanced = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
   if (!advanced) { note('Réglages avancés : sans sous-menu', 'la ligne « Réglages avancés » n\'ouvre aucun sous-menu'); return; }
-  subLayout(advanced, from.menu.items[4], ADVANCED_ROWS[language], '', from.menu.items[4].label, note);
+  subLayout(advanced, from.menu.items[5], ADVANCED_ROWS[language], '', from.menu.items[5].label, note);
   const box = advanced.sub.items[0];
   if (box.role !== 'menuitemcheckbox' || box.checked !== 'false') note('LanguageTool : la case', `la ligne « Bouton LanguageTool » devait être une case à cocher décochée (${box.role}, ${box.checked})`);
   await page.click(...box.center);
   now = await after();
   if (now.langtool !== true) note('LanguageTool : le choix', `cliquer « Bouton LanguageTool » devait le choisir (${now.langtool})`);
   if (now.menus !== 0 || !now.onButton) note('LanguageTool : le menu', `après le clic, ${now.menus} menu(s) restent ouverts, le clavier ${now.onButton ? 'sur' : 'hors de'} « Réglages »`);
-  await openSettings(page, 4);
+  await openSettings(page, 5);
   const checked = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
   if (!checked || checked.sub.items[0].checked !== 'true') note('LanguageTool : la coche', 'rouvert, le sous-menu devait montrer « Bouton LanguageTool » coché');
   await page.press('Escape');
   await page.press('Escape');
-  await openSettings(page, 5);
+  await openSettings(page, 6);
   const edges = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
   if (!edges) { note('Position : sans sous-menu', 'la ligne « Position de la barre » n\'ouvre aucun sous-menu'); return; }
-  subLayout(edges, from.menu.items[5], EDGE_ROWS[language], 0, from.menu.items[5].label, note);
+  subLayout(edges, from.menu.items[6], EDGE_ROWS[language], 0, from.menu.items[6].label, note);
   await page.click(...edges.sub.items[1].center);
   now = await after();
   if (now.place !== 'haut') note('Position : le choix', `choisir « ${EDGE_ROWS[language][1]} » rend « ${now.place} » à la page au lieu de « haut »`);
-  await openSettings(page, 5);
+  await openSettings(page, 6);
   const again = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
   if (again && again.sub.items.findIndex(item => item.checked === 'true') !== 1) note('Position : la coche suit', 'la coche n\'est pas passée sur le bord choisi');
   await page.press('Escape');
@@ -443,6 +469,7 @@ async function settingsProblems(page, language, width, scale, tag) {
   if (await page.run(() => Boolean(document.querySelector('.menu')))) { note('Échap ne ferme pas', 'des menus restent ouverts après deux Échap'); await page.run(() => { for (const menu of document.querySelectorAll('.menu')) menu.remove(); }); }
   if (width === 700 && scale === 1) await settingsGestures(page, language, note);
   await manageProblems(page, note);
+  await indexProblems(page, language, note);
   await aboutProblems(page, language, note);
   await page.run(() => window.__resetSettings());
   return found;

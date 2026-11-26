@@ -86,3 +86,32 @@ ouverte, il faudra donc que l'app sache produire et installer un paquet). Coût 
 4. **Les types suivants** : Grist-BI (consigne : déclarer sa recette de copie), puis Form+ (copie par appel) ; Automation+ quand le porteur le veut.
 
 À poser plus tard, une carte chacune, si besoin : emporter aussi l'e-mail lié ; envoyer les tables du modèle vides (comme la galerie, « Créer avec ses tables ») ; un modèle reçu qui reste lisible sans être ajouté.
+
+## Complément du 26/11 : l'écriture en direct entre deux documents (« un même document dans deux Grist se comporte comme dans le même Grist »)
+
+Le porteur (26/11) veut, dans un monde idéal : (1) un message « modifié, rechargez » quand l'autre document change le modèle, comme dans un même Grist ; (2) les changements visibles à l'ouverture suivante quand une
+seule personne édite à la fois ; (3) l'écriture collaborative en direct, même avec un délai plus gros. Et que **seuls les éléments modifiés voyagent**, jamais tout le modèle à chaque retouche.
+
+**Ce qui existe déjà : Publipostage+ écrit en direct par morceaux.** Son extension d'écriture en direct (`extensions/edition/live-sync.js`, lue le 26/11) tient le texte du modèle dans un document Yjs et l'échange par les lignes
+d'**une table du document** (`Publipostage_Direct`, six colonnes) : « u » un paquet de frappes (quelques dizaines d'octets), **ajouté puis jamais modifié** ; « s » l'instantané du modèle (une ligne, remplacée à la compaction,
+toutes les 60 lignes) ; « p » la présence (nom, couleur, curseur : une ligne par personne, **modifiée sur place toutes les 0,4 s**) ; « d » « enregistré ». Une mise à jour reçue deux fois ou dans le désordre ne change rien (propriété de Yjs).
+C'est donc déjà la solution au « seulement ce qui a changé » : il manque le **relais d'un document à l'autre**.
+
+**Mesure 4, dans un vrai Grist 1.7.19** (banc `mesure-4-salon-relais.log` ; table à l'image de `Publipostage_Direct`, lien à un sens du moteur de GFS, filtre `Kind` dans « u » et « s », réception en archive) :
+
+1. **Le délai** : un paquet écrit chez l'envoyeur est lu chez l'autre en **2,5 s au mieux, 6,9 s en médiane, 11,4 s au pire** (12 paquets ; le receveur passe toutes les 10 s tant que des lignes arrivent). C'est le « délai un peu plus gros » du porteur.
+2. **Le poids** : 300 paquets de 60 à 80 signes (deux personnes qui tapent, environ 3 paquets par seconde pendant 100 s) : l'envoyeur passe de 1,3 à 2,2 Mo (**≈ 2,9 Ko par paquet**), le receveur de 2,7 à 4,8 Mo (**≈ 7,2 Ko par paquet**). Un paquet pèse donc 40 à 100 fois son contenu :
+   une heure de frappe à ce rythme ferait environ 30 Mo chez l'envoyeur et 75 Mo chez le receveur. **Le relais doit donc grouper les frappes** (un paquet toutes les deux à cinq secondes, pas toutes les 0,4 s) et le journal du moteur doit pouvoir s'effacer (`cleanJournal`).
+3. **La compaction ne perd rien** : l'instantané remplacé (85 Ko) arrive en 5 s ; les 60 paquets supprimés chez l'envoyeur **restent chez le receveur, marqués « supprimée à la source », et lisibles** (60 sur 60). Chaque côté compacte donc seul : la suppression n'a pas à voyager.
+4. **La présence reste chez l'envoyeur** : un filtre sur « Kind » ne laisse partir ni « p » ni « d » (la présence d'un autre document n'est pas voulue : trop coûteuse, 0,4 s).
+
+**Mesure avec Yjs seul (26/11)** : 20 000 signes tapés par paquets de six signes = 3 199 paquets de 44 octets en médiane (56 au plus), 135 Ko au total, et un instantané de 85 Ko : l'ordre de grandeur de ce qui voyagerait.
+
+**Ce qu'il faudrait pour que ce relais fasse un même modèle des deux côtés** (rien n'est codé) :
+- **Publipostage+** : le « salon » d'un modèle est repéré par le numéro de ligne du modèle (`Doc`), qui **diffère d'un document à l'autre** : il faut une identité commune (le jeton du lien) ; lire aussi les paquets reçus d'un autre document (GFS n'écrit jamais dans la table de l'app) ; un repli propre quand le relais est coupé. Consigne à poser, après accord.
+- **GFS** : un lien dans chaque sens par modèle partagé en direct (aujourd'hui un seul sens ; l'« Échange » du moteur n'est pas nécessaire et pas mesuré), le filtre sur « Kind », la limite de débit, le bouton d'effacement du journal, un message clair « l'autre document n'est pas à jour » (le moteur dit « Copie à jour » même quand il n'a rien envoyé : mesure 1).
+- **L'édition classique (hors direct) ne produit pas de paquets** : elle enregistre tout le modèle. Pour les niveaux 1 et 2 sans le direct, il faut donc envoyer le modèle **entier mais une fois par séance** (à la fermeture ou après quelques minutes sans frappe), pas à chaque enregistrement : un message « modifié, rechargez » à l'autre document. Publipostage+ devrait dire à GFS « ce modèle vient d'être modifié ».
+
+**Pas mesuré** : les deux sens ensemble, une vraie frappe de deux personnes à travers le relais (Yjs rejoue les paquets, il ne devrait rien perdre : lu, pas vu), Firefox, la DINUM (webhook entre deux documents de l'instance), la durée de vie de l'historique de Grist.
+
+*Les noms de tables de ces essais (`GFS_Fichiers`, `GFS_Recus`) sont ceux d'avant le passage de GFS à l'anglais (faits vérifiés 181).*

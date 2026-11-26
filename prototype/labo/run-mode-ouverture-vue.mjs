@@ -3,7 +3,8 @@
 // `apps/publipostage` à `0b3799de` ou après : la référence de GFS est plus ancienne) et le miroir des bibliothèques (`build-mirror.sh`, refait avec cette copie).
 //   1. Le choix « Lecture » est écrit dans la vue (`customView.widgetOptions.pp_view_open_mode`), sans refus (la phrase rouge « Ce choix n'est pas gardé » ne paraît pas) et sans barre « Enregistrer » de Grist.
 //   2. GFS repart : le réglage est toujours dans le document ; un document ordinaire et un e-mail, ouverts par un double-clic quand l'app n'est pas ouverte, s'ouvrent en Lecture.
-//   3. Un macro-modèle s'ouvre en Édition, quoi que dise la vue : la règle de l'app (sa Lecture n'a rien à montrer d'un macro-modèle), dite par le texte du réglage lui-même.
+//   3. Un macro-modèle s'ouvrait en Édition, quoi que dise la vue (règle de l'app à `55d96c7c` : sa Lecture n'a rien à montrer d'un macro-modèle). Le porteur a choisi « Lecture aussi » (26/11, consigne 110) :
+//      le constat 3 dit « CONSTAT » tant que l'app ne l'a pas fait, « OK » ensuite.
 //   4. La vue a un modèle (Réglages > Vue > « Utiliser le modèle ouvert pour cette vue ») : GFS repart, la vue arrive sur l'app et ce modèle s'ouvre en Lecture.
 //   5. Constat : l'app est déjà ouverte, la personne est passée en Édition, puis elle ouvre un autre document par l'explorateur : l'app garde le mode du moment (le réglage vaut au départ de l'app).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
@@ -105,10 +106,12 @@ app = await lab.appFrame(/publipostage/);
 await waitStarted();
 const macro = await shown();
 say('3. macro-modèle au départ :', macro);
-check('3. un macro-modèle s\'ouvre en Édition, quoi que dise la vue (règle de l\'app, dite dans le texte du réglage)', macro.name === FILES.macro && macro.mode === 'edit', macro);
+check('3. le macro-modèle du labo s\'est ouvert (au départ de l\'app, par un double-clic)', macro.name === FILES.macro && macro.mode !== 'none', macro);
+// Le choix du porteur du 26/11 (consigne 110) : « Lecture aussi pour les macro-modèles ». Tant que l'app ouvre toujours l'Édition, c'est un constat, pas un échec.
+constat('3. un macro-modèle s\'ouvre en Lecture quand la vue le dit (consigne 110 ; l\'app l\'ouvrait en Édition à `55d96c7c`)', macro.mode === 'read', macro);
 await openViewSettings();
 const hint = await app.locator('#settings-viewopen-section').first().innerText();
-check('3. le texte du réglage dit que le macro-modèle s\'ouvre toujours en Édition', /macro-(mod|templ)/i.test(hint), hint.slice(-200));
+say('3. petit texte du réglage :', hint.slice(-200));
 await page.keyboard.press('Escape');
 await lab.shotPanel(run, '3-macro-modele', frame).catch(() => {});
 

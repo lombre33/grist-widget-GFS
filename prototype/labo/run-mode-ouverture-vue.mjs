@@ -1,10 +1,10 @@
 // Le mode d'ouverture de la vue de Publipostage+ sous GFS (`pp_view_open_mode`, « Réglages > Vue > S'ouvre en » ; consigne 099, point 1 ; contrats 2.5, points 3 et 5), avec la vraie app dans un vrai Grist,
-// à 700 × 400. La consigne 099 disait : « lu et essayé sur le manifeste, pas rejoué avec ton code dans un vrai Grist ». Voici le rejeu. Il demande une copie de l'app qui porte ce réglage (le sous-module
-// `apps/publipostage` à `0b3799de` ou après : la référence de GFS est plus ancienne) et le miroir des bibliothèques (`build-mirror.sh`, refait avec cette copie).
+// à 700 × 400. La consigne 099 disait : « lu et essayé sur le manifeste, pas rejoué avec ton code dans un vrai Grist ». Voici le rejeu. Il demande une copie de l'app qui porte ce réglage et la 110 (le sous-module
+// `apps/publipostage` à `9bde54be` ou après : la référence de GFS est plus ancienne) et le miroir des bibliothèques (`build-mirror.sh`, refait avec cette copie).
 //   1. Le choix « Lecture » est écrit dans la vue (`customView.widgetOptions.pp_view_open_mode`), sans refus (la phrase rouge « Ce choix n'est pas gardé » ne paraît pas) et sans barre « Enregistrer » de Grist.
 //   2. GFS repart : le réglage est toujours dans le document ; un document ordinaire et un e-mail, ouverts par un double-clic quand l'app n'est pas ouverte, s'ouvrent en Lecture.
-//   3. Un macro-modèle s'ouvrait en Édition, quoi que dise la vue (règle de l'app à `55d96c7c` : sa Lecture n'a rien à montrer d'un macro-modèle). Le porteur a choisi « Lecture aussi » (26/11, consigne 110) :
-//      le constat 3 dit « CONSTAT » tant que l'app ne l'a pas fait, « OK » ensuite.
+//   3. Un macro-modèle suit la vue réglée « Lecture » (choix du porteur du 26/11, consigne 110, faite par l'app à `9bde54be` ; à `55d96c7c` il s'ouvrait en Édition, quoi que dise la vue) : le macro-modèle du labo
+//      (composition vide) s'ouvre en Lecture ; un macro-modèle dont la composition retient un document s'ouvre en Lecture sur le document assemblé de la ligne lue ; la vue réglée « Édition » : il ouvre son résumé.
 //   4. La vue a un modèle (Réglages > Vue > « Utiliser le modèle ouvert pour cette vue ») : GFS repart, la vue arrive sur l'app et ce modèle s'ouvre en Lecture.
 //   5. Constat : l'app est déjà ouverte, la personne est passée en Édition, puis elle ouvre un autre document par l'explorateur : l'app garde le mode du moment (le réglage vaut au départ de l'app).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
@@ -15,7 +15,7 @@ import { say, check, constat } from './lab-common.mjs';
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `mode-ouverture-vue-${lang}-${scheme}`;
-const FILES = { document: 'Contrat de prestation', other: 'Quittance de loyer', email: 'Convocation de session', macro: 'Dossier de formation', folder: 'Formation' };
+const FILES = { document: 'Contrat de prestation', other: 'Quittance de loyer', email: 'Convocation de session', macro: 'Dossier de formation', assembled: 'Dossier assemblé', folder: 'Formation' };
 const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
 const warnings = [];
@@ -99,21 +99,53 @@ const email = await shown();
 say('2. e-mail au départ :', email);
 check('2. un e-mail ouvert par un double-clic s\'ouvre en Lecture', email.name === FILES.email && email.mode === 'read', email);
 
-// 3. Le macro-modèle : l'Édition, par la règle de l'app.
+// 3. Le macro-modèle : il suit la vue réglée « Lecture » (consigne 110). Celui du labo a une composition vide ; un second retient un document (une position fixe).
 await restart();
 await openInFolder(FILES.macro);
 app = await lab.appFrame(/publipostage/);
 await waitStarted();
 const macro = await shown();
 say('3. macro-modèle au départ :', macro);
-check('3. le macro-modèle du labo s\'est ouvert (au départ de l\'app, par un double-clic)', macro.name === FILES.macro && macro.mode !== 'none', macro);
-// Le choix du porteur du 26/11 (consigne 110) : « Lecture aussi pour les macro-modèles ». Tant que l'app ouvre toujours l'Édition, c'est un constat, pas un échec.
-constat('3. un macro-modèle s\'ouvre en Lecture quand la vue le dit (consigne 110 ; l\'app l\'ouvrait en Édition à `55d96c7c`)', macro.mode === 'read', macro);
+check('3. un macro-modèle s\'ouvre en Lecture quand la vue le dit (consigne 110 ; l\'app l\'ouvrait en Édition à `55d96c7c`)', macro.name === FILES.macro && macro.mode === 'read', macro);
 await openViewSettings();
 const hint = await app.locator('#settings-viewopen-section').first().innerText();
-say('3. petit texte du réglage :', hint.slice(-200));
+say('3. petit texte du réglage :', hint.slice(-220));
+check('3. le petit texte du réglage ne dit plus qu\'un macro-modèle s\'ouvre toujours en Édition', !/macro-(mod|templ)[^.;]*(toujours|always)/i.test(hint), hint.slice(-220));
 await page.keyboard.press('Escape');
 await lab.shotPanel(run, '3-macro-modele', frame).catch(() => {});
+
+// 3 bis. Un macro-modèle dont la composition retient un document : sa Lecture montre le document assemblé de la ligne lue ; la vue réglée « Édition » : son résumé.
+await frame.evaluate(async () => {
+  const data = await grist.docApi.fetchTable('Publipostage_Modeles');
+  const id = data.id[data.Nom.indexOf('Contrat de prestation')];
+  await grist.docApi.applyUserActions([['AddRecord', 'Publipostage_Modeles', null, {
+    Nom: 'Dossier assemblé', TypeModele: 'macro', Contenu: JSON.stringify({ slots: [{ type: 'fixed', modeleId: id }] }), DateModif: Math.floor(Date.now() / 1000),
+  }]]);
+});
+const readerText = () => app.evaluate(() => document.getElementById('reader-container').innerText.replace(/\s+/g, ' ').trim());
+await restart();
+await row(FILES.assembled).dblclick();
+app = await lab.appFrame(/publipostage/);
+await waitStarted();
+const assembled = await shown();
+const assembledText = await readerText();
+say('3 bis. macro-modèle composé, la vue dit Lecture :', assembled, '| texte de la Lecture :', assembledText.slice(0, 120));
+check('3 bis. un macro-modèle composé s\'ouvre en Lecture sur le document assemblé de la ligne lue', assembled.name === FILES.assembled && assembled.mode === 'read' && assembledText.includes(FILES.document), { assembled, assembledText });
+await openViewSettings();
+await app.locator('#settings-viewopen-mode').selectOption('edit');
+await page.waitForTimeout(1500);
+await page.keyboard.press('Escape');
+await restart();
+await row(FILES.assembled).dblclick();
+app = await lab.appFrame(/publipostage/);
+await waitStarted();
+const summary = await shown();
+say('3 bis. la vue dit Édition :', summary, '| options de la vue :', await viewOptions());
+check('3 bis. la vue réglée « Édition » : le macro-modèle ouvre son résumé, en Édition', summary.name === FILES.assembled && summary.mode === 'edit', summary);
+await openViewSettings();
+await app.locator('#settings-viewopen-mode').selectOption('read');
+await page.waitForTimeout(1500);
+await page.keyboard.press('Escape');
 
 // 4. La vue a un modèle : elle arrive sur l'app, ce modèle s'ouvre en Lecture.
 await restart();

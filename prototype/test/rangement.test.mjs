@@ -334,6 +334,98 @@ test('identify : une sonde qu\'on ne peut pas retirer le dit, et l\'adresse lue 
   } finally { console.warn = warn; }
 });
 
+// ---------- les lignes-sondes restées (25/11 : la page est refaite par Grist entre l'ajout et le retrait, le retrait est perdu) : retirées en tâche de fond
+
+const left = (id, address) => row(id, { User: '@sonde', Address: address });
+const settled = () => new Promise(resolve => setImmediate(resolve));
+
+test('sweepProbes : les lignes-sondes que la personne a laissées partent d\'un seul lot ; celles d\'un autre, les autres lignes et la ligne réservée restent', async () => {
+  const tables = { [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, Value: '{}' }), left(2, ANA), row(3, { User: ANA, App: 'publipostage', File: '4' }), left(4, BEN), left(5, ' Ana@Exemple.org ')] } };
+  const { port, actions, batches } = fakeGrist(tables, { email: ANA });
+  const store = new Rangement({ port, consent: () => assert.fail('retirer ne demande rien') });
+  assert.equal(await store.sweepProbes(), 0, 'sans adresse connue, rien n\'est retiré (celle de qui ?)');
+  assert.deepEqual(actions, []);
+  assert.equal(await store.identify(), ANA);
+  actions.length = 0; batches.length = 0;
+  assert.equal(await store.sweepProbes(), 2);
+  assert.deepEqual(actions, [['BulkRemoveRecord', TABLE, [2, 5], undefined]], 'un seul lot, les deux lignes de la personne');
+  assert.deepEqual(tables[TABLE].rows.map(line => line.id), [1, 3, 4], 'la ligne de Ben, la ligne de rangement et la ligne réservée restent');
+  actions.length = 0;
+  assert.equal(await store.sweepProbes(), 0);
+  assert.deepEqual(actions, [], 'plus rien à retirer : aucune écriture');
+});
+
+test('sweepProbes : rien sans table, en lecture seule, ni sur un document qu\'une version plus récente a préparé', async () => {
+  const { port: none, actions: noneActions } = fakeGrist({}, { email: ANA });
+  const absent = new Rangement({ port: none, consent: accept() });
+  assert.equal(await absent.sweepProbes(), 0);
+  assert.deepEqual(noneActions, []);
+
+  let writable = true;
+  const rows = () => [left(2, ANA)];
+  const { port, actions, tables } = fakeGrist({ [TABLE]: { columns: full, rows: rows() } }, { email: ANA });
+  const store = new Rangement({ port, consent: accept(), canWrite: () => writable });
+  await store.identify();
+  actions.length = 0;
+  tables[TABLE].rows.push(left(7, ANA));
+  writable = false;
+  assert.equal(await store.sweepProbes(), 0, 'en lecture seule : aucune écriture');
+  assert.deepEqual(actions, []);
+
+  const newer = { [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, App: 'gfs', File: 'apps', Value: '{}' }), row(2, { User: '@document', App: 'gfs', File: 'structure', Value: '{"structure":99}' })] } };
+  const future = fakeGrist(newer, { email: ANA });
+  const later = new Rangement({ port: future.port, consent: accept() });
+  await later.identify();
+  newer[TABLE].rows.push(left(9, ANA));
+  future.actions.length = 0;
+  assert.equal(await later.sweepProbes(), 0, 'un document plus récent ne s\'écrit pas');
+  assert.deepEqual(future.actions, []);
+});
+
+test('sweepLater : une seule fois par ouverture, en tâche de fond ; un échec ne se dit que dans la console et n\'empêche rien', async () => {
+  const tables = { [TABLE]: { columns: full, rows: [left(2, ANA)] } };
+  const { port, actions } = fakeGrist(tables, { email: ANA });
+  const store = new Rangement({ port, consent: accept() });
+  await store.identify();
+  await settled(); // le retrait de la sonde de l'ouverture part sans que l'adresse l'attende
+  actions.length = 0;
+  assert.deepEqual(tables[TABLE].rows.map(line => line.id), [2], 'la sonde de l\'ouverture est partie, la restée reste');
+  store.sweepLater(0);
+  store.sweepLater(0);
+  assert.deepEqual(actions, [], 'rien ne part avant l\'échéance : le démarrage n\'attend rien');
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(actions.map(action => action[0]), ['BulkRemoveRecord'], 'un seul retrait, malgré deux appels');
+  assert.equal(tables[TABLE].rows.length, 0);
+
+  const warn = console.warn;
+  const warned = [];
+  console.warn = (...parts) => warned.push(parts.join(' '));
+  try {
+    const broken = fakeGrist({ [TABLE]: { columns: full, rows: [left(2, ANA)] } }, { email: ANA, fail: { BulkRemoveRecord: 'refusé' } });
+    const sweeper = new Rangement({ port: broken.port, consent: accept() });
+    await sweeper.identify();
+    sweeper.sweepLater(0);
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.equal(warned.length, 1);
+    assert.match(warned[0], /lignes-sondes/);
+  } finally { console.warn = warn; }
+});
+
+test('identify : une ligne-sonde que le retrait en tâche de fond d\'une autre page a emportée ne dit pas que la personne est inconnue : le geste suivant réessaie', async () => {
+  const tables = { [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, Value: '{}' })] } };
+  const { port, actions } = fakeGrist(tables, { email: ANA });
+  const fetchTable = port.doc.fetchTable;
+  let first = true;
+  port.doc.fetchTable = async name => {
+    if (first && name === TABLE && tables[TABLE].rows.some(line => line.User === '@sonde')) { first = false; tables[TABLE].rows = tables[TABLE].rows.filter(line => line.User !== '@sonde'); }
+    return fetchTable(name);
+  };
+  const store = new Rangement({ port, consent: accept() });
+  assert.equal(await store.identify(), '', 'cette fois la ligne manque : rien n\'est retenu');
+  assert.equal(await store.identify(), ANA, 'le geste suivant refait la sonde et apprend l\'adresse');
+  assert.equal(verbs(actions).filter(verb => verb === 'AddRecord').length, 2);
+});
+
 test('identify : une table d\'une version ancienne reçoit d\'abord sa colonne Adresse, à formule déclenchée, puis la sonde passe', async () => {
   const old = full.filter(column => column !== 'Address');
   const { port, tables, actions } = fakeGrist({ [TABLE]: { columns: [...old], rows: [row(1, { ...RESERVED, Value: '{}' })] } }, { email: ANA });

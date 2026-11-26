@@ -313,6 +313,7 @@ export class GfsController {
     if (!this.writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false,
       isOwner: () => this.transfer.isOwner(), resumeReception: () => this.otherDocuments.resumeReceive() }).catch(error =>
         console.warn('GFS : le partage entre documents ne reprend pas', error));
+    if (this.fullAccess) this.rangement.sweepLater(); // les lignes-sondes restées s'enlèvent plus tard, en tâche de fond (js/files/rangement.js)
     this.weight.watch(); // le poids du document, 5 s plus tard (js/weight/weight-guard.js) : en dernier, rien d'autre n'attend après lui
   }
 

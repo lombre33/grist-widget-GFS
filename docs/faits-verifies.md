@@ -3205,3 +3205,19 @@ les lire en entier, juste leur nom ». Choix sur cartes (20:01Z) : la cloche ann
   passe sur deux lignes (avec l'ancien dessin, le bouton de pose sortait dans les huit états, aux deux largeurs). **Durée** : la passe complète de l'annuaire (`test/annuaire-firefox.mjs`) prend 154 à 184 s par largeur et par mode, donc près de 18 minutes par langue pour les six combinaisons du test ; la limite du test dans `interfaces-firefox.test.mjs` (6 minutes, dépassée dès avant ce lot : deux échecs « timed out » sur le code d'avant) passe à 25 minutes. Lancée seule, une partie qui suppose l'état laissé par les précédentes (« À vérifier », « Écrire au groupe » à 400 px) donne des clics hors de la page : l'essai se joue en entier (`run-part` du bac à sable n'est pas le test).
 - **Pas mesuré** : l'instance de la DINUM et docs.getgrist.com (le verrou ne lit les tables internes que par `fetchTable`, jamais en SQL, que le pare-feu de la DINUM refuse en partie, faits 173 et 174) ; un compte éditeur qui ouvre l'annuaire
   d'un document verrouillé dans le vrai GFS (seul l'API REST l'a joué) ; Safari ; un document dont la table des personnes a plusieurs dizaines de milliers de lignes.
+
+## 185. La ligne-sonde `@sonde` qui restait dans `GFS_Filing` : GFS la retire en tâche de fond, 8 secondes après qu'il est prêt (26/11 ; retour du porteur : « pas au démarrage, mais en tâche de fond une fois que tout est lancé » ; Grist 1.7.19 officiel (Docker), Chromium ; `labo/run-sonde-restee.mjs`, `js/files/rangement.js`, `test/rangement.test.mjs`)
+
+- **Le défaut (fait 181, ligne-sonde)** : GFS ajoute une ligne `@sonde` pour apprendre l'adresse de la personne, puis la retire sans attendre (`#probe`). Quand Grist refait la page entre
+  l'ajout et le retrait, ou que l'onglet se ferme, le retrait est perdu et la ligne reste dans le document : dans l'essai des noms avec Sync+ (`labo/run-noms-gfs.mjs`), trois des quatre essais en
+  laissaient une. La cause exacte (le cadre refait ?) n'a pas été isolée ; le correctif ne dépend pas d'elle : il retire ce qui est resté.
+- **Mesuré, avec le correctif** (document qui porte trois lignes-sondes restées : deux à l'adresse de la personne d'essai que Grist y a écrite, une à celle d'une autre personne, plus une ligne de rangement) :
+  GFS est prêt avec les trois lignes encore là (**rien n'est retiré au démarrage**) ; **8,3 secondes** après son « prêt » les deux lignes de la personne partent d'un seul lot (`BulkRemoveRecord`) ; la ligne
+  de l'autre personne et la ligne de rangement restent ; une seconde ouverture ne laisse aucune ligne de plus et ne dit rien dans la console (français/clair, anglais/sombre, 8 vérifications sur 8).
+  **Sans le correctif** (le code de main d'avant) : les lignes de la personne ne partent jamais (25 s d'attente) : l'essai échoue.
+- **Règles** (`sweepProbes`, `sweepLater`) : seulement les lignes dont `Address` est celle de la personne (jamais celle d'une autre : elle retire les siennes à son tour) ; rien sans adresse connue, en lecture
+  seule, sans table, ni dans un document qu'une version plus récente de GFS a préparé ; une seule fois par ouverture ; seulement s'il y a des lignes (aucune écriture sinon) ; un échec ne se dit que dans
+  la console. Une ligne-sonde que la page lit puis ne retrouve pas (une autre page de la personne l'a retirée) ne dit plus « personne inconnue » : rien n'est gardé, le geste suivant refait la sonde
+  (test `identify : une ligne-sonde que le retrait en tâche de fond d'une autre page a emportée…`).
+- **Pas mesuré** : le délai de 8 s sur l'instance de la DINUM ou sur docs.getgrist.com (serveurs plus lents) ; deux onglets de la même personne ouverts en même temps (la ligne en route de l'un peut être retirée par l'autre :
+  la sonde de l'un réessaie alors au geste suivant).

@@ -3221,3 +3221,17 @@ les lire en entier, juste leur nom ». Choix sur cartes (20:01Z) : la cloche ann
   (test `identify : une ligne-sonde que le retrait en tâche de fond d'une autre page a emportée…`).
 - **Pas mesuré** : le délai de 8 s sur l'instance de la DINUM ou sur docs.getgrist.com (serveurs plus lents) ; deux onglets de la même personne ouverts en même temps (la ligne en route de l'un peut être retirée par l'autre :
   la sonde de l'un réessaie alors au geste suivant).
+
+## 186. Le mode d'ouverture de la vue de Publipostage+ sous GFS : GFS le transmet et l'app l'applique, sauf pour un macro-modèle, qui s'ouvre toujours en Édition (26/11 ; retour du porteur : « ce réglage ne semble toujours pas marcher, ici sur un macro-modèle » ; vrai Grist (grist-static 0.1.6), Chromium, vraie Publipostage+ à `55d96c7c` ; `labo/run-mode-ouverture-vue.mjs`)
+
+- **Ce que la consigne 099 n'avait pas rejoué** : la clé `pp_view_open_mode` est déclarée dans `reglages` du manifeste (24/11) ; « lu et essayé sur le manifeste, pas rejoué avec ton code dans un vrai Grist ». Rejoué.
+- **Mesuré** (français/clair puis anglais/sombre ; 8 vérifications et un constat) : « Réglages > Vue > S'ouvre en : Lecture » écrit `pp_view_open_mode: "read"` dans les réglages de la section (`customView.widgetOptions`), sans refus
+  (la phrase rouge « Ce choix n'est pas gardé » ne paraît pas), sans barre « Enregistrer » de Grist, et le réglage est encore là après le redémarrage de GFS. **Un document ordinaire et un e-mail** ouverts par un double-clic
+  quand l'app n'est pas ouverte s'ouvrent **en Lecture** ; la vue qui a un modèle (`modeleDeLaVue`) arrive sur l'app et ce modèle s'ouvre **en Lecture**.
+- **Le macro-modèle s'ouvre en Édition**, au départ de l'app comme app déjà ouverte : c'est la règle de l'app (`startMode`, `js/main.js` : « un modèle vierge, un import, un macro-modèle ou l'absence de modèle ouvrent l'Édition »,
+  gardée par `dev-tests/verify-view-open-mode.mjs`), et le texte du réglage la dit (« Un modèle vierge, un fichier importé et un macro-modèle s'ouvrent toujours en Édition »). La Lecture n'a rien à montrer d'un macro-modèle : son
+  résumé de composition n'existe qu'en Édition (`syncEditorVisibilityForMode`) ; avec le macro-modèle du labo (composition vide) elle montre une page blanche. **Aucun défaut de GFS** : rien codé.
+- **Constat (règle de l'app, pas de GFS)** : l'app est déjà ouverte, la personne est passée en Édition, puis elle ouvre un autre document par l'explorateur (appel `ouvrir`) : l'app garde le mode du moment. Le réglage de la vue
+  ne vaut qu'au départ de l'app (`startMode` n'est lu qu'au démarrage).
+- **Pas mesuré** : docs.getgrist.com et l'instance de la DINUM ; un macro-modèle dont la composition n'est pas vide (ce que montrerait sa Lecture) ; la version publiée de l'app (le labo sert le sous-module avancé à `55d96c7c`,
+  la référence de GFS reste à `6fd6eec`, qui n'a pas ce réglage).

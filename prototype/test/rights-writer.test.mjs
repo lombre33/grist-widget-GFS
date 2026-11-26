@@ -152,3 +152,84 @@ test('plansFrom : les plans de lignes déjà lues, sans les relire (un appelant 
   assert.equal(await writer.plans(), null);
   assert.equal(reads, 1, 'plans() relit ; plansFrom() ne lit rien');
 });
+
+// ---------- l'index des noms (js/rights/rights-writer.js, js/rights/index-control.js ; choix du porteur du 26/11) ----------
+
+// Un document qui a une table de fichiers d'app (`Pub_Modeles`, ses fichiers sont ses lignes) : le lecteur le relit après chaque geste, comme Grist le laisse.
+function indexDocument({ withKey = false, rules = false } = {}) {
+  const spec = { table: 'Pub_Modeles', colonnes: { id: 'id', nom: 'Nom' } };
+  const tables = [{ id: 1, tableId: 'Pub_Modeles' }];
+  const columns = [{ id: 1, parentId: 1, colId: 'Nom', type: 'Text', isFormula: false, formula: '' },
+    ...(withKey ? [{ id: 2, parentId: 1, colId: 'GFS_Key', type: 'Int', isFormula: true, formula: '$id' }] : [])];
+  const resources = rules ? [{ id: 1, tableId: 'Pub_Modeles', colIds: '*' }] : [];
+  const acl = rules ? [{ id: 1, resource: 1, aclFormula: 'user.Access in [OWNER]', permissionsText: '+CRUD', rulePos: 1, memo: 'GFS : Partages · les propriétaires gardent la main' }] : [];
+  const targets = [{ table: 'Pub_Modeles', prefix: 'pub:', app: 'pub' }];
+  return { resources, rules: acl, tables, columns, specs: [{ table: 'Pub_Modeles', spec }], targets, fileIds: [], files: {} };
+}
+// Un lecteur qui rend le document tel que les gestes déjà écrits l'ont laissé : la colonne d'aide posée par le premier se lit au deuxième.
+function indexSetup({ rules = false, fail = null, owner = true } = {}) {
+  const sent = []; const reads = [];
+  const store = memoryStore();
+  const port = { doc: { applyUserActions: async actions => { if (fail) throw new Error(fail); sent.push(actions); } } };
+  const reader = { raw: async options => { reads.push(options); return owner ? indexDocument({ rules, withKey: sent.some(actions => actions.some(action => action[2] === 'GFS_Key')) }) : null; } };
+  return { writer: new RightsWriter({ port, reader, store }), sent, store, reads };
+}
+
+test('index : le plan se lit sans les tables de fichiers, et rend null pour qui n\'est pas propriétaire', async () => {
+  const { writer, reads } = indexSetup();
+  const plan = await writer.indexPlan();
+  assert.equal(plan.ok, true);
+  assert.deepEqual(reads, [{ files: false }]);
+  assert.equal(await indexSetup({ owner: false }).writer.indexPlan(), null);
+  assert.ok(!('index' in await setup().writer.plans()), 'ni le panneau ni « Gérer les partages » ne calculent le plan de l\'index');
+});
+
+test('index : deux gestes pour une table dont l\'identifiant est le numéro de ligne (la colonne d\'aide, puis les résumés), le deuxième relu après le premier', async () => {
+  const { writer, sent, store } = indexSetup();
+  assert.deepEqual(await writer.apply('index', 'index'), { ok: true });
+  assert.equal(sent.length, 2);
+  assert.deepEqual(sent[0].map(action => action[0]), ['AddColumn']);
+  assert.equal(sent[1][0][0], 'CreateViewSection');
+  assert.equal(store.read(), null, 'aucune règle écrite : Grist ne recharge pas la page, rien à rouvrir');
+});
+
+test('index : des règles recopiées font recharger la page, GFS retient de le dire au retour', async () => {
+  const { writer, sent, store } = indexSetup({ rules: true });
+  assert.deepEqual(await writer.apply('index', 'index'), { ok: true });
+  assert.ok(sent.at(-1).some(action => action[1] === '_grist_ACLRules'));
+  assert.equal(store.read(), 'index');
+  assert.equal(writer.take(), 'index');
+});
+
+test('index : un refus de Grist se rend et la reprise est retirée ; un plan déjà posé n\'écrit rien', async () => {
+  const refused = indexSetup({ fail: 'Only owners can modify access rules' });
+  const result = await refused.writer.apply('index', 'index');
+  assert.equal(result.ok, false);
+  assert.match(result.message, /Only owners/);
+  assert.equal(refused.store.read(), null);
+  const none = indexSetup({ owner: false });
+  assert.equal((await none.writer.apply('index', 'index')).reason, 'unreadable');
+  assert.equal(none.sent.length, 0);
+});
+
+test('index : la question dit les tables, la colonne d\'aide, les règles recopiées, les pages, et le rechargement seulement quand des règles se recopient', async () => {
+  const t = (key, vars) => (vars ? `${key} ${JSON.stringify(vars)}` : key);
+  const free = askOptions(t, 'index', await indexSetup().writer.indexPlan());
+  assert.equal(free.title, 'rights.ask.index.title');
+  assert.equal(free.confirmLabel, 'rights.ask.index.confirm');
+  assert.deepEqual(free.items.map(item => item.split(' ')[0]), ['rights.ask.index.item1', 'rights.ask.index.item2', 'rights.ask.index.item4']);
+  assert.match(free.items[0], /Pub_Modeles/);
+  assert.equal(free.note, '', 'sans règle à recopier la page ne se recharge pas : pas de mot sur le rechargement');
+  const ruled = askOptions(t, 'index', await indexSetup({ rules: true }).writer.indexPlan());
+  assert.ok(ruled.items.includes('rights.ask.index.item3'));
+  assert.equal(ruled.note, 'rights.ask.index.reload');
+});
+
+test('index : un refus de Grist se dit avec les mots de l\'index (« L\'index n\'a pas été créé »), pas ceux des règles', async () => {
+  const { writer } = indexSetup({ fail: 'boom' });
+  const shown = [];
+  const t = key => key;
+  const done = await runAction({ kind: 'index', plans: { index: await indexSetup().writer.indexPlan() }, t, ask: async options => { shown.push(options); return true; }, writer, resume: 'index' });
+  assert.equal(done, false);
+  assert.equal(shown.at(-1).title, 'rights.ask.index.failed.title');
+});

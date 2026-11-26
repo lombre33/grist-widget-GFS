@@ -57,3 +57,14 @@ test('raw : avec files:false, les tables de fichiers ne sont pas lues (« Gérer
   const whole = await full.reader.raw();
   assert.deepEqual([whole.fileIds, full.asked.includes('GFS_Files')], [['a', 'b'], true]);
 });
+
+test('raw : les déclarations de fichiers que le lecteur reçoit (`specs`) vont avec les lignes, pour le plan de l\'index des noms ; sans elles, une liste vide', async () => {
+  const specs = [{ table: 'Pub_Modeles', spec: { colonnes: { id: 'id' } } }];
+  const { reader } = setup();
+  assert.deepEqual((await reader.raw({ files: false })).specs, []);
+  const asked = [];
+  const port = { doc: { fetchTable: async name => { asked.push(name); return columns(name === '_grist_Tables' ? [{ id: 1, tableId: 'Clients' }] : []); } } };
+  const withSpecs = new RightsReader({ port, transfer: { isOwner: async () => true }, now: () => 0, targets: () => [{ table: 'Pub_Modeles', prefix: 'pub:' }], specs: () => specs });
+  assert.deepEqual((await withSpecs.raw({ files: false })).specs, specs);
+  assert.ok(!asked.includes('Pub_Modeles'), 'sans les tables de fichiers : la plus lourde du document ne se lit pas');
+});

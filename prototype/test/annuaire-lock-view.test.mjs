@@ -131,7 +131,7 @@ test('le verrou suit le réglage enregistré : sa clé change avec ce qui donne 
 test('chaque mot de reprise que le verrou retient est reconnu par le contrôleur, avec sa phrase (sinon l\'annuaire ne rouvrirait pas, ou dirait celle du sous-annuaire)', () => {
   const control = readFileSync(new URL('../js/annuaire/annuaire-lock-control.js', import.meta.url), 'utf8');
   const controller = readFileSync(new URL('../js/controller.js', import.meta.url), 'utf8');
-  const words = [...control.matchAll(/'(annuaire:[a-z]+)'\)/g)].map(match => match[1]);
+  const words = [...control.matchAll(/'(annuaire:[a-z]+)'[,)]/g)].map(match => match[1]);
   assert.deepEqual([...new Set(words)].sort(), ['annuaire:close', 'annuaire:lock', 'annuaire:unlock']);
   const phrases = { 'annuaire:lock': 'an.lock.done', 'annuaire:unlock': 'an.lock.removed', 'annuaire:close': 'an.lock.closed' };
   for (const [word, phrase] of Object.entries(phrases)) {

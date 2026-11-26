@@ -11,23 +11,25 @@ import { HOST } from '../js/broker/context.js';
 // La ligne « Position de la barre » est celle du vrai Dock (js/shell/dock.js) : ici, une doublure que le menu doit laisser telle quelle.
 const PLACE = Object.freeze({ label: 'Position de la barre', icon: 'dock-left', submenu: [] });
 
-function build(lang = 'fr', { choice = 'auto', grist = 'fr', shown = false, why = null } = {}) {
+function build(lang = 'fr', { choice = 'auto', grist = 'fr', shown = false, why = null, indexWhy = null } = {}) {
   const calls = [];
   const { t } = createI18n(lang);
   const items = settingsItems({
     t, language: () => ({ choice, grist }), onLanguage: value => calls.push(['langue', value]), onTheme: () => calls.push(['theme']),
     langtool: () => ({ shown, toggle: () => calls.push(['langtool']) }), place: () => PLACE, onAbout: () => calls.push(['apropos']), onDependencies: () => calls.push(['dependances']),
     manage: () => ({ why, open: () => calls.push(['gerer']), notice: text => calls.push(['avis', text]) }),
+    index: () => ({ why: indexWhy, open: () => calls.push(['index']), notice: text => calls.push(['avis-index', text]) }),
   });
   return { items, calls };
 }
 const rows = items => items.filter(item => item !== '-');
 
-test('le menu a ses lignes dans l\'ordre : la langue, le thème, « Gérer les partages… », « Dépendances… », les réglages avancés, la position de la barre, un séparateur, « À propos »', () => {
+test('le menu a ses lignes dans l\'ordre : la langue, le thème, « Gérer les partages… », « Index des noms… », « Dépendances… », les réglages avancés, la position de la barre, un séparateur, « À propos »', () => {
   const fr = build('fr').items;
-  assert.deepEqual(fr.map(item => (item === '-' ? '-' : item.label)), ['Langue', 'Thème…', 'Gérer les partages…', 'Dépendances…', 'Réglages avancés', 'Position de la barre', '-', 'À propos…']);
+  assert.deepEqual(fr.map(item => (item === '-' ? '-' : item.label)), ['Langue', 'Thème…', 'Gérer les partages…', 'Index des noms…', 'Dépendances…', 'Réglages avancés', 'Position de la barre', '-',
+    'À propos…']);
   const en = build('en').items;
-  assert.deepEqual(en.map(item => (item === '-' ? '-' : item.label)), ['Language', 'Theme…', 'Manage sharing…', 'Dependencies…', 'Advanced settings', PLACE.label, '-', 'About…']);
+  assert.deepEqual(en.map(item => (item === '-' ? '-' : item.label)), ['Language', 'Theme…', 'Manage sharing…', 'Name index…', 'Dependencies…', 'Advanced settings', PLACE.label, '-', 'About…']);
 });
 
 test('aucune ligne n\'est grisée ni sans icône : une fonction de GFS n\'est jamais cachée', () => {
@@ -58,7 +60,7 @@ test('« Bouton LanguageTool » n\'est pas au niveau des autres réglages (le po
     const { items } = build(lang);
     const names = rows(items).map(item => item.label);
     assert.ok(!names.some(name => /LanguageTool/.test(name)), `${lang} : une ligne du menu nomme LanguageTool`);
-    const advanced = items[4];
+    const advanced = items[5];
     assert.ok(Array.isArray(advanced.submenu), `${lang} : « Réglages avancés » n'ouvre pas de sous-menu`);
     assert.deepEqual(advanced.submenu.map(entry => (entry === '-' ? '-' : entry.label)), [lang === 'fr' ? 'Bouton LanguageTool' : 'LanguageTool button']);
   }
@@ -66,14 +68,14 @@ test('« Bouton LanguageTool » n\'est pas au niveau des autres réglages (le po
 
 test('« Bouton LanguageTool » est un interrupteur à lui seul (case à cocher), non un choix parmi d\'autres comme les langues', () => {
   const { items } = build('fr');
-  assert.equal(items[4].submenu[0].toggle, true);
-  assert.equal(items[4].toggle, undefined);
+  assert.equal(items[5].submenu[0].toggle, true);
+  assert.equal(items[5].toggle, undefined);
   assert.equal(items[0].submenu.some(entry => entry !== '-' && entry.toggle), false);
 });
 
 test('chaque ligne fait ce qu\'elle dit : choisir une langue, ouvrir le thème, ouvrir « Dépendances… », mettre le bouton LanguageTool dans la barre, ouvrir « À propos »', () => {
   const { items, calls } = build('fr');
-  const [language, theme, , dependencies, advanced, , , about] = items;
+  const [language, theme, , , dependencies, advanced, , , about] = items;
   const [auto, , fr, en] = language.submenu;
   auto.run();
   fr.run();
@@ -86,17 +88,17 @@ test('chaque ligne fait ce qu\'elle dit : choisir une langue, ouvrir le thème, 
 });
 
 test('la ligne de la barre est celle que le contrôleur donne, sans changement : le menu ne connaît pas la barre', () => {
-  assert.equal(build('fr').items[5], PLACE);
+  assert.equal(build('fr').items[6], PLACE);
 });
 
 test('« Bouton LanguageTool » : cochée quand le bouton est dans la barre, décochée sinon, et l\'infobulle dit ce que la ligne fait (le bouton coupe ou rallume LanguageTool dans l\'app)', () => {
   for (const shown of [false, true]) {
-    const row = build('fr', { shown }).items[4].submenu[0];
+    const row = build('fr', { shown }).items[5].submenu[0];
     assert.equal(row.check, shown);
     assert.equal(row.icon, 'spell');
     assert.match(row.title, /bouton de la barre coupe ou rallume LanguageTool dans l’app ouverte/);
   }
-  assert.match(build('en').items[4].submenu[0].title, /button in the bar turns LanguageTool off or back on in the open app/);
+  assert.match(build('en').items[5].submenu[0].title, /button in the bar turns LanguageTool off or back on in the open app/);
 });
 
 test('les lignes à fenêtre ou à sous-menu disent pourquoi à l\'infobulle : la langue et le thème valent pour la suite et ses apps', () => {
@@ -144,4 +146,21 @@ test('« Dépendances… » : une fenêtre en lecture seule, jamais grisée, ave
     assert.ok(!line.greyed);
     assert.match(line.title, tip);
   }
+});
+
+test('« Index des noms… » : un clic le lance ; sans l\'accès complet il est grisé, dit pourquoi, et son clic dit pourquoi au lieu d\'ouvrir (grisé, jamais caché)', () => {
+  const open = build('fr');
+  const line = open.items.find(item => item.label === 'Index des noms…');
+  assert.equal(line.icon, 'table');
+  assert.ok(!line.greyed);
+  assert.match(line.title, /table-résumé des noms/);
+  line.run();
+  assert.deepEqual(open.calls, [['index']]);
+  const why = 'Le partage demande l’accès complet au document.';
+  const shut = build('fr', { indexWhy: why });
+  const grey = shut.items.find(item => item.label === 'Index des noms…');
+  assert.deepEqual([grey.greyed, grey.title], [true, why]);
+  grey.run();
+  assert.deepEqual(shut.calls, [['avis-index', why]]);
+  assert.match(build('en').items.find(item => item.label === 'Name index…').title, /summary table of names/);
 });

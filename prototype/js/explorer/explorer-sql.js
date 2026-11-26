@@ -29,7 +29,7 @@ import { cellBytes } from '../weight/weight.js';
 export const HEAVY_BYTES = 4 * 1024 * 1024;
 
 const TEXT_TYPES = new Set(['Text', 'Choice', 'ChoiceList', 'Attachments']);
-const isText = type => TEXT_TYPES.has(type) || String(type).startsWith('RefList:');
+export const isText = type => TEXT_TYPES.has(type) || String(type).startsWith('RefList:');
 const isList = type => type === 'ChoiceList' || type === 'Attachments' || String(type).startsWith('RefList:');
 
 // Les colonnes d'une table de fichiers que `readFiles` lit (js/explorer/explorer-model.js) d'après `spec` ; `id` est toujours rendu. Tout ce qui lit une
@@ -59,8 +59,10 @@ export function schemaStatement(tables) {
 
 // La lecture d'une table : le numéro de ligne, les colonnes voulues (`wanted`) et toutes celles qui ne sont pas du texte, et la somme des octets des colonnes
 // de texte que la lecture ne rend pas. Rend { statement, keep } : `keep` sont les colonnes lues, dans l'ordre de la lecture.
+export const keptColumns = (columns, wanted) => columns.filter(column => valid(column.colId) && (wanted.has(column.colId) || !isText(column.type)));
+
 export function rowsStatement(table, columns, wanted) {
-  const keep = columns.filter(column => valid(column.colId) && (wanted.has(column.colId) || !isText(column.type)));
+  const keep = keptColumns(columns, wanted);
   const counted = columns.filter(column => valid(column.colId) && isText(column.type) && !wanted.has(column.colId));
   const bytes = counted.length ? counted.map(column => `COALESCE(length(CAST(${quote(column.colId)} AS BLOB)), 0)`).join(' + ') : '0';
   return { statement: `SELECT id${keep.map(column => `, ${quote(column.colId)}`).join('')}, ${bytes} AS gfs_octets FROM ${quote(table)}`, keep };

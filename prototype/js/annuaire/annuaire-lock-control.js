@@ -9,6 +9,9 @@ import { lockKey, planLock, planUnlock } from './annuaire-lock.js';
 import { lockModel } from './annuaire-lock-view.js';
 import { openLockWindow } from './annuaire-lock-window.js';
 
+// Le verrou ne lit pas la table des fichiers (la plus lourde du document) : il n'a besoin que des règles, des tables et de leurs colonnes.
+const READING = Object.freeze({ files: false });
+
 export class LockControl {
   #o;
 
@@ -33,7 +36,7 @@ export class LockControl {
     const { t } = this.#o;
     const blocked = this.#o.writeBlock();
     if (blocked) { this.#o.notice(blocked); return false; }
-    const raw = await this.#o.rights.reader.raw({ files: false });
+    const raw = await this.#o.rights.reader.raw(READING);
     const schema = raw ? await this.#o.schema() : null;
     if (!schema) { if (!raw) this.#o.notice(t('an.opt.lockWhy.unreadable')); return false; }
     const config = readConfig(annuaire.config);
@@ -51,17 +54,17 @@ export class LockControl {
     if (action === 'remove') {
       const yes = await this.#o.ask({ title: t('an.lock.removeTitle'), message: t('an.lock.removeMessage', { table }), items: [t('an.lock.c.reload')],
         confirmLabel: t('an.lock.removeConfirm'), cancelLabel: t('an.lock.cancel'), safeFirst: true });
-      return yes ? this.#report(await rights.writer.applyWith(existing => planUnlock(existing, table), 'annuaire:unlock')) : false;
+      return yes ? this.#report(await rights.writer.applyWith(existing => planUnlock(existing, table), 'annuaire:unlock', READING)) : false;
     }
     // Poser ou mettre à jour : les colonnes d'aide d'abord (des formules : elles ne rechargent personne), puis les règles, relues au moment même.
     const { spec, say } = model;
-    const first = await rights.reader.raw({ files: false });
+    const first = await rights.reader.raw(READING);
     const plan = first ? planLock(first, spec, say, { structure }) : null;
     if (plan && plan.columns && plan.columns.length) {
       try { await this.#o.port.doc.applyUserActions(plan.columns); } catch (error) {
         return this.#report({ ok: false, message: String((error && error.message) || error).slice(0, 300) }); }
     }
-    return this.#report(await rights.writer.applyWith(existing => planLock(existing, spec, say, { structure }), 'annuaire:lock'));
+    return this.#report(await rights.writer.applyWith(existing => planLock(existing, spec, say, { structure }), 'annuaire:lock', READING));
   }
 
   // Le compte rendu : un échec se dit dans une fenêtre ; ce qui n'avait plus rien à écrire (déjà posé) se dit en une phrase. Rend vrai quand Grist a écrit.

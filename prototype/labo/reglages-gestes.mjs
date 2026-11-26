@@ -2,7 +2,8 @@
 // run-langue-publipostage.mjs. Depuis le 04/11 (le porteur : « ok pour la capture 1 ») la langue, le thème, la position de la barre et « À propos » sont ses lignes (et, depuis le 12/11, « Réglages avancés », un sous-menu où est « Bouton LanguageTool ») : les boutons « Langue » et
 // « Thème » de la ligne du titre n'existent plus. Les lignes se désignent par leur rang, pas par leur texte, qui change avec la langue. `target` est le cadre de GFS (ou une autre section de GFS).
 
-export const ROW = Object.freeze({ language: 0, theme: 1, advanced: 2, place: 3, about: 4 });
+// Les rangs des lignes du menu (26/11 : « Gérer les partages… », « Index des noms… » et « Dépendances… » s'y sont ajoutées, les rangs d'avant étaient périmés).
+export const ROW = Object.freeze({ language: 0, theme: 1, manage: 2, index: 3, dependencies: 4, advanced: 5, place: 6, about: 7 });
 
 // Le bouton « Réglages » : le bouton à menu de la ligne du titre qui n'est pas la cloche Notifications.
 export const settingsButton = target => target.locator('.ex-title-row .tb:not(.tb-bell)[aria-haspopup="menu"]');

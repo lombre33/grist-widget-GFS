@@ -21,7 +21,9 @@ export class RightsReader {
   #opts;
   #owner = null;
 
-  // opts : { port (port.doc.fetchTable), transfer (isOwner()), targets() → les tables de fichiers, now() }
+  // opts : { port (port.doc.fetchTable), transfer (isOwner()), targets() → les tables de fichiers, specs() → les déclarations de fichiers des apps, de GFS et
+  //   de
+  //   l'Annuaire ([{ table, spec }], pour le plan de l'index des noms, js/explorer/index-model.js), now() }
   constructor(opts) { this.#opts = opts; }
 
   async #rows(name) {
@@ -57,7 +59,7 @@ export class RightsReader {
         files[target.table] = rowsOf(await this.#opts.port.doc.fetchTable(target.table)).map(row => String(target.id ? row[target.id] || '' : row.id)).filter(
           Boolean);
       }
-      return { resources, rules, tables, columns, fileIds: files[filesNames().table] || [], files, targets };
+      return { resources, rules, tables, columns, fileIds: files[filesNames().table] || [], files, targets, specs: this.#opts.specs ? this.#opts.specs() : [] };
     } catch (error) {
       return null;
     }

@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-+qL/4ZFag6SWPsju5Hu47bYnkVQLVpRUUV2KgN8h9vk='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-sHOB9FWL0TG3h9d20xUvJ3FSHVNrHwQozRf4UTI3Y3o='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=a2e086add5">
 <link rel="stylesheet" href="css/explorer.css?v=c8ff42b04b">
 <link rel="stylesheet" href="css/modules.css?v=dcbf3e09ce">
@@ -22,7 +22,7 @@
 <link rel="stylesheet" href="css/dependencies.css?v=053a86a6ce">
 <link rel="stylesheet" href="css/annuaire.css?v=bd8643ea7a">
 <link rel="stylesheet" href="css/annuaire-edit.css?v=ae5b6d55f1">
-<link rel="stylesheet" href="css/annuaire-tools.css?v=ad068ab9ee">
+<link rel="stylesheet" href="css/annuaire-tools.css?v=a932a678a9">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
 <link rel="stylesheet" href="css/acces.css?v=37f61fd8f0">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
@@ -35,10 +35,10 @@
     "./js/annuaire/annuaire-check-window.js": "./js/annuaire/annuaire-check-window.js?v=db6771440e",
     "./js/annuaire/annuaire-check.js": "./js/annuaire/annuaire-check.js?v=2f4c9669cc",
     "./js/annuaire/annuaire-config.js": "./js/annuaire/annuaire-config.js?v=f46d82bbb3",
-    "./js/annuaire/annuaire-control.js": "./js/annuaire/annuaire-control.js?v=eb5adcf014",
+    "./js/annuaire/annuaire-control.js": "./js/annuaire/annuaire-control.js?v=9ebf2610db",
     "./js/annuaire/annuaire-copy.js": "./js/annuaire/annuaire-copy.js?v=c7b90011f9",
     "./js/annuaire/annuaire-edit-controls.js": "./js/annuaire/annuaire-edit-controls.js?v=e88be2d954",
-    "./js/annuaire/annuaire-edit-rights.js": "./js/annuaire/annuaire-edit-rights.js?v=70a52da576",
+    "./js/annuaire/annuaire-edit-rights.js": "./js/annuaire/annuaire-edit-rights.js?v=5c2dcbad79",
     "./js/annuaire/annuaire-edit-window.js": "./js/annuaire/annuaire-edit-window.js?v=fb785e6c17",
     "./js/annuaire/annuaire-edit.js": "./js/annuaire/annuaire-edit.js?v=d06a98101f",
     "./js/annuaire/annuaire-filter-panel.js": "./js/annuaire/annuaire-filter-panel.js?v=e74648385b",
@@ -46,6 +46,10 @@
     "./js/annuaire/annuaire-insert-menu.js": "./js/annuaire/annuaire-insert-menu.js?v=3d9e77114b",
     "./js/annuaire/annuaire-items.js": "./js/annuaire/annuaire-items.js?v=603798534c",
     "./js/annuaire/annuaire-keys.js": "./js/annuaire/annuaire-keys.js?v=c27d4b074e",
+    "./js/annuaire/annuaire-lock-control.js": "./js/annuaire/annuaire-lock-control.js?v=933f0b41c2",
+    "./js/annuaire/annuaire-lock-view.js": "./js/annuaire/annuaire-lock-view.js?v=59001c7711",
+    "./js/annuaire/annuaire-lock-window.js": "./js/annuaire/annuaire-lock-window.js?v=e56029ef50",
+    "./js/annuaire/annuaire-lock.js": "./js/annuaire/annuaire-lock.js?v=a9b19fbd1c",
     "./js/annuaire/annuaire-mail-window.js": "./js/annuaire/annuaire-mail-window.js?v=8e05997e89",
     "./js/annuaire/annuaire-mail.js": "./js/annuaire/annuaire-mail.js?v=0ab8f61b11",
     "./js/annuaire/annuaire-merge-panel.js": "./js/annuaire/annuaire-merge-panel.js?v=7b24d9b097",
@@ -63,13 +67,13 @@
     "./js/annuaire/annuaire-schema.js": "./js/annuaire/annuaire-schema.js?v=73535c107f",
     "./js/annuaire/annuaire-setup-fields.js": "./js/annuaire/annuaire-setup-fields.js?v=a45512d688",
     "./js/annuaire/annuaire-setup-levels.js": "./js/annuaire/annuaire-setup-levels.js?v=3402897566",
-    "./js/annuaire/annuaire-setup-options.js": "./js/annuaire/annuaire-setup-options.js?v=aed6fd6dbd",
+    "./js/annuaire/annuaire-setup-options.js": "./js/annuaire/annuaire-setup-options.js?v=acbeea3c0e",
     "./js/annuaire/annuaire-setup-path.js": "./js/annuaire/annuaire-setup-path.js?v=4a393470e8",
     "./js/annuaire/annuaire-setup-people.js": "./js/annuaire/annuaire-setup-people.js?v=0c2d95dd57",
     "./js/annuaire/annuaire-setup-relations.js": "./js/annuaire/annuaire-setup-relations.js?v=2cd3e340ff",
     "./js/annuaire/annuaire-setup-shared.js": "./js/annuaire/annuaire-setup-shared.js?v=f447ef34e8",
     "./js/annuaire/annuaire-setup-table.js": "./js/annuaire/annuaire-setup-table.js?v=0c011475d9",
-    "./js/annuaire/annuaire-setup.js": "./js/annuaire/annuaire-setup.js?v=b8de12f9c7",
+    "./js/annuaire/annuaire-setup.js": "./js/annuaire/annuaire-setup.js?v=a16a91ea30",
     "./js/annuaire/annuaire-sort.js": "./js/annuaire/annuaire-sort.js?v=aa8418e9be",
     "./js/annuaire/annuaire-store.js": "./js/annuaire/annuaire-store.js?v=76e0679bfd",
     "./js/annuaire/annuaire-sub-control.js": "./js/annuaire/annuaire-sub-control.js?v=99117efd21",
@@ -154,7 +158,7 @@
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=063ac32914",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=7c746e590f",
-    "./js/controller.js": "./js/controller.js?v=eb41cf3df6",
+    "./js/controller.js": "./js/controller.js?v=51336f6ac9",
     "./js/explorer/doc-key.js": "./js/explorer/doc-key.js?v=4c44c49f1a",
     "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=6c261c39dd",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=62a4670621",
@@ -205,12 +209,13 @@
     "./js/i18n/i18n-annuaire-edit.js": "./js/i18n/i18n-annuaire-edit.js?v=3a2235d58a",
     "./js/i18n/i18n-annuaire-filters.js": "./js/i18n/i18n-annuaire-filters.js?v=c1df565431",
     "./js/i18n/i18n-annuaire-links.js": "./js/i18n/i18n-annuaire-links.js?v=e0f8866e44",
+    "./js/i18n/i18n-annuaire-lock.js": "./js/i18n/i18n-annuaire-lock.js?v=beb3b1ddf8",
     "./js/i18n/i18n-annuaire-merge.js": "./js/i18n/i18n-annuaire-merge.js?v=faf4d2d98c",
-    "./js/i18n/i18n-annuaire-rights.js": "./js/i18n/i18n-annuaire-rights.js?v=583dcf949a",
+    "./js/i18n/i18n-annuaire-rights.js": "./js/i18n/i18n-annuaire-rights.js?v=d244f3a365",
     "./js/i18n/i18n-annuaire-sub.js": "./js/i18n/i18n-annuaire-sub.js?v=669d977f47",
     "./js/i18n/i18n-annuaire-table.js": "./js/i18n/i18n-annuaire-table.js?v=3bb31cc3d7",
-    "./js/i18n/i18n-annuaire-tools.js": "./js/i18n/i18n-annuaire-tools.js?v=4d20a30a9f",
-    "./js/i18n/i18n-annuaire.js": "./js/i18n/i18n-annuaire.js?v=44a2570021",
+    "./js/i18n/i18n-annuaire-tools.js": "./js/i18n/i18n-annuaire-tools.js?v=ce6d858bba",
+    "./js/i18n/i18n-annuaire.js": "./js/i18n/i18n-annuaire.js?v=d76d1924c7",
     "./js/i18n/i18n-dependencies.js": "./js/i18n/i18n-dependencies.js?v=6d1bf6469a",
     "./js/i18n/i18n-explorer.js": "./js/i18n/i18n-explorer.js?v=9b9ca1353d",
     "./js/i18n/i18n-folders.js": "./js/i18n/i18n-folders.js?v=d284a5dc12",
@@ -233,7 +238,7 @@
     "./js/rights/rights-control.js": "./js/rights/rights-control.js?v=5750f7187b",
     "./js/rights/rights-plan.js": "./js/rights/rights-plan.js?v=31e9a0fe65",
     "./js/rights/rights-reader.js": "./js/rights/rights-reader.js?v=883a3e510a",
-    "./js/rights/rights-writer.js": "./js/rights/rights-writer.js?v=e48c6b17e1",
+    "./js/rights/rights-writer.js": "./js/rights/rights-writer.js?v=3c016d2d91",
     "./js/rights/rights.js": "./js/rights/rights.js?v=e23059be21",
     "./js/sharing/address-field.js": "./js/sharing/address-field.js?v=ad7b0dfabb",
     "./js/sharing/direct-shares.js": "./js/sharing/direct-shares.js?v=40c1780cfa",
@@ -416,7 +421,7 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=eb41cf3df6">
+<link rel="modulepreload" href="./js/controller.js?v=51336f6ac9">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=e4ffb08a57">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
@@ -515,7 +520,7 @@
 <link rel="modulepreload" href="./js/i18n/i18n-templates.js?v=3194fa28f0">
 <link rel="modulepreload" href="./js/i18n/i18n-dependencies.js?v=6d1bf6469a">
 <link rel="modulepreload" href="./js/i18n/i18n-security.js?v=7139f06696">
-<link rel="modulepreload" href="./js/i18n/i18n-annuaire.js?v=44a2570021">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire.js?v=d76d1924c7">
 <link rel="modulepreload" href="./js/theme/ambiance.js?v=6608543445">
 <link rel="modulepreload" href="./js/theme/oklch.js?v=7ef04e0793">
 <link rel="modulepreload" href="./js/theme/ambiance-forme.js?v=9945157b3b">
@@ -539,7 +544,7 @@
 <link rel="modulepreload" href="./js/sharing/sync-rules.js?v=7c89a0d3cc">
 <link rel="modulepreload" href="./js/ui/names-window.js?v=19688016dd">
 <link rel="modulepreload" href="./js/rights/rights-reader.js?v=883a3e510a">
-<link rel="modulepreload" href="./js/rights/rights-writer.js?v=e48c6b17e1">
+<link rel="modulepreload" href="./js/rights/rights-writer.js?v=3c016d2d91">
 <link rel="modulepreload" href="./js/sharing/share-control.js?v=40a999df81">
 <link rel="modulepreload" href="./js/sharing/manage-control.js?v=4d9ee538c8">
 <link rel="modulepreload" href="./js/sharing/link-control.js?v=82427e1692">
@@ -589,13 +594,14 @@
 <link rel="modulepreload" href="./js/broker/context.js?v=319559f3bd">
 <link rel="modulepreload" href="./js/broker/sharing-rules.js?v=efe8774466">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire-edit.js?v=3a2235d58a">
-<link rel="modulepreload" href="./js/i18n/i18n-annuaire-tools.js?v=4d20a30a9f">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire-tools.js?v=ce6d858bba">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire-sub.js?v=669d977f47">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire-merge.js?v=faf4d2d98c">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire-links.js?v=e0f8866e44">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire-table.js?v=3bb31cc3d7">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire-filters.js?v=c1df565431">
-<link rel="modulepreload" href="./js/i18n/i18n-annuaire-rights.js?v=583dcf949a">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire-rights.js?v=d244f3a365">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire-lock.js?v=beb3b1ddf8">
 <link rel="modulepreload" href="./kit/js/color-math.js?v=e9650179cf">
 <link rel="modulepreload" href="./kit/js/dom.js?v=bb61d5ebe7">
 <link rel="modulepreload" href="./js/ui/layers.js?v=8fb5891dcf">

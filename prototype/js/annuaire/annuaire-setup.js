@@ -40,7 +40,9 @@ export class AnnuaireSetup {
   //   d'une
   //   colonne, avec l'accord de la personne donné dans la fenêtre « Créer une colonne » ; facultatif), createTable(nom) -> { id, columns } (l'écriture de la
   //   table
-  //   des personnes, avec l'accord donné dans la fenêtre « Créer une table » ; facultatif), writeBlock() -> texte ou null (ce qui empêche d'écrire)
+  //   des personnes, avec l'accord donné dans la fenêtre « Créer une table » ; facultatif), writeBlock() -> texte ou null (ce qui empêche d'écrire), lock (le
+  //   verrou
+  //   réel dans Grist : js/annuaire/annuaire-lock-control.js, `forSetup` ; facultatif : absent à la création)
   //   }
   constructor(opts) {
     this.#o = opts;
@@ -53,7 +55,7 @@ export class AnnuaireSetup {
   // Ce que les onglets voient de la fenêtre.
   get #host() {
     return { t: this.#o.t, schema: this.#o.schema, draft: this.#draft, ui: this.#ui, editing: Boolean(this.#o.annuaire), container: this.#o.container,
-      inertTargets: this.#o.inertTargets, preview: this.#preview, body: this.#refs.body, sample: this.#sample(),
+      inertTargets: this.#o.inertTargets, preview: this.#preview, lock: this.#o.lock || null, body: this.#refs.body, sample: this.#sample(),
       repaint: () => this.#paint(), changed: () => { this.#paint(); this.#schedule(); }, list: opts => this.#list(opts),
         focus: (...keys) => this.#focus(...keys), createColumn: (table, made) => this.#createColumn(table, made), createTable: name => this.#createTable(name),
         writeBlock: () => (this.#o.writeBlock ? this.#o.writeBlock() : null) };

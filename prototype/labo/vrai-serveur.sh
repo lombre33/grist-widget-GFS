@@ -6,6 +6,8 @@
 #   GRIST_VERSION=1.7.19 GRIST_PORT=8484 bash vrai-serveur.sh
 #   GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh   # des réglages de plus pour le serveur (ici : des webhooks vers 127.0.0.1, run-sync-webhook.mjs et run-sync-rest.mjs)
 #   GRIST_EMAIL=editor@example.com bash vrai-serveur.sh   # la personne d'essai du moment (le serveur n'en connaît qu'une) : les essais de droits relancent le serveur sous chaque compte (run-droits-reel.mjs)
+#   GRIST_MULTI=1 bash vrai-serveur.sh   # TOUTES les personnes à la fois : la page /test/login?username=<adresse> ouvre une session (un pot de cookies par personne), sans navigateur ni
+#                                        # relance du serveur ; les essais de l'API REST qui attaquent la donnée brute avec le compte de chacun (run-annuaire-verrou.mjs). Autre dossier de données.
 set -euo pipefail
 VERSION="${GRIST_VERSION:-1.7.19}"
 PORT="${GRIST_PORT:-8484}"
@@ -20,12 +22,14 @@ fi
 # GRIST_IN_SERVICE : sans lui, Grist demande d'abord sa configuration (écran /boot). GRIST_FORCE_LOGIN : sans lui, la session est anonyme et ne peut rien envoyer.
 # GRIST_SANDBOX_FLAVOR=unsandboxed : pas de bac à sable dans le conteneur d'essai. L'adresse donnée par GRIST_DEFAULT_EMAIL est celle de la personne d'essai.
 docker rm -f grist >/dev/null 2>&1 || true
-mkdir -p /tmp/grist-persist
+# GRIST_MULTI : la page de connexion d'essai de Grist (GRIST_TEST_LOGIN) à la place de l'adresse par défaut.
+if [ "${GRIST_MULTI:-}" = 1 ]; then LOGIN="-e GRIST_TEST_LOGIN=1"; PERSIST=/tmp/grist-persist-multi; else LOGIN="-e GRIST_DEFAULT_EMAIL=${EMAIL}"; PERSIST=/tmp/grist-persist; fi
+mkdir -p "${PERSIST}"
 docker run -d --name grist --network host \
   -e PORT="${PORT}" -e GRIST_IN_SERVICE=true -e GRIST_FORCE_LOGIN=true -e GRIST_SANDBOX_FLAVOR=unsandboxed \
-  -e GRIST_DEFAULT_EMAIL="${EMAIL}" -e APP_HOME_URL="${HOME_URL}" \
+  ${LOGIN} -e APP_HOME_URL="${HOME_URL}" \
   ${GRIST_DOCKER_ARGS:-} \
-  -v /tmp/grist-persist:/persist "gristlabs/grist:${VERSION}" >/dev/null
+  -v "${PERSIST}:/persist" "gristlabs/grist:${VERSION}" >/dev/null
 
 for _ in $(seq 1 40); do
   if [ "$(curl -s --noproxy '*' -o /dev/null -w '%{http_code}' "${HOME_URL}/status")" = 200 ]; then

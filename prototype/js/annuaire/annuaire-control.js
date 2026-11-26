@@ -22,6 +22,7 @@ import { fieldGenres } from './annuaire-model.js';
 import { copyText } from './annuaire-copy.js';
 import { saveText } from '../apps/dependencies-export.js';
 import { SubControl } from './annuaire-sub-control.js';
+import { LockControl } from './annuaire-lock-control.js';
 import { isSub, parentOf, orderAnnuaires } from './annuaire-sub.js';
 import { MergedView, canMerge } from './annuaire-merge-view.js';
 import { MERGED_ROW, mergeReads } from './annuaire-merge.js';
@@ -41,6 +42,7 @@ export class AnnuaireControl {
   #reading = 0; // le numéro de la dernière lecture lancée : une lecture plus ancienne qui finit après ne montre rien
   #data = null; // la dernière lecture de l'annuaire montré (le formulaire « Modifier » en prend les valeurs et les choix), vue de la personne qui lit
   #sub; // les gestes d'un sous-annuaire (js/annuaire/annuaire-sub-control.js)
+  #lock; // le verrou réel dans Grist, sur demande (js/annuaire/annuaire-lock-control.js)
   #merge = new MergedView(); // la vue « Tous mes annuaires » (js/annuaire/annuaire-merge-view.js)
   #picker = null; // la fenêtre « Choisir une personne » qu'une app a demandée (js/annuaire/annuaire-pick.js)
   #loaded = false; // la liste des annuaires a été lue (sans erreur) à la dernière lecture
@@ -59,6 +61,8 @@ export class AnnuaireControl {
       notice: text => opts.notice(text), say: text => this.#window.say(text), writeBlock: () => opts.writeBlock(), admin: () => this.#admin,
         identity: opts.identity,
       rights: opts.rights, origin: parent => this.#origin(parent), reload: row => this.#reload(row) });
+    this.#lock = new LockControl({ t: opts.t, locale: opts.locale, container: opts.container, inertTargets: opts.inertTargets, ask: o => opts.ask(o),
+      notice: text => opts.notice(text), port: opts.port, rights: opts.rights, schema: () => this.#schema(), writeBlock: () => opts.writeBlock() });
     this.#window = new AnnuaireWindow({ container: opts.container, t: opts.t, locale: opts.locale, inertTargets: opts.inertTargets, writeBlock: opts.writeBlock,
       onSwitch: () => void this.#switch(), onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onEdit: row => this.#edit(row),
       onCheck: () => this.#check(), onMail: people => this.#mail(people), onPresence: (row, on) => this.#setPresence(row, on),
@@ -398,7 +402,8 @@ export class AnnuaireControl {
     if (blocked) { this.#o.notice(blocked); return; }
     const schema = await this.#schema();
     if (!schema) return;
-    const done = await new AnnuaireSetup({ ...this.#setupTools(schema), annuaire: current, taken: [],
+    const admin = (await this.#proof()) === true;
+    const done = await new AnnuaireSetup({ ...this.#setupTools(schema), annuaire: current, taken: [], lock: this.#lock.forSetup(current, admin),
       read: (draft, cache) => this.#store.read({ ...current, ...draft },
       schema, cache) }).run();
     if (!done) return;

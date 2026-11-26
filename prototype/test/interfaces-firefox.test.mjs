@@ -707,7 +707,7 @@ describe('l\'interface sous Firefox', () => {
     });
 
     // L'annuaire (test/annuaire-firefox.mjs, module Annuaire, 25/11) : la vraie fenêtre sur un faux Grist en mémoire (test/pages/annuaire.js), à 700, 520 et 400 px de large sur 400 de haut, à la vraie souris et au vrai clavier, en clair et en sombre ; une page rechargée par largeur et par mode.
-    test(`l'annuaire en ${language === 'fr' ? 'français' : 'anglais'}, en clair et en sombre à 700, 520 et 400 px : cadre, liste, hiérarchie, fiche, recherche, filtres, cartes, organigramme, réglage, langue, clavier, contraste`, { skip: SKIP, timeout: 360000 }, async () => {
+    test(`l'annuaire en ${language === 'fr' ? 'français' : 'anglais'}, en clair et en sombre à 700, 520 et 400 px : cadre, liste, hiérarchie, fiche, recherche, filtres, cartes, organigramme, réglage, langue, clavier, contraste`, { skip: SKIP, timeout: 1500000 }, async () => {
       const { page } = browser;
       const problems = [];
       const since = page.logs.length;

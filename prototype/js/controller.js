@@ -432,7 +432,10 @@ export class GfsController {
     this.explorer.open();
     void this.refreshFiles();
     this.liveList.start();
-    this.rights.resume(this.explorer, { annuaire: () => void openAnnuaire(this).then(() => this.notice(this.t('an.sub.ready'))) });
+    this.rights.resume(this.explorer, { annuaire: () => void openAnnuaire(this).then(() => this.notice(this.t('an.sub.ready'))),
+      'annuaire:lock': () => void openAnnuaire(this).then(() => this.notice(this.t('an.lock.done'))),
+      'annuaire:unlock': () => void openAnnuaire(this).then(() => this.notice(this.t('an.lock.removed'))),
+      'annuaire:close': () => void openAnnuaire(this).then(() => this.notice(this.t('an.lock.closed'))) });
   }
 
   hideExplorer() {

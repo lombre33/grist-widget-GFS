@@ -13,6 +13,9 @@
 // `?filters=bar` : l'annuaire principal montre ses filtres en barre (`filterMode`, test/annuaire-filtres-firefox.mjs), sinon en panneau.
 // `?rights=self,own,below,role` : qui modifie les fiches de l'annuaire principal en plus des administrateurs (`edit` : sa fiche, sa structure, avec celles en dessous, la colonne
 // « Gestion », cochée pour Louis Girard) ; avec `&admin=0&me=adresse`, une personne qui lit sans être administratrice.
+// `?lock=none|current|stale|foreign` : le verrou réel dans Grist (js/annuaire/annuaire-lock-control.js ; test/annuaire-verrou-firefox.mjs) : de fausses règles d'accès (aucune, celles du réglage,
+// celles d'un réglage d'avant, une règle écrite à la main) et un faux écrivain qui note ce qu'on lui demande d'écrire (`window.__annuaireLock`, `window.__annuaireAsks` : les questions posées) ;
+// `&lockfail=texte` : Grist refuse la pose. Ce que Grist en fait vraiment se mesure dans le labo (labo/run-annuaire-verrou.mjs).
 // `?links=1` : les apps du menu « Insérer dans… » (voir `FAKE_TARGETS`) ; sans lui aucune app n'accepte de personne.
 //
 // `?sub=1` : les sous-annuaires (test/annuaire-sub-firefox.mjs) : `GFS_Directories` porte les colonnes que le moteur de partage y pose (lecteurs, écrivains, administrateurs,
@@ -28,7 +31,8 @@ import { ThemeHost } from '/js/theme/theme-apply.js';
 import { documentFixture, configFixture } from '/test/annuaire-fixtures.mjs';
 import { presenceView } from '/js/annuaire/annuaire-presence.js';
 import { levelKey } from '/js/annuaire/annuaire-model.js';
-import { ANNUAIRES_TABLE } from '/js/annuaire/annuaire-config.js';
+import { ANNUAIRES_TABLE, readConfig } from '/js/annuaire/annuaire-config.js';
+import { lockSpec, planLock } from '/js/annuaire/annuaire-lock.js';
 
 const LONG_UNIT = 'Direction des relations internationales et de la coopération universitaire';
 
@@ -109,6 +113,53 @@ function fakeRights() {
     sharing: { whyNot: () => window.__annuaireShareWhy || null, open: async file => { window.__annuaireShared = file; } } };
 }
 
+// Les lignes d'une table interne de Grist, comme `RightsReader` les rend : [{ id, … }].
+async function internalRows(grist, name) {
+  const data = await grist.port.doc.fetchTable(name);
+  return data.id.map((id, at) => Object.fromEntries(Object.keys(data).map(key => [key, data[key][at]])));
+}
+
+// De fausses règles d'accès et un faux écrivain pour `?lock=…` : `mode` dit ce que le document contient déjà. `current` : les règles du réglage enregistré ; `stale` : celles d'un
+// réglage d'avant (chacun sa fiche en moins) ; `foreign` : une règle écrite à la main sur la table des personnes ; `none` : aucune.
+function fakeLockRights(grist, seed, mode, t) {
+  const base = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ id: 1, resource: 1, aclFormula: '', permissionsText: 'all', permissions: 63, rulePos: 1, memo: '' }] });
+  const raw = async () => {
+    const [tables, columns] = await Promise.all([internalRows(grist, '_grist_Tables'), internalRows(grist, '_grist_Tables_column')]);
+    const existing = { ...base(), tables, columns };
+    const [annuaire] = await seed.list();
+    // Les colonnes d'aide que GFS a déjà demandées au faux Grist (il ne les range pas dans ses tables internes) : le plan des règles les relit comme le ferait Grist.
+    grist.batches.flat().filter(action => action[0] === 'AddColumn' && /^GFS_/.test(action[2])).forEach((action, at) => {
+      const home = tables.find(row => row.tableId === action[1]);
+      if (home && !existing.columns.some(column => column.parentId === home.id && column.colId === action[2])) {
+        existing.columns.push({ id: 800 + at, parentId: home.id, colId: action[2], isFormula: true, formula: action[3].formula });
+      }
+    });
+    if (mode === 'foreign') {
+      existing.resources.push({ id: 2, tableId: annuaire.table, colIds: '*' });
+      existing.rules.push({ id: 2, resource: 2, aclFormula: 'user.Access == EDITOR', permissionsText: '-U', rulePos: 1, memo: 'à la main' });
+    }
+    if (mode !== 'current' && mode !== 'stale') return existing;
+    const saved = readConfig(annuaire.config);
+    const config = mode === 'stale' ? { ...saved, edit: { ...saved.edit, self: !saved.edit.self } } : saved;
+    const spec = lockSpec({ table: annuaire.table, config, schema: await seed.schema() });
+    const table = tables.find(row => row.tableId === annuaire.table);
+    spec.helpers.forEach((each, at) => existing.columns.push({ id: 900 + at, parentId: table.id, colId: each.id, isFormula: true, formula: each.formula }));
+    const say = key => t(`an.lock.note.${key}`);
+    for (const action of planLock(existing, spec, say).actions) {
+      if (action[0] === 'AddRecord') existing[action[1] === '_grist_ACLRules' ? 'rules' : 'resources'].push({ id: action[2], ...action[3] });
+    }
+    return existing;
+  };
+  window.__annuaireLock = [];
+  const written = (kind, plan, resume) => {
+    window.__annuaireLock.push({ kind, resume, ok: plan.ok, actions: (plan.actions || []).map(action => `${action[0]}:${action[1]}`) });
+    return window.__annuaireLockFail ? { ok: false, message: window.__annuaireLockFail } : { ok: true };
+  };
+  return { reader: { raw },
+    writer: { applyWith: async (planOf, resume) => written('with', planOf(await raw()), resume), apply: async (kind, resume) => written(kind, { ok: true }, resume) } };
+}
+
+
 // Les colonnes que le moteur de partage pose dans `GFS_Directories`, et le sous-annuaire « Pôle Ressources » déjà là (copie du 20/11 ; un écrivain, aucun administrateur).
 async function seedSub(grist, seed) {
   const { applyUserActions } = grist.port.doc;
@@ -164,6 +215,8 @@ async function mount() {
   }
   if (query.get('sub') === '1') await seedSub(grist, seed);
   window.__annuaireNotices = [];
+  window.__annuaireAsks = [];
+  window.__annuaireLockFail = query.get('lockfail') || '';
   window.__annuaireCopied = null;
   window.__annuaireShared = null;
   window.__annuaireInserted = [];
@@ -171,9 +224,9 @@ async function mount() {
   window.__annuaireApps = 0;
   let lang = language;
   const control = new AnnuaireControl({ port: grist.port, container: document.getElementById('stage'), t: (key, vars) => i18n.t(key, vars), locale: () => locale(lang),
-    inertTargets: () => [], ask: async () => true, notice: text => window.__annuaireNotices.push(text), writeBlock: () => window.__annuaireBlock || null, fullAccess: () => true,
+    inertTargets: () => [], ask: async options => { window.__annuaireAsks.push(options.title); return true; }, notice: text => window.__annuaireNotices.push(text), writeBlock: () => window.__annuaireBlock || null, fullAccess: () => true,
     isOwner: async () => query.get('admin') !== '0', identity: () => query.get('me') || '',
-    rights: query.get('sub') === '1' ? fakeRights() : undefined,
+    rights: query.get('sub') === '1' ? fakeRights() : (query.get('lock') ? fakeLockRights(grist, seed, query.get('lock'), (key, vars) => i18n.t(key, vars)) : undefined),
     targets: () => (query.get('links') === '1' ? FAKE_TARGETS : []),
     insert: async (id, person) => { window.__annuaireInserted.push({ id, person }); return true; },
     unlock: async target => { window.__annuaireUnlocked.push(target.id); }, apps: async () => { window.__annuaireApps += 1; } });

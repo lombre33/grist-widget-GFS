@@ -25,7 +25,7 @@ export const ANNUAIRE_RIGHTS_STRINGS = Object.freeze({
     'an.opt.reRole': 'Personnes désignées',
     'an.opt.reRolePick': 'Quelle colonne désigne ces personnes ?',
     'an.opt.reRolePickText': 'Une colonne oui/non de la table des personnes : celles dont la case est cochée modifient toutes les fiches.',
-    'an.opt.reNote': 'C’est la règle de GFS : « Modifier » reste grisé pour les autres. Grist garde le dernier mot : ses règles d’accès sur la table des personnes s’appliquent toujours.',
+    'an.opt.reNote': 'C’est la règle de GFS : « Modifier » reste grisé pour les autres. Pour qu’elle soit aussi appliquée par Grist, posez le verrou (bloc suivant) ; Grist garde de toute façon le dernier mot : ses règles d’accès sur la table des personnes s’appliquent toujours.',
   },
   en: {
     'an.edit.whyAdmins': 'Only the document’s administrators edit the cards of this directory.',
@@ -48,6 +48,6 @@ export const ANNUAIRE_RIGHTS_STRINGS = Object.freeze({
     'an.opt.reRole': 'Designated people',
     'an.opt.reRolePick': 'Which column designates these people?',
     'an.opt.reRolePickText': 'A yes/no column of the people table: those whose box is checked edit every card.',
-    'an.opt.reNote': 'This is GFS’s rule: “Edit” stays greyed for everyone else. Grist keeps the last word: its access rules on the people table always apply.',
+    'an.opt.reNote': 'This is GFS’s rule: “Edit” stays greyed for everyone else. To make it hold in Grist too, apply the lock (next block); Grist keeps the last word anyway: its access rules on the people table always apply.',
   },
 });

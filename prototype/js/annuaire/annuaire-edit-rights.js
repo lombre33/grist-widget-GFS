@@ -3,8 +3,8 @@
 // (test/annuaire-edit-rights.test.mjs) : elles disent « oui » ou la phrase qui explique le « non » ; elles n'écrivent rien.
 //
 // C'est la règle de GFS : elle grise « Modifier » avec sa raison. Elle n'est pas un verrou : la table des personnes reste ce que ses règles d'accès disent, et
-// Grist garde le dernier mot (un refus de sa part se dit dans la fenêtre « Modifier »). Un verrou réel dans Grist serait une règle d'accès de plus sur la table
-// de la personne : GFS n'en pose aucune aujourd'hui, ce serait une première (carte de décision).
+// Grist garde le dernier mot (un refus de sa part se dit dans la fenêtre « Modifier »). Le verrou réel dans Grist, que le propriétaire pose sur demande après
+// l'aperçu (choix du porteur, 26/11), est à js/annuaire/annuaire-lock.js : mêmes droits, écrits en règles d'accès sur la table des personnes.
 
 import { effectiveConfig } from './annuaire-config.js';
 import { nodeId } from './annuaire-model.js';
@@ -51,12 +51,16 @@ export function editRight(person, { admin = false, identity = '', people = [], c
 export function editWhy(config, t, locale, identity = null) {
   const rules = activeRules(config);
   if (!rules.length) return t('an.edit.whyAdmins');
-  const who = rules.map(rule => t(`an.edit.who.${rule}`));
-  let list;
-  try { list = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(who); } catch (error) { list = who.join(', '); }
-  const said = t('an.edit.whyRules', { who: list });
+  const said = t('an.edit.whyRules', { who: whoList(config, t, locale) });
   const unknown = identity !== null && !String(identity).trim();
   return unknown && rules.some(rule => rule !== 'role') ? `${said} ${t('an.edit.whyNoIdentity')}` : said;
+}
+
+// Les règles allumées en plus des administrateurs, dites en une liste (« la personne elle-même, les personnes désignées ») : la phrase de « Modifier » grisé et
+// l'aperçu du verrou (js/annuaire/annuaire-lock-view.js) la partagent.
+export function whoList(config, t, locale) {
+  const who = activeRules(config).map(rule => t(`an.edit.who.${rule}`));
+  try { return new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(who); } catch (error) { return who.join(', '); }
 }
 
 // Ce qui empêche de modifier cette fiche : ce qui empêche d'écrire (`blocked`, le texte de la fenêtre), sinon la règle de l'annuaire ; le texte, ou rien.

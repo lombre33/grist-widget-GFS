@@ -28,12 +28,21 @@ export class RightsWriter {
   }
 
   // Écrit le plan de `kind`, relu au moment même (rien n'est envoyé d'un plan périmé). Rend { ok: true } ou { ok: false, reason | message }.
-  // `resume` : ce que GFS rouvre au retour du rechargement (`rights` : le panneau ; `share:<clé>` : la fenêtre « Partager » du fichier).
+  // `resume` : ce que GFS rouvre au retour du rechargement (`rights` : le panneau ; `share:<clé>` : la fenêtre « Partager » du fichier ; `annuaire` : le
+  //   module après le sous-annuaire ; `annuaire:lock`, `annuaire:unlock`, `annuaire:close` : le module après le verrou, son retrait, la fermeture de la
+  //   structure : js/controller.js).
   async apply(kind, resume = 'rights') {
+    return PLANS[kind] ? this.applyWith(existing => PLANS[kind](existing), resume) : { ok: false, reason: 'unreadable' };
+  }
+
+  // Écrit un plan que l'appelant fait lui-même d'après les règles relues au moment même (`planOf(existing)` rend { ok, actions } ou { ok: false, reason }) : un
+  // plan qui dépend d'autre chose que des règles (le verrou de l'annuaire, js/annuaire/annuaire-lock.js). Même reprise, même refus d'un plan périmé.
+  async applyWith(planOf, resume = 'rights') {
     const existing = await this.#opts.reader.raw();
-    if (!existing || !PLANS[kind]) return { ok: false, reason: 'unreadable' };
-    const plan = PLANS[kind](existing);
+    if (!existing) return { ok: false, reason: 'unreadable' };
+    const plan = planOf(existing);
     if (!plan.ok) return { ok: false, reason: plan.reason };
+    if (!plan.actions.length) return { ok: true, written: false };
     this.#opts.store.write(resume);
     try {
       await this.#opts.port.doc.applyUserActions(plan.actions);

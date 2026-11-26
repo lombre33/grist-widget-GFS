@@ -7,6 +7,7 @@
 // js/annuaire/annuaire-setup.js.
 
 import { h } from '../ui/dom.js';
+import { icon } from '../ui/icons.js';
 import { CHECK_KINDS, MAIL_PER, FILTER_MODES, EDIT_LEVELS, effectiveConfig } from './annuaire-config.js';
 import { checkNeeds } from './annuaire-check.js';
 import { pickColumn } from './annuaire-setup-path.js';
@@ -89,8 +90,21 @@ function rightsBlock(host) {
     h('p', { class: 'an-set-hint an-ob-note' }, t('an.opt.reNote')));
 }
 
+// Le verrou réel dans Grist (choix du porteur, 26/11 : « sur demande, avec aperçu ») : le bouton ouvre la fenêtre qui montre les règles d'accès avant de les
+// écrire. Grisé, avec sa raison, tant que le réglage n'est pas enregistré ou que la personne n'est pas propriétaire (js/annuaire/annuaire-lock-control.js).
+function lockBlock(host) {
+  const { t, lock, draft } = host;
+  const why = lock ? lock.why(draft) : t('an.opt.lockWhy.new');
+  const open = h('button', { type: 'button', class: 'btn', 'aria-disabled': why ? 'true' : null, title: why || null,
+    dataset: { act: 'opt-lock', fk: 'ol:open' } },
+    icon('lock'), t('an.opt.lockOpen'));
+  return block(t('an.opt.lock'), t('an.opt.lockSub'), h('div', { class: 'an-ob-row an-ob-lock' }, open, h('span', { class: 'an-ob-t' },
+    h('small', null, why || t('an.opt.lockOpenSub')))));
+}
+
 export function optionsTab(host) {
   return h('div', { class: 'an-tabpanel an-obs' }, h('p', { class: 'an-set-help' }, host.t('an.opt.help')), presenceBlock(host), rightsBlock(host),
+    lockBlock(host),
     checksBlock(host), filtersBlock(host), mailBlock(host));
 }
 
@@ -152,6 +166,7 @@ const ACTS = Object.freeze({
   'opt-presence-col': host => void presenceColumn(host),
   'opt-leave': host => void leaveColumn(host),
   'opt-edit-role': host => void editRole(host),
+  'opt-lock': host => { if (host.lock && !host.lock.why(host.draft)) void host.lock.open(); },
   'opt-edit-self': host => { host.draft.config.edit.self = !host.draft.config.edit.self; host.repaint(); host.focus('oe:self'); },
   'opt-edit-level': (host, data) => {
     if (data.level && !effectiveConfig(host.draft.config).levels.length) return; // grisé : la phrase sous le choix dit pourquoi

@@ -344,11 +344,11 @@ async function mailBatchProblems(page, t, note, click, where) {
 }
 
 async function copyAndExportProblems(page, t, note, click, where) {
-  await click('[data-fk="mail-copy"]');
+  await clickOn(page, note, '[data-fk="mail-copy"]'); // la fenêtre défile : un bouton plus bas que 400 px est d'abord amené sous la souris
   await delay(400);
   const copied = await page.run(mailSnap);
   if (![t('an.mail.copied', { n: DOC.addresses }), t('an.copyFailed')].includes(copied.note)) note('écrire', `${where} : « Copier » dit « ${copied.note} » (« ${t('an.mail.copied', { n: DOC.addresses })} » attendu)`);
-  await click('[data-fk="mail-export"]');
+  await clickOn(page, note, '[data-fk="mail-export"]');
   await delay(400);
   const exported = await page.run(mailSnap);
   const saved = await page.run(() => window.__saved);
@@ -506,7 +506,7 @@ function optionsProblems(snap, t, note, where) {
   if (snap.tabs.join('|') !== tabs) note('options', `${where} : les onglets sont « ${snap.tabs.join(' | ')} » (« ${tabs} » attendus)`);
   framed(snap, note, where, 'options');
   if (snap.bodySideways > 1) note('options', `${where} : l'onglet défile de côté (${snap.bodySideways} px)`);
-  const titles = [t('an.opt.presence'), t('an.opt.rights'), t('an.opt.checks'), t('an.opt.filters'), t('an.opt.mail')].join('|');
+  const titles = [t('an.opt.presence'), t('an.opt.rights'), t('an.opt.lock'), t('an.opt.checks'), t('an.opt.filters'), t('an.opt.mail')].join('|');
   if (snap.blocks.join('|') !== titles) note('options', `${where} : les blocs sont « ${snap.blocks.join(' | ')} » (« ${titles} » attendus)`);
   if (!snap.switches['op:on'] || !snap.switches['op:on'].on) note('options', `${where} : « ${t('an.opt.presenceOn')} » n'est pas allumée`);
   if (snap.column !== 'Masquee' || snap.leave !== 'Depart') note('options', `${where} : les colonnes disent « ${snap.column} » et « ${snap.leave} » (Masquee et Depart attendues)`);

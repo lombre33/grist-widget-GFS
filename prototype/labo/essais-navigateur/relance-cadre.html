@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Cadre d'essai de la relance</title>
+<link rel="stylesheet" href="essai.css?v=2">
+<link rel="stylesheet" href="relance.css?v=1">
+</head>
+<body data-role="cadre">
+<section class="zone">
+  <h3>0 · Témoin : visible et modifiable dès le départ</h3>
+  <div class="editable" id="t0" contenteditable="true" role="textbox" aria-label="Zone 0"></div>
+  <p class="question">LanguageTool corrige ici ? <span id="q-t0"></span></p>
+</section>
+
+<section class="zone">
+  <h3>A · Zones cachées au départ (comme l'éditeur en Lecture)</h3>
+  <p class="pas"><button id="montrer" type="button">Montrer les zones</button> <button id="cacher" type="button">Cacher de nouveau</button></p>
+  <div id="boite-a" class="boite" data-etat="cachee">
+    <div class="rang"><span class="nom">A0 · sans relance</span><div class="editable" id="a0" contenteditable="true" role="textbox" aria-label="Zone A0"></div><span class="question" id="q-a0"></span></div>
+    <div class="rang"><span class="nom">A1 · relance à l'image suivante</span><div class="editable" id="a1" contenteditable="true" role="textbox" aria-label="Zone A1"></div><span class="question" id="q-a1"></span></div>
+    <div class="rang"><span class="nom">A2 · relance dans le même instant</span><div class="editable" id="a2" contenteditable="true" role="textbox" aria-label="Zone A2"></div><span class="question" id="q-a2"></span></div>
+    <div class="rang"><span class="nom">A3 · relance 0,4 s plus tard</span><div class="editable" id="a3" contenteditable="true" role="textbox" aria-label="Zone A3"></div><span class="question" id="q-a3"></span></div>
+  </div>
+  <p class="question">Après « Cacher de nouveau » puis « Montrer les zones », LanguageTool corrige encore en A0 ? <span id="q-a0bis"></span></p>
+</section>
+
+<section class="zone">
+  <h3>B · Zones gelées au départ (comme les champs d'un e-mail en Lecture)</h3>
+  <p class="pas"><button id="degeler" type="button">Rendre modifiables</button></p>
+  <div id="boite-b" class="boite">
+    <div class="rang"><span class="nom">B0 · sans relance</span><div class="editable" id="b0" contenteditable="false" role="textbox" aria-label="Zone B0"></div><span class="question" id="q-b0"></span></div>
+    <div class="rang"><span class="nom">B1 · relance à l'image suivante</span><div class="editable" id="b1" contenteditable="false" role="textbox" aria-label="Zone B1"></div><span class="question" id="q-b1"></span></div>
+    <div class="rang"><span class="nom">B2 · relance dans le même instant</span><div class="editable" id="b2" contenteditable="false" role="textbox" aria-label="Zone B2"></div><span class="question" id="q-b2"></span></div>
+    <div class="rang"><span class="nom">B3 · relance 0,4 s plus tard</span><div class="editable" id="b3" contenteditable="false" role="textbox" aria-label="Zone B3"></div><span class="question" id="q-b3"></span></div>
+  </div>
+</section>
+<script src="relance.js?v=1"></script>
+</body>
+</html>

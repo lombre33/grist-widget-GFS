@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Essai : LanguageTool après un changement de mode</title>
+<link rel="stylesheet" href="essai.css?v=2">
+<link rel="stylesheet" href="relance.css?v=1">
+</head>
+<body data-role="haut">
+<h1>Essai : LanguageTool démarre-t-il dans une zone cachée ou gelée au départ ?</h1>
+<p>Dans Publipostage+, l'éditeur du texte est <b>caché</b> tant que le document s'ouvre en Lecture, et les champs d'un e-mail (destinataires, objet…) sont <b>gelés</b> (non modifiables) en Lecture. Le passage en Édition les montre et les rend modifiables. Question : LanguageTool les prend-il en charge à ce moment-là, et, sinon, une « relance » (poser la marque <code>data-lt-active="false"</code> puis la retirer, un tour que tu as vu marcher le 12/11) le réveille-t-elle ? Un seul cadre, isolé comme celui d'une app dans GFS.</p>
+<p><strong>Avant tout :</strong> LanguageTool allumé pour ce site, puis recharge cette page.</p>
+<ol>
+  <li>Zone 0 (témoin) : clique dedans, attends deux secondes. LanguageTool doit corriger (sinon, l'essai ne dit rien).</li>
+  <li>Partie A : clique <b>« Montrer les zones »</b>, puis clique dans chacune des quatre zones qui paraissent, deux secondes chacune, et réponds sous chaque zone.</li>
+  <li>Partie B : clique <b>« Rendre modifiables »</b>, puis fais de même avec les quatre zones.</li>
+  <li>Le rapport tout en bas se remplit seul. Copie-le avec le bouton, colle-le dans la conversation, et ajoute la version de LanguageTool (son menu, en bas).</li>
+</ol>
+<div id="cadres"></div>
+<h2>Rapport</h2>
+<textarea id="rapport" rows="26" readonly spellcheck="false" aria-label="Rapport à copier"></textarea>
+<p><button id="copier" type="button">Copier le rapport</button> <span id="copie"></span></p>
+<script src="relance.js?v=1"></script>
+</body>
+</html>

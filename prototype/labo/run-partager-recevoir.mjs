@@ -2,8 +2,8 @@
 // (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`), à 700 × 400, à la vraie souris : le premier document envoie par « Partager > Dans un autre document Grist », le second reçoit par « Importer ».
 // Seul le lien du formulaire (que Grist ne donne pas à un widget : sa clé se lit dans la base du serveur d'essai) est lu par l'essai, à la place de la personne qui le copie dans Grist.
 //   1. « D'un autre document Grist… » est dans le sous-menu « Importer » ; rien n'est écrit avant l'accord, Échap n'écrit rien ; un code qui n'en est pas un est refusé par le moteur ;
-//   2. l'accord dit ce que GFS ajoute (la table GFS_Recus, un journal) ; « Accepter » crée le journal et sa page de formulaire ; un lien qui n'écrit pas dans ce journal est refusé, la fenêtre reste où elle est ;
-//   3. la réponse et le code de contrôle s'affichent ; l'envoyeur colle la réponse : le MÊME code de contrôle chez lui ; il envoie ; le fichier arrive dans GFS_Recus (mêmes octets) sans autre geste de l'essai ;
+//   2. l'accord dit ce que GFS ajoute (la table GFS_Received, un journal) ; « Accepter » crée le journal et sa page de formulaire ; un lien qui n'écrit pas dans ce journal est refusé, la fenêtre reste où elle est ;
+//   3. la réponse et le code de contrôle s'affichent ; l'envoyeur colle la réponse : le MÊME code de contrôle chez lui ; il envoie ; le fichier arrive dans GFS_Received (mêmes octets) sans autre geste de l'essai ;
 //   4. fermer la fenêtre avant la réponse défait ce qui avait été créé (le journal, la page du formulaire).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark. REPO_DIR="$(realpath ../..)" node run-partager-recevoir.mjs
 import { createServer } from 'node:http';
@@ -62,7 +62,7 @@ try {
   check('un code qui n\'en est pas un est refusé par le moteur, la fenêtre reste où elle est', (await tframe.locator('[data-fk="sr-invite"]').count()) === 1 && /./.test(await text(tframe, '.mod.so .mod-note')), await text(tframe, '.mod.so .mod-note'));
   await tpage.keyboard.press('Escape');
   await tframe.locator('.mod.so').waitFor({ state: 'detached' });
-  check('Échap n\'écrit rien (ni journal ni GFS_Recus)', !(await target.rest.tables()).some(name => /^GFS_(Journal|Recus)/.test(name)), await target.rest.tables());
+  check('Échap n\'écrit rien (ni journal ni GFS_Received)', !(await target.rest.tables()).some(name => /^GFS_(Journal|Recus)/.test(name)), await target.rest.tables());
 
   say('--- 2. l\'envoyeur prépare, le receveur accepte ---');
   await openRowMenu(source.frame, 'Facture.pdf');
@@ -79,14 +79,14 @@ try {
   await tframe.locator('[data-fk="sr-continue"]').click();
   await tframe.locator('[data-fk="sr-accept"]').waitFor({ timeout: 20000 });
   const accord = await text(tframe, '.mod.so');
-  check('l\'accord dit ce que GFS ajoute (GFS_Recus, un journal) et que rien n\'est copié avant', accord.includes('GFS_Recus') && accord.toLowerCase().includes(t('sr.accord.adds').toLowerCase()), accord);
+  check('l\'accord dit ce que GFS ajoute (GFS_Received, un journal) et que rien n\'est copié avant', accord.includes('GFS_Received') && accord.toLowerCase().includes(t('sr.accord.adds').toLowerCase()), accord);
   check('rien n\'est écrit avant l\'accord', !(await target.rest.tables()).some(name => /^GFS_(Journal|Recus)/.test(name)), await target.rest.tables());
   check('la fenêtre de l\'accord tient dans le panneau', await fits(tframe, '.mod.so'), await contrastProblems(tframe, '.mod.so'));
   await shot(tframe, '2-accord');
   await tframe.locator('[data-fk="sr-accept"]').click();
   await tframe.locator('[data-fk="sr-link"]').waitFor({ timeout: 30000 });
   const journal = (await target.rest.tables()).find(name => /^GFS_Journal_/.test(name));
-  check('le journal et GFS_Recus sont créés, la fenêtre dit quelle page ouvrir', Boolean(journal) && (await target.rest.tables()).includes('GFS_Recus') && (await text(tframe, '.mod.so')).includes(journal), { journal, text: await text(tframe, '.mod.so') });
+  check('le journal et GFS_Received sont créés, la fenêtre dit quelle page ouvrir', Boolean(journal) && (await target.rest.tables()).includes('GFS_Received') && (await text(tframe, '.mod.so')).includes(journal), { journal, text: await text(tframe, '.mod.so') });
   await shot(tframe, '3-lien');
 
   say('--- 3. le lien, la réponse, le contrôle, l\'envoi ---');
@@ -113,11 +113,11 @@ try {
   check('le même code de contrôle chez l\'envoyeur', (await source.frame.locator('[data-fk="so-control"]').innerText()) === control, { sender: await source.frame.locator('[data-fk="so-control"]').innerText(), receiver: control });
   await sendComparing(source.frame);
   let rows = [];
-  for (let i = 0; i < 120 && !rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i += 1) { rows = await target.rest.rows('GFS_Recus').catch(() => []); if (!rows.some(row => row.Contenu)) await tpage.waitForTimeout(1000); }
-  const sent = (await source.rest.rows('GFS_Fichiers')).find(row => row.Identifiant === source.id);
-  const was = await source.rest.attachment(sent.Contenu[1]);
-  const now = rows[0] && rows[0].Contenu ? await target.rest.attachment(rows[0].Contenu[1]) : null;
-  check('le fichier arrive dans GFS_Recus, mêmes octets, sans autre geste de l\'essai (la boucle de réception démarre à la réponse)', rows.length === 1 && Boolean(now) && now.hash === was.hash && now.size === was.size, { rows: rows.map(row => row.Nom), was, now });
+  for (let i = 0; i < 120 && !rows.some(row => row.Name === 'Facture.pdf' && row.Content); i += 1) { rows = await target.rest.rows('GFS_Received').catch(() => []); if (!rows.some(row => row.Content)) await tpage.waitForTimeout(1000); }
+  const sent = (await source.rest.rows('GFS_Files')).find(row => row.FileId === source.id);
+  const was = await source.rest.attachment(sent.Content[1]);
+  const now = rows[0] && rows[0].Content ? await target.rest.attachment(rows[0].Content[1]) : null;
+  check('le fichier arrive dans GFS_Received, mêmes octets, sans autre geste de l\'essai (la boucle de réception démarre à la réponse)', rows.length === 1 && Boolean(now) && now.hash === was.hash && now.size === was.size, { rows: rows.map(row => row.Name), was, now });
   await tframe.locator('[data-fk="so-close"]').click();
   // Audit de sécurité du 09/11 : à la fermeture, GFS réserve le journal aux propriétaires (js/sharing/sync-rules.js) ; Grist recharge alors la page, que l'essai reprend (la boucle de réception repart d'elle-même).
   let rules = [];
@@ -153,13 +153,13 @@ try {
   const second = await text(tframe, '.mod.so');
   await tframe.locator('[data-fk="sr-accept"]').click();
   await tframe.locator('[data-fk="sr-link"]').waitFor({ timeout: 30000 });
-  check('un second partage reçoit dans sa propre table (une destination ne reçoit qu\'un partage) : l\'accord nomme GFS_Recus_2, le journal est créé', second.includes('GFS_Recus_2') && (await target.rest.tables()).includes('GFS_Recus_2'), await target.rest.tables());
+  check('un second partage reçoit dans sa propre table (une destination ne reçoit qu\'un partage) : l\'accord nomme GFS_Received_2, le journal est créé', second.includes('GFS_Received_2') && (await target.rest.tables()).includes('GFS_Received_2'), await target.rest.tables());
   check('un second journal est créé', (await target.rest.tables()).filter(name => /^GFS_Journal_/.test(name)).length === journalsBefore.length + 1);
   await tframe.locator('[data-fk="so-cancel"]').click();
   await tframe.locator('.mod.so').waitFor({ state: 'detached' });
   let undone = false;
   for (let i = 0; i < 30 && !undone; i += 1) { undone = (await target.rest.tables()).filter(name => /^GFS_Journal_/.test(name)).length === journalsBefore.length; if (!undone) await tpage.waitForTimeout(500); }
-  check('« Annuler » avant la réponse défait le second journal et GFS_Recus_2 ; GFS_Recus et la première réception restent', undone && (await target.rest.tables()).includes('GFS_Recus') && !(await target.rest.tables()).includes('GFS_Recus_2') && (await target.rest.rows('GFS_Recus')).length === 1, await target.rest.tables());
+  check('« Annuler » avant la réponse défait le second journal et GFS_Received_2 ; GFS_Received et la première réception restent', undone && (await target.rest.tables()).includes('GFS_Received') && !(await target.rest.tables()).includes('GFS_Received_2') && (await target.rest.rows('GFS_Received')).length === 1, await target.rest.tables());
   if (races.length) say(`(connu : ${races.length} erreur « KeyError 'GFS_Synchro' » à la fin d'un partage « une fois », sans suite)`);
   check('aucune erreur de GFS dans la console', unexpected(source).length === 0 && unexpected(target).length === 0, { source: unexpected(source).map(each => each.slice(0, 160)), target: unexpected(target).map(each => each.slice(0, 160)) });
 } finally {

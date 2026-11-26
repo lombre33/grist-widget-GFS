@@ -3,7 +3,7 @@
 // (`lab.setUser`), et la formule déclenchée `user.Email` de la ligne-sonde de GFS (6.4, point 9) est celle de Grist.
 // Trois sondes partagent le dossier labo/sondes/v-personne/ : V (page brute) déclare `permissions.identite`, W (même page) ne la déclare pas, X (page écrite avec le VRAI client du kit, `GfsLink.identity`
 // et `onIdentity`) la déclare. Toutes trois sont « toujours là » comme Publipostage+ : elles s'ouvrent sans que la table du document existe, ce qu'il faut pour voir l'adresse arriver en cours de session.
-//   1. Ana, sans la table GFS_Rangement : GFS ne la connaît pas, V reçoit `identite: null` ; aucun événement.
+//   1. Ana, sans la table GFS_Filing : GFS ne la connaît pas, V reçoit `identite: null` ; aucun événement.
 //   2. Ana épingle un fichier (la table naît avec son accord, GFS apprend son adresse) : V, sous l'explorateur, reçoit UN événement `identite` avec l'adresse, rien d'autre.
 //   3. GFS rouvre (la table existe) : le contexte de V porte l'adresse dès le départ, telle que Grist la donne ; GFS n'écrit rien de plus que la sonde ; l'adresse n'est dans l'adresse d'aucun cadre.
 //   4. W, qui ne l'a pas déclarée : `identite: null` alors que GFS connaît Ana ; nulle part dans son contexte ni dans ses événements.
@@ -89,9 +89,9 @@ const starOn = async name => (await row(name).locator('.rb.pin').getAttribute('c
 const frameUrls = () => page.frames().map(f => f.url());
 
 // ----- 1. Ana, sans la table : GFS ne la connaît pas.
-say('\n1. Ana ouvre un document sans la table GFS_Rangement ; V (qui déclare l\'identité) s\'ouvre');
+say('\n1. Ana ouvre un document sans la table GFS_Filing ; V (qui déclare l\'identité) s\'ouvre');
 await open(ANA);
-check('au départ, le document n\'a pas de table GFS_Rangement', (await lab.rangement(frame)).table === false);
+check('au départ, le document n\'a pas de table GFS_Filing', (await lab.rangement(frame)).table === false);
 let v = await openProbe('sonde-v', /v-personne\/index\.html/);
 let seen = await seenBy(v);
 check('V a reçu son contexte', Boolean(seen.contexte), seen);
@@ -116,8 +116,8 @@ seen = await seenBy(v);
 check('V reçoit un événement `identite` quand GFS apprend l\'adresse', Boolean(event), seen.evenements);
 check('l\'événement porte l\'adresse d\'Ana telle que Grist la donne (casse gardée) et rien d\'autre', JSON.stringify(identityEvents(seen)[0] && identityEvents(seen)[0].data) === JSON.stringify({ identite: { email: ANA.Email } }), identityEvents(seen));
 check('un seul événement à l\'arrivée', identityEvents(seen).length === 1, identityEvents(seen));
-const gfsActions = (await lab.actions()).filter(action => / GFS_Rangement/.test(action));
-check('GFS n\'a rien écrit de plus pour la donner : la table, la sonde, son retrait, la ligne d\'Ana', JSON.stringify(gfsActions) === JSON.stringify(['AddTable GFS_Rangement', 'AddRecord GFS_Rangement [@sonde]', 'RemoveRecord GFS_Rangement', `AddRecord GFS_Rangement [${ANA.Email}]`]), gfsActions);
+const gfsActions = (await lab.actions()).filter(action => / GFS_Filing/.test(action));
+check('GFS n\'a rien écrit de plus pour la donner : la table, la sonde, son retrait, la ligne d\'Ana', JSON.stringify(gfsActions) === JSON.stringify(['AddTable GFS_Filing', 'AddRecord GFS_Filing [@sonde]', 'RemoveRecord GFS_Filing', `AddRecord GFS_Filing [${ANA.Email}]`]), gfsActions);
 await row(contract).hover();
 await row(contract).locator('.rb.pin').click();
 await until(async () => !(await starOn(contract)));
@@ -133,7 +133,7 @@ seen = await seenBy(v);
 check('le contexte de V porte l\'adresse d\'Ana, telle que Grist la donne', JSON.stringify(seen.contexte.identite) === JSON.stringify({ email: ANA.Email }), seen.contexte.identite);
 check('aucun événement : elle était déjà dans le contexte', identityEvents(seen).length === 0, seen.evenements);
 const written = await lab.actions();
-check('à l\'ouverture GFS n\'écrit que la sonde (ajoutée puis retirée), rien pour donner l\'adresse', JSON.stringify(written) === JSON.stringify(['AddRecord GFS_Rangement [@sonde]', 'RemoveRecord GFS_Rangement']), written);
+check('à l\'ouverture GFS n\'écrit que la sonde (ajoutée puis retirée), rien pour donner l\'adresse', JSON.stringify(written) === JSON.stringify(['AddRecord GFS_Filing [@sonde]', 'RemoveRecord GFS_Filing']), written);
 check('l\'adresse n\'est dans l\'adresse d\'aucun cadre (ni GFS, ni l\'app)', frameUrls().every(url => !/ana(@|%40)/i.test(url)), frameUrls());
 const keys = Object.keys(seen.contexte);
 check('le contexte garde tous ses autres champs (contrat 5.2) ; `identite` en plus', ['contrat', 'hote', 'acces', 'langue', 'barre', 'stockage', 'identite'].every(key => keys.includes(key)), keys);

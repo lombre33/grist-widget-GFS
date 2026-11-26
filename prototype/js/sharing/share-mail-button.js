@@ -23,8 +23,8 @@ export function mailButton({ t, name, link, say }) {
   };
   node.addEventListener('click', event => { if (node.getAttribute('aria-disabled') === 'true') { event.preventDefault(); say(node.title); } });
   const added = (record, answer) => {
-    if (record && (!answer || answer.ok) && record.Droit !== 'aucun' && isAddress(record.Personne)) {
-      people.add(String(record.Personne).trim().toLowerCase()); paint(); }
+    if (record && (!answer || answer.ok) && record.Right !== 'aucun' && isAddress(record.Person)) {
+      people.add(String(record.Person).trim().toLowerCase()); paint(); }
   };
   return { node, paint, added };
 }

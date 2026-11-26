@@ -4,7 +4,7 @@
 // la personne, une phrase, la relecture de la liste) et l'explorateur l'interroge pour ne rien savoir lui-même d'un PDF.
 
 import { isAcceptedReceived } from '../sharing/received-files.js';
-import { FILES_APP, FILES_MANIFEST, PDF_EXTENSION, PDF_MIME, cleanName, looksLikePdf } from './gfs-files.js';
+import { FILES_APP, filesManifest, filesNames, PDF_EXTENSION, PDF_MIME, cleanName, looksLikePdf } from './gfs-files.js';
 import { importFormats, acceptsFile, pickFile } from './import-file.js';
 import { TransferError } from '../broker/transfer.js';
 import { TableDeclined } from './own-table.js';
@@ -49,8 +49,8 @@ export class KeptFiles {
 
   // ---------- ce que l'explorateur demande ----------
 
-  // Un fichier que GFS garde se lit comme tel : les PDF de `GFS_Fichiers`, et ceux qu'un autre document a partagés et que la personne a acceptés
-  // (js/sharing/received-files.js : ils sont dans une table `GFS_Recus`).
+  // Un fichier que GFS garde se lit comme tel : les PDF de `GFS_Files`, et ceux qu'un autre document a partagés et que la personne a acceptés
+  // (js/sharing/received-files.js : ils sont dans une table `GFS_Received*`).
   has = file => file.app === FILES_APP || isAcceptedReceived(file);
 
   // La corbeille (js/files/trash.js) : GFS garde ces fichiers, il sait donc les mettre à la corbeille, les restaurer et les supprimer pour de bon. `lock()` : {
@@ -83,7 +83,7 @@ export class KeptFiles {
   importEntries() {
     const { t, lang } = this.#opts;
     const lock = this.#lock();
-    return importFormats(FILES_MANIFEST).map(({ item, type }) => ({
+    return importFormats(filesManifest()).map(({ item, type }) => ({
       app: FILES_APP, type: type.valeur, icon: type.icone, family: familyOf(type.couleur) || null, greyed: Boolean(lock), focus: null,
         reason: lock ? lock.text : '',
       valeur: item.valeur, extensions: item.extensions, label: label(item.nom, lang()), hint: lock ? (lock.hint || lock.text) : t('files.import.hint'),
@@ -177,7 +177,7 @@ export class KeptFiles {
 
   #failure(error, key, vars = {}) {
     const { t } = this.#opts;
-    if (error instanceof TableDeclined) return t('files.declined');
+    if (error instanceof TableDeclined) return t('files.declined', { table: filesNames().table });
     console.warn('GFS : le fichier n’a pas pu être traité', error);
     const reason = error instanceof TransferError && reasonKey(error)
       ? t(reasonKey(error), { status: error.status, message: error.message })
@@ -197,7 +197,7 @@ export class KeptFiles {
     const { t } = this.#opts;
     const blocked = this.#lock();
     if (blocked) throw new Refus(this.#opts.fullAccess() ? ERR.LECTURE_SEULE : ERR.ACCES, blocked.text);
-    if (batch.declined) throw new Refus(ERR.ANNULE, t('files.declined'));
+    if (batch.declined) throw new Refus(ERR.ANNULE, t('files.declined', { table: filesNames().table }));
     const problem = await this.#content(file, name);
     if (problem) throw new Refus(ERR.REFUSE, problem);
     try {
@@ -207,7 +207,7 @@ export class KeptFiles {
       if (!batch.noFolder) await this.#filedIn(result, folder, batch);
       return { status: result.status === 'replaced' ? 'replaced' : (result.name === name ? 'added' : 'copied'), id: result.id, name: result.name };
     } catch (error) {
-      if (error instanceof TableDeclined) { batch.declined = true; throw new Refus(ERR.ANNULE, t('files.declined')); }
+      if (error instanceof TableDeclined) { batch.declined = true; throw new Refus(ERR.ANNULE, t('files.declined', { table: filesNames().table })); }
       throw new Refus(ERR.ECHEC, this.#failure(error, 'files.failed', { name }));
     }
   }

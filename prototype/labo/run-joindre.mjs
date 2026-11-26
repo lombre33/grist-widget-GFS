@@ -56,7 +56,7 @@ async function setup(run) {
   await apply(page, docId, [
     ['AddColumn', 'Clients', 'Pdf', { type: 'Attachments' }], ['AddColumn', 'Clients', 'Texte', { type: 'Text' }],
     ['AddColumn', 'Clients', 'Calcul', { type: 'Attachments', isFormula: true, formula: '$Pdf' }],
-    ['BulkAddRecord', 'Clients', [null, null], { Nom: ['Martin', 'Durand'] }],
+    ['BulkAddRecord', 'Clients', [null, null], { Name: ['Martin', 'Durand'] }],
   ]);
   const old = pdfItem(2, 'Facture.pdf', 'Ancienne facture');
   const oldId = await upload(page, docId, 'Facture.pdf', old.b64);
@@ -146,7 +146,7 @@ async function playRefusals(run) {
     const answer = await joindre(page, demande);
     check(label, answer.ok === false && answer.code === 'GFS_REFUSE' && pattern.test(answer.message), answer);
   };
-  await refusedWith('une table de GFS : refusée', ask('GFS_Fichiers', 'Contenu', [good]), /GFS_Fichiers|réservée à GFS/);
+  await refusedWith('une table de GFS : refusée', ask('GFS_Files', 'Content', [good]), /GFS_Files|réservée à GFS/);
   await refusedWith('une table interne de Grist : refusée', ask('_grist_Attachments', 'fileName', [good]), /_grist_Attachments/);
   await refusedWith('un contenu qui n\'est pas un PDF : refusé', ask('Clients', 'Pdf', [{ ligne: 1, nom: 'Faux.pdf', b64: Buffer.from('ceci n\'est pas un PDF', 'latin1').toString('base64') }]), /pas un PDF/);
   await refusedWith('une ligne qui n\'est pas un numéro : refusée', { brut: { table: 'Clients', colonne: 'Pdf', fichiers: [{ ligne: 'un', fichier: new Blob(['x']), nom: 'a.pdf' }] } }, /ligne/);

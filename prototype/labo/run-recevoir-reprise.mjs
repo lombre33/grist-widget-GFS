@@ -1,9 +1,9 @@
 // La réception d'un partage quand Grist RECHARGE LA PAGE pendant que la fenêtre attend le lien du formulaire (retour du porteur du 25/11, docs.getgrist.com, Firefox : « quand on publie le
 // formulaire, Grist recharge la page ; au retour dans GFS, la fenêtre qui attend le lien ne se rouvre pas, et le parcours repart du début »). Dans un VRAI Grist
 // (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`), à 700 × 400, à la vraie souris, dans GFS lui-même, des DEUX côtés ; le rechargement est celui du navigateur (`page.reload()`).
-//   1. « Accepter » crée le journal et GFS_Recus et note dans le journal que la réception attend la réponse ; la page est rechargée ;
+//   1. « Accepter » crée le journal et GFS_Received et note dans le journal que la réception attend la réponse ; la page est rechargée ;
 //   2. au retour, la fenêtre se rouvre d'elle-même sur le lien du formulaire, dit que Grist a rechargé la page, sans redemander le code ; le lien collé donne la réponse et le même code de contrôle ;
-//      l'envoyeur colle la réponse, envoie, et le fichier arrive dans GFS_Recus ; la note « en attente » est effacée ;
+//      l'envoyeur colle la réponse, envoie, et le fichier arrive dans GFS_Received ; la note « en attente » est effacée ;
 //   3. une page rechargée ensuite ne rouvre rien (la réception est faite) ;
 //   4. une seconde réception : après le rechargement, « Annuler » défait le journal et sa table, et la page rechargée ensuite ne rouvre rien non plus.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark. REPO_DIR="$(realpath ../..)" node run-recevoir-reprise.mjs
@@ -93,7 +93,7 @@ try {
   say('--- 1. accepter, puis Grist recharge la page pendant que la fenêtre attend le lien ---');
   await acceptCode(target, await codeOf(source, 'Facture.pdf'));
   const journal = (await journalsOf(target))[0];
-  check('le journal et GFS_Recus sont créés', Boolean(journal) && (await target.rest.tables()).includes('GFS_Recus'), await target.rest.tables());
+  check('le journal et GFS_Received sont créés', Boolean(journal) && (await target.rest.tables()).includes('GFS_Received'), await target.rest.tables());
   check('le journal note que la réception attend la réponse', (await awaiting(target)) >= 1, await awaiting(target));
   const found = await reloadAndFind(target, 'sr-link');
 
@@ -121,8 +121,8 @@ try {
   check('le même code de contrôle chez l\'envoyeur', (await source.frame.locator('[data-fk="so-control"]').innerText()) === control, control);
   await sendComparing(source.frame);
   let rows = [];
-  for (let i = 0; i < 120 && !rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i += 1) { rows = await target.rest.rows('GFS_Recus').catch(() => []); if (!rows.some(row => row.Contenu)) await target.page.waitForTimeout(1000); }
-  check('le fichier arrive dans GFS_Recus, avec son contenu', rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu), rows.map(row => row.Nom));
+  for (let i = 0; i < 120 && !rows.some(row => row.Name === 'Facture.pdf' && row.Content); i += 1) { rows = await target.rest.rows('GFS_Received').catch(() => []); if (!rows.some(row => row.Content)) await target.page.waitForTimeout(1000); }
+  check('le fichier arrive dans GFS_Received, avec son contenu', rows.some(row => row.Name === 'Facture.pdf' && row.Content), rows.map(row => row.Name));
   check('la note « en attente » est effacée du journal', (await awaiting(target)) === 0, await awaiting(target));
   await target.frame.locator('[data-fk="so-close"]').click();
   await source.frame.locator('[data-fk="so-close"]').click().catch(() => {});
@@ -135,15 +135,15 @@ try {
   await source.page.keyboard.press('Escape');
   const before = await journalsOf(target);
   await acceptCode(target, await codeOf(source, 'Devis.pdf'));
-  check('un second journal et GFS_Recus_2 sont créés', (await journalsOf(target)).length === before.length + 1 && (await target.rest.tables()).includes('GFS_Recus_2'), await target.rest.tables());
+  check('un second journal et GFS_Received_2 sont créés', (await journalsOf(target)).length === before.length + 1 && (await target.rest.tables()).includes('GFS_Received_2'), await target.rest.tables());
   const again = await reloadAndFind(target, 'sr-link');
   check('la fenêtre se rouvre sur le lien de la seconde réception', again);
   check('et ne redemande pas le code', (await target.frame.locator('[data-fk="sr-invite"]').count()) === 0);
   await target.frame.locator('[data-fk="so-cancel"]').click();
   await target.frame.locator('.mod.so').waitFor({ state: 'detached' });
   let undone = false;
-  for (let i = 0; i < 40 && !undone; i += 1) { undone = (await journalsOf(target)).length === before.length && !(await target.rest.tables()).includes('GFS_Recus_2'); if (!undone) await target.page.waitForTimeout(500); }
-  check('« Annuler » défait le second journal et GFS_Recus_2 ; la première réception reste', undone && (await target.rest.tables()).includes('GFS_Recus') && (await target.rest.rows('GFS_Recus')).length === 1, await target.rest.tables());
+  for (let i = 0; i < 40 && !undone; i += 1) { undone = (await journalsOf(target)).length === before.length && !(await target.rest.tables()).includes('GFS_Received_2'); if (!undone) await target.page.waitForTimeout(500); }
+  check('« Annuler » défait le second journal et GFS_Received_2 ; la première réception reste', undone && (await target.rest.tables()).includes('GFS_Received') && (await target.rest.rows('GFS_Received')).length === 1, await target.rest.tables());
   await reloadAndWait(target);
   check('la page rechargée ensuite ne rouvre rien', (await target.frame.locator('.mod.so').count()) === 0);
   check('aucune erreur de GFS dans la console', unexpected(source).length === 0 && unexpected(target).length === 0, { source: unexpected(source).map(each => each.slice(0, 160)), target: unexpected(target).map(each => each.slice(0, 160)) });

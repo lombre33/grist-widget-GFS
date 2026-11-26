@@ -1,6 +1,6 @@
 // La fenêtre « Dépendances » (Réglages › Dépendances…) dans un vrai Grist (grist-static), à 700 × 400, à la vraie souris et au vrai clavier (Playwright :
 // événements du pointeur et du clavier du navigateur, jamais dispatchEvent). Lot 3 (18/11) : le choix de la source (« CDN | Copie figée ») d'une bibliothèque s'écrit
-// dans la table `GFS_Rangement` comme celui de la fiche d'une app (contrats 2.6 points 12 et 14), « Tout en copie figée » pose sa question avant d'écrire, et le
+// dans la table `GFS_Filing` comme celui de la fiche d'une app (contrats 2.6 points 12 et 14), « Tout en copie figée » pose sa question avant d'écrire, et le
 // rapport s'exporte. Ce que GFS écrit, et ce que Grist renvoie au rechargement du cadre, ne se mesure que dans un vrai Grist (CLAUDE.md).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_READONLY=1 (la vue est ouverte en lecture seule : la fenêtre se grise et n'écrit rien).
 import { startLab } from './lab-setup.mjs';
@@ -83,7 +83,7 @@ check('le détail de TipTap : version, adresse, ce qu\'il contient', /3\.31\.3/.
   && /linkifyjs/.test(await text(tipDetail)), await text(tipDetail));
 await shot('0b-portees-detail');
 await carried.locator('[data-fk="dep-publipostage|portee|tiptap"]').click();
-check('l\'ouvrir n\'écrit rien : la table GFS_Rangement n\'est pas créée par la fenêtre', readonly ? before.table === false : (before.value.publipostage?.modes === undefined), before.value);
+check('l\'ouvrir n\'écrit rien : la table GFS_Filing n\'est pas créée par la fenêtre', readonly ? before.table === false : (before.value.publipostage?.modes === undefined), before.value);
 // ----- « Sécurité » (choix du porteur du 18/11) : le contrôle daté (bibliotheques/securite.json) lu par le vrai cadre de GFS dans un vrai Grist ; la vue montre chaque app règle par règle,
 // n'appelle aucune adresse (le fichier est celui de GFS) et n'écrit rien.
 const requestsBefore = outside.length;

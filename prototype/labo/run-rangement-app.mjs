@@ -4,10 +4,10 @@
 // l'app elle-même n'est pas ouverte (sa lecture, `loadNow`, est relue dans `ppView`).
 //   1. Les modèles qu'Ana a rangés dans Publipostage+ et un dossier vide qu'elle y garde (ligne d'état, `ModeleId = 0`) : GFS les montre.
 //   2. « Nouveau dossier » dans GFS : une ligne d'état chez GFS et une chez l'app.
-//   3. Un modèle déplacé dans GFS vers un nouveau dossier : la ligne de l'app le dit, GFS_Rangement n'a aucune ligne pour lui ; Publipostage+ le voit dans ce dossier.
+//   3. Un modèle déplacé dans GFS vers un nouveau dossier : la ligne de l'app le dit, GFS_Filing n'a aucune ligne pour lui ; Publipostage+ le voit dans ce dossier.
 //   4. Le même modèle déplacé ensuite dans Publipostage+ : GFS le montre dans le nouveau dossier (celui de l'app fait foi).
 //   5. Ctrl+Z rend à l'app l'état d'avant.
-//   6. Une ligne que GFS_Rangement avait pour un modèle (avant ce changement) passe chez l'app au premier rangement et part de GFS_Rangement.
+//   6. Une ligne que GFS_Filing avait pour un modèle (avant ce changement) passe chez l'app au premier rangement et part de GFS_Filing.
 //   7. Renommer un dossier plein : les lignes des modèles, chez l'app, suivent ; supprimer un dossier vide : ses lignes d'état partent des deux tables.
 //   8. À la fin, chaque modèle est dans le même dossier pour GFS et pour la lecture de Publipostage+.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
@@ -21,7 +21,7 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const ANA = { Email: 'ana@exemple.org', Name: 'Ana', IsLoggedIn: true, UserID: 101 };
 const MODELS = 'Publipostage_Modeles';
 const PREFS = 'Publipostage_PreferencesModeles';
-const FILING = 'GFS_Rangement';
+const FILING = 'GFS_Filing';
 
 const lab = await startLab({ lang, colorScheme: scheme, user: ANA });
 const { page } = lab;
@@ -44,9 +44,9 @@ await frame.evaluate(async ([prefs, models, email]) => {
     ['AddRecord', prefs, null, { Utilisateur: 'autre@exemple.org', ModeleId: idOf('Quittance de loyer'), Epingle: false, Dossier: 'Prive' }],
   ]);
 }, [PREFS, MODELS, ANA.Email]);
-// Un document où GFS range déjà : sa table existe (sans elle, GFS ne connaît pas l'adresse d'Ana et ne lit que le rangement commun), sans la colonne `Adresse` que la sonde ajoute.
+// Un document où GFS range déjà : sa table existe (sans elle, GFS ne connaît pas l'adresse d'Ana et ne lit que le rangement commun), sans la colonne `Address` que la sonde ajoute.
 await frame.evaluate(async filing => {
-  const columns = ['Utilisateur', 'App', 'Fichier', 'Dossier', 'Valeur'].map(id => ({ id, type: 'Text' })).concat([{ id: 'Favori', type: 'Bool' }, { id: 'Replie', type: 'Bool' }]);
+  const columns = ['User', 'App', 'File', 'Folder', 'Value'].map(id => ({ id, type: 'Text' })).concat([{ id: 'Favorite', type: 'Bool' }, { id: 'Collapsed', type: 'Bool' }]);
   await grist.docApi.applyUserActions([['AddTable', filing, columns]]);
 }, FILING);
 await frame.evaluate(() => location.reload());
@@ -70,10 +70,10 @@ const rows = async name => {
   return data.id.map((id, i) => Object.fromEntries(Object.keys(data).map(column => [column, data[column][i]])));
 };
 const idOf = async name => { const data = await table(MODELS); return data.id[data.Nom.indexOf(name)]; };
-const mine = list => (list || []).filter(line => line.Utilisateur === ANA.Email);
+const mine = list => (list || []).filter(line => line.User === ANA.Email);
 const prefsOf = async id => mine(await rows(PREFS)).filter(line => line.ModeleId === id);
 const statesOf = async () => mine(await rows(PREFS)).filter(line => line.ModeleId === 0).map(line => line.Dossier).sort();
-const gfsStates = async () => mine(await rows(FILING)).filter(line => !line.App && !line.Fichier && line.Dossier).map(line => line.Dossier).sort();
+const gfsStates = async () => mine(await rows(FILING)).filter(line => !line.App && !line.File && line.Folder).map(line => line.Folder).sort();
 const gfsLines = async () => mine(await rows(FILING)).filter(line => line.App === 'publipostage');
 // Ce que Publipostage+ lit (js/template-preferences.js, `loadNow` : la dernière ligne de chaque modèle fait foi) : { modèle: dossier }.
 const ppView = async () => {
@@ -112,7 +112,7 @@ await page.keyboard.type('Projets');
 await page.keyboard.press('Enter');
 await until(async () => (await folderNames()).includes('Projets'));
 await page.waitForTimeout(600);
-check('GFS_Rangement garde une ligne d\'état « Projets », à l\'adresse d\'Ana', (await gfsStates()).includes('Projets'), await gfsStates());
+check('GFS_Filing garde une ligne d\'état « Projets », à l\'adresse d\'Ana', (await gfsStates()).includes('Projets'), await gfsStates());
 check('Publipostage+ a la même ligne d\'état (ModeleId 0), à l\'adresse d\'Ana, à côté de « Vide »', same(await statesOf(), ['Projets', 'Vide']), await statesOf());
 
 say('\n3. Un modèle déplacé dans GFS');
@@ -127,7 +127,7 @@ await page.keyboard.press('Enter');
 await until(async () => (await folderNames()).includes('Logement'));
 const rentLines = await prefsOf(rentId);
 check('Publipostage+ a une ligne pour la quittance, à son nom, dans « Logement », pas épinglée', rentLines.length === 1 && rentLines[0].Dossier === 'Logement' && rentLines[0].Epingle === false, rentLines);
-check('GFS_Rangement n\'a aucune ligne pour un modèle de Publipostage+', (await gfsLines()).length === 0, await gfsLines());
+check('GFS_Filing n\'a aucune ligne pour un modèle de Publipostage+', (await gfsLines()).length === 0, await gfsLines());
 check('Publipostage+ voit la quittance dans « Logement »', (await ppView())[rentId] === 'Logement', await ppView());
 check('la ligne de « Prive », celle d\'une autre personne, n\'a pas bougé', (await rows(PREFS)).some(line => line.Utilisateur === 'autre@exemple.org' && line.Dossier === 'Prive'));
 
@@ -148,17 +148,17 @@ await openMenu(contract);
 await menuItem(/Déplacer|Move/).click();
 await frame.locator('.mv').waitFor();
 await frame.locator('.mv .wk-item', { has: frame.locator('.wk-name', { hasText: /^Projets$/ }) }).click();
-await until(async () => (await prefsOf(contractId)).some(line => line.Dossier === 'Projets'));
-check('le contrat est dans « Projets » chez l\'app', same((await prefsOf(contractId)).map(line => line.Dossier), ['Projets']), await prefsOf(contractId));
+await until(async () => (await prefsOf(contractId)).some(line => line.Folder === 'Projets'));
+check('le contrat est dans « Projets » chez l\'app', same((await prefsOf(contractId)).map(line => line.Folder), ['Projets']), await prefsOf(contractId));
 await page.keyboard.press('Control+z');
-const back = await until(async () => (await prefsOf(contractId)).some(line => line.Dossier === 'Archives'));
+const back = await until(async () => (await prefsOf(contractId)).some(line => line.Folder === 'Archives'));
 check('Ctrl+Z : la ligne de l\'app redit « Archives »', back, await prefsOf(contractId));
 
-say('\n6. Ce que GFS_Rangement disait avant passe chez l\'app');
+say('\n6. Ce que GFS_Filing disait avant passe chez l\'app');
 const support = 'Support de session';
 const supportId = await idOf(support);
 await frame.evaluate(async ([filing, id, email]) => {
-  await grist.docApi.applyUserActions([['AddRecord', filing, null, { Utilisateur: email, App: 'publipostage', Fichier: String(id), Favori: true, Dossier: 'Ancien' }]]);
+  await grist.docApi.applyUserActions([['AddRecord', filing, null, { User: email, App: 'publipostage', File: String(id), Favorite: true, Folder: 'Ancien' }]]);
 }, [FILING, supportId, ANA.Email]);
 await reopen();
 check('avant tout rangement, GFS montre encore le modèle dans « Ancien » (repli sur sa ligne)', (await folderOf(support)) === 'Ancien', await folderOf(support));
@@ -170,7 +170,7 @@ await frame.locator('.mv .wk-item', { has: frame.locator('.wk-name', { hasText: 
 await until(async () => (await prefsOf(supportId)).length > 0);
 const carried = await prefsOf(supportId);
 check('au premier rangement, la ligne de GFS passe chez l\'app : dossier « Ancien », favori', carried.length === 1 && carried[0].Dossier === 'Ancien' && carried[0].Epingle === true, carried);
-check('et part de GFS_Rangement', (await gfsLines()).length === 0, await gfsLines());
+check('et part de GFS_Filing', (await gfsLines()).length === 0, await gfsLines());
 await reopen();
 check('GFS montre toujours le modèle dans « Ancien »', (await folderOf(support)) === 'Ancien', await folderOf(support));
 

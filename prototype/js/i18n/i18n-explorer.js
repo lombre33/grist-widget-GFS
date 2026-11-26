@@ -77,7 +77,7 @@ export const EXPLORER_STRINGS = {
     'ex.moveNewIn': 'Nouveau dossier « {name} » dans « {folder} »',
     'ex.moveNone': 'Aucun dossier ne correspond.',
     'ex.filingFailed': 'Le rangement n’a pas pu être enregistré : {reason}',
-    'ex.filingDeclined': 'Rien n’a été rangé : la table GFS_Rangement n’a pas été créée.',
+    'ex.filingDeclined': 'Rien n’a été rangé : la table GFS_Filing n’a pas été créée.',
     'ex.renameFailed': 'Le fichier n’a pas pu être renommé : {reason}',
     'ex.renameNoColumn': '{app} ne dit pas où est le nom de ses fichiers : renommez celui-ci dans {app}.',
     // Un fichier grisé (jamais caché) et pourquoi, puis la lecture des fichiers et ses échecs.
@@ -100,8 +100,8 @@ export const EXPLORER_STRINGS = {
     'ex.notice.openFailed': '{app} n’a pas pu ouvrir ce fichier : {reason}',
     'ex.notice.appOnly': 'Dupliquer se fait dans {app} : ouvrez le fichier.',
     'ex.notice.noApp': 'Aucune app installée ne sait ouvrir ce type de fichier.',
-    // Les fichiers que GFS garde lui-même (les PDF) : la table GFS_Fichiers, l'envoi, la lecture.
-    'files.table.title': 'Créer la table GFS_Fichiers ?',
+    // Les fichiers que GFS garde lui-même (les PDF) : la table des fichiers (GFS_Files), l'envoi, la lecture.
+    'files.table.title': 'Créer la table {table} ?',
     'files.table.text': 'GFS y garde les PDF que vous importez et ceux qu’une app lui demande de ranger : une ligne par fichier, avec son nom, sa date et son auteur, et le PDF lui-même en pièce jointe de Grist. La table est ajoutée au document, avec une page pour elle ; les apps ne l’écrivent jamais, elles demandent à GFS. Sans elle, aucun PDF ne se garde.',
     'files.import.hint': 'Gardé par GFS',
     'files.readonly': 'Document en lecture seule : GFS ne peut pas y ajouter de fichier.',
@@ -117,7 +117,7 @@ export const EXPLORER_STRINGS = {
     'files.copied': 'Ce nom était pris : le fichier est gardé sous « {name} ».',
     'files.replaced': '« {name} » est remplacé.',
     'files.failed': '« {name} » n’a pas pu être ajouté : {reason}',
-    'files.declined': 'Rien n’a été ajouté : la table GFS_Fichiers n’a pas été créée.',
+    'files.declined': 'Rien n’a été ajouté : la table {table} n’a pas été créée.',
     'files.empty': '« {name} » est vide.',
     'files.notPdf': '« {name} » n’est pas un PDF : son contenu ne commence pas comme un PDF.',
     'files.downloading': 'Téléchargement de « {name} »…',
@@ -223,7 +223,7 @@ export const EXPLORER_STRINGS = {
     'ex.moveNewIn': 'New folder “{name}” in “{folder}”',
     'ex.moveNone': 'No folder matches.',
     'ex.filingFailed': 'The filing could not be saved: {reason}',
-    'ex.filingDeclined': 'Nothing was filed: the GFS_Rangement table was not created.',
+    'ex.filingDeclined': 'Nothing was filed: the GFS_Filing table was not created.',
     'ex.renameFailed': 'The file could not be renamed: {reason}',
     'ex.renameNoColumn': '{app} does not say where its file names are: rename this one in {app}.',
     // Un fichier grisé (jamais caché) et pourquoi, puis la lecture des fichiers et ses échecs.
@@ -245,8 +245,8 @@ export const EXPLORER_STRINGS = {
     'ex.notice.openFailed': '{app} could not open this file: {reason}',
     'ex.notice.appOnly': 'Duplicating is done in {app}: open the file.',
     'ex.notice.noApp': 'No installed app can open this type of file.',
-    // Les fichiers que GFS garde lui-même (les PDF) : la table GFS_Fichiers, l'envoi, la lecture.
-    'files.table.title': 'Create the GFS_Fichiers table?',
+    // Les fichiers que GFS garde lui-même (les PDF) : la table des fichiers (GFS_Files), l'envoi, la lecture.
+    'files.table.title': 'Create the {table} table?',
     'files.table.text': 'GFS keeps the PDFs you import there, and those an app asks it to file: one row per file, with its name, date and author, and the PDF itself as a Grist attachment. The table is added to the document, with a page for it; apps never write to it, they ask GFS. Without it, no PDF can be kept.',
     'files.import.hint': 'Kept by GFS',
     'files.readonly': 'Read-only document: GFS cannot add a file to it.',
@@ -262,7 +262,7 @@ export const EXPLORER_STRINGS = {
     'files.copied': 'That name was taken: the file is kept as “{name}”.',
     'files.replaced': '“{name}” is replaced.',
     'files.failed': '“{name}” could not be added: {reason}',
-    'files.declined': 'Nothing was added: the GFS_Fichiers table was not created.',
+    'files.declined': 'Nothing was added: the {table} table was not created.',
     'files.empty': '“{name}” is empty.',
     'files.notPdf': '“{name}” is not a PDF: its content does not start like a PDF.',
     'files.downloading': 'Downloading “{name}”…',

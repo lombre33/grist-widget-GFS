@@ -5,7 +5,7 @@ import { addressFromShares, applyDirect, directFiles, keptInFolder } from '../js
 import { listItems } from '../js/explorer/explorer-model.js';
 
 const file = (id, extra = {}) => ({ key: `publipostage:${id}`, app: 'publipostage', id: String(id), row: id * 10, name: `Modèle ${id}`, folder: '', by: 'dernier@x.fr', search: '', weight: 0, pieces: [], ts: null, ...extra });
-const data = { id: [10, 20, 30, 40], GFS_Directs: [['L', 'moi@x.fr>marc@x.fr'], ['L', 'autre@x.fr>marc@x.fr'], ['L'], '["L","MOI@x.fr>lea@x.fr"]'] };
+const data = { id: [10, 20, 30, 40], GFS_Direct: [['L', 'moi@x.fr>marc@x.fr'], ['L', 'autre@x.fr>marc@x.fr'], ['L'], '["L","MOI@x.fr>lea@x.fr"]'] };
 
 test('un fichier est donné quand sa liste « adresse>auteur du partage » nomme mon adresse ; les autres, et ceux sans liste, ne le sont pas', () => {
   const files = applyDirect([file(1), file(2), file(3), file(4)], data, 'Moi@X.fr');
@@ -14,7 +14,7 @@ test('un fichier est donné quand sa liste « adresse>auteur du partage » nomme
 });
 
 test('le texte JSON de la lecture légère se lit comme une liste', () => {
-  const files = applyDirect([file(4)], { id: [40], GFS_Directs: ['["L","moi@x.fr>lea@x.fr"]'] }, 'moi@x.fr');
+  const files = applyDirect([file(4)], { id: [40], GFS_Direct: ['["L","moi@x.fr>lea@x.fr"]'] }, 'moi@x.fr');
   assert.deepEqual(files[0].direct, { by: 'lea@x.fr' });
 });
 
@@ -26,7 +26,7 @@ test('sans adresse connue, sans colonne ou sans table : rien n\'est donné ; un 
 });
 
 test('la vue montre les fichiers donnés avec celui qui les a donnés dans « Par » ; à la racine de « Moi » ils ne figurent pas tant que je ne les ai pas rangés', () => {
-  const files = applyDirect([file(1), file(2, { folder: 'Perso' }), file(3)], { id: [10, 20, 30], GFS_Directs: [['L', 'moi@x.fr>marc@x.fr'], ['L', 'moi@x.fr>lea@x.fr'], ['L']] }, 'moi@x.fr');
+  const files = applyDirect([file(1), file(2, { folder: 'Perso' }), file(3)], { id: [10, 20, 30], GFS_Direct: [['L', 'moi@x.fr>marc@x.fr'], ['L', 'moi@x.fr>lea@x.fr'], ['L']] }, 'moi@x.fr');
   assert.deepEqual(directFiles(files).map(each => [each.id, each.by]), [['1', 'marc@x.fr'], ['2', 'lea@x.fr']]);
   assert.equal(keptInFolder(files[0]), false);
   assert.equal(keptInFolder(files[1]), true);
@@ -38,8 +38,8 @@ test('la vue montre les fichiers donnés avec celui qui les a donnés dans « Pa
 });
 
 test('un lecteur n\'écrit rien dans le document : son adresse est la seule adresse de personne parmi les partages qu\'il lit', () => {
-  assert.equal(addressFromShares([{ PersonneL: '@tous' }, { PersonneL: 'Moi@x.fr' }, { PersonneL: 'moi@x.fr' }]), 'moi@x.fr');
-  assert.equal(addressFromShares([{ PersonneL: 'moi@x.fr' }, { PersonneL: 'autre@x.fr' }]), '', 'plusieurs adresses : on ne devine pas');
-  assert.equal(addressFromShares([{ PersonneL: '@editeurs' }, { PersonneL: '#achats' }]), '');
+  assert.equal(addressFromShares([{ PersonL: '@tous' }, { PersonL: 'Moi@x.fr' }, { PersonL: 'moi@x.fr' }]), 'moi@x.fr');
+  assert.equal(addressFromShares([{ PersonL: 'moi@x.fr' }, { PersonL: 'autre@x.fr' }]), '', 'plusieurs adresses : on ne devine pas');
+  assert.equal(addressFromShares([{ PersonL: '@editeurs' }, { PersonL: '#achats' }]), '');
   assert.equal(addressFromShares(null), '');
 });

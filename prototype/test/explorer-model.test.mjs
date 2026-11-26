@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling, folderPaths, folderName, folderMoves, spareMoves, vacatedFolders, subfolders, treeRows, pathParts, listItems, typeChoices, person,
   formatDate, normalizePath, inside, stampOf, authorOf, familyOf, rowKey, FAMILY_NAMES } from '../js/explorer/explorer-model.js';
-import { FILES_MANIFEST } from '../js/files/gfs-files.js';
+import { filesManifest } from '../js/files/gfs-files.js';
 import { sumWeights } from '../js/weight/weight.js';
 import { createI18n } from '../js/i18n/i18n.js';
 import { publipostage } from './helpers.mjs';
@@ -115,14 +115,14 @@ test('readFiles : chaque fichier dit sa table et sa ligne de Grist (renommer éc
   assert.deepEqual(list.map(f => [f.table, f.row]), [[spec.table, 1], [spec.table, 2], [spec.table, 4], [spec.table, 5], [spec.table, 6]]);
 });
 
-// Le rangement de GFS (`GFS_Rangement`, contrats 6.4) : une ligne par (personne, app, fichier), qui passe devant celui de l'app.
+// Le rangement de GFS (`GFS_Filing`, contrats 6.4) : une ligne par (personne, app, fichier), qui passe devant celui de l'app.
 const gfsRows = () => ({
   id: [1, 2, 3, 4, 5, 6, 7],
-  Utilisateur: ['', '@document', '', 'autre@exemple.org', '', '', ''],
+  User: ['', '@document', '', 'autre@exemple.org', '', '', ''],
   App: ['publipostage', 'gfs', 'publipostage', 'publipostage', '', 'publipostage', 'form'],
-  Fichier: ['2', 'apps', '4', '1', '', '2', '9'],
-  Favori: [true, false, false, true, false, false, true],
-  Dossier: ['Archives / 2026', '', 'Formation', 'Prive', 'Vide', 'Doublon', ''],
+  File: ['2', 'apps', '4', '1', '', '2', '9'],
+  Favorite: [true, false, false, true, false, false, true],
+  Folder: ['Archives / 2026', '', 'Formation', 'Prive', 'Vide', 'Doublon', ''],
 });
 
 test('readGfsFiling : la personne seule, ni la ligne réservée ni une ligne sans fichier, la première ligne fait foi', () => {
@@ -266,34 +266,34 @@ test('formatDate : aujourd\'hui, hier, jour et mois, avec l\'année quand elle c
 
 // ---------- la corbeille ----------
 
-const gfsSpec = FILES_MANIFEST.fichiers[0];
+const gfsSpec = filesManifest().fichiers[0];
 const pdfs = () => ({
-  id: [1, 2, 3, 4], Identifiant: ['aa', 'bb', 'cc', 'dd'], Nom: ['Facture.pdf', 'Devis.pdf', 'Contrat été.pdf', 'Bon.pdf'], Type: ['pdf', 'pdf', 'pdf', 'pdf'], Date: [T0 - 9 * DAY, T0 - 8 * DAY, T0 - 7 * DAY, T0 - 6 * DAY],
-  Auteur: ['marie@exemple.fr', 'marie@exemple.fr', 'marie@exemple.fr', 'marie@exemple.fr'],
-  SupprimeLe: [null, T0 - 2 * DAY, ['D', T0 - DAY, 'UTC'], 0], SupprimePar: ['', 'paul@exemple.fr', 'Léa <lea@exemple.fr>', 'x'],
+  id: [1, 2, 3, 4], FileId: ['aa', 'bb', 'cc', 'dd'], Name: ['Facture.pdf', 'Devis.pdf', 'Contrat été.pdf', 'Bon.pdf'], Type: ['pdf', 'pdf', 'pdf', 'pdf'], Date: [T0 - 9 * DAY, T0 - 8 * DAY, T0 - 7 * DAY, T0 - 6 * DAY],
+  Author: ['marie@exemple.fr', 'marie@exemple.fr', 'marie@exemple.fr', 'marie@exemple.fr'],
+  DeletedAt: [null, T0 - 2 * DAY, ['D', T0 - DAY, 'UTC'], 0], DeletedBy: ['', 'paul@exemple.fr', 'Léa <lea@exemple.fr>', 'x'],
 });
 
 test('readFiles : un fichier dont la date de corbeille est remplie est à la corbeille, avec la date et l\'auteur du geste ; vide ou zéro : il est vivant', () => {
-  const list = readFiles(FILES_MANIFEST, gfsSpec, pdfs());
+  const list = readFiles(filesManifest(), gfsSpec, pdfs());
   assert.deepEqual(list.map(file => file.trashed), [null, { ts: T0 - 2 * DAY, by: 'paul@exemple.fr' }, { ts: T0 - DAY, by: 'Léa <lea@exemple.fr>' }, null]);
   assert.deepEqual(list.map(file => [file.name, file.ts]), [['Facture.pdf', T0 - 9 * DAY], ['Devis.pdf', T0 - 8 * DAY], ['Contrat été.pdf', T0 - 7 * DAY], ['Bon.pdf', T0 - 6 * DAY]], 'la dernière modification reste lue');
 });
 
 test('readFiles : sans la clé `corbeille` du manifeste (une app), ou sans les colonnes dans la table (un document plus ancien), aucun fichier n\'est à la corbeille', () => {
-  assert.deepEqual(readFiles(FILES_MANIFEST, { ...gfsSpec, corbeille: undefined }, pdfs()).map(file => file.trashed), [null, null, null, null]);
-  const old = { id: [1], Identifiant: ['aa'], Nom: ['Facture.pdf'], Type: ['pdf'], Date: [T0] };
-  assert.deepEqual(readFiles(FILES_MANIFEST, gfsSpec, old).map(file => file.trashed), [null]);
+  assert.deepEqual(readFiles(filesManifest(), { ...gfsSpec, corbeille: undefined }, pdfs()).map(file => file.trashed), [null, null, null, null]);
+  const old = { id: [1], FileId: ['aa'], Name: ['Facture.pdf'], Type: ['pdf'], Date: [T0] };
+  assert.deepEqual(readFiles(filesManifest(), gfsSpec, old).map(file => file.trashed), [null]);
   assert.ok(files().every(file => file.trashed === null), 'les modèles d\'une app n\'ont jamais de corbeille de cette forme');
 });
 
 test('stampOf et authorOf : la date et l\'auteur de la dernière modification, ou, à la corbeille, ceux du geste qui l\'y a mis', () => {
-  const [live, trashed] = readFiles(FILES_MANIFEST, gfsSpec, pdfs());
+  const [live, trashed] = readFiles(filesManifest(), gfsSpec, pdfs());
   assert.deepEqual([stampOf(live), authorOf(live)], [T0 - 9 * DAY, 'marie@exemple.fr']);
   assert.deepEqual([stampOf(trashed), authorOf(trashed)], [T0 - 2 * DAY, 'paul@exemple.fr']);
 });
 
 test('listItems : la corbeille est une liste à plat, la suppression la plus récente en haut ; le tri, le filtre de type et la recherche y valent', () => {
-  const trashed = applyFiling(readFiles(FILES_MANIFEST, gfsSpec, pdfs()), null).filter(file => file.trashed);
+  const trashed = applyFiling(readFiles(filesManifest(), gfsSpec, pdfs()), null).filter(file => file.trashed);
   const view = extra => state({ view: 'trash', sort: { key: 'mod', dir: -1 }, ...extra });
   const result = listItems(trashed, view(), OPTIONS);
   assert.equal(result.flat, true);
@@ -305,7 +305,7 @@ test('listItems : la corbeille est une liste à plat, la suppression la plus ré
 });
 
 test('listItems : « Partagés avec moi » est une liste à plat, sans dossier, même quand un dossier est ouvert ; la recherche et le filtre de type y valent', () => {
-  const arrivals = applyFiling(readFiles(FILES_MANIFEST, gfsSpec, pdfs()), null).filter(file => !file.trashed);
+  const arrivals = applyFiling(readFiles(filesManifest(), gfsSpec, pdfs()), null).filter(file => !file.trashed);
   const view = extra => state({ view: 'shared', path: 'Un/dossier', sort: { key: 'mod', dir: -1 }, ...extra });
   const result = listItems(arrivals, view(), OPTIONS);
   assert.equal(result.flat, true);
@@ -319,10 +319,10 @@ test('listItems : « Partagés avec moi » est une liste à plat, sans dossier, 
 
 const folderTable = () => ({
   id: [1, 2, 3, 4, 5, 6, 7, 8],
-  Utilisateur: ['moi@exemple.org', 'moi@exemple.org', 'autre@exemple.org', '@document', 'moi@exemple.org', 'moi@exemple.org', '', 'moi@exemple.org'],
+  User: ['moi@exemple.org', 'moi@exemple.org', 'autre@exemple.org', '@document', 'moi@exemple.org', 'moi@exemple.org', '', 'moi@exemple.org'],
   App: ['', '', '', 'gfs', 'publipostage', '', '', ''],
-  Fichier: ['', '', '', 'apps', '12', '', '', ''],
-  Dossier: ['Contrats', ' Factures // 2024/ ', 'Prive', '', 'Contrats', '', 'Commun', 'Contrats'],
+  File: ['', '', '', 'apps', '12', '', '', ''],
+  Folder: ['Contrats', ' Factures // 2024/ ', 'Prive', '', 'Contrats', '', 'Commun', 'Contrats'],
 });
 
 test('readGfsFolders : les lignes d\'état de la personne (ni app ni fichier), normalisées, sans doublon ; ni les lignes de fichiers, ni les réservées, ni les autres personnes, ni un chemin vide', () => {
@@ -330,7 +330,7 @@ test('readGfsFolders : les lignes d\'état de la personne (ni app ni fichier), n
   assert.deepEqual(readGfsFolders(folderTable(), 'autre@exemple.org'), ['Prive']);
   assert.deepEqual(readGfsFolders(folderTable(), ''), ['Commun'], 'sans identité : le rangement commun au document');
   assert.deepEqual(readGfsFolders(null, 'moi@exemple.org'), []);
-  assert.deepEqual(readGfsFolders({ id: [1], Utilisateur: ['moi@exemple.org'] }, 'moi@exemple.org'), [], 'une table sans les autres colonnes ne nomme aucun dossier');
+  assert.deepEqual(readGfsFolders({ id: [1], User: ['moi@exemple.org'] }, 'moi@exemple.org'), [], 'une table sans les autres colonnes ne nomme aucun dossier');
 });
 
 test('un dossier gardé sans fichier existe : dans la liste des dossiers, avec ses parents, et dans l\'arbre, avec zéro fichier', () => {
@@ -417,10 +417,10 @@ test('readFiles : le poids d\'un fichier est celui des octets de sa ligne, comme
 
 test('readFiles : un PDF de GFS pèse sa ligne et sa pièce jointe (la colonne `Taille`) ; une copie qui cite la même pièce a le même poids, la somme la compte une fois', () => {
   const data = {
-    id: [1, 2, 3], Identifiant: ['aa', 'bb', 'cc'], Nom: ['Facture.pdf', 'Facture (1).pdf', 'Vide.pdf'], Type: ['pdf', 'pdf', 'pdf'], Date: [T0, T0, T0], Auteur: ['', '', ''],
-    Contenu: [['L', 7], ['L', 7], null], Taille: [3000000, 3000000, null],
+    id: [1, 2, 3], FileId: ['aa', 'bb', 'cc'], Name: ['Facture.pdf', 'Facture (1).pdf', 'Vide.pdf'], Type: ['pdf', 'pdf', 'pdf'], Date: [T0, T0, T0], Author: ['', '', ''],
+    Content: [['L', 7], ['L', 7], null], Size: [3000000, 3000000, null],
   };
-  const list = readFiles(FILES_MANIFEST, gfsSpec, data);
+  const list = readFiles(filesManifest(), gfsSpec, data);
   // Ses cellules : « aa » 2, « Facture.pdf » 11, « pdf » 3, la date 4, l'auteur vide 0, `[7]` 3, la taille (3 000 000 : 3 octets) ; puis la pièce jointe elle-même.
   assert.equal(list[0].weight, 2 + 11 + 3 + 4 + 0 + 3 + 3 + 3000000);
   assert.equal(list[1].weight, 2 + 15 + 3 + 4 + 0 + 3 + 3 + 3000000, 'la copie : « Facture (1).pdf » fait 15 octets, la pièce est la même');
@@ -481,17 +481,17 @@ test('Ouverts : une liste à plat des fichiers donnés, de tous les dossiers, sa
 // ----- « Partagés avec moi » : les dossiers reçus d'un autre document (js/sharing/received-folders.js, choix du porteur du 11/11)
 
 test('listItems : « Partagés avec moi » montre en tête les dossiers reçus (clé « grp: »), puis les fichiers sans dossier ; un dossier ouvert ne montre que ses fichiers ; la recherche remet tout à plat', () => {
-  const received = (name, folder, extra = {}) => ({ key: `gfs-recus:GFS_Recus:${name}`, name, folder: '', weight: 100, ts: 10, by: 'a@x.fr', type: 'pdf', search: name.toLowerCase(), received: { table: 'GFS_Recus', row: 1, state: 'pending', folder, ...extra } });
+  const received = (name, folder, extra = {}) => ({ key: `gfs-recus:GFS_Received:${name}`, name, folder: '', weight: 100, ts: 10, by: 'a@x.fr', type: 'pdf', search: name.toLowerCase(), received: { table: 'GFS_Received', row: 1, state: 'pending', folder, ...extra } });
   const files = [received('A.pdf', 'Contrats'), received('B.pdf', 'Contrats', { state: 'accepted' }), received('C.pdf', ''), received('D.pdf', 'Devis')];
   const view = extra => state({ view: 'shared', path: 'Un/dossier', group: null, sort: { key: 'mod', dir: -1 }, ...extra });
   const top = listItems(files, view(), OPTIONS);
   assert.deepEqual(top.rows.map(row => [row.kind, row.kind === 'folder' ? row.name : row.file.name]), [['folder', 'Contrats'], ['folder', 'Devis'], ['file', 'C.pdf']]);
-  assert.deepEqual(top.rows.slice(0, 2).map(row => [rowKey(row), row.count, row.pending, row.shared]), [['grp:GFS_Recus:Contrats', 2, 1, true], ['grp:GFS_Recus:Devis', 1, 1, true]]);
+  assert.deepEqual(top.rows.slice(0, 2).map(row => [rowKey(row), row.count, row.pending, row.shared]), [['grp:GFS_Received:Contrats', 2, 1, true], ['grp:GFS_Received:Devis', 1, 1, true]]);
   assert.equal(top.covered.length, 4, 'le total compte les fichiers des dossiers montrés');
-  const inside = listItems(files, view({ group: 'GFS_Recus:Contrats' }), OPTIONS);
+  const inside = listItems(files, view({ group: 'GFS_Received:Contrats' }), OPTIONS);
   assert.deepEqual(inside.rows.map(row => row.file.name), ['A.pdf', 'B.pdf'].sort((a, b) => a.localeCompare(b)));
   assert.equal(inside.rows.every(row => row.kind === 'file'), true);
-  assert.deepEqual(listItems(files, view({ group: 'GFS_Recus:Disparu' }), OPTIONS).rows, [], 'un dossier qui n\'existe plus est vide (l\'explorateur le quitte)');
+  assert.deepEqual(listItems(files, view({ group: 'GFS_Received:Disparu' }), OPTIONS).rows, [], 'un dossier qui n\'existe plus est vide (l\'explorateur le quitte)');
   const search = listItems(files, view({ q: 'pdf' }), OPTIONS);
   assert.deepEqual(search.rows.map(row => row.kind), ['file', 'file', 'file', 'file'], 'la recherche cherche dans tous les fichiers reçus, dossiers compris');
   assert.deepEqual(listItems(files, view({ sort: { key: 'poids', dir: -1 } }), OPTIONS).rows.map(row => row.kind), ['folder', 'folder', 'file']);
@@ -500,5 +500,5 @@ test('listItems : « Partagés avec moi » montre en tête les dossiers reçus (
 test('rowKey : « dir: » pour un dossier du rangement, « grp: » pour un dossier reçu, la clé du fichier sinon', () => {
   assert.equal(rowKey({ kind: 'file', file: { key: 'app:f1' } }), 'app:f1');
   assert.equal(rowKey({ kind: 'folder', path: 'Un/dossier' }), 'dir:Un/dossier');
-  assert.equal(rowKey({ kind: 'folder', shared: true, path: 'GFS_Recus:Contrats' }), 'grp:GFS_Recus:Contrats');
+  assert.equal(rowKey({ kind: 'folder', shared: true, path: 'GFS_Received:Contrats' }), 'grp:GFS_Received:Contrats');
 });

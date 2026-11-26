@@ -1,11 +1,11 @@
-// Relier un document qui n'a encore AUCUN PDF de GFS (donc pas de table `GFS_Fichiers`) : « Relier un autre document Grist… » > « Continuer » (retour du porteur du
+// Relier un document qui n'a encore AUCUN PDF de GFS (donc pas de table `GFS_Files`) : « Relier un autre document Grist… » > « Continuer » (retour du porteur du
 // 25/11, docs.getgrist.com, Firefox : « Failed: Error: can't access property "some", cols is null » : le moteur de partage ne crée pas la table des fichiers et lisait
 // ses colonnes nulles ; js/sharing/share-files-table.js). Dans un VRAI Grist (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`), à 700 × 400, à la vraie
 // souris, des DEUX côtés, dans GFS lui-même :
 //   1. un document qui ne garde que des lignes de Form+ : « Gérer les partages > Autres documents > Relier un document… » dit, dans l'accord, que la table des fichiers naît ;
 //      rien n'est écrit avant « Continuer » (le menu et l'accord n'ont créé aucune table) ; « Continuer » ne dit pas « Échec », rend le code ;
-//   2. l'autre document reçoit, répond, le même code de contrôle des deux côtés, les documents sont reliés : un webhook, `GFS_Fichiers` vide avec les trois colonnes d'aide,
-//      `GFS_Recus` vide chez l'autre ;
+//   2. l'autre document reçoit, répond, le même code de contrôle des deux côtés, les documents sont reliés : un webhook, `GFS_Files` vide avec les trois colonnes d'aide,
+//      `GFS_Received` vide chez l'autre ;
 //   3. un PDF importé ensuite entre dans la table que le lien a créée (sans nouvelle question : elle existe) et, en « Copie à jour », arrive chez l'autre sans nouveau code ;
 //   4. un document qui a déjà des PDF : l'accord garde ses mots d'avant (les trois colonnes d'aide dans la table), rien de la table n'est dit créé.
 //   LAB_LANG=fr|en, LAB_SCHEME=light|dark. REPO_DIR="$(realpath ../..)" node run-relier-document-neuf.mjs
@@ -18,8 +18,11 @@ import { PAGE_PORT, openGfs, importPdf, pdfFile, waitForNames, openRowMenu, cont
 import { fits, gfsFrame } from './lab-droits.mjs';
 import { startEngine, formLink, sendComparing, reopenedFrame, watchLevel, levelReport } from './lab-partage.mjs';
 import { seedForms } from './seed.mjs';
-import { FILES_COLUMN_IDS, FILES_TABLE } from '../js/files/gfs-files.js';
+import { filesColumnIds, filesNames } from '../js/files/gfs-files.js';
 import { HELPER_COLUMNS } from '../js/sharing/share-other-flow.js';
+
+const FILES_COLUMN_IDS = filesColumnIds();
+const FILES_TABLE = filesNames().table;
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -64,7 +67,7 @@ try {
   await openLink(source, FORM);
   const accord = await text(source.frame, '.mod.so');
   const created = t('so.accord.files', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') });
-  check('l\'accord dit que la table « GFS_Fichiers » naît vide, avec les trois colonnes d\'aide', accord.includes(created), accord);
+  check('l\'accord dit que la table « GFS_Files » naît vide, avec les trois colonnes d\'aide', accord.includes(created), accord);
   check('et ne dit plus « trois colonnes d\'aide dans la table » (elle n\'existe pas encore)', !accord.includes(t('so.accord.columns', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') })), accord);
   check('la fenêtre tient dans le panneau, contraste de 4,5:1', await fits(source.frame, '.mod.so'), await contrastProblems(source.frame, '.mod.so'));
   check('le menu et l\'accord n\'ont créé aucune table', !(await source.rest.tables()).includes(FILES_TABLE), await source.rest.tables());
@@ -108,7 +111,7 @@ try {
   check('un webhook chez l\'envoyeur', (await webhooks(source)) === 1);
   check('la table des fichiers reste là, vide', (await source.rest.tables()).includes(FILES_TABLE) && (await source.rest.rows(FILES_TABLE)).length === 0);
   await source.page.waitForTimeout(6000);
-  check('chez l\'autre, GFS_Recus existe et reste vide', (await target.rest.tables()).includes('GFS_Recus') && (await target.rest.rows('GFS_Recus')).length === 0, await target.rest.tables());
+  check('chez l\'autre, GFS_Received existe et reste vide', (await target.rest.tables()).includes('GFS_Received') && (await target.rest.rows('GFS_Received')).length === 0, await target.rest.tables());
 
   say('--- 3. un PDF importé ensuite entre dans la table du lien, puis part en « Copie à jour » ---');
   const bill = pdfFile('Facture.pdf', 2, 'Facture');
@@ -136,8 +139,8 @@ try {
   check('le bouton occupé dit « ' + t('so.level.working') + ' » et le bas de la fenêtre dit avec quel document', level.busyLabel === t('so.level.working') && level.busyFoot.includes(t('so.level.working.foot', { doc: 'x' }).split('x')[0]), level);
   check('une fois le niveau changé, plus rien n\'est occupé', level.anyBusyAtEnd === false && level.last.label === t('so.level.live'), level);
   let rows = [];
-  for (let i = 0; i < 90 && !rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i += 1) { rows = await target.rest.rows('GFS_Recus'); if (!rows.some(row => row.Contenu)) await source.page.waitForTimeout(1500); }
-  check('Facture arrive chez l\'autre avec son contenu, sans nouveau code', rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu) && (await source.frame.locator('.mod.so').count()) === 0, rows.map(row => row.Nom));
+  for (let i = 0; i < 90 && !rows.some(row => row.Name === 'Facture.pdf' && row.Content); i += 1) { rows = await target.rest.rows('GFS_Received'); if (!rows.some(row => row.Content)) await source.page.waitForTimeout(1500); }
+  check('Facture arrive chez l\'autre avec son contenu, sans nouveau code', rows.some(row => row.Name === 'Facture.pdf' && row.Content) && (await source.frame.locator('.mod.so').count()) === 0, rows.map(row => row.Name));
   await closeAll(source.page, source.frame);
   await closeAll(source.page, source.frame);
 
@@ -149,7 +152,7 @@ try {
   await waitForNames(other.frame, ['Devis.pdf']);
   await openLink(other, 'Devis.pdf');
   const known = await text(other.frame, '.mod.so');
-  check('l\'accord dit « trois colonnes d\'aide dans GFS_Fichiers », pas qu\'une table naît', known.includes(t('so.accord.columns', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') })) && !known.includes(created), known);
+  check('l\'accord dit « trois colonnes d\'aide dans GFS_Files », pas qu\'une table naît', known.includes(t('so.accord.columns', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') })) && !known.includes(created), known);
   await shot(other.frame, '4-accord-avec-pdf');
   await closeAll(other.page, other.frame);
   check('aucune erreur de GFS dans la console, des trois documents', [source, target, other].every(run => unexpected(run).length === 0), [source, target, other].flatMap(unexpected));

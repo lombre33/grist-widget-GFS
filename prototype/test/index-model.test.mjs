@@ -1,7 +1,7 @@
 // L'index des noms (js/explorer/index-model.js, js/explorer/index-reader.js ; choix du porteur du 26/11) : le plan de ce qu'on pose (deux gestes pour une table dont
 // l'identifiant est le numéro de ligne), les règles recopiées en lecture seule, le poids écrit pour le moteur de Grist, et la lecture qui refuse ce qui n'est pas sûr.
 // Ce que Grist en fait vraiment (le poids égal à l'octet près, le résumé qu'un éditeur lit sous règles) se mesure dans un vrai Grist (banc `n11-index-plan.mjs` des
-// fichiers du projet, faits vérifiés 180).
+// fichiers du projet, faits vérifiés 182).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { KEY, ROW, WEIGHT, keyOf, summaryName, planIndex, weightFormula, linkedWeightFormula, mirrored, indexNamesOf } from '../js/explorer/index-model.js';
@@ -32,7 +32,7 @@ function document({ withKey = false, summaries = [], rules = false, foreign = fa
 test('le nom du résumé et sa clé : le numéro de ligne se groupe par une colonne d\'aide, un identifiant propre par lui-même', () => {
   assert.equal(keyOf(spec), KEY);
   assert.equal(keyOf({ colonnes: { id: 'Identifiant' } }), 'Identifiant');
-  assert.equal(summaryName(spec.table, KEY), 'Publipostage_Modeles_summary_GFS_Cle');
+  assert.equal(summaryName(spec.table, KEY), 'Publipostage_Modeles_summary_GFS_Key');
 });
 
 test('premier geste : sans la colonne d\'aide, le plan ne pose qu\'elle (`again`) ; le même geste, rejoué, pose les résumés', () => {
@@ -43,7 +43,7 @@ test('premier geste : sans la colonne d\'aide, le plan ne pose qu\'elle (`again`
   const second = planIndex(document({ withKey: true }));
   assert.equal(second.ok, true);
   assert.equal(second.again, false);
-  assert.deepEqual(second.creates, ['Publipostage_Modeles_summary_GFS_Cle', 'Publipostage_Versions_summary_Jeton']);
+  assert.deepEqual(second.creates, ['Publipostage_Modeles_summary_GFS_Key', 'Publipostage_Versions_summary_Jeton']);
   const kinds = second.actions.map(action => action[0]);
   assert.equal(kinds.filter(kind => kind === 'CreateViewSection').length, 2, 'un résumé pour la table, un pour sa table liée');
   assert.deepEqual(second.actions[0].slice(2, 4), [0, 'record'], 'la page est créée avec le résumé (Grist retire le résumé qui n\'a plus de page)');
@@ -51,7 +51,7 @@ test('premier geste : sans la colonne d\'aide, le plan ne pose qu\'elle (`again`
 
 test('les colonnes du résumé : celles que la lecture légère garde, le numéro de ligne, le poids ; Grist somme lui-même les colonnes numériques (ModifyColumn)', () => {
   const { actions } = planIndex(document({ withKey: true }));
-  const put = (kind, name) => actions.find(action => action[0] === kind && action[1] === 'Publipostage_Modeles_summary_GFS_Cle' && action[2] === name);
+  const put = (kind, name) => actions.find(action => action[0] === kind && action[1] === 'Publipostage_Modeles_summary_GFS_Key' && action[2] === name);
   for (const name of ['Nom', 'TypeModele', 'DateModif', 'ModifiePar', 'GFS_Lecteurs']) assert.ok(put('AddColumn', name), `${name} est reprise par une formule`);
   assert.ok(!put('AddColumn', 'Contenu'), 'le contenu n\'est jamais repris');
   assert.ok(put('AddColumn', 'Jeton'), 'la clé qui lie les versions est reprise (`poids.liees`)');
@@ -66,7 +66,7 @@ test('les colonnes du résumé : celles que la lecture légère garde, le numér
 test('les règles du partage se posent sur le résumé en lecture seule (sans elles il laisserait voir les noms des autres) ; sans règle sur la table, aucune', () => {
   const ruled = planIndex(document({ withKey: true, rules: true }));
   const resource = ruled.actions.find(action => action[0] === 'AddRecord' && action[1] === '_grist_ACLResources');
-  assert.equal(resource[3].tableId, 'Publipostage_Modeles_summary_GFS_Cle');
+  assert.equal(resource[3].tableId, 'Publipostage_Modeles_summary_GFS_Key');
   const rights = ruled.actions.filter(action => action[0] === 'AddRecord' && action[1] === '_grist_ACLRules').map(action => action[3].permissionsText);
   assert.ok(rights.length >= 4);
   assert.ok(rights.every(text => text === '+R' || text === '-CRUD'), `des droits de lecture seulement (${rights})`);
@@ -118,8 +118,8 @@ test('rejouer ne pose plus rien ; une colonne ajoutée à la table remet les for
   assert.equal(update.ok, true);
   assert.deepEqual(update.creates, [], 'le résumé existe : rien à créer');
   const touched = update.actions.map(action => `${action[0]} ${action[1]} ${action[2]}`);
-  assert.ok(touched.includes('AddColumn Publipostage_Modeles_summary_GFS_Cle Total') || touched.includes('ModifyColumn Publipostage_Modeles_summary_GFS_Cle Total'));
-  assert.ok(touched.includes(`ModifyColumn Publipostage_Modeles_summary_GFS_Cle ${WEIGHT}`), 'le poids est réécrit avec la nouvelle colonne');
+  assert.ok(touched.includes('AddColumn Publipostage_Modeles_summary_GFS_Key Total') || touched.includes('ModifyColumn Publipostage_Modeles_summary_GFS_Key Total'));
+  assert.ok(touched.includes(`ModifyColumn Publipostage_Modeles_summary_GFS_Key ${WEIGHT}`), 'le poids est réécrit avec la nouvelle colonne');
   assert.ok(!touched.some(line => line.startsWith('CreateViewSection')));
 });
 
@@ -165,7 +165,7 @@ test('lire par l\'index : `id` est la ligne d\'origine, le poids celui du moteur
   const read = await readIndexedTable(doc, names, spec);
   assert.deepEqual(read.data.id, [7, 9]);
   assert.deepEqual(read.weights, [1000, 2000]);
-  assert.deepEqual(Object.keys(read.data).sort(), ['DateModif', 'GFS_Cle', 'GFS_Lecteurs', 'Jeton', 'ModifiePar', 'Nom', 'TypeModele', 'id']);
+  assert.deepEqual(Object.keys(read.data).sort(), ['DateModif', 'GFS_Key', 'GFS_Lecteurs', 'Jeton', 'ModifiePar', 'Nom', 'TypeModele', 'id']);
 });
 
 test('les tables liées : les octets de chaque clé, la clé vide ne désigne personne', async () => {
@@ -215,6 +215,17 @@ test('le plan dit les tables à indexer et si des règles se recopient (la quest
 
 test('indexNamesOf : le résumé de chaque table de fichiers et de ses tables liées (la page de chacun se range sous GFS)', () => {
   assert.deepEqual(indexNamesOf([{ table: spec.table, spec }, { table: 'GFS_Fichiers', spec: { colonnes: { id: 'Identifiant' } } }]),
-    ['Publipostage_Modeles_summary_GFS_Cle', 'Publipostage_Versions_summary_Jeton', 'GFS_Fichiers_summary_Identifiant']);
+    ['Publipostage_Modeles_summary_GFS_Key', 'Publipostage_Versions_summary_Jeton', 'GFS_Fichiers_summary_Identifiant']);
   assert.deepEqual(indexNamesOf(null), []);
+});
+
+test('les règles du résumé reprennent le jeu de noms des colonnes d\'aide de la table (un document que la mise à jour des noms n\'a pas atteint les a en français)', () => {
+  const texts = plan => plan.actions.filter(action => action[0] === 'AddRecord' && action[1] === '_grist_ACLRules').map(action => action[3].aclFormula).join('\n');
+  const french = planIndex(document({ withKey: true, rules: true })); // la table d'essai porte `GFS_Lecteurs`
+  assert.match(texts(french), /GFS_Lecteurs/);
+  assert.doesNotMatch(texts(french), /GFS_Readers/);
+  const english = document({ withKey: true, rules: true });
+  english.columns = english.columns.map(col => (col.colId === 'GFS_Lecteurs' ? { ...col, colId: 'GFS_Readers' } : col));
+  assert.match(texts(planIndex(english)), /GFS_Readers/);
+  assert.doesNotMatch(texts(planIndex(english)), /GFS_Lecteurs/);
 });

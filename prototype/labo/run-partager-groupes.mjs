@@ -58,7 +58,7 @@ async function addGroup(frame, group) {
 const openManage = async frame => { await frame.locator('[data-fk="share-manage"]').click(); await frame.locator('.mod.mg .rt-content').waitFor(); };
 const closeManage = async frame => { await frame.locator('.mod.mg [data-fk="manage-close"]').click(); await frame.locator('.mod.mg').waitFor({ state: 'detached' }); };
 const inModels = async run => { const all = await rows(run, MODELS); return Object.fromEntries(all.map(row => [row.Nom, row])); };
-const readers = row => JSON.stringify(row && row.GFS_Lecteurs);
+const readers = row => JSON.stringify(row && row.GFS_Readers);
 
 async function playOwner(run) {
   const { page } = run;
@@ -82,7 +82,7 @@ async function playOwner(run) {
   await Promise.all([waitReload(page, frame).then(next => { frame = next; }), frame.locator('[data-fk="ask-yes"]').click()]);
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   const tables = ((await call(page, 'GET', `/api/docs/${run.docId}/tables`)).json.tables || []).map(table => table.id);
-  check('GFS_Groupes est créée avec le partage', tables.includes('GFS_Groupes'), tables);
+  check('GFS_Groups est créée avec le partage', tables.includes('GFS_Groups'), tables);
   const closed = ((await rows(run, '_grist_ACLRules')) || []).filter(rule => rule.aclFormula === 'user.Access != OWNER' && String(rule.permissionsText || '').includes('-S'));
   check('l\'activation a fermé la structure (une règle « GFS : Structure fermée »), sans « Gérer les partages… »', closed.length === 1 && /^GFS : Structure fermée/.test(closed[0].memo || ''), closed);
 
@@ -102,8 +102,8 @@ async function playOwner(run) {
   await shot(frame, '2-groupe');
   await frame.locator('[data-fk="manage-group-save"]').click();
   await frame.locator('.rr[data-group="Achats"]').waitFor({ timeout: 15000 });
-  const achats = (await rows(run, 'GFS_Groupes')).find(row => row.Nom === 'Achats');
-  check('le groupe Achats compte une personne : l\'éditeur', achats && achats.Nb === 1 && JSON.stringify(achats.Membres).includes(EDITOR), achats);
+  const achats = (await rows(run, 'GFS_Groups')).find(row => row.Name === 'Achats');
+  check('le groupe Achats compte une personne : l\'éditeur', achats && achats.Count === 1 && JSON.stringify(achats.Members).includes(EDITOR), achats);
 
   say('--- 3. lire les groupes d\'une table : Contacts (Mail, Equipe) ---');
   await frame.locator('[data-fk="manage-group-read"]').click();
@@ -115,9 +115,9 @@ async function playOwner(run) {
   check('la question dit combien de groupes (deux : Lecteurs, Ailleurs)', /\b2\b/.test(asking) && asking.includes('Contacts'), asking);
   await frame.locator('[data-fk="ask-yes"]').click();
   await frame.locator('.rr[data-group="Lecteurs"]').waitFor({ timeout: 15000 });
-  const groups = await rows(run, 'GFS_Groupes');
+  const groups = await rows(run, 'GFS_Groups');
   const lecteurs = groups.find(row => row.Nom === 'Lecteurs');
-  check('le groupe Lecteurs est lu de la table : une personne, l\'adresse nettoyée (espaces, majuscules)', lecteurs && lecteurs.Nb === 1 && JSON.stringify(lecteurs.Membres).includes(VIEWER), lecteurs);
+  check('le groupe Lecteurs est lu de la table : une personne, l\'adresse nettoyée (espaces, majuscules)', lecteurs && lecteurs.Count === 1 && JSON.stringify(lecteurs.Members).includes(VIEWER), lecteurs);
   await shot(frame, '3-groupes');
   await closeManage(frame);
   await closeShare(frame);
@@ -136,9 +136,9 @@ async function playOwner(run) {
   await shot(frame, '4-liste');
   await addGroup(frame, 'Achats');
   const rowA = (await inModels(run))[PRIVATE_A];
-  check('la colonne d\'aide GFS_Lecteurs du modèle contient l\'éditeur (le groupe est développé par Grist)', readers(rowA).includes(EDITOR) && readers(rowA).includes(OWNER), rowA && rowA.GFS_Lecteurs);
-  const shareRow = (await rows(run, 'GFS_Partages')).find(row => row.Personne === '#Achats');
-  check('la ligne de partage vise « #Achats », valide', shareRow && shareRow.Valide === true && shareRow.Droit === 'lecture', shareRow);
+  check('la colonne d\'aide GFS_Readers du modèle contient l\'éditeur (le groupe est développé par Grist)', readers(rowA).includes(EDITOR) && readers(rowA).includes(OWNER), rowA && rowA.GFS_Readers);
+  const shareRow = (await rows(run, 'GFS_Shares')).find(row => row.Person === '#Achats');
+  check('la ligne de partage vise « #Achats », valide', shareRow && shareRow.Valid === true && shareRow.Right === 'lecture', shareRow);
   const text = (await frame.locator('.mod.sh').innerText()).replace(/\s+/g, ' ');
   check('la ligne se lit « Groupe · Achats »', text.includes(t('share.group.label', { name: 'Achats' })), text);
   await shot(frame, '5-partage-groupe');
@@ -146,7 +146,7 @@ async function playOwner(run) {
   await openShareFor(frame, PRIVATE_L);
   await addGroup(frame, 'Lecteurs');
   const rowL = (await inModels(run))[PRIVATE_L];
-  check('le groupe lu d\'une table est développé : GFS_Lecteurs contient le lecteur', readers(rowL).includes(VIEWER), rowL && rowL.GFS_Lecteurs);
+  check('le groupe lu d\'une table est développé : GFS_Readers contient le lecteur', readers(rowL).includes(VIEWER), rowL && rowL.GFS_Readers);
   await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: 'Lecteurs' }).locator('button.lvl').click();
   const adminItem = frame.getByRole('menuitemradio', { name: new RegExp(t('share.right.admin')) }).first();
   const greyed = await adminItem.getAttribute('aria-disabled');
@@ -165,15 +165,15 @@ async function playOwner(run) {
   await frame.locator('[data-fk="manage-group-save"]').click();
   await frame.locator('.rr[data-group="Achats"]').filter({ hasText: '2' }).waitFor({ timeout: 15000 });
   const rowA2 = (await inModels(run))[PRIVATE_A];
-  check('le modèle suit : le lecteur est maintenant dans GFS_Lecteurs', readers(rowA2).includes(VIEWER) && readers(rowA2).includes(EDITOR), rowA2 && rowA2.GFS_Lecteurs);
+  check('le modèle suit : le lecteur est maintenant dans GFS_Readers', readers(rowA2).includes(VIEWER) && readers(rowA2).includes(EDITOR), rowA2 && rowA2.GFS_Readers);
 
   say('--- 6. catégories : « Lecture » aux éditeurs sur tout le document ---');
   await frame.locator('[data-fk="manage-tab-cats"]').click();
   await frame.locator('[data-fk="manage-cat-editeurs"]').click();
   await frame.getByRole('menuitemradio', { name: new RegExp(t('share.right.lecture')) }).first().click();
   await frame.locator('[data-fk="manage-cat-editeurs"]').filter({ hasText: t('share.right.lecture') }).waitFor({ timeout: 15000 });
-  const root = (await rows(run, 'GFS_Partages')).find(row => row.Cible === '*' && row.Personne === '@editeurs');
-  check('une ligne « * » pour les éditeurs, en lecture', root && root.Droit === 'lecture', root);
+  const root = (await rows(run, 'GFS_Shares')).find(row => row.Target === '*' && row.Person === '@editeurs');
+  check('une ligne « * » pour les éditeurs, en lecture', root && root.Right === 'lecture', root);
   const rowR = (await inModels(run))[PRIVATE_R];
   check('le modèle « racine » est lu des éditeurs (GFS_Cats) mais pas du lecteur', JSON.stringify(rowR.GFS_Cats).includes('editeurs') || JSON.stringify(rowR.GFS_Cats).includes('@'), rowR && rowR.GFS_Cats);
   await shot(frame, '6-categories');
@@ -197,9 +197,9 @@ async function playEditor(run) {
   say('--- éditeur ---');
   const seen = await modelNames(run);
   check('il lit tous les modèles privés : la racine donne « Lecture » à tous les éditeurs sur tout le document', [PRIVATE_A, PRIVATE_L, PRIVATE_N, PRIVATE_R].every(name => seen.includes(name)), seen);
-  const groups = await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Groupes/records`);
+  const groups = await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Groups/records`);
   check('il ne lit ni les adresses ni les membres des groupes', !groups.text.includes('example.com'), groups.text.slice(0, 200));
-  const answer = await apply(run, [['AddRecord', 'GFS_Groupes', null, { Nom: 'Pirate', PersonnesIci: EDITOR }]]);
+  const answer = await apply(run, [['AddRecord', 'GFS_Groups', null, { Name: 'Pirate', People: EDITOR }]]);
   check('il n\'écrit pas dans les groupes', answer.status !== 200, answer.text);
   const own = await apply(run, [['AddRecord', MODELS, null, { Nom: 'Modèle de l\'éditeur', TypeModele: 'document', DateModif: Math.floor(Date.now() / 1000) }]]);
   check('il crée un modèle', own.status === 200, own.text);
@@ -223,7 +223,7 @@ async function playViewer(run) {
   say('--- lecteur ---');
   const seen = await modelNames(run);
   check('il lit le modèle du groupe Achats (ajouté par la modification), celui du groupe lu d\'une table, pas celui de la racine ni le non partagé', seen.includes(PRIVATE_A) && seen.includes(PRIVATE_L) && !seen.includes(PRIVATE_R) && !seen.includes(PRIVATE_N), seen);
-  const groups = await call(run.page, 'GET', `/api/docs/${run.docId}/tables/GFS_Groupes/records`);
+  const groups = await call(run.page, 'GET', `/api/docs/${run.docId}/tables/GFS_Groups/records`);
   check('il ne lit pas les adresses des groupes', !groups.text.includes('example.com'), groups.text.slice(0, 200));
   const first = (await rows(run, MODELS)).find(row => row.Nom === PRIVATE_A);
   const answer = await apply(run, [['UpdateRecord', MODELS, first.id, { ModifiePar: 'lecteur' }]]);

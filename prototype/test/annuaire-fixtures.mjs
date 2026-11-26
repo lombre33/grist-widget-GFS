@@ -2,7 +2,7 @@
 // (une direction a un pôle, un service a une direction), et les tables internes de Grist que GFS lit pour connaître les colonnes. Rien d'un vrai client.
 
 // Les tables internes, telles que `fetchTable` les rend : des tableaux de colonnes.
-const TABLES = [[1, 'Personnes'], [2, 'Structures'], [3, 'GFS_Annuaires']];
+const TABLES = [[1, 'Personnes'], [2, 'Structures'], [3, 'GFS_Directories']];
 const COLUMNS = [
   // [numéro, table, colId, type, colonne visible, options (JSON), calculée]
   [10, 1, 'Nom', 'Text', 0], [11, 1, 'Poste', 'Text', 0], [12, 1, 'Email', 'Text', 0], [13, 1, 'Tel', 'Text', 0],

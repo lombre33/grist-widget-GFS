@@ -68,7 +68,7 @@ test('sans l\'accord de la personne, la table n\'est pas créée et rien n\'est 
   assert.deepEqual(run.batches, []);
 });
 
-test('mettre à la corbeille : la table naît avec l\'accord, puis UN SEUL lot copie la ligne dans GFS_Corbeille et la retire de la table de l\'app', async () => {
+test('mettre à la corbeille : la table naît avec l\'accord, puis UN SEUL lot copie la ligne dans GFS_Trash et la retire de la table de l\'app', async () => {
   const run = setup();
   const entry = await trashed(run, 2);
   assert.deepEqual(run.asked, ['consent']);
@@ -76,12 +76,12 @@ test('mettre à la corbeille : la table naît avec l\'accord, puis UN SEUL lot c
   assert.deepEqual(run.batches[1].map(action => action.slice(1, 3)), [[BIN_TABLE, null], ['Publipostage_Modeles', 2]]);
   assert.deepEqual(run.live().map(each => each.id), [1, 3, 4]);
   const [stored] = run.bin().rows;
-  assert.match(stored.Identifiant, /^[0-9a-f]{12}$/);
-  assert.deepEqual({ ...stored, Identifiant: null, Instantane: null }, {
-    id: 1, Identifiant: null, App: 'publipostage', Table: 'Publipostage_Modeles', FichierId: '2', Nom: 'Attestation', Type: 'grille', Date: 200, Auteur: '', SupprimeLe: NOW / 1000,
-    SupprimePar: 'paul@exemple.fr', Instantane: null,
+  assert.match(stored.EntryId, /^[0-9a-f]{12}$/);
+  assert.deepEqual({ ...stored, EntryId: null, Snapshot: null }, {
+    id: 1, EntryId: null, App: 'publipostage', Table: 'Publipostage_Modeles', FileId: '2', Name: 'Attestation', Type: 'grille', Date: 200, Author: '', DeletedAt: NOW / 1000,
+    DeletedBy: 'paul@exemple.fr', Snapshot: null,
   });
-  assert.deepEqual(parseSnapshot(stored.Instantane).valeurs, { Nom: 'Attestation', Contenu: '<p></p>', TypeModele: 'grille', DateModif: 200, ModifiePar: '', EstParDefaut: false, Jeton: 'j2', Pieces: null });
+  assert.deepEqual(parseSnapshot(stored.Snapshot).valeurs, { Nom: 'Attestation', Contenu: '<p></p>', TypeModele: 'grille', DateModif: 200, ModifiePar: '', EstParDefaut: false, Jeton: 'j2', Pieces: null });
   assert.deepEqual([entry.key, entry.name, entry.type, entry.trashed, entry.known], ['publipostage:2', 'Attestation', 'grille', { ts: NOW / 1000, by: 'paul@exemple.fr' }, true]);
 });
 
@@ -126,8 +126,8 @@ test('la personne peut être longue à répondre à la question de la table : la
   run = setup({ consent: async () => { run.live().find(each => each.id === 2).Nom = 'Modifiée pendant la question'; return true; } });
   const { files } = await run.load();
   assert.equal(await run.trash.trash(files[1]), true);
-  assert.equal(parseSnapshot(run.bin().rows[0].Instantane).valeurs.Nom, 'Modifiée pendant la question');
-  assert.equal(run.bin().rows[0].Nom, 'Modifiée pendant la question');
+  assert.equal(parseSnapshot(run.bin().rows[0].Snapshot).valeurs.Nom, 'Modifiée pendant la question');
+  assert.equal(run.bin().rows[0].Name, 'Modifiée pendant la question');
 });
 
 test('une ligne supprimée par une autre personne pendant la question de la table : rien n\'est copié (la table est née, mais elle reste vide), false', async () => {
@@ -236,7 +236,7 @@ test('restaurer quand la table de l\'app n\'existe plus, ou quand la copie est a
   assert.equal(gone.bin().rows.length, 1);
   const broken = setup();
   const other = await trashed(broken, 2);
-  broken.bin().rows[0].Instantane = 'abîmé';
+  broken.bin().rows[0].Snapshot = 'abîmé';
   await assert.rejects(broken.trash.restore(other), { message: FR.t('trash.unreadable') });
   assert.equal(broken.bin().rows.length, 1);
 });
@@ -366,13 +366,13 @@ test('le fichier peut partir de la liste avant d\'être écrit à la corbeille s
   const run = setup();
   const { files } = await run.load();
   assert.equal(run.trash.instant(files[0]), false, 'la table de la corbeille n\'a jamais été vue : la créer demande l\'accord de la personne');
-  run.trash.noteBin('GFS_Corbeille');
+  run.trash.noteBin('GFS_Trash');
   assert.equal(run.trash.instant(files[0]), true);
   run.trash.noteBin(null);
   assert.equal(run.trash.instant(files[0]), false, 'la dernière lecture dit qu\'elle n\'existe pas');
-  run.trash.noteBin('GFS_Corbeille');
+  run.trash.noteBin('GFS_Trash');
   assert.equal(run.trash.instant({ ...files[0], table: 'Autre' }), false, 'un fichier que le gardien ne gère pas');
   const composite = setup({ over: { apps: () => [{ manifest: form() }] } });
-  composite.trash.noteBin('GFS_Corbeille');
+  composite.trash.noteBin('GFS_Trash');
   assert.equal(composite.trash.instant({ app: 'form', table: 'FormPlus_Formulaires', id: '1' }), false, 'un formulaire se ferme par l\'app ouverte, qui peut refuser : on attend sa réponse');
 });

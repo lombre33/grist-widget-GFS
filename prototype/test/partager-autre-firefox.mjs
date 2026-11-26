@@ -165,8 +165,8 @@ async function newTableFlow(page, tools, t) {
   const now = await tools.open(kind, 'lien-neuf');
   if (!now.modal) return;
   tools.fits(kind, now, 'l\'accord du lien, table à créer');
-  const created = t('so.accord.files', { table: 'GFS_Fichiers', columns: 'id_sync, MajLe, RecalculLe' });
-  const before = t('so.accord.columns', { table: 'GFS_Fichiers', columns: 'id_sync, MajLe, RecalculLe' });
+  const created = t('so.accord.files', { table: 'GFS_Files', columns: 'id_sync, MajLe, RecalculLe' });
+  const before = t('so.accord.columns', { table: 'GFS_Files', columns: 'id_sync, MajLe, RecalculLe' });
   if (!now.modal.body.includes(created)) tools.run.note(kind, `l'accord devait dire « ${created} » (il dit « ${now.modal.body.slice(0, 200)} »)`);
   if (now.modal.body.includes(before)) tools.run.note(kind, 'l\'accord ne devait plus dire que la table a déjà ses colonnes d\'aide : elle n\'existe pas encore');
   await page.press('Escape');

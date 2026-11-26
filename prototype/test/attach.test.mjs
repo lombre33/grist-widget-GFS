@@ -140,7 +140,7 @@ test('un appel hors règle est refusé avant tout envoi : type non déclaré, ta
   const undeclared = setup();
   await assert.rejects(async () => undeclared.call(session({ manifest: { id: 'publipostage', actions: {} } }), args([entry(1, 'A.pdf')])), error => error.code === ERR.REFUSE && /actions\.joindre/.test(error.message));
   await assert.rejects(async () => undeclared.call(session({ manifest: { id: 'publipostage', actions: { joindre: ['docx'] } } }), args([entry(1, 'A.pdf')])), error => error.code === ERR.REFUSE);
-  for (const table of ['GFS_Fichiers', '_grist_Attachments', 'Automation_Etat']) {
+  for (const table of ['GFS_Files', '_grist_Attachments', 'Automation_Etat']) {
     await refusedWith(setup().call(session(), args([entry(1, 'A.pdf')], { table })), ERR.REFUSE, /joindre/);
   }
   const noWrite = policyOf({ ...publipostage(), permissions: { ...publipostage().permissions, ecrit: ['Rien'] } });

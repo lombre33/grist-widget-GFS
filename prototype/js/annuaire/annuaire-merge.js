@@ -9,7 +9,7 @@
 
 import { readConfig } from './annuaire-config.js';
 
-// Le « numéro de ligne » de la vue : jamais celui d'une ligne de `GFS_Annuaires` (qui sont des entiers positifs).
+// Le « numéro de ligne » de la vue : jamais celui d'une ligne de `GFS_Directories` (qui sont des entiers positifs).
 export const MERGED_ROW = -1;
 
 const lower = text => String(text ?? '').trim().toLowerCase();

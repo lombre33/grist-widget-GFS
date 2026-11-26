@@ -72,8 +72,8 @@ try {
   const run = await openGfs(context, { lang });
   say('\n=== Le document d\'avant : des tables de GFS à plat ===');
   say('pages :', shape(await pagesOf(run)));
-  await apply(run, [['AddTable', 'GFS_Rangement', [column('Utilisateur')]], ['AddTable', 'GFS_Groupes', [column('Nom')]], ['AddTable', 'Autre_Table', [column('Nom')]],
-    ['AddTable', 'GFS_Fichiers', [column('Nom')]]]);
+  await apply(run, [['AddTable', 'GFS_Filing', [column('User')]], ['AddTable', 'GFS_Groups', [column('Name')]], ['AddTable', 'Autre_Table', [column('Name')]],
+    ['AddTable', 'GFS_Files', [column('Name')]]]);
   const flat = await pagesOf(run);
   say('pages :', shape(flat));
   check('Grist a posé une page au premier niveau pour chaque table', flat.length === 6 && flat.slice(-4).every(item => item.level === 0), shape(flat));
@@ -90,10 +90,10 @@ try {
   say('pages :', shape(after), '\nmarque :', mark);
   const parent = after.find(item => item.id === mainId);
   check('les trois tables de GFS sont sous la page qui porte GFS, dans l\'ordre où Grist les avait mises',
-    JSON.stringify(shape(after)) === JSON.stringify(['Table1', parent.table || parent.name, '  GFS_Rangement', '  GFS_Groupes', '  GFS_Fichiers', 'Autre_Table']), shape(after));
+    JSON.stringify(shape(after)) === JSON.stringify(['Table1', parent.table || parent.name, '  GFS_Filing', '  GFS_Groups', '  GFS_Files', 'Autre_Table']), shape(after));
   check('la page de GFS est repliée par défaut (`options.collapsed`)', Boolean(parent.options) && JSON.parse(parent.options).collapsed === true, parent.options);
   check('la table d\'autrui garde sa page au premier niveau, en bas', after.at(-1).table === 'Autre_Table' && after.at(-1).level === 0, shape(after));
-  check('la marque `gfs.pages` liste les trois tables', Array.isArray(mark) && JSON.stringify([...mark].sort()) === JSON.stringify(['GFS_Fichiers', 'GFS_Groupes', 'GFS_Rangement']), mark);
+  check('la marque `gfs.pages` liste les trois tables', Array.isArray(mark) && JSON.stringify([...mark].sort()) === JSON.stringify(['GFS_Files', 'GFS_Groups', 'GFS_Filing']), mark);
   const bars = await run.page.getByRole('button', { name: /^(Save|Revert|Enregistrer|Retour)$/ }).count();
   check('aucune barre « Enregistrer » dans Grist (la marque s\'écrit comme un réglage enregistré)', bars === 0, bars);
   await shot(run, '1-range');
@@ -101,40 +101,40 @@ try {
   say('\n=== Le document rouvert : la page de GFS est repliée, sa flèche montre les tables ===');
   await reopen(run);
   await run.page.waitForTimeout(1500);
-  check('les pages des tables de GFS ne sont pas dans le volet (repliées)', !(await visible(run, 'GFS_Rangement')) && !(await visible(run, 'GFS_Fichiers')));
+  check('les pages des tables de GFS ne sont pas dans le volet (repliées)', !(await visible(run, 'GFS_Filing')) && !(await visible(run, 'GFS_Files')));
   check('la table d\'autrui, elle, y est', await visible(run, 'Autre_Table'));
   await shot(run, '2-replie');
   const row = header(run, parent.name);
   await row.hover();
   await row.locator('.test-treeview-itemArrow').click();
   await run.page.waitForTimeout(600);
-  check('la flèche de la page montre les trois tables', await visible(run, 'GFS_Rangement') && await visible(run, 'GFS_Groupes') && await visible(run, 'GFS_Fichiers'));
+  check('la flèche de la page montre les trois tables', await visible(run, 'GFS_Filing') && await visible(run, 'GFS_Groups') && await visible(run, 'GFS_Files'));
   await shot(run, '3-deplie');
   check('replier ou déplier à la main n\'écrit rien dans le document (l\'état est celui du navigateur)', (await pagesOf(run)).find(item => item.id === mainId).options === parent.options);
 
   say('\n=== Une table que GFS crée ensuite vient sous sa page ===');
   await run.frame.evaluate(async () => {
     const { OwnTable } = await import('./js/files/own-table.js');
-    const table = new OwnTable({ port: { doc: grist.docApi }, name: 'GFS_Corbeille', columns: [{ id: 'Nom', type: 'Text' }], consent: async () => true });
+    const table = new OwnTable({ port: { doc: grist.docApi }, name: 'GFS_Trash', columns: [{ id: 'Name', type: 'Text' }], consent: async () => true });
     await table.ready();
   });
   await waitMark(run, 4);
   const created = await pagesOf(run);
   say('pages :', shape(created));
-  check('la table créée par GFS est sous la page de GFS, après les autres', created.filter(item => item.level === 1).map(item => item.table).at(-1) === 'GFS_Corbeille', shape(created));
+  check('la table créée par GFS est sous la page de GFS, après les autres', created.filter(item => item.level === 1).map(item => item.table).at(-1) === 'GFS_Trash', shape(created));
   check('la page de GFS garde son réglage (repliée par défaut)', JSON.parse(created.find(item => item.id === mainId).options).collapsed === true, created.find(item => item.id === mainId).options);
   check('la table d\'autrui reste en bas', created.at(-1).table === 'Autre_Table', shape(created));
-  check('la marque compte la nouvelle table', ((await optionsOf(run))['gfs.pages'] || []).includes('GFS_Corbeille'), await optionsOf(run));
+  check('la marque compte la nouvelle table', ((await optionsOf(run))['gfs.pages'] || []).includes('GFS_Trash'), await optionsOf(run));
 
   say('\n=== La personne sort une page de dessous : GFS rechargé ne la remet pas ===');
-  const moved = created.find(item => item.table === 'GFS_Groupes');
+  const moved = created.find(item => item.table === 'GFS_Groups');
   await apply(run, [['UpdateRecord', '_grist_Pages', moved.id, { indentation: 0, pagePos: created.at(-1).pos + 1 }]]);
   await reopen(run);
   await run.page.waitForTimeout(6000); // plus que le temps du premier rangement
   const again = await pagesOf(run);
   say('pages :', shape(again));
-  check('la page sortie par la personne reste sortie', again.find(item => item.table === 'GFS_Groupes').level === 0, shape(again));
-  check('rien d\'autre n\'a bougé', JSON.stringify(shape(again).filter(line => line.trim() !== 'GFS_Groupes')) === JSON.stringify(shape(created).filter(line => line.trim() !== 'GFS_Groupes')), shape(again));
+  check('la page sortie par la personne reste sortie', again.find(item => item.table === 'GFS_Groups').level === 0, shape(again));
+  check('rien d\'autre n\'a bougé', JSON.stringify(shape(again).filter(line => line.trim() !== 'GFS_Groups')) === JSON.stringify(shape(created).filter(line => line.trim() !== 'GFS_Groups')), shape(again));
   const unexpected = run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
   check('aucune erreur ni avertissement de GFS dans la console', unexpected.length === 0, unexpected);
 } finally {

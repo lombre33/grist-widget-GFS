@@ -25,8 +25,8 @@ const { t } = createI18n(lang);
 const TAG = `copie-${lang}-${scheme}`;
 const ME = 'essai@example.com';
 const MODELS = 'Publipostage_Modeles';
-const FILES = 'GFS_Fichiers';
-const FILING = 'GFS_Rangement';
+const FILES = 'GFS_Files';
+const FILING = 'GFS_Filing';
 const APP_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/apps/publipostage/`;
 const sorted = list => [...list].sort();
 const exact = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
@@ -45,14 +45,14 @@ const apply = (run, actions) => run.page.evaluate(async ([docId, body]) => (awai
 const modelRows = run => run.rest.rows(MODELS);
 const byName = (rows, name) => rows.find(row => row.Nom === name);
 const withoutIdentity = row => { const { id, Nom, Jeton, Resume, ...data } = row; return data; }; // ce que la copie garde de l'original : tout, sauf son numéro, son nom, son jeton et sa formule
-const pdfShape = row => { const { id, Identifiant, Nom, Date, Auteur, ...data } = row; return data; }; // ce que la copie d'un PDF garde de l'original : la pièce jointe, la taille, l'origine
+const pdfShape = row => { const { id, FileId, Name, Date, Author, ...data } = row; return data; }; // ce que la copie d'un PDF garde de l'original : la pièce jointe, la taille, l'origine
 const textOf = async locator => ((await locator.count()) ? locator.first().textContent() : null);
 const selectedName = frame => textOf(frame.locator('.ls-row[aria-selected="true"] .nm .t'));
 const goHome = frame => goTo(frame, new RegExp(`^\\s*${t('ex.me')}\\s*\\d*\\s*$`));
 const folderRow = (frame, name) => frame.locator('.ls-row.folder', { has: frame.locator('.t', { hasText: new RegExp(`^${name}$`) }) });
 const enterFolder = async (frame, name) => { await goHome(frame); await folderRow(frame, name).dblclick(); };
-// Le rangement de la personne pour un fichier d'une app : ses lignes de GFS_Rangement.
-const filingOf = async (run, app, id) => (await run.rest.rows(FILING)).filter(row => row.App === app && String(row.Fichier) === String(id));
+// Le rangement de la personne pour un fichier d'une app : ses lignes de GFS_Filing.
+const filingOf = async (run, app, id) => (await run.rest.rows(FILING)).filter(row => row.App === app && String(row.File) === String(id));
 const duplicateItem = frame => frame.getByRole('menuitem', { name: new RegExp(`^${t('ex.duplicate')}`) });
 async function duplicate(run, name) {
   await openRowMenu(run.frame, name);
@@ -90,7 +90,7 @@ async function prepare(run) {
   await frame.locator('[data-fk="ask-yes"]').click();
   await frame.waitForFunction(() => document.querySelector('.ls-row .rb.pin.on'), null, { timeout: 20000 });
   const lines = (await run.rest.rows(FILING)).filter(row => row.App === 'publipostage');
-  check('un premier favori : GFS connaît la personne que Grist donne, les dossiers sont là et la racine a les trois modèles sans dossier et les deux PDF', lines.length === 1 && lines[0].Utilisateur === ME && await sameNames(frame, ['Contrat de prestation', 'Quittance de loyer', 'Support de session', 'Facture.pdf', 'Devis.pdf']), lines);
+  check('un premier favori : GFS connaît la personne que Grist donne, les dossiers sont là et la racine a les trois modèles sans dossier et les deux PDF', lines.length === 1 && lines[0].User === ME && await sameNames(frame, ['Contrat de prestation', 'Quittance de loyer', 'Support de session', 'Facture.pdf', 'Devis.pdf']), lines);
   run.before = await modelRows(run);
   run.prefsBefore = await run.rest.rows('Publipostage_PreferencesModeles');
 }
@@ -133,7 +133,7 @@ async function playInFolder(run) {
   const copy = byName(rows, 'Feuille d’émargement (1)');
   const lines = copy ? await filingOf(run, 'publipostage', copy.id) : [];
   check('la phrase dit le dossier ; la copie est dans « Formation », à côté de l\'original, la copie prend le clavier', done === t('copy.doneIn', { as: 'Feuille d’émargement (1)', folder: 'Formation' }) && await rowOf(frame, 'Feuille d’émargement (1)').count() === 1 && await selectedName(frame) === 'Feuille d’émargement (1)', done);
-  check('le rangement de la copie : une ligne pour la personne, dans « Formation », sans favori', lines.length === 1 && lines[0].Dossier === 'Formation' && lines[0].Utilisateur === ME && lines[0].Favori === false, lines);
+  check('le rangement de la copie : une ligne pour la personne, dans « Formation », sans favori', lines.length === 1 && lines[0].Folder === 'Formation' && lines[0].User === ME && lines[0].Favorite === false, lines);
   check('la copie n\'est pas par défaut : il n\'y a toujours qu\'une étoile, celle de l\'original, et la copie n\'est pas épinglée', rows.filter(row => row.EstParDefaut).length === 1 && byName(rows, 'Feuille d’émargement').EstParDefaut === true && copy.Jeton === '' && await rowOf(frame, 'Feuille d’émargement (1)').locator('.rb.pin.on').count() === 0 && await rowOf(frame, 'Feuille d’émargement').locator('.rb.pin.on').count() === 1);
 }
 
@@ -170,7 +170,7 @@ async function playCopyPaste(run) {
   check('Ctrl+V colle dans le dossier ouvert, deux fois : « (1) » puis « (2) » (une copie se colle autant qu\'on veut)', first === t('copy.doneIn', { as: 'Badge événement A6 (1)', folder: 'Facturation' }) && second === t('copy.doneIn', { as: 'Badge événement A6 (2)', folder: 'Facturation' }) && rows.length === before.length + 2, [first, second]);
   check('la liste de « Facturation » les montre, la dernière copie prend le clavier ; l\'original est resté dans « Événementiel »', await sameNames(frame, ['Facture / devis multi-TVA', 'Badge événement A6 (1)', 'Badge événement A6 (2)']) && await selectedName(frame) === 'Badge événement A6 (2)' && (await filingOf(run, 'publipostage', byName(rows, 'Badge événement A6').id)).length === 0);
   const lines = await Promise.all(['Badge événement A6 (1)', 'Badge événement A6 (2)'].map(name => filingOf(run, 'publipostage', byName(rows, name).id)));
-  check('le rangement de chaque copie : une ligne dans « Facturation », sans favori', lines.every(each => each.length === 1 && each[0].Dossier === 'Facturation' && each[0].Favori === false), lines);
+  check('le rangement de chaque copie : une ligne dans « Facturation », sans favori', lines.every(each => each.length === 1 && each[0].Folder === 'Facturation' && each[0].Favorite === false), lines);
   check('les copies ont les valeurs de l\'original', same(withoutIdentity(byName(rows, 'Badge événement A6 (2)')), withoutIdentity(byName(rows, 'Badge événement A6'))));
 }
 
@@ -180,18 +180,18 @@ async function playCutPaste(run) {
   say('--- 5. Ctrl+X puis Ctrl+V ---');
   await goHome(frame);
   const pdfs = await run.rest.rows(FILES);
-  const devis = pdfs.find(row => row.Nom === 'Devis.pdf');
+  const devis = pdfs.find(row => row.Name === 'Devis.pdf');
   await rowOf(frame, 'Devis.pdf').click();
   await page.keyboard.press('Control+x');
   const cut = await said(frame, 'clip.cut', { name: 'Devis.pdf' });
   await folderRow(frame, 'Stock').dblclick();
   await page.keyboard.press('Control+v');
   const moved = await said(frame, 'clip.moved', { name: 'Devis.pdf', folder: 'Stock' });
-  const lines = await filingOf(run, 'gfs-fichiers', devis.Identifiant);
-  check('couper puis coller déplace le PDF : les phrases le disent, une ligne de rangement dans « Stock », aucun PDF de plus', cut === t('clip.cut', { name: 'Devis.pdf' }) && moved === t('clip.moved', { name: 'Devis.pdf', folder: 'Stock' }) && lines.length === 1 && lines[0].Dossier === 'Stock' && lines[0].Utilisateur === ME && (await run.rest.rows(FILES)).length === pdfs.length, [moved, lines]);
+  const lines = await filingOf(run, 'gfs-fichiers', devis.FileId);
+  check('couper puis coller déplace le PDF : les phrases le disent, une ligne de rangement dans « Stock », aucun PDF de plus', cut === t('clip.cut', { name: 'Devis.pdf' }) && moved === t('clip.moved', { name: 'Devis.pdf', folder: 'Stock' }) && lines.length === 1 && lines[0].Folder === 'Stock' && lines[0].User === ME && (await run.rest.rows(FILES)).length === pdfs.length, [moved, lines]);
   check('le PDF est dans « Stock », prend le clavier, et n\'est plus à la racine', await rowOf(frame, 'Devis.pdf').count() === 1 && await selectedName(frame) === 'Devis.pdf');
   await page.keyboard.press('Control+v');
-  check('rien n\'est resté à coller : la phrase le dit, rien n\'est écrit', await said(frame, 'clip.empty') === t('clip.empty') && (await filingOf(run, 'gfs-fichiers', devis.Identifiant)).length === 1);
+  check('rien n\'est resté à coller : la phrase le dit, rien n\'est écrit', await said(frame, 'clip.empty') === t('clip.empty') && (await filingOf(run, 'gfs-fichiers', devis.FileId)).length === 1);
   // Un modèle épinglé garde son favori quand il change de dossier.
   await goHome(frame);
   const support = byName(await modelRows(run), 'Support de session');
@@ -202,7 +202,7 @@ async function playCutPaste(run) {
   await page.keyboard.press('Control+v');
   await said(frame, 'clip.moved', { name: 'Support de session', folder: 'Stock' });
   const pinned = await filingOf(run, 'publipostage', support.id);
-  check('le modèle épinglé garde son favori dans « Stock » (une ligne : Favori et Dossier)', pinned.length === 1 && pinned[0].Favori === true && pinned[0].Dossier === 'Stock' && await rowOf(frame, 'Support de session').locator('.rb.pin.on').count() === 1, pinned);
+  check('le modèle épinglé garde son favori dans « Stock » (une ligne : Favori et Dossier)', pinned.length === 1 && pinned[0].Favorite === true && pinned[0].Folder === 'Stock' && await rowOf(frame, 'Support de session').locator('.rb.pin.on').count() === 1, pinned);
   // Un dossier entier, avec ce qu'il contient (un sous-dossier de « Formation »).
   await enterFolder(frame, 'Formation');
   const old = byName(await modelRows(run), 'Ancien programme');
@@ -215,7 +215,7 @@ async function playCutPaste(run) {
   const movedFolder = await said(frame, 'clip.moved', { name: 'Archives 2025', folder: 'Stock' });
   const inside = await filingOf(run, 'publipostage', old.id);
   check('couper un dossier puis le coller dans « Stock » : les phrases le disent, le dossier est là et prend le clavier', cutFolder === t('clip.cut', { name: 'Archives 2025' }) && movedFolder === t('clip.moved', { name: 'Archives 2025', folder: 'Stock' }) && await folderRow(frame, 'Archives 2025').count() === 1 && await selectedName(frame) === 'Archives 2025', [cutFolder, movedFolder]);
-  check('ce qu\'il contient le suit : le modèle est rangé dans « Stock/Archives 2025 »', inside.length === 1 && inside[0].Dossier === 'Stock/Archives 2025', inside);
+  check('ce qu\'il contient le suit : le modèle est rangé dans « Stock/Archives 2025 »', inside.length === 1 && inside[0].Folder === 'Stock/Archives 2025', inside);
   await folderRow(frame, 'Archives 2025').dblclick();
   check('l\'ouvrir montre le modèle', await sameNames(frame, ['Ancien programme']));
   await enterFolder(frame, 'Formation');
@@ -228,15 +228,15 @@ async function playPdf(run) {
   say('--- 6. un PDF ---');
   await goHome(frame);
   const attachments = (await run.rest.attachments()).length;
-  const original = (await run.rest.rows(FILES)).find(row => row.Nom === 'Facture.pdf');
+  const original = (await run.rest.rows(FILES)).find(row => row.Name === 'Facture.pdf');
   await duplicate(run, 'Facture.pdf');
   const done = await said(frame, 'copy.done', { as: 'Facture (1).pdf' });
   const rows = await run.rest.rows(FILES);
-  const copy = rows.find(row => row.Nom === 'Facture (1).pdf');
+  const copy = rows.find(row => row.Name === 'Facture (1).pdf');
   check('la phrase dit le nom de la copie ; la liste a les deux PDF ; la copie prend le clavier', done === t('copy.done', { as: 'Facture (1).pdf' }) && Boolean(await rowOf(frame, 'Facture (1).pdf').count()) && await selectedName(frame) === 'Facture (1).pdf', done);
-  check('la copie a son propre identifiant et ce que le PDF est (type, pièce jointe, taille, origine)', Boolean(copy) && /^[0-9a-f]{12}$/.test(copy.Identifiant) && copy.Identifiant !== original.Identifiant && same(pdfShape(copy), pdfShape(original)), [copy, original]);
-  check('elle est de la personne que Grist donne, d\'aujourd\'hui (l\'original, importé avant que GFS la connaisse, n\'a pas d\'auteur : la copie ne le reprend pas)', copy.Auteur === ME && original.Auteur === '' && Math.abs(copy.Date - Date.now() / 1000) < 120, [copy.Auteur, original.Auteur, copy.Date]);
-  check('aucun octet de plus : le document a le même nombre de pièces jointes, les deux lignes citent la même', (await run.rest.attachments()).length === attachments && same(copy.Contenu, original.Contenu), [copy && copy.Contenu, original.Contenu]);
+  check('la copie a son propre identifiant et ce que le PDF est (type, pièce jointe, taille, origine)', Boolean(copy) && /^[0-9a-f]{12}$/.test(copy.FileId) && copy.FileId !== original.FileId && same(pdfShape(copy), pdfShape(original)), [copy, original]);
+  check('elle est de la personne que Grist donne, d\'aujourd\'hui (l\'original, importé avant que GFS la connaisse, n\'a pas d\'auteur : la copie ne le reprend pas)', copy.Author === ME && original.Author === '' && Math.abs(copy.Date - Date.now() / 1000) < 120, [copy.Author, original.Author, copy.Date]);
+  check('aucun octet de plus : le document a le même nombre de pièces jointes, les deux lignes citent la même', (await run.rest.attachments()).length === attachments && same(copy.Content, original.Content), [copy && copy.Content, original.Content]);
   // L'original part pour de bon : la copie reste lisible.
   await rowOf(frame, 'Facture.pdf').click();
   await page.keyboard.press('Delete');
@@ -248,9 +248,9 @@ async function playPdf(run) {
   await frame.locator('[data-fk="ask-yes"]').click();
   await said(frame, 'trash.purged', { name: 'Facture.pdf' });
   const left = await run.rest.rows(FILES);
-  check('l\'original supprimé pour de bon : sa ligne est partie, celle de la copie reste', !left.some(row => row.Nom === 'Facture.pdf') && left.some(row => row.Nom === 'Facture (1).pdf'));
+  check('l\'original supprimé pour de bon : sa ligne est partie, celle de la copie reste', !left.some(row => row.Name === 'Facture.pdf') && left.some(row => row.Name === 'Facture (1).pdf'));
   await goHome(frame);
-  const stored = await run.rest.attachment(copy.Contenu[1]);
+  const stored = await run.rest.attachment(copy.Content[1]);
   check('la pièce jointe de la copie est toujours là, sans changement (même empreinte)', stored.status === 200 && stored.hash === run.facture.hash, stored);
   await openRowMenu(frame, 'Facture (1).pdf');
   const [download] = await Promise.all([page.waitForEvent('download'), frame.getByRole('menuitem', { name: new RegExp(`^${t('files.download')}`) }).click()]);

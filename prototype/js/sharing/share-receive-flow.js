@@ -3,7 +3,7 @@
 // Grist, la réponse à rendre à l'envoyeur et son code de contrôle. Sans fenêtre ni Grist : tout passe par `engine`, les fonctions du moteur de partage du kit
 // (kit/js/synchro/target/receive.js, voir js/sharing/sync-service.js), que les essais remplacent. Le moteur juge le code, le lien et la réponse ; GFS n'en juge
 // rien (décision du 09/11). GFS reçoit TOUJOURS en archive (js/sharing/share-links.js : un fichier qui sort du partage reste ici, marqué « supprimé à la source
-// », mesuré : faits vérifiés, 70) et range tout ce qui arrive dans une seule table, `GFS_Recus`.
+// », mesuré : faits vérifiés, 70) et range tout ce qui arrive dans une seule table, `GFS_Received`.
 //   read()    le code collé, lu et contrôlé : le nom du partage, ce qu'il apporte, si une réception de ce partage existe déjà ; un code d'un AUTRE serveur
 //             Grist est refusé ici, avant que quoi que ce soit soit créé (choix du porteur, 18/11 : le moteur ne refuse qu'au dernier tour, quand
 //             l'envoyeur contrôle la réponse, et le journal et le formulaire publié restaient chez celui qui reçoit) ;
@@ -16,7 +16,8 @@
 //   resume    (au départ, `resume` = { journal, note }) la page a été rechargée par Grist quand la personne a publié le formulaire : le parcours reprend à
 //             l'étape
 //             du lien, sur la réception que le journal a gardée (sa note dit qu'elle attend la réponse), sans redemander le code.
-import { RECEIVED_TABLE } from './received-files.js';
+import { RECEIVED_TABLE, markColumns } from './received-files.js';
+import { filesNamesOfColumns } from '../files/gfs-files.js';
 import { reservedMap } from './received-marks.js';
 
 export { RECEIVED_TABLE };
@@ -40,9 +41,9 @@ const resumedState = ({ journal, note }) => {
 export function createTargetFlow({ engine, onReplied = () => {}, resume = null }) {
   const state = resume ? resumedState(resume) : { invitation: null, known: null, table: null, made: null, relinked: false, replied: false };
 
-  // La table où arrivent les fichiers de cette réception : une destination ne reçoit les fichiers que d'un seul partage (règle du moteur), donc `GFS_Recus`
-  // pour le premier, puis `GFS_Recus_2`, `GFS_Recus_3`… ; une table qui existe déjà n'est jamais reprise (ses lignes ne sont pas à nous). Une réception déjà là
-  // garde la sienne.
+  // La table où arrivent les fichiers de cette réception : une destination ne reçoit les fichiers que d'un seul partage (règle du moteur), donc `GFS_Received`
+  // pour le premier, puis `GFS_Received_2`, `GFS_Received_3`… (jamais les `GFS_Recus*` d'avant : ils sont à leurs liens) ; une table qui existe déjà n'est
+  // jamais reprise (ses lignes ne sont pas à nous). Une réception déjà là garde la sienne.
   async function destination(known) {
     if (known) return ((known.note.tables || [])[0] || {}).dest || RECEIVED_TABLE;
     for (let n = 1; n <= TABLES_TRIED; n += 1) {
@@ -68,12 +69,14 @@ export function createTargetFlow({ engine, onReplied = () => {}, resume = null }
     state.invitation = invitation;
     state.known = await engine.knownReception(invitation);
     state.table = await destination(state.known);
+    // Les deux marques que la table reçue portera : celles du jeu de noms de l'envoyeur (ses colonnes disent sa langue, js/sharing/received-marks.js).
+    const sent = (((invitation.tables || [])[0] || {}).columns || []).map(column => (column && typeof column === 'object' ? column.id : column));
     return { name: invitation.name, tables: (invitation.tables || []).length, expire: invitation.expire || null, known: Boolean(state.known),
-      table: state.table };
+      table: state.table, marks: markColumns(filesNamesOfColumns(sent)).map(mark => mark.id) };
   }
 
-  // La réception : les destinations sont vérifiées (le moteur refuse une table d'ici qui bouclerait vers le document d'origine), puis le journal, `GFS_Recus`
-  // et la page du formulaire sont créés. Rend le nom du journal, aussi celui de la page où copier le lien du formulaire.
+  // La réception : les destinations sont vérifiées (le moteur refuse une table d'ici qui bouclerait vers le document d'origine), puis le journal,
+  // `GFS_Received` et la page du formulaire sont créés. Rend le nom du journal, aussi celui de la page où copier le lien du formulaire.
   async function accept() {
     const { invitation, known } = state;
     if (known) {

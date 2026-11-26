@@ -349,7 +349,7 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
             for (const action of Array.isArray(message.args[0]) ? message.args[0] : []) {
               if (!Array.isArray(action)) continue;
               const record = action[0] === 'AddRecord' ? action[3] : null;
-              window.__labActions.push(`${action[0]} ${action[1]}${record && record.Utilisateur !== undefined ? ` [${record.Utilisateur}]` : ''}`);
+              window.__labActions.push(`${action[0]} ${action[1]}${record && record.User !== undefined ? ` [${record.User}]` : ''}`);
             }
             if (window.__labUser) message = { ...message, args: [message.args[0], { ...(message.args[1] || {}), ...window.__labUser }, ...message.args.slice(2)] };
           }

@@ -6,7 +6,7 @@ import { norm } from '../js/broker/filter.js';
 
 // Des noms qui visent les préfixes réservés (GFS_, celui d'une autre app) par un détour : espaces, tirets, « _ » de tête, pleine chasse, signes combinants, lettres
 // que seule une translittération ramènerait à G, F ou S.
-const NAMES = ['GFS_Rangement', '_GFS_Rangement', '__gfs_rangement', 'gfs rangement', 'GFS-rangement', 'GFS.rangement', 'GFS rangement', 'GFS​_rangement',
+const NAMES = ['GFS_Filing', '_GFS_Rangement', '__gfs_rangement', 'gfs rangement', 'GFS-rangement', 'GFS.rangement', 'GFS rangement', 'GFS​_rangement',
   'ＧＦＳ_rangement', 'ǴFS_rangement', 'ᴳFS_rangement', 'ɢFS_rangement', 'GƑS_rangement', 'ǤFS_rangement', 'GFŞ_rangement', 'GFſ_rangement',
   'Gᴍ_x', 'Publipostage_Autre', 'publipostage autre', 'Ｐublipostage_x', 'Publipostage·autre', 'SondeH_Essai', 'sondeh essai', 'Éléphant', '1abc', '___', 'a b c'];
 
@@ -80,7 +80,7 @@ say('renommer vers GFS_ :', forbidden);
 check('renommer vers un nom réservé est refusé', !forbidden.ok);
 if (wide) check('jugement affaibli : le refus vient du contrôle d\'après', /Grist a donné à une table le nom/.test(forbidden.message), forbidden.message);
 const stillThere = await tableIds();
-// GFS a pu créer sa propre table du document (GFS_Rangement, avec l'accord de la personne) avant l'essai : elle est dans `baseline`, seul un GFS_ de plus compterait.
+// GFS a pu créer sa propre table du document (GFS_Filing, avec l'accord de la personne) avant l'essai : elle est dans `baseline`, seul un GFS_ de plus compterait.
 check('la table garde son nom après le refus', stillThere.includes('SondeH_Apres') && !stillThere.some(id => /^GFS_/i.test(id) && !baseline.includes(id)), stillThere.filter(id => !baseline.includes(id)));
 // Que rend RenameTable quand le nom demandé est normalisé par Grist ? (le contrat 3.3, point 4, dit « rien d'exploitable »)
 const odd = await direct([['RenameTable', 'SondeH_Apres', 'sondeh \u00e9tat nouveau']]);

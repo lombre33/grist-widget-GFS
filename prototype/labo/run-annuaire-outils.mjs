@@ -7,7 +7,7 @@
 // 2. la pastille de la barre et la fenêtre « À vérifier » (ses comptes, « Comparer », « Masquer » : UNE case change, rien d'autre) ;
 // 3. « Écrire au groupe » (la jauge, les messages, le CSV, le presse-papiers) ; rien ne s'écrit dans le document ;
 // 4. « Ma présence » : l'interrupteur de la fiche change UNE case de la table des personnes ; la personne masquée se retrouve grisée ;
-// 5. l'onglet « Options » : « Enregistrer » ne réécrit que la ligne de l'annuaire (`GFS_Annuaires`), jamais une colonne absente.
+// 5. l'onglet « Options » : « Enregistrer » ne réécrit que la ligne de l'annuaire (`GFS_Directories`), jamais une colonne absente.
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-annuaire-outils.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
 import { createServer } from 'node:http';
 import { join } from 'node:path';
@@ -42,7 +42,7 @@ const inside = async (page, frame, locator) => {
 };
 
 // Ce que le serveur retient des tables qui comptent : de quoi dire, après un geste, ce qui a changé et rien d'autre.
-const snap = async rest => ({ people: await rest.rows('Personnes'), annuaires: await rest.rows('GFS_Annuaires'), tables: await rest.tables(), columns: await rest.columns('Personnes') });
+const snap = async rest => ({ people: await rest.rows('Personnes'), annuaires: await rest.rows('GFS_Directories'), tables: await rest.tables(), columns: await rest.columns('Personnes') });
 const changes = (a, b) => {
   const out = [];
   for (const row of b.people) {

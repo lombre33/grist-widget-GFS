@@ -39,10 +39,10 @@ function fakeDocument() {
 // partage de tous les formulaires) et `FormPlus_Repondants` ne sont pas déclarées lisibles par un lien public, la petite table `FormPlus_Pub_7` (table 3) l'est.
 function addProtectedTables(document) {
   const column = (id, parentId, colId, type = 'Text', visibleCol = 0) => ({ id, parentId, colId, type, isFormula: false, formula: '', visibleCol });
-  document.tables.push({ id: 5, tableId: 'GFS_Espaces' }, { id: 6, tableId: 'Publipostage_Modeles' }, { id: 7, tableId: 'Dossiers' }, { id: 8, tableId: 'Menus' },
+  document.tables.push({ id: 5, tableId: 'GFS_Spaces' }, { id: 6, tableId: 'Publipostage_Modeles' }, { id: 7, tableId: 'Dossiers' }, { id: 8, tableId: 'Menus' },
     { id: 9, tableId: 'FormPlus_Formulaires' }, { id: 10, tableId: 'FormPlus_Repondants' });
   document.columns.push(column(51, 5, 'Nom'), column(61, 6, 'Nom'), column(81, 8, 'Nom'), column(91, 9, 'Definition'), column(101, 10, 'Email'),
-    column(71, 7, 'Espace', 'Ref:GFS_Espaces', 51), column(72, 7, 'Modele', 'Ref:Publipostage_Modeles', 61), column(73, 7, 'Menu', 'Ref:Menus', 81),
+    column(71, 7, 'Space', 'Ref:GFS_Spaces', 51), column(72, 7, 'Modele', 'Ref:Publipostage_Modeles', 61), column(73, 7, 'Menu', 'Ref:Menus', 81),
     column(74, 7, 'Tous', 'Ref:FormPlus_Formulaires', 91), column(75, 7, 'Qui', 'Ref:FormPlus_Repondants', 101), column(76, 7, 'Sien', 'Ref:FormPlus_Pub_7', 31));
   document.sections.push({ id: 101, tableRef: 5, shareOptions: '' }, { id: 102, tableRef: 6, shareOptions: '' }, { id: 103, tableRef: 3, shareOptions: '' }, { id: 104, tableRef: 7, shareOptions: '' });
 }
@@ -142,7 +142,7 @@ test('une table de GFS, d\'une autre app ou de l\'app qui publie n\'est jamais o
 });
 
 test('une Référence vers une table de GFS ou d\'une autre app ne rend jamais sa colonne lisible : refus, sans demander l\'accord', async () => {
-  for (const [colRef, name] of [[71, 'GFS_Espaces'], [72, 'Publipostage_Modeles']]) {
+  for (const [colRef, name] of [[71, 'GFS_Spaces'], [72, 'Publipostage_Modeles']]) {
     const { apply, asked, calls } = setup({}, true);
     await apply([['AddRecord', '_grist_Views_section_field', null, { parentId: 104, colRef, widgetOptions: '' }]]);
     const before = calls.applied.length;
@@ -234,7 +234,7 @@ test('un lot que Grist a appliqué est dit à GFS (`onApplied`, avec les actions
 test('un lot refusé par le filtre ou par la personne n\'est pas dit comme appliqué ; un lot qui publie l\'est, après l\'accord', async () => {
   const told = [];
   const refused = setup({ onApplied: actions => told.push(actions) });
-  await assert.rejects(() => refused.apply([['AddRecord', 'GFS_Espaces', null, { Nom: 'x' }]]), error => error.code === 'GFS_REFUSE');
+  await assert.rejects(() => refused.apply([['AddRecord', 'GFS_Spaces', null, { Name: 'x' }]]), error => error.code === 'GFS_REFUSE');
   const declined = setup({ authorize: async () => false, onApplied: actions => told.push(actions) });
   await assert.rejects(() => declined.apply(publish()), error => error.code === 'GFS_ANNULE');
   assert.deepEqual(told, [], 'rien n\'a été appliqué : rien à dire');

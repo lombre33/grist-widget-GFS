@@ -1,6 +1,6 @@
 // Ranger les exports PDF de la vraie Publipostage+ dans GFS (consigne 043 ; contrats 2.7 point 6, 5.4 point 9), celle que GFS référence, dans un VRAI serveur Grist (l'image officielle,
 // `bash vrai-serveur.sh`) : un modèle de l'app est ouvert dans son éditeur, la personne choisit « Destination du PDF » dans le menu « Exporter », puis exporte. GFS garde le PDF (la table
-// `GFS_Fichiers` naît avec l'accord de la personne), pose la question du nom pris et rend à l'app ce qu'il a fait ; l'app le dit dans son coin d'état. Tout se joue à 700 × 400, à la vraie souris
+// `GFS_Files` naît avec l'accord de la personne), pose la question du nom pris et rend à l'app ce qu'il a fait ; l'app le dit dans son coin d'état. Tout se joue à 700 × 400, à la vraie souris
 // et au vrai clavier. Chromium seulement. Les bibliothèques de l'app (pdfmake et ses polices comprises) viennent du miroir (`bash build-mirror.sh`).
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-ranger-publipostage.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
 //   1. Le menu : « Destination du PDF » offre ses trois lignes, vivantes (le manifeste de GFS déclare `actions.ranger`) ; un clic coche « Ranger dans GFS » et GFS garde le choix de la personne.
@@ -42,8 +42,8 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const appFrame = page => page.frames().find(frame => frame.url().startsWith(APP_URL) && !frame.isDetached());
 const statusOf = app => app.evaluate(() => { const el = document.getElementById('status-msg'); return { text: el.textContent, error: el.className === 'error-msg' }; });
-const files = async rest => (await rest.rows('GFS_Fichiers')).sort((a, b) => a.id - b.id);
-const hashOfRow = async (rest, row) => (await rest.attachment(row.Contenu[1])).hash;
+const files = async rest => (await rest.rows('GFS_Files')).sort((a, b) => a.id - b.id);
+const hashOfRow = async (rest, row) => (await rest.attachment(row.Content[1])).hash;
 const center = (app, selector) => app.evaluate(sel => { const el = document.querySelector(sel); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; }, selector);
 // La fenêtre du nom pris, vue par la personne (js/files/conflict-window.js).
 const cf = frame => ({
@@ -162,7 +162,7 @@ async function playMenu(run) {
 async function playFirstExport(run) {
   const { page, frame, rest, app } = run;
   say('--- 2. un premier export ---');
-  check('au départ, GFS n\'a pas de table de fichiers (elle naît avec l\'accord de la personne)', (await files(rest)).length === 0 && !(await rest.tables()).includes('GFS_Fichiers'));
+  check('au départ, GFS n\'a pas de table de fichiers (elle naît avec l\'accord de la personne)', (await files(rest)).length === 0 && !(await rest.tables()).includes('GFS_Files'));
   const asked = () => frame.locator('.mod.ask').count().then(count => count > 0);
   const first = await exportOne(run, asked);
   check('c\'est GFS qui demande l\'accord pour sa table (l\'app n\'en pose aucune), devant le panneau', first.finished && await asked(), first);
@@ -171,10 +171,10 @@ async function playFirstExport(run) {
   const done = await waitFor(page, 'le coin d\'état dit le rangement', async () => (await statusOf(app)).text === SAYS.added, 60000);
   const rows = await files(rest);
   check(`le coin d'état de l'app dit « ${SAYS.added} » et aucun téléchargement n'a eu lieu`, done && run.downloads.length === 0, [await statusOf(app), run.downloads]);
-  check('GFS garde un PDF : une ligne, un nom en .pdf, l\'app d\'origine, une pièce jointe', rows.length === 1 && /\.pdf$/.test(rows[0].Nom) && rows[0].Origine === 'publipostage' && Array.isArray(rows[0].Contenu) && rows[0].Contenu.length === 2, rows);
-  run.name = rows[0].Nom;
+  check('GFS garde un PDF : une ligne, un nom en .pdf, l\'app d\'origine, une pièce jointe', rows.length === 1 && /\.pdf$/.test(rows[0].Name) && rows[0].Origin === 'publipostage' && Array.isArray(rows[0].Content) && rows[0].Content.length === 2, rows);
+  run.name = rows[0].Name;
   run.copyName = run.name.replace(/\.pdf$/, ' (1).pdf');
-  const stored = await bytesOf(run, rows[0].Contenu[1]);
+  const stored = await bytesOf(run, rows[0].Content[1]);
   check('la pièce jointe est un vrai PDF (`%PDF-`) de quelques ko', stored.head === '%PDF-' && stored.size > 800, stored);
   run.first = { row: rows[0], hash: await hashOfRow(rest, rows[0]) };
   await frame.locator('#floater-files').click();
@@ -216,7 +216,7 @@ async function playTaken(run) {
   const done = await waitFor(page, 'le coin d\'état dit la copie', async () => (await statusOf(run.app)).text === SAYS.copied(run.copyName), 60000);
   const rows = await files(rest);
   check(`« Garder les deux » : l'app dit « ${SAYS.copied(run.copyName)} »`, done, await statusOf(run.app));
-  check('deux lignes : l\'ancien PDF garde son contenu, la copie est une ligne de plus, sans téléchargement', rows.length === 2 && rows[0].Nom === run.name && rows[1].Nom === run.copyName && await hashOfRow(rest, rows[0]) === run.first.hash && run.downloads.length === 0, rows.map(row => row.Nom));
+  check('deux lignes : l\'ancien PDF garde son contenu, la copie est une ligne de plus, sans téléchargement', rows.length === 2 && rows[0].Name === run.name && rows[1].Name === run.copyName && await hashOfRow(rest, rows[0]) === run.first.hash && run.downloads.length === 0, rows.map(row => row.Name));
 }
 
 // ----- 4. Une troisième fois : « Remplacer » garde la même ligne ; « Annuler » ne range rien.
@@ -227,10 +227,10 @@ async function playReplaceAndCancel(run) {
   const replaced = await exportWithName(run, win => win.replace.click(), SAYS.replaced);
   const rows = await files(rest);
   check(`« Remplacer » : l'app dit « ${SAYS.replaced} »`, replaced.done, replaced.status);
-  check('la même ligne (même identifiant) a un nouveau contenu, aucune ligne de plus, la copie n\'a pas bougé', rows.length === 2 && rows[0].Identifiant === original.Identifiant && rows[0].id === original.id && rows[0].Nom === run.name && await hashOfRow(rest, rows[0]) !== run.first.hash && rows[1].Nom === run.copyName, rows.map(row => [row.Nom, row.Identifiant]));
-  const before = rows.map(row => [row.id, row.Nom, row.Contenu[1], row.Date]);
+  check('la même ligne (même identifiant) a un nouveau contenu, aucune ligne de plus, la copie n\'a pas bougé', rows.length === 2 && rows[0].FileId === original.FileId && rows[0].id === original.id && rows[0].Name === run.name && await hashOfRow(rest, rows[0]) !== run.first.hash && rows[1].Name === run.copyName, rows.map(row => [row.Name, row.FileId]));
+  const before = rows.map(row => [row.id, row.Name, row.Content[1], row.Date]);
   const canceled = await exportWithName(run, win => win.cancel.click(), SAYS.ignored);
-  const after = (await files(rest)).map(row => [row.id, row.Nom, row.Contenu[1], row.Date]);
+  const after = (await files(rest)).map(row => [row.id, row.Name, row.Content[1], row.Date]);
   check(`« Annuler » : l'app dit « ${SAYS.ignored} », rien n'est rangé, rien n'est téléchargé`, canceled.done && JSON.stringify(after) === JSON.stringify(before) && run.downloads.length === 0, [canceled.status, run.downloads.length]);
 }
 
@@ -244,8 +244,8 @@ async function playBoth(run) {
   const rows = await files(rest);
   check(`« Télécharger et ranger dans GFS » : l'app dit le rangement puis le téléchargement (« ${SAYS.copied(thirdName)} ${SAYS.generated} » : « (1) » est pris, GFS donne le suivant libre)`, both.done, both.status);
   const downloaded = run.downloads[0] ? await readFile(await run.downloads[0].path()) : null;
-  const newest = rows.find(row => row.Nom === thirdName);
-  check('le PDF est téléchargé ET rangé : un fichier téléchargé au nom de l\'export, les mêmes octets que la pièce jointe de GFS', run.downloads.length === 1 && run.downloads[0].suggestedFilename() === run.name && Boolean(newest) && sha256(downloaded) === await hashOfRow(rest, newest), [run.downloads.map(each => each.suggestedFilename()), rows.map(row => row.Nom)]);
+  const newest = rows.find(row => row.Name === thirdName);
+  check('le PDF est téléchargé ET rangé : un fichier téléchargé au nom de l\'export, les mêmes octets que la pièce jointe de GFS', run.downloads.length === 1 && run.downloads[0].suggestedFilename() === run.name && Boolean(newest) && sha256(downloaded) === await hashOfRow(rest, newest), [run.downloads.map(each => each.suggestedFilename()), rows.map(row => row.Name)]);
   await clickRow(run, ROW('download'));
   const kept = await frame.evaluate(key => localStorage.getItem(key), STORAGE_KEY);
   const rowsBefore = (await files(rest)).length;
@@ -298,7 +298,7 @@ async function answerBatch(run, answer, picture) {
   await win.again.check();
   await answer(win);
 }
-const names = rows => rows.map(each => each.Nom);
+const names = rows => rows.map(each => each.Name);
 async function playBatch(run) {
   const { page, frame, rest } = run;
   say('--- 6. une archive de trois PDF ---');
@@ -314,7 +314,7 @@ async function playBatch(run) {
   check('l\'app demande confirmation pour les trois lignes (sa fenêtre, pas celle de GFS)', asked.includes('3'), asked);
   const fresh = await finishBatch(run, before.length + 3, BATCH_SAYS.fresh, false);
   const first = (await files(rest)).slice(before.length);
-  check(`trois PDF rangés sous les noms des entrées de l'archive (${BATCH_NAMES.join(', ')}), l'app dit « ${BATCH_SAYS.fresh} » et GFS ne pose aucune question`, fresh.finished && fresh.windows === 0 && JSON.stringify(names(first)) === JSON.stringify(BATCH_NAMES) && first.every(each => each.Origine === 'publipostage'), [names(first), fresh]);
+  check(`trois PDF rangés sous les noms des entrées de l'archive (${BATCH_NAMES.join(', ')}), l'app dit « ${BATCH_SAYS.fresh} » et GFS ne pose aucune question`, fresh.finished && fresh.windows === 0 && JSON.stringify(names(first)) === JSON.stringify(BATCH_NAMES) && first.every(each => each.Origin === 'publipostage'), [names(first), fresh]);
   const hashes = await Promise.all(first.map(each => hashOfRow(rest, each)));
 
   await startBatch(run);
@@ -323,7 +323,7 @@ async function playBatch(run) {
   const second = (await files(rest)).slice(before.length + 3);
   const unchanged = (await Promise.all((await files(rest)).slice(before.length, before.length + 3).map(each => hashOfRow(rest, each)))).join() === hashes.join();
   check(`trois noms pris : une seule fenêtre, « Garder les deux » vaut pour les trois, l'app dit « ${BATCH_SAYS.copied} »`, copied.finished && copied.windows === 1, copied);
-  check('trois copies de plus, d\'autres noms, aucun nom en double, les trois premiers PDF n\'ont pas bougé', second.length === 3 && second.every(each => /^Lot de contrats.*\.pdf$/.test(each.Nom) && !BATCH_NAMES.includes(each.Nom)) && new Set(names(await files(rest))).size === before.length + 6 && unchanged, names(second));
+  check('trois copies de plus, d\'autres noms, aucun nom en double, les trois premiers PDF n\'ont pas bougé', second.length === 3 && second.every(each => /^Lot de contrats.*\.pdf$/.test(each.Name) && !BATCH_NAMES.includes(each.Name)) && new Set(names(await files(rest))).size === before.length + 6 && unchanged, names(second));
 
   await startBatch(run);
   await answerBatch(run, win => win.replace.click(), 'ranger-pp-6-lot-remplacer');
@@ -331,7 +331,7 @@ async function playBatch(run) {
   const rows = await files(rest);
   const again = rows.slice(before.length, before.length + 3);
   const renewed = (await Promise.all(again.map(each => hashOfRow(rest, each)))).every((hash, rank) => hash !== hashes[rank]);
-  check(`« Remplacer » pour les suivants : l'app dit « ${BATCH_SAYS.replaced} », chacun des trois PDF reprend la ligne de son nom (même identifiant, nouveau contenu), aucune ligne de plus`, replaced.finished && replaced.windows === 1 && JSON.stringify(again.map(each => each.id)) === JSON.stringify(first.map(each => each.id)) && JSON.stringify(names(again)) === JSON.stringify(BATCH_NAMES) && renewed, [again.map(each => [each.id, each.Nom]), replaced]);
+  check(`« Remplacer » pour les suivants : l'app dit « ${BATCH_SAYS.replaced} », chacun des trois PDF reprend la ligne de son nom (même identifiant, nouveau contenu), aucune ligne de plus`, replaced.finished && replaced.windows === 1 && JSON.stringify(again.map(each => each.id)) === JSON.stringify(first.map(each => each.id)) && JSON.stringify(names(again)) === JSON.stringify(BATCH_NAMES) && renewed, [again.map(each => [each.id, each.Name]), replaced]);
   check('l\'archive n\'est jamais téléchargée : les PDF sont rangés à sa place', run.downloads.length === downloadsBefore, run.downloads.length - downloadsBefore);
   await shot(frame, 'ranger-pp-6-fin');
 }

@@ -15,7 +15,7 @@
 // « Gestion », cochée pour Louis Girard) ; avec `&admin=0&me=adresse`, une personne qui lit sans être administratrice.
 // `?links=1` : les apps du menu « Insérer dans… » (voir `FAKE_TARGETS`) ; sans lui aucune app n'accepte de personne.
 //
-// `?sub=1` : les sous-annuaires (test/annuaire-sub-firefox.mjs) : `GFS_Annuaires` porte les colonnes que le moteur de partage y pose (lecteurs, écrivains, administrateurs,
+// `?sub=1` : les sous-annuaires (test/annuaire-sub-firefox.mjs) : `GFS_Directories` porte les colonnes que le moteur de partage y pose (lecteurs, écrivains, administrateurs,
 // refus), un faux « Partager » (`window.__annuaireShared` garde le fichier demandé ; `window.__annuaireShareWhy` : un texte qui le grise), et un sous-annuaire déjà là, « Pôle
 // Ressources » (copie du 20/11), dont `ecrivain@exemple.fr` est écrivain (`&me=`). Le vrai verrou de Grist se mesure dans le labo (labo/run-annuaire-sous.mjs).
 import { createI18n } from '/js/i18n/i18n.js';
@@ -102,14 +102,14 @@ function tablesOf(document) {
   }));
 }
 
-// Le faux « droits » des sous-annuaires : les règles du partage couvrent déjà `GFS_Annuaires` (le verrou lui-même se mesure dans un vrai Grist), et « Partager » note ce qu'on lui
+// Le faux « droits » des sous-annuaires : les règles du partage couvrent déjà `GFS_Directories` (le verrou lui-même se mesure dans un vrai Grist), et « Partager » note ce qu'on lui
 // demande.
 function fakeRights() {
   return { writer: { plans: async () => ({ sharing: { ok: false, reason: 'already' } }) },
     sharing: { whyNot: () => window.__annuaireShareWhy || null, open: async file => { window.__annuaireShared = file; } } };
 }
 
-// Les colonnes que le moteur de partage pose dans `GFS_Annuaires`, et le sous-annuaire « Pôle Ressources » déjà là (copie du 20/11 ; un écrivain, aucun administrateur).
+// Les colonnes que le moteur de partage pose dans `GFS_Directories`, et le sous-annuaire « Pôle Ressources » déjà là (copie du 20/11 ; un écrivain, aucun administrateur).
 async function seedSub(grist, seed) {
   const { applyUserActions } = grist.port.doc;
   const list = await seed.list();
@@ -117,9 +117,9 @@ async function seedSub(grist, seed) {
   const read = presenceView(await seed.read(parent), { admin: true });
   const made = await seed.createSub({ name: 'Pôle Ressources', parent, sub: { key: levelKey(0), label: 'Pôle', values: ['Pôle Ressources'] }, read,
     at: '2026-11-20T09:30:00.000Z' });
-  const columns = ['GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Refus'];
+  const columns = ['GFS_Readers', 'GFS_Writers', 'GFS_Admins', 'GFS_Denied'];
   await applyUserActions(columns.map(id => ['AddColumn', ANNUAIRES_TABLE, id, { type: 'ChoiceList', isFormula: false }]));
-  await applyUserActions([['UpdateRecord', ANNUAIRES_TABLE, made.row, { GFS_Ecrivains: ['L', 'ecrivain@exemple.fr'] }]]);
+  await applyUserActions([['UpdateRecord', ANNUAIRES_TABLE, made.row, { GFS_Writers: ['L', 'ecrivain@exemple.fr'] }]]);
 }
 
 // Les apps du menu « Insérer dans… » de `?links=1` (test/annuaire-links-firefox.mjs) : deux qui reçoivent une personne, une qu'il faut d'abord activer, une qui ne sait

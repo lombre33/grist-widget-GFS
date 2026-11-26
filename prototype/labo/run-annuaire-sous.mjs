@@ -1,6 +1,6 @@
 // Les sous-annuaires du module Annuaire (demande du porteur du 25/11) et leur VERROU, dans un VRAI serveur Grist (l'image officielle, `bash vrai-serveur.sh`), à 700 × 400, à la vraie souris,
 // à quatre temps (un compte à la fois : le serveur n'en connaît qu'un, GRIST_EMAIL ; l'état passe par /tmp/annuaire-sous-etat.json). Le verrou n'est pas dans l'écran : c'est une règle d'accès de
-// Grist sur la table `GFS_Annuaires`, que GFS pose avec l'accord de la personne. L'essai l'attaque donc par l'API REST, sans passer par GFS, avec le compte de chacun.
+// Grist sur la table `GFS_Directories`, que GFS pose avec l'accord de la personne. L'essai l'attaque donc par l'API REST, sans passer par GFS, avec le compte de chacun.
 //   PHASE=proprietaire  le document (deux annuaires, l'un lit la table Personnes) est partagé à un éditeur et à un lecteur ; « Nouveau sous-annuaire » (Pôle Ressources) pose les règles du partage
 //                       (la question, puis Grist recharge la page), crée la copie, ouvre « Partager » : l'éditeur reçoit la lecture ; la copie dit « 7 personnes » ; les annuaires principaux restent
 //                       lisibles par tous ; la vue « Tous mes annuaires » compte trois annuaires.
@@ -41,8 +41,8 @@ const shot = async (frame, name) => (await frame.frameElement()).screenshot({ pa
 // Hors propriétaire, Grist refuse la lecture SQL d'un document qui a des règles d'accès : GFS éteint sa lecture légère et relit les tables en entier (son avertissement est attendu).
 const LIGHT_READER_OFF = /la lecture légère des fichiers est éteinte pour cette session/;
 const unexpected = run => run.problems.filter(problem => !run.allow.some(known => known.test(problem)) && !LIGHT_READER_OFF.test(problem));
-const annuaires = async run => (await rowsOf(run, 'GFS_Annuaires')) || [];
-const subOf = list => list.find(row => row.Nom === SUB);
+const annuaires = async run => (await rowsOf(run, 'GFS_Directories')) || [];
+const subOf = list => list.find(row => row.Name === SUB);
 
 // Ouvre la fenêtre de l'annuaire depuis l'explorateur (le bouton du titre) ; `row` : un annuaire précis n'est pas demandé, la fenêtre prend ce que GFS choisit.
 async function openAnnuaire(frame, page) {
@@ -73,7 +73,7 @@ async function seed(run) {
     await store.create({ name: 'Annuaire des directions', table: 'Personnes', config: { ...config, levels: config.levels.slice(0, 2) } });
   }, CONFIG);
   const list = await annuaires(run);
-  check('les deux annuaires principaux sont dans GFS_Annuaires', list.length === 2, list.map(row => row.Nom));
+  check('les deux annuaires principaux sont dans GFS_Directories', list.length === 2, list.map(row => row.Name));
 }
 
 // « Nouveau sous-annuaire » : la liste des annuaires, « Nouveau sous-annuaire », puis l'annuaire d'origine (la question « de quel annuaire ? » vient quand il y en a plusieurs).
@@ -112,9 +112,9 @@ async function createSub(run, start) {
   frame = await gfsFrame(page, { keep: true });
   await frame.locator('.mod.an').waitFor({ state: 'visible', timeout: 40000 });
   await frame.locator('.an-person').first().waitFor({ timeout: 25000 });
-  const columns = (await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Annuaires/columns`)).json;
+  const columns = (await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Directories/columns`)).json;
   const ids = ((columns && columns.columns) || []).map(column => column.id);
-  check('les colonnes du verrou sont dans GFS_Annuaires (lecteurs, refus)', ids.includes('GFS_Lecteurs') && ids.includes('GFS_Refus'), ids);
+  check('les colonnes du verrou sont dans GFS_Directories (lecteurs, refus)', ids.includes('GFS_Readers') && ids.includes('GFS_Denied'), ids);
   await startNew(frame);
   await fillSub(frame, page);
   await frame.locator('.mod.sh').waitFor({ timeout: 30000 });
@@ -140,13 +140,13 @@ async function playOwner(run) {
   await frame.locator('.mod.sh').waitFor({ state: 'detached' });
   const list = await annuaires(run);
   const sub = subOf(list);
-  check('la copie est dans GFS_Annuaires, avec son origine', Boolean(sub) && Boolean(sub.Parent), list.map(row => row.Nom));
+  check('la copie est dans GFS_Directories, avec son origine', Boolean(sub) && Boolean(sub.Parent), list.map(row => row.Name));
   const copy = JSON.parse(sub.Fiches || '{}');
   const people = Array.isArray(copy) ? copy : (copy.people || copy.fiches || []);
   check('la copie porte les sept personnes du pôle (et non les dix-huit)', people.length === 7, people.length);
-  check('l\'éditeur est lecteur de la copie, le lecteur du document ne l\'est pas', JSON.stringify(sub.GFS_Lecteurs).includes(EDITOR) && !JSON.stringify(sub.GFS_Lecteurs).includes(VIEWER), sub.GFS_Lecteurs);
-  const main = list.filter(row => row.Nom !== SUB);
-  check('les annuaires principaux n\'ont aucun lecteur nommé (lisibles par tous)', main.every(row => !row.GFS_Lecteurs || row.GFS_Lecteurs.length <= 1), main.map(row => row.GFS_Lecteurs));
+  check('l\'éditeur est lecteur de la copie, le lecteur du document ne l\'est pas', JSON.stringify(sub.GFS_Readers).includes(EDITOR) && !JSON.stringify(sub.GFS_Readers).includes(VIEWER), sub.GFS_Readers);
+  const main = list.filter(row => row.Name !== SUB);
+  check('les annuaires principaux n\'ont aucun lecteur nommé (lisibles par tous)', main.every(row => !row.GFS_Readers || row.GFS_Readers.length <= 1), main.map(row => row.GFS_Readers));
   say('--- 3. la liste des annuaires et la vue réunie ---');
   await page.reload();
   frame = await gfsFrame(page);
@@ -169,13 +169,13 @@ async function playEditor(run) {
   const { page } = run;
   say('--- éditeur ---');
   const list = await annuaires(run);
-  check('il lit les annuaires principaux et la copie partagée avec lui', list.some(row => row.Nom === SUB) && list.length === 3, list.map(row => row.Nom));
+  check('il lit les annuaires principaux et la copie partagée avec lui', list.some(row => row.Name === SUB) && list.length === 3, list.map(row => row.Name));
   // Éditeur du document, il peut créer un annuaire à lui ; il ne peut pas changer la ligne de la copie dont il n'est que lecteur (le verrou : la règle d'accès de Grist sur la ligne).
   const sub = subOf(list);
-  const write = await apply(run, [['UpdateRecord', 'GFS_Annuaires', sub.id, { Nom: 'Pirate' }]]);
+  const write = await apply(run, [['UpdateRecord', 'GFS_Directories', sub.id, { Name: 'Pirate' }]]);
   check('il ne change pas la ligne de la copie (verrou de Grist)', write.status !== 200, write.text);
   const after = subOf(await annuaires(run));
-  check('le nom de la copie est resté', Boolean(after) && after.Nom === SUB, after && after.Nom);
+  check('le nom de la copie est resté', Boolean(after) && after.Name === SUB, after && after.Name);
   await page.reload();
   const frame = await gfsFrame(page);
   await openAnnuaire(frame, page);
@@ -195,14 +195,14 @@ async function playEditor(run) {
 async function playViewer(run) {
   const { page } = run;
   say('--- lecteur du document ---');
-  const answer = await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Annuaires/records`);
-  const names = answer.status === 200 ? answer.json.records.map(row => row.fields.Nom) : [];
+  const answer = await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Directories/records`);
+  const names = answer.status === 200 ? answer.json.records.map(row => row.fields.Name) : [];
   check('il lit les deux annuaires principaux, pas la copie', names.length === 2 && !names.includes(SUB), names);
   check('aucune fiche de la copie ne sort par l\'API', !answer.text.includes('Emma Rolland') || !JSON.stringify(answer.json).includes('"Fiches":"{'), answer.text.slice(0, 200));
   const source = await call(page, 'GET', `/api/docs/${run.docId}/tables/Personnes/records`);
   say('CONSTAT la table source des fiches est', source.status === 200 ? 'lisible par lui, selon SES propres règles (limite dite à la personne)' : `fermée (${source.status})`);
-  const write = await apply(run, [['AddRecord', 'GFS_Annuaires', null, { Nom: 'Pirate', Table: 'Personnes' }]]);
-  check('il n\'écrit pas dans GFS_Annuaires', write.status !== 200, write.text);
+  const write = await apply(run, [['AddRecord', 'GFS_Directories', null, { Name: 'Pirate', Table: 'Personnes' }]]);
+  check('il n\'écrit pas dans GFS_Directories', write.status !== 200, write.text);
   await page.reload();
   const frame = await gfsFrame(page);
   await openAnnuaire(frame, page);
@@ -233,7 +233,7 @@ async function playClean(run) {
   await frame.locator('.mod.ask').waitFor({ state: 'detached' });
   await page.waitForTimeout(1200);
   const after = await annuaires(run);
-  check('la copie a disparu de GFS_Annuaires, les deux annuaires principaux restent', after.length === before.length - 1 && !subOf(after), after.map(row => row.Nom));
+  check('la copie a disparu de GFS_Directories, les deux annuaires principaux restent', after.length === before.length - 1 && !subOf(after), after.map(row => row.Name));
   const kept = await rowsOf(run, 'Personnes');
   check('la table des personnes ne change pas', JSON.stringify(kept) === JSON.stringify(people), kept && kept.length);
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));

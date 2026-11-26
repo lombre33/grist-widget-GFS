@@ -62,9 +62,9 @@ export class ManageControl {
     const fixed = this.#fixed || (this.#fixed = this.#readFixed().catch(error => { this.#fixed = null; throw error; }));
     const [shares, groupRows, spaceRows, placeRows, { tables, mail, structure }] = await Promise.all(
       [this.#rows(SHARES_TABLE), this.#rows(GROUPS_TABLE), this.#rows(SPACES_TABLE), this.#rows(PLACE_TABLE), fixed]);
-    const rootRows = (shares || []).filter(row => row.Cible === ROOT);
+    const rootRows = (shares || []).filter(row => row.Target === ROOT);
     const root = Object.fromEntries(Object.values(CATEGORIES).map(who => {
-      const row = rootRows.find(item => String(item.Personne) === who); return [who, row ? { id: row.id, right: row.Droit } : null]; }));
+      const row = rootRows.find(item => String(item.Person) === who); return [who, row ? { id: row.id, right: row.Right } : null]; }));
     return {
       owner, active: shares !== null && groupRows !== null && spaceRows !== null, groups: groupsOf(groupRows || []), rows: groupRows || [], root, tables, mail,
       spaces: spacesOf(spaceRows || [], shares || []), spaceRows: spaceRows || [], shareRows: shares || [], placeRows: placeRows || [],
@@ -91,14 +91,14 @@ export class ManageControl {
     return plan.ok ? this.#write(plan.actions) : Promise.resolve({ ok: false, message: this.#o.t(`manage.groups.${plan.reason}`) });
   }
 
-  updateGroup(id, people) { return this.#write([['UpdateRecord', GROUPS_TABLE, id, { PersonnesIci: String(people || '').trim() }]]); }
+  updateGroup(id, people) { return this.#write([['UpdateRecord', GROUPS_TABLE, id, { People: String(people || '').trim() }]]); }
   removeGroup(id) { return this.#write([['RemoveRecord', GROUPS_TABLE, id]]); }
 
   // Un droit sur tous les fichiers pour une catégorie (la racine `*`) ; `right` null : le retirer.
   setRoot(state, who, right) {
     const current = state.root[who];
     if (!right) return current ? this.#write([['RemoveRecord', SHARES_TABLE, current.id]]) : Promise.resolve({ ok: true });
-    if (current) return this.#write([['UpdateRecord', SHARES_TABLE, current.id, { Droit: right }]]);
+    if (current) return this.#write([['UpdateRecord', SHARES_TABLE, current.id, { Right: right }]]);
     return this.#write([['AddRecord', SHARES_TABLE, null, shareRecord({ target: ROOT, who, right })]]);
   }
 
@@ -108,7 +108,7 @@ export class ManageControl {
     const name = await (this.#o.askName || askName)({ container, inertTargets: this.#o.inertTargets, t, title: t('manage.spaces.new'),
       label: t('manage.spaces.name'), value: '',
       confirmLabel: t('manage.spaces.create'),
-      refuse: text => (text ? (state.spaceRows.some(row => String(row.Nom || '').trim().toLowerCase() === text.toLowerCase()) ? t('manage.spaces.exists') :
+      refuse: text => (text ? (state.spaceRows.some(row => String(row.Name || '').trim().toLowerCase() === text.toLowerCase()) ? t('manage.spaces.exists') :
         null) : t('manage.spaces.invalid')), clean: text => text.replace(/\s+/g, ' ').trim() });
     if (!name) return null;
     const plan = planSpaceAdd(state.spaceRows, name, this.#o.identity ? this.#o.identity() : '');

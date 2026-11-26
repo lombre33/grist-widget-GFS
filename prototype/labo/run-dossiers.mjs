@@ -26,7 +26,7 @@ const ME = 'essai@example.com';
 const OTHER = 'autre@example.com';
 const MODELS = 'Publipostage_Modeles';
 const PREFS = 'Publipostage_PreferencesModeles';
-const FILING = 'GFS_Rangement';
+const FILING = 'GFS_Filing';
 const IN_PANEL = '{"shown":true,"inPanel":true,"overflowing":[]}';
 const sorted = list => [...list].sort();
 const exact = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
@@ -64,10 +64,10 @@ const emptyText = async frame => {
   await frame.waitForFunction(loading => { const node = document.querySelector('.ex-scroll .empty'); return node && !node.hidden && node.textContent.trim() && node.textContent.trim() !== loading; }, t('ex.loading'), { timeout: 8000 }).catch(() => {});
   return (await frame.locator('.ex-scroll .empty').isVisible()) ? (await frame.locator('.ex-scroll .empty').textContent()).trim() : null;
 };
-// Les lignes d'état de dossier d'une personne dans GFS_Rangement : ni app ni fichier, un chemin ; ce que la personne garde sans fichier.
-const stateRows = async (run, who = ME) => (await run.rest.rows(FILING)).filter(row => row.Utilisateur === who && !row.App && !row.Fichier && row.Dossier).map(row => row.Dossier).sort();
-const stateLines = async (run, who = ME) => (await run.rest.rows(FILING)).filter(row => row.Utilisateur === who && !row.App && !row.Fichier && row.Dossier);
-const filingOf = async (run, app, id) => (await run.rest.rows(FILING)).filter(row => row.App === app && String(row.Fichier) === String(id));
+// Les lignes d'état de dossier d'une personne dans GFS_Filing : ni app ni fichier, un chemin ; ce que la personne garde sans fichier.
+const stateRows = async (run, who = ME) => (await run.rest.rows(FILING)).filter(row => row.User === who && !row.App && !row.File && row.Folder).map(row => row.Folder).sort();
+const stateLines = async (run, who = ME) => (await run.rest.rows(FILING)).filter(row => row.User === who && !row.App && !row.File && row.Folder);
+const filingOf = async (run, app, id) => (await run.rest.rows(FILING)).filter(row => row.App === app && String(row.File) === String(id));
 const newButton = frame => frame.getByRole('button', { name: exact(t('ex.new')) });
 
 // Le menu « Nouveau », « Nouveau dossier », et la fenêtre qui s'ouvre : rend son titre.
@@ -117,7 +117,7 @@ async function playQuiet(run) {
   await rowOf(frame, 'Facture / devis multi-TVA').click();
   await page.keyboard.press('Delete');
   await frame.locator('#ask-title').waitFor();
-  check('la seule question est celle de la table de la corbeille (GFS_Corbeille), pas celle du rangement', (await frame.locator('#ask-title').textContent()) === t('trash.table.title'), await frame.locator('#ask-title').textContent());
+  check('la seule question est celle de la table de la corbeille (GFS_Trash), pas celle du rangement', (await frame.locator('#ask-title').textContent()) === t('trash.table.title'), await frame.locator('#ask-title').textContent());
   await frame.locator('[data-fk="ask-yes"]').click();
   const moved = await said(frame, 'trash.moved', { name: 'Facture / devis multi-TVA' });
   await goHome(frame);
@@ -153,7 +153,7 @@ async function playCreate(run) {
   check('le dossier est là, avec les quatre de l\'app (l\'adresse de la personne est connue : ses modèles retrouvent leurs dossiers)', await sameFolders(frame, ['Contrats', 'Événementiel', 'Facturation', 'Formation', 'Stock']));
   const lines = await stateLines(run);
   const all = await run.rest.rows(FILING);
-  check('une ligne d\'état à l\'adresse de la personne : ni app ni fichier, le chemin, sans favori ; la ligne-sonde n\'a rien laissé', lines.length === 1 && lines[0].Dossier === 'Contrats' && lines[0].Favori === false && all.every(row => row.Utilisateur !== '@sonde'), all);
+  check('une ligne d\'état à l\'adresse de la personne : ni app ni fichier, le chemin, sans favori ; la ligne-sonde n\'a rien laissé', lines.length === 1 && lines[0].Folder === 'Contrats' && lines[0].Favorite === false && all.every(row => row.User !== '@sonde'), all);
   check('le dossier prend le clavier, sans fichier (« 0 fichier »), et la barre d\'information le nomme', await selectedFolder(frame) === 'Contrats' && await pillOf(frame)('Contrats') === t('ex.fileCount', { n: 0 })
     && (await frame.locator('.ex-info').textContent()).includes('Contrats'), [await selectedFolder(frame), await pillOf(frame)('Contrats')]);
   await shot(frame, `${TAG}-2-cree`);
@@ -207,7 +207,7 @@ async function playMoveInOut(run) {
   await enterPath(frame, 'Contrats/2026');
   const lines = await filingOf(run, 'publipostage', quittance.id);
   check('le modèle est dans « Contrats/2026 » : une ligne de rangement à l\'adresse de la personne ; les lignes d\'état n\'ont pas bougé ; la table de l\'app n\'est pas touchée',
-    await sameNames(frame, ['Quittance de loyer']) && lines.length === 1 && lines[0].Dossier === 'Contrats/2026' && lines[0].Utilisateur === ME && same(await stateRows(run), ['Contrats', 'Contrats/2026'])
+    await sameNames(frame, ['Quittance de loyer']) && lines.length === 1 && lines[0].Folder === 'Contrats/2026' && lines[0].User === ME && same(await stateRows(run), ['Contrats', 'Contrats/2026'])
     && same(await run.rest.rows(PREFS), run.prefsBefore), [lines, await stateRows(run)]);
   await goHome(frame);
   check('« Contrats » compte désormais un fichier (celui de son sous-dossier)', await pillOf(frame)('Contrats') === t('ex.fileCount', { n: 1 }), await pillOf(frame)('Contrats'));
@@ -221,7 +221,7 @@ async function playMoveInOut(run) {
   const after = await filingOf(run, 'publipostage', quittance.id);
   const state = await stateLines(run);
   check('coupé-collé dehors, le modèle est à la racine ; le dossier qu\'il quitte reste : une seule ligne d\'état par dossier, pas de doublon', await sameNames(frame, ['Contrat de prestation', 'Quittance de loyer', 'Support de session'])
-    && after.length === 1 && after[0].Dossier === '' && same(state.map(row => row.Dossier).sort(), ['Contrats', 'Contrats/2026']), [after, state]);
+    && after.length === 1 && after[0].Folder === '' && same(state.map(row => row.Folder).sort(), ['Contrats', 'Contrats/2026']), [after, state]);
   await enterPath(frame, 'Contrats/2026');
   check('« Contrats/2026 » est de nouveau vide, et existe toujours', await emptyText(frame) === t('ex.emptyFolder'));
 }
@@ -292,7 +292,7 @@ async function playRefusals(run) {
   await pressGreyed(page, item);
   check('un clic sur l\'article grisé redit pourquoi', await said(frame, 'ex.folderNotEmpty') === t('ex.folderNotEmpty'));
   // Une autre personne a un dossier à elle : GFS ne le montre pas, et ne le touche pas.
-  await apply(run, [['AddRecord', FILING, null, { Utilisateur: OTHER, App: '', Fichier: '', Dossier: 'Chez l\'autre', Favori: false }]]);
+  await apply(run, [['AddRecord', FILING, null, { User: OTHER, App: '', File: '', Folder: 'Chez l\'autre', Favorite: false }]]);
   await reload(run);
   check('le dossier d\'une autre personne n\'est pas montré', await sameFolders(frame, ['Événementiel', 'Facturation', 'Formation', 'Stock']), await folders(frame));
   await openNewFolder(run);

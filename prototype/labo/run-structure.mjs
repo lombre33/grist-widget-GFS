@@ -43,18 +43,18 @@ const open = async ({ query = '' } = {}) => {
 const closeWindow = async () => { if (await frame.locator('.mod').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); } };
 const { row, toast, starOn, until } = explorerTools(() => frame, page);
 const shot = name => lab.shotPanel(run, name, frame);
-const gfsActions = async () => (await lab.actions()).filter(action => / GFS_Rangement/.test(action));
-const SONDE = 'AddRecord GFS_Rangement [@sonde]';
-const MARK = 'AddRecord GFS_Rangement [@document]';
+const gfsActions = async () => (await lab.actions()).filter(action => / GFS_Filing/.test(action));
+const SONDE = 'AddRecord GFS_Filing [@sonde]';
+const MARK = 'AddRecord GFS_Filing [@document]';
 const markOf = async () => {
   const state = await lab.rangement(frame);
-  return state.table ? state.lines.find(line => line.Utilisateur === '@document' && line.App === 'gfs' && line.Fichier === 'structure') || null : null;
+  return state.table ? state.lines.find(line => line.User === '@document' && line.App === 'gfs' && line.File === 'structure') || null : null;
 };
 const allLines = async () => JSON.stringify(((await lab.rangement(frame)).lines || []).map(({ id, ...line }) => line));
 const setMark = async value => {
   const mark = await markOf();
   await frame.evaluate(async ({ id, value }) => {
-    await grist.docApi.applyUserActions([value === null ? ['RemoveRecord', 'GFS_Rangement', id] : ['UpdateRecord', 'GFS_Rangement', id, { Valeur: value }]]);
+    await grist.docApi.applyUserActions([value === null ? ['RemoveRecord', 'GFS_Filing', id] : ['UpdateRecord', 'GFS_Filing', id, { Value: value }]]);
   }, { id: mark.id, value });
 };
 const openApps = async () => { await frame.locator('.ex-title-row .tb', { hasText: /Apps/ }).click(); await frame.locator('.mod').waitFor(); };
@@ -64,7 +64,7 @@ const contract = 'Contrat de prestation';
 say('\n1. Premier geste : installer une app');
 await open();
 await closeWindow();
-check('au départ, aucune table GFS_Rangement ; l\'ouverture n\'écrit rien', (await lab.rangement(frame)).table === false && (await lab.actions()).length === 0, await lab.actions());
+check('au départ, aucune table GFS_Filing ; l\'ouverture n\'écrit rien', (await lab.rangement(frame)).table === false && (await lab.actions()).length === 0, await lab.actions());
 await openApps();
 await frame.locator('[data-fk="app:automation"]').click();
 await frame.locator('.ask').waitFor({ timeout: 5000 });
@@ -73,28 +73,28 @@ const installed = await until(async () => (await frame.locator('[data-fk="open:a
 check('l\'app est installée après « Créer la table »', Boolean(installed));
 await until(async () => (await markOf()) !== null, 15000); // la fenêtre montre l'app avant que les écritures soient parties : on attend la dernière
 const sequence = await gfsActions();
-check('le numéro est la dernière écriture dans la table de GFS : après le geste, dans son propre lot', sequence.length >= 3 && sequence.at(-1) === MARK && sequence[0] === 'AddTable GFS_Rangement', sequence);
+check('le numéro est la dernière écriture dans la table de GFS : après le geste, dans son propre lot', sequence.length >= 3 && sequence.at(-1) === MARK && sequence[0] === 'AddTable GFS_Filing', sequence);
 const mark = await markOf();
-check('la ligne du numéro est là : `{"structure":1}`', mark && mark.Valeur === '{"structure":1}' && mark.Favori === false && mark.Dossier === '', mark);
+check('la ligne du numéro est là : `{"structure":1}`', mark && mark.Value === '{"structure":1}' && mark.Favorite === false && mark.Folder === '', mark);
 const apps = (await lab.rangement(frame)).value;
 check('la ligne des apps installées n\'a pas bougé de forme : automation, sans autre clé', apps && Object.keys(apps).includes('automation') && !('structure' in apps), apps);
-check('aucune ligne-sonde ne reste', (await lab.rangement(frame)).lines.every(line => line.Utilisateur !== '@sonde'));
+check('aucune ligne-sonde ne reste', (await lab.rangement(frame)).lines.every(line => line.User !== '@sonde'));
 await shot('1-installee');
 
 // ----- 2. Le document rouvert.
 say('\n2. Le document rouvert');
 await open();
 await closeWindow();
-check('à l\'ouverture, le numéro n\'est pas réécrit : une sonde, rien d\'autre', JSON.stringify(await gfsActions()) === JSON.stringify([SONDE, 'RemoveRecord GFS_Rangement']), await lab.actions());
+check('à l\'ouverture, le numéro n\'est pas réécrit : une sonde, rien d\'autre', JSON.stringify(await gfsActions()) === JSON.stringify([SONDE, 'RemoveRecord GFS_Filing']), await lab.actions());
 await lab.forgetActions();
 await row(contract).hover();
 await row(contract).locator('.rb.pin').click();
 check('épingler un fichier allume l\'étoile', Boolean(await until(() => starOn(contract), 20000)));
 await until(async () => (await lab.actions()).length > 0, 15000);
-// Publipostage+ tient son rangement (contrats 6.4, point 8) : le geste s'écrit dans sa table, GFS_Rangement ne reçoit pas le numéro une seconde fois.
+// Publipostage+ tient son rangement (contrats 6.4, point 8) : le geste s'écrit dans sa table, GFS_Filing ne reçoit pas le numéro une seconde fois.
 const pinned = await lab.actions();
 check('le geste écrit le rangement de la personne, pas le numéro', pinned.length >= 1 && pinned.every(action => action !== MARK), pinned);
-check('un seul numéro dans la table', ((await lab.rangement(frame)).lines.filter(line => line.Fichier === 'structure')).length === 1);
+check('un seul numéro dans la table', ((await lab.rangement(frame)).lines.filter(line => line.File === 'structure')).length === 1);
 
 // ----- 3. Un document qu'une version plus récente a préparé.
 say('\n3. Un document plus récent');
@@ -104,7 +104,7 @@ await open();
 const notice = await until(async () => NEWER.test(await toast()), 8000);
 check('à l\'ouverture, GFS dit que le document vient d\'une version plus récente', Boolean(notice), await toast());
 await shot('3-document-plus-recent');
-check('GFS n\'a écrit que la ligne-sonde (ajoutée puis retirée) : aucune écriture de rangement', JSON.stringify(await gfsActions()) === JSON.stringify([SONDE, 'RemoveRecord GFS_Rangement']), await lab.actions());
+check('GFS n\'a écrit que la ligne-sonde (ajoutée puis retirée) : aucune écriture de rangement', JSON.stringify(await gfsActions()) === JSON.stringify([SONDE, 'RemoveRecord GFS_Filing']), await lab.actions());
 check('GFS lit ce qui est là : l\'étoile d\'Ana est allumée', await starOn(contract));
 await lab.forgetActions();
 await row(contract).hover();
@@ -127,7 +127,7 @@ check('la table est exactement telle qu\'elle était (le numéro 99 aussi)', (aw
 // ----- 4. Un document d'avant, puis une ligne du numéro sans le numéro.
 say('\n4. Un document d\'avant');
 await setMark(null);
-const before = JSON.stringify((await lab.rangement(frame)).lines.filter(line => line.Fichier !== 'structure'));
+const before = JSON.stringify((await lab.rangement(frame)).lines.filter(line => line.File !== 'structure'));
 await open();
 await closeWindow();
 check('le document d\'avant n\'a pas de numéro : GFS ne s\'en plaint pas', !NEWER.test(await toast()) && (await markOf()) === null);
@@ -138,15 +138,15 @@ await until(async () => !(await starOn(contract)), 20000);
 await until(async () => (await markOf()) !== null, 15000);
 const stamped = await gfsActions();
 check('le premier geste note le numéro, après lui', stamped.at(-1) === MARK && stamped.filter(action => action === MARK).length === 1, stamped);
-check('le numéro est `{"structure":1}`, les autres lignes ne bougent que par le geste', (await markOf()).Valeur === '{"structure":1}'
-  && JSON.stringify((await lab.rangement(frame)).lines.filter(line => line.Fichier !== 'structure' && line.Utilisateur === '@document')) === JSON.stringify(JSON.parse(before).filter(line => line.Utilisateur === '@document')));
+check('le numéro est `{"structure":1}`, les autres lignes ne bougent que par le geste', (await markOf()).Value === '{"structure":1}'
+  && JSON.stringify((await lab.rangement(frame)).lines.filter(line => line.File !== 'structure' && line.User === '@document')) === JSON.stringify(JSON.parse(before).filter(line => line.User === '@document')));
 await setMark('{"autre":"gardé"}');
 await open();
 await closeWindow();
 await row(contract).hover();
 await row(contract).locator('.rb.pin').click();
 await until(() => starOn(contract), 20000);
-check('une ligne du numéro sans numéro est complétée, ce qu\'elle portait reste', (await markOf()).Valeur === '{"autre":"gardé","structure":1}', await markOf());
+check('une ligne du numéro sans numéro est complétée, ce qu\'elle portait reste', (await markOf()).Value === '{"autre":"gardé","structure":1}', await markOf());
 
 // ----- 5. Lecture seule.
 say('\n5. Document en lecture seule');

@@ -1,28 +1,28 @@
 // Les annuaires, vus comme des fichiers de l'explorateur (module Annuaire, demande du porteur du 25/11 : « l'annuaire comme nouveau type de fichier à la racine
-// de l'explorateur, des sous-annuaires rangeables dans des dossiers ou des espaces »). Ils vivent dans la table `GFS_Annuaires` que GFS crée avec l'accord de
+// de l'explorateur, des sous-annuaires rangeables dans des dossiers ou des espaces »). Ils vivent dans la table `GFS_Directories` que GFS crée avec l'accord de
 // la personne (js/annuaire/annuaire-store.js) ; ce module est tout ce que le reste de GFS en sait, sans charger le module Annuaire (qui ne se charge qu'au
 // premier clic) : le manifeste « intégré » qui les fait lister par l'explorateur comme les fichiers d'une app, et la cible du partage. Du code sans effet de
 // bord.
 
 export const ANNUAIRES_APP = 'gfs-annuaires';
-export const ANNUAIRES_TABLE = 'GFS_Annuaires';
+export const ANNUAIRES_TABLE = 'GFS_Directories';
 export const ANNUAIRE_TYPE = 'annuaire';
 // La colonne que Grist écrit à la création d'une ligne, quand le partage a étendu la table (`STAMP`, js/sharing/sharing-model.js, qui importe ce module : la
 // valeur est redite ici plutôt qu'importée).
-const AUTHOR = 'GFS_Auteur';
+const AUTHOR = 'GFS_Author';
 
 const bilingual = (fr, en) => Object.freeze({ fr, en });
 
 // Le manifeste de ces fichiers, de la forme de celui d'une app (contrats 2.4, 2.7) : le fichier est la ligne de l'annuaire (son numéro, `id`, en est
-// l'identifiant : un annuaire ne se renomme pas par sa clé), son nom est la colonne `Nom` ; sans date ni auteur propres, l'auteur est celui que Grist écrit
-// (`GFS_Auteur`, js/sharing/sharing-model.js) quand le partage a étendu la table. `integre` : il est dans le code de GFS, hors du catalogue des apps.
+// l'identifiant : un annuaire ne se renomme pas par sa clé), son nom est la colonne `Name` ; sans date ni auteur propres, l'auteur est celui que Grist écrit
+// (`GFS_Author`, js/sharing/sharing-model.js) quand le partage a étendu la table. `integre` : il est dans le code de GFS, hors du catalogue des apps.
 export const ANNUAIRES_MANIFEST = Object.freeze({
   id: ANNUAIRES_APP,
   nom: bilingual('Annuaire', 'Directory'),
   integre: true,
   fichiers: Object.freeze([Object.freeze({
     table: ANNUAIRES_TABLE,
-    colonnes: Object.freeze({ id: 'id', nom: 'Nom', par: AUTHOR }),
+    colonnes: Object.freeze({ id: 'id', nom: 'Name', par: AUTHOR }),
     typeParDefaut: ANNUAIRE_TYPE,
     types: Object.freeze([Object.freeze({ valeur: ANNUAIRE_TYPE, nom: bilingual('Annuaire', 'Directory'), icone: 'annuaire', couleur: 'annuaire' })]),
   })]),

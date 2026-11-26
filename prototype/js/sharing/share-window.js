@@ -355,7 +355,7 @@ export function openShare(opts) {
     mail.added(record, answer);
     return answer;
   };
-  ctx.change = (share, right) => write(() => opts.onChange(share.id, { Droit: right }));
+  ctx.change = (share, right) => write(() => opts.onChange(share.id, { Right: right }));
   ctx.remove = share => write(() => opts.onRemove(share.id));
   ctx.activate = async () => { if (!(await opts.onActivate())) await reload(); };
   wireManage({ manage, dialog, ctx, opts, reload });

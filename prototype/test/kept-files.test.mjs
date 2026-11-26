@@ -96,7 +96,7 @@ test('le dossier ouvert reçoit le nouveau fichier (rangement de la personne) ; 
 });
 
 test('le rangement dans le dossier refusé ou en échec : le fichier est gardé, la personne lit pourquoi', async () => {
-  const declined = setup({ folder: 'A', setFiling: async () => { throw new TableDeclined('GFS_Rangement'); } });
+  const declined = setup({ folder: 'A', setFiling: async () => { throw new TableDeclined('GFS_Filing'); } });
   await declined.importing(pdf());
   assert.deepEqual(declined.log.notices.at(-1), FR.t('ex.filingDeclined'));
   const failed = setup({ folder: 'A', setFiling: async () => { throw new Error('refusé par Grist'); } });
@@ -106,9 +106,9 @@ test('le rangement dans le dossier refusé ou en échec : le fichier est gardé,
 });
 
 test('la table refusée : la phrase le dit ; un envoi qui échoue : le code du serveur est traduit en mots', async () => {
-  const declined = setup({ add: async () => { throw new TableDeclined('GFS_Fichiers'); } });
+  const declined = setup({ add: async () => { throw new TableDeclined('GFS_Files'); } });
   await declined.importing(pdf());
-  assert.deepEqual(declined.log.notices, [FR.t('files.declined')]);
+  assert.deepEqual(declined.log.notices, [FR.t('files.declined', { table: 'GFS_Files' })]);
   const warn = console.warn; console.warn = () => {};
   try {
     const tooBig = setup({ add: async () => { throw new TransferError('http', 'Payload Too Large', 413); } });

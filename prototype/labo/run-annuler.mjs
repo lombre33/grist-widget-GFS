@@ -66,16 +66,16 @@ const tableNow = name => frame.evaluate(async tableId => {
   return data.id.map((id, i) => ({ id, ...Object.fromEntries(columns.map(each => [each, data[each][i]])) }));
 }, name);
 const files = async () => ((await table('SondeZf_Fichiers')) || []).map(each => each.Nom).sort();
-const bin = async () => ((await table('GFS_Corbeille')) || []).map(each => each.Nom).sort();
-const filing = async () => (await table('GFS_Rangement')) || [];
-const placeOf = async id => { const found = (await filing()).find(each => each.App === 'sonde-zf' && each.Fichier === String(id)); return found ? found.Dossier : ''; };
-const pinned = async id => { const found = (await filing()).find(each => each.App === 'sonde-zf' && each.Fichier === String(id)); return Boolean(found && found.Favori); };
-const keptFolders = async () => (await filing()).filter(each => !each.App && !each.Fichier).map(each => each.Dossier).sort();
+const bin = async () => ((await table('GFS_Trash')) || []).map(each => each.Name).sort();
+const filing = async () => (await table('GFS_Filing')) || [];
+const placeOf = async id => { const found = (await filing()).find(each => each.App === 'sonde-zf' && each.File === String(id)); return found ? found.Folder : ''; };
+const pinned = async id => { const found = (await filing()).find(each => each.App === 'sonde-zf' && each.File === String(id)); return Boolean(found && found.Favorite); };
+const keptFolders = async () => (await filing()).filter(each => !each.App && !each.File).map(each => each.Folder).sort();
 const undo = () => page.keyboard.press('Control+z');
 const redo = () => page.keyboard.press('Control+y');
 const redoShift = () => page.keyboard.press('Control+Shift+z');
 const sameList = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-// Une question d'accord de table (GFS_Corbeille, GFS_Rangement) : la première fois seulement.
+// Une question d'accord de table (GFS_Trash, GFS_Filing) : la première fois seulement.
 const agree = async () => {
   const asked = await modal.waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false);
   if (asked) await frame.locator('[data-fk="ask-yes"]').click();

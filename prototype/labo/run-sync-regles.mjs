@@ -36,12 +36,12 @@ async function build(page) {
   const text = names => names.map(name => ({ id: name, type: 'Text' }));
   const syncColumns = [common.EXPORT_COL, common.TABLE_COL, common.TYPE_COL, common.SCHEMA_COL, common.RESEND_COL, common.LIST_COL, common.LOT_COL, common.AUTHOR_COL, common.STATE_COL];
   const status = await apply(page, id, [
-    ['AddTable', 'GFS_Rangement', COLUMNS.map(column => ({ ...column }))],
+    ['AddTable', 'GFS_Filing', COLUMNS.map(column => ({ ...column }))],
     ['AddTable', common.SYNC_TABLE, text(syncColumns)],
     ['AddTable', JOURNAL, text([common.STATE_COL])],
     ['AddTable', RECEIVED, text(['Nom'])],
   ]);
-  check('le document d\'essai est créé (GFS_Rangement, Synchro, un journal, une table reçue)', status === 200, status);
+  check('le document d\'essai est créé (GFS_Filing, Synchro, un journal, une table reçue)', status === 200, status);
   return id;
 }
 

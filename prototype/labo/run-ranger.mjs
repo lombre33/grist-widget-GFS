@@ -1,6 +1,6 @@
 // Épingler, ranger et renommer depuis l'explorateur de GFS (contrats 6.4 ; choix du porteur du 21/10 : GFS le fait, le nom seul dans la table de l'app), dans un vrai
 // Grist, à 700 × 400, à la vraie souris et au vrai clavier (Playwright : événements du pointeur et du clavier du navigateur, jamais dispatchEvent).
-//   1. L'étoile sans la table : la question ; « Annuler » ne crée rien ; « Créer la table » crée `GFS_Rangement` et la ligne du fichier ; le rangement de l'app ne bouge pas.
+//   1. L'étoile sans la table : la question ; « Annuler » ne crée rien ; « Créer la table » crée `GFS_Filing` et la ligne du fichier ; le rangement de l'app ne bouge pas.
 //   2. Retirer le favori au clavier, par le menu de la ligne : le clavier reste sur la ligne.
 //   3. Déplacer un fichier vers un nouveau dossier (la recherche, Entrée), puis vers un dossier existant (la souris).
 //   4. Renommer un dossier (un nom vide, ou celui d'un dossier voisin, est refusé dans la fenêtre), puis le déplacer : ni lui ni ses sous-dossiers ne sont proposés.
@@ -38,8 +38,8 @@ const { row, folderRow, fileNames, folderNames, toast, starOn, favCount, table, 
 const menuItem = re => frame.locator('.menu-item', { hasText: re });
 const openRowMenu = async locator => { await locator.hover(); await locator.locator('.rb.mn').click(); await frame.locator('.menu').waitFor(); };
 // Les lignes de rangement de GFS (sans la ligne réservée), et les tables de Publipostage+, lues par la connexion de GFS.
-const gfsLines = async () => { const state = await lab.rangement(frame); return state.table ? state.lines.filter(line => !String(line.Utilisateur).startsWith('@')) : null; };
-const lineOf = async id => ((await gfsLines()) || []).find(line => line.App === 'publipostage' && line.Fichier === id) || null;
+const gfsLines = async () => { const state = await lab.rangement(frame); return state.table ? state.lines.filter(line => !String(line.User).startsWith('@')) : null; };
+const lineOf = async id => ((await gfsLines()) || []).find(line => line.App === 'publipostage' && line.File === id) || null;
 const idOf = async name => { const data = await table('Publipostage_Modeles'); return String(data.id[data.Nom.indexOf(name)]); };
 
 // ----- 1. L'étoile sans la table.
@@ -48,7 +48,7 @@ const contract = 'Contrat de prestation';
 const contractId = await idOf(contract);
 const prefsBefore = JSON.stringify(await table('Publipostage_PreferencesModeles'));
 const start = await lab.rangement(frame);
-check('au départ, le document n\'a pas de table GFS_Rangement', start.table === false, start);
+check('au départ, le document n\'a pas de table GFS_Filing', start.table === false, start);
 const hint = (await frame.locator('.ex-info').innerText()).replace(/\s+/g, ' ');
 check('la barre du bas dit le rangement commun au document (GFS ne sait pas encore qui est la personne)', /commun au document|shared by the whole document/.test(hint), hint);
 const favStart = await favCount();
@@ -57,7 +57,7 @@ await row(contract).locator('.rb.pin').click();
 await frame.locator('.ask').waitFor({ timeout: 5000 });
 const question = (await frame.locator('.ask').innerText()).replace(/\s+/g, ' ');
 await shot('1-question-table');
-check('l\'étoile demande d\'abord de créer la table, et dit qu\'elle sert au rangement', /GFS_Rangement/.test(question) && /rangement de ses fichiers|how its files are filed/.test(question), question);
+check('l\'étoile demande d\'abord de créer la table, et dit qu\'elle sert au rangement', /GFS_Filing/.test(question) && /rangement de ses fichiers|how its files are filed/.test(question), question);
 await frame.locator('[data-fk="ask-no"]').click();
 await page.waitForTimeout(400);
 const declined = await toast();
@@ -72,7 +72,7 @@ const rebuilt = frame.isDetached();
 check('le cadre de GFS n\'est pas reconstruit par la création de la table', !rebuilt);
 if (rebuilt) { frame = await lab.gfsFrame(/access=full/); await lab.gfsReady(frame); }
 const pinned = await lineOf(contractId);
-check('« Créer la table » : la table naît avec la ligne du fichier (personne vide : commun), favori, sans dossier', Boolean(pinned) && pinned.Utilisateur === '' && pinned.Favori === true && pinned.Dossier === '', pinned);
+check('« Créer la table » : la table naît avec la ligne du fichier (personne vide : commun), favori, sans dossier', Boolean(pinned) && pinned.User === '' && pinned.Favorite === true && pinned.Folder === '', pinned);
 check('l\'étoile est allumée et le compteur des favoris monte d\'un', lit && (await favCount()) === favStart + 1, { avant: favStart, apres: await favCount() });
 check('le rangement propre de Publipostage+ n\'a pas bougé', JSON.stringify(await table('Publipostage_PreferencesModeles')) === prefsBefore);
 await shot('2-favori');
@@ -97,7 +97,7 @@ await page.keyboard.press('Enter');
 const off = await until(async () => !(await starOn(contract)));
 const keyAfter = await frame.evaluate(() => { const node = document.activeElement && document.activeElement.closest('[data-key]'); return node ? node.dataset.key : (document.activeElement || {}).tagName; });
 check('Tab, Tab mène à « Plus d\'actions », la flèche à « Retirer des favoris »', /Plus d’actions|More actions/.test(moreLabel) && /Retirer des favoris|Remove from favorites/.test(chosen), { moreLabel, chosen });
-check('Entrée : l\'étoile s\'éteint, la ligne de GFS dit « pas favori »', off && (await lineOf(contractId)).Favori === false, await lineOf(contractId));
+check('Entrée : l\'étoile s\'éteint, la ligne de GFS dit « pas favori »', off && (await lineOf(contractId)).Favorite === false, await lineOf(contractId));
 check('le clavier reste sur la ligne du fichier, la liste relue', keyAfter === `publipostage:${contractId}`, keyAfter);
 
 // ----- 3. Déplacer un fichier.
@@ -119,13 +119,13 @@ check('un nom qu\'aucun dossier ne porte devient « Nouveau dossier », seul pro
 await page.keyboard.press('Enter');
 const movedNew = await until(async () => (await folderNames()).includes('Logement') && !(await fileNames()).includes(rent));
 check('Entrée : le fichier quitte la racine, le dossier « Logement » y apparaît', movedNew, { dossiers: await folderNames(), fichiers: await fileNames() });
-check('la ligne de GFS du fichier dit « Logement »', (await lineOf(rentId) || {}).Dossier === 'Logement', await lineOf(rentId));
+check('la ligne de GFS du fichier dit « Logement »', (await lineOf(rentId) || {}).Folder === 'Logement', await lineOf(rentId));
 await openRowMenu(row(contract));
 await menuItem(/Déplacer|Move/).click();
 await frame.locator('.mv').waitFor();
 await frame.locator('.mv .wk-item', { has: frame.locator('.wk-name', { hasText: /^Stock$/ }) }).click();
 const movedStock = await until(async () => !(await fileNames()).includes(contract));
-check('à la souris, vers « Stock » : le fichier quitte la racine, sa ligne dit « Stock », toujours pas favori', movedStock && (await lineOf(contractId)).Dossier === 'Stock' && (await lineOf(contractId)).Favori === false, await lineOf(contractId));
+check('à la souris, vers « Stock » : le fichier quitte la racine, sa ligne dit « Stock », toujours pas favori', movedStock && (await lineOf(contractId)).Folder === 'Stock' && (await lineOf(contractId)).Favorite === false, await lineOf(contractId));
 
 // ----- 4. Renommer, puis déplacer un dossier.
 say('\n4. Renommer et déplacer un dossier');
@@ -147,7 +147,7 @@ await page.keyboard.press('Control+A');
 await page.keyboard.type('Habitat / 2026', { delay: 20 });
 await page.keyboard.press('Enter');
 const renamed = await until(async () => (await folderNames()).includes('Habitat 2026') && !(await folderNames()).includes('Logement'));
-check('Entrée : le dossier devient « Habitat 2026 » (une « / » ne coupe pas un nom de dossier), sa ligne suit', renamed && (await lineOf(rentId)).Dossier === 'Habitat 2026', await lineOf(rentId));
+check('Entrée : le dossier devient « Habitat 2026 » (une « / » ne coupe pas un nom de dossier), sa ligne suit', renamed && (await lineOf(rentId)).Folder === 'Habitat 2026', await lineOf(rentId));
 await openRowMenu(folderRow('Habitat 2026'));
 await menuItem(/Déplacer|Move/).click();
 await frame.locator('.mv').waitFor();
@@ -155,7 +155,7 @@ const offeredFolder = await frame.locator('.mv .wk-name').allInnerTexts();
 check('déplacer un dossier : il n\'est pas proposé, la racine où il est porte la coche', !offeredFolder.includes('Habitat 2026') && (await frame.locator('.mv .wk-item[aria-current="true"]').innerText()).trim().match(/^(Moi|Me)$/), offeredFolder);
 await frame.locator('.mv .wk-item', { has: frame.locator('.wk-name', { hasText: /^Stock$/ }) }).click();
 const folderMoved = await until(async () => !(await folderNames()).includes('Habitat 2026'));
-check('vers « Stock » : il quitte la racine, son fichier est dans « Stock/Habitat 2026 »', folderMoved && (await lineOf(rentId)).Dossier === 'Stock/Habitat 2026', await lineOf(rentId));
+check('vers « Stock » : il quitte la racine, son fichier est dans « Stock/Habitat 2026 »', folderMoved && (await lineOf(rentId)).Folder === 'Stock/Habitat 2026', await lineOf(rentId));
 await folderRow('Stock').dblclick();
 await page.waitForTimeout(300);
 check('dans « Stock », le dossier « Habitat 2026 » et le contrat', (await folderNames()).includes('Habitat 2026') && (await fileNames()).includes(contract), { dossiers: await folderNames(), fichiers: await fileNames() });

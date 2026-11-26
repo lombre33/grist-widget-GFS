@@ -2,7 +2,7 @@
 // (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`). Le premier document envoie (le premier partage est monté par les fonctions du moteur, comme `run-recus-etat.mjs` : la fenêtre qui
 // reçoit un premier code est mesurée par `run-partager-recevoir.mjs`) ; le second ouvre GFS :
 //   1. deux arrivées : « Partagés avec moi » porte le nombre à accepter, les lignes sont grisées (cadenas, mot « À accepter », sans étoile), nulle d'elles n'est dans « Moi » ni dans « Récents » ;
-//   2. une ligne, à la souris : le bouton « Ouvrir » devient « Accepter ou refuser… », la fenêtre dit le nom, qui partage et le poids ; Échap n'écrit rien (aucune colonne, aucune marque) ;
+//   2. une ligne, à la souris : le bouton « Ouvrir » devient « Accepter ou refuser… », la fenêtre dit le nom, qui partage et le poids ; Échap n'écrit rien (aucune marque posée, pas de colonne en double) ;
 //   3. « Accepter » : la ligne n'est plus grisée, son mot est « PDF », le nombre baisse, la marque est écrite sur SA ligne (deux colonnes ajoutées à la table reçue, rien d'autre) ; « Refuser » : la ligne n'est plus montrée ;
 //   4. l'envoyeur renomme les deux fichiers : l'accepté garde son état sous son nouveau nom, le refusé ne revient pas, aucun doublon ;
 //   5. un fichier de plus arrive : lui seul est « à accepter » ;
@@ -24,7 +24,7 @@ const shot = (frame, name) => pdfShot(frame, `recus-${lang}-${scheme}-${name}`);
 const RACE = /KeyError 'GFS_Synchro'/; // connu (faits vérifiés 71) : voir run-partager-recevoir.mjs
 const races = [];
 const unexpected = run => run.problems.filter(problem => !run.allow.some(known => known.test(problem)) && (RACE.test(problem) ? (races.push(problem), false) : true));
-const COLUMNS = ['Identifiant', 'Nom', 'Type', 'Date', 'Auteur', 'Contenu', 'Taille', 'Origine'];
+const COLUMNS = ['FileId', 'Name', 'Type', 'Date', 'Author', 'Content', 'Size', 'Origin'];
 const text = async (frame, selector) => (await frame.locator(selector).innerText()).replace(/\s+/g, ' ');
 const rail = frame => frame.locator('.tr-row', { hasText: t('rx.view') });
 const badge = async frame => ((await rail(frame).locator('.cnt').count()) ? (await rail(frame).locator('.cnt').innerText()).trim() : '');
@@ -43,8 +43,8 @@ try {
   const target = await openGfs(context, { lang });
   await startEngine(source.frame);
   await startEngine(target.frame);
-  const files = await source.rest.rows('GFS_Fichiers');
-  const idOf = name => files.find(row => row.Nom === name).Identifiant;
+  const files = await source.rest.rows('GFS_Files');
+  const idOf = name => files.find(row => row.Name === name).FileId;
   const first = await handshake(source, target, { name: 'Lot', ids: [idOf('Facture.pdf'), idOf('Devis.pdf')], columns: COLUMNS, options: { archive: true } });
   // Un document dont les règles d'accès viennent de changer (les tables techniques du partage, réservées aux propriétaires : faits vérifiés 76) fait recharger sa page : le cadre de l'essai est perdu, il est rouvert et le moteur y est remis.
   const alive = async run => {
@@ -61,7 +61,7 @@ try {
     await alive(target);
     await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
     await target.frame.evaluate(() => window.__try(() => window.__s.consolidateAll({ reread: true })));
-    return target.rest.rows('GFS_Recus');
+    return target.rest.rows('GFS_Received');
   };
   const until = async (test, tries = 40) => { let rows = []; for (let i = 0; i < tries; i += 1) { rows = await pass(); if (test(rows)) return rows; await source.page.waitForTimeout(1500); } return rows; };
   // GFS relit sa liste à l'ouverture de l'explorateur : une page neuve sur le document qui reçoit.
@@ -72,8 +72,8 @@ try {
     await goTo(run.frame, t('rx.view'));
     return run;
   };
-  const rows = await until(list => list.length === 2 && list.every(row => row.Contenu));
-  check('deux fichiers arrivés dans GFS_Recus, avec leur contenu', rows.length === 2, rows.map(row => row.Nom));
+  const rows = await until(list => list.length === 2 && list.every(row => row.Content));
+  check('deux fichiers arrivés dans GFS_Received, avec leur contenu', rows.length === 2, rows.map(row => row.Name));
 
   say('--- 1. deux arrivées à accepter ---');
   let ui = await view();
@@ -89,7 +89,7 @@ try {
   check('la cloche Notifications porte le nombre à accepter (2), dit aussi à la voix', (await bellBadge(frame)) === '2' && bellLabel === t('nt.tipCount', { n: 2 }), { badge: await bellBadge(frame), bellLabel });
   await frame.locator('.tb-bell').click();
   const bellItems = (await frame.locator('.menu .menu-item .menu-label').allInnerTexts()).map(item => item.trim());
-  check('le menu de la cloche nomme les deux arrivées, puis ouvre « Partagés avec moi »', bellItems.length === 3 && bellItems.some(item => item.includes('Facture.pdf')) && bellItems.some(item => item.includes('Devis.pdf')) && bellItems.at(-1) === t('nt.open'), bellItems);
+  check('le menu de la cloche nomme les deux arrivées, propose « Tout marquer comme lu », puis ouvre « Partagés avec moi »', bellItems.length === 4 && bellItems.some(item => item.includes('Facture.pdf')) && bellItems.some(item => item.includes('Devis.pdf')) && bellItems.at(-2) === t('nt.markAll') && bellItems.at(-1) === t('nt.open'), bellItems);
   const menuIn = await frame.evaluate(() => { const at = document.querySelector('.menu').getBoundingClientRect(); return at.left >= 0 && at.top >= 0 && at.right <= window.innerWidth && at.bottom <= window.innerHeight; });
   check('le menu de la cloche tient dans le panneau, contraste de 4,5:1', menuIn && (await contrastProblems(frame, '.menu')).length === 0, { menuIn, weak: await contrastProblems(frame, '.menu') });
   await shot(frame, '1-cloche');
@@ -117,8 +117,9 @@ try {
   await shot(frame, '2-question');
   await page.keyboard.press('Escape');
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
-  const bare = await target.rest.rows('GFS_Recus');
-  check('Échap n\'écrit rien : aucune marque, aucune colonne de GFS ajoutée', bare.every(row => !row.Accepte && !row.Refuse) && !(Object.keys(bare[0]).some(key => /^(Accepte|Refuse)$/.test(key))), Object.keys(bare[0]));
+  const bare = await target.rest.rows('GFS_Received');
+  // Les deux colonnes de marque existent déjà depuis la réception (`ensureMarks`, 11/11) : Échap ne pose aucune marque et n'en ajoute pas de seconde paire.
+  check('Échap n\'écrit rien : aucune marque posée, pas de colonne de marque en double', bare.every(row => !row.Accepted && !row.Refused) && Object.keys(bare[0]).filter(key => /^(Accepted|Refused)/i.test(key)).sort().join() === 'Accepted,Refused', Object.keys(bare[0]));
   check('les deux arrivées sont toujours à accepter', (await badge(frame)) === '2');
 
   say('--- 3. accepter, refuser ---');
@@ -139,35 +140,35 @@ try {
   await waitForNames(frame, ['Facture.pdf']);
   check('« Devis.pdf » refusé n\'est plus montré, le nombre est vide', JSON.stringify(await names(frame)) === '["Facture.pdf"]' && (await badge(frame)) === '', { names: await names(frame), badge: await badge(frame) });
   check('la cloche reste là sans nombre quand plus rien n\'attend', (await bellBadge(frame)) === '' && (await frame.locator('.tb-bell').getAttribute('aria-label')) === t('nt.tip'), await frame.locator('.tb-bell').getAttribute('aria-label'));
-  const marked = await target.rest.rows('GFS_Recus');
-  const row = name => marked.find(each => each.Nom === name);
-  check('les marques sont sur leurs lignes (Facture acceptée, Devis refusé), les deux lignes sont là', marked.length === 2 && row('Facture.pdf').Accepte === true && row('Facture.pdf').Refuse === false && row('Devis.pdf').Refuse === true && row('Devis.pdf').Accepte === false, marked.map(each => [each.Nom, each.Accepte, each.Refuse]));
+  const marked = await target.rest.rows('GFS_Received');
+  const row = name => marked.find(each => each.Name === name);
+  check('les marques sont sur leurs lignes (Facture acceptée, Devis refusé), les deux lignes sont là', marked.length === 2 && row('Facture.pdf').Accepted === true && row('Facture.pdf').Refused === false && row('Devis.pdf').Refused === true && row('Devis.pdf').Accepted === false, marked.map(each => [each.Name, each.Accepted, each.Refused]));
   const tables = await target.rest.tables();
   check('GFS n\'a créé aucune table pour répondre', !tables.some(name => /^GFS_(Notifications|Reponses)/.test(name)), tables);
 
   say('--- 4. l\'envoyeur renomme : l\'accepté reste accepté, le refusé ne revient pas ---');
   const rename = async (from, to) => {
-    const found = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === from);
-    return source.page.evaluate(async ([id, docId, name]) => (await fetch(`/api/docs/${docId}/tables/GFS_Fichiers/records`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ records: [{ id, fields: { Nom: name } }] }) })).status, [found.id, source.docId, to]);
+    const found = (await source.rest.rows('GFS_Files')).find(each => each.Name === from);
+    return source.page.evaluate(async ([id, docId, name]) => (await fetch(`/api/docs/${docId}/tables/GFS_Files/records`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ records: [{ id, fields: { Name: name } }] }) })).status, [found.id, source.docId, to]);
   };
   await rename('Facture.pdf', 'Facture v2.pdf');
   await rename('Devis.pdf', 'Devis v2.pdf');
-  await until(list => list.some(each => each.Nom === 'Facture v2.pdf') && list.some(each => each.Nom === 'Devis v2.pdf'));
+  await until(list => list.some(each => each.Name === 'Facture v2.pdf') && list.some(each => each.Name === 'Devis v2.pdf'));
   ui = await view();
   ({ page, frame } = ui);
   await waitForNames(frame, ['Facture v2.pdf']);
-  check('« Facture v2.pdf » reste acceptée (ni grisée ni comptée), « Devis v2.pdf » ne revient pas, aucun doublon', JSON.stringify(await names(frame)) === '["Facture v2.pdf"]' && !(await greyed(frame, 'Facture v2.pdf')) && (await badge(frame)) === '' && (await target.rest.rows('GFS_Recus')).length === 2, { names: await names(frame), badge: await badge(frame) });
+  check('« Facture v2.pdf » reste acceptée (ni grisée ni comptée), « Devis v2.pdf » ne revient pas, aucun doublon', JSON.stringify(await names(frame)) === '["Facture v2.pdf"]' && !(await greyed(frame, 'Facture v2.pdf')) && (await badge(frame)) === '' && (await target.rest.rows('GFS_Received')).length === 2, { names: await names(frame), badge: await badge(frame) });
 
   say('--- 5. un fichier de plus : lui seul est à accepter ---');
   await alive(source);
   await importPdf(source.page, source.frame, pdfFile('Contrat.pdf', 2, 'Contrat').file);
   await waitForNames(source.frame, ['Contrat.pdf', 'Devis v2.pdf', 'Facture v2.pdf'].sort((a, b) => a.localeCompare(b)));
-  const contract = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === 'Contrat.pdf').Identifiant;
+  const contract = (await source.rest.rows('GFS_Files')).find(each => each.Name === 'Contrat.pdf').FileId;
   await source.frame.evaluate(args => window.__try(async () => {
     const done = await window.__s.saveChosenExport({ exp: args.exp, name: args.exp.name, selection: args.selection });
     return window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
   }), { exp: first.exp, selection: first.selection([idOf('Facture.pdf'), idOf('Devis.pdf'), contract]) });
-  await until(list => list.some(each => each.Nom === 'Contrat.pdf' && each.Contenu), 60);
+  await until(list => list.some(each => each.Name === 'Contrat.pdf' && each.Content), 60);
   ui = await view();
   ({ page, frame } = ui);
   await waitForNames(frame, ['Contrat.pdf', 'Facture v2.pdf']);
@@ -179,7 +180,7 @@ try {
   await alive(source);
   await importPdf(source.page, source.frame, pdfFile('Avenant.pdf', 1, 'Avenant').file);
   await waitForNames(source.frame, ['Avenant.pdf', 'Contrat.pdf', 'Devis v2.pdf', 'Facture v2.pdf'].sort((a, b) => a.localeCompare(b)));
-  const amendment = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === 'Avenant.pdf').Identifiant;
+  const amendment = (await source.rest.rows('GFS_Files')).find(each => each.Name === 'Avenant.pdf').FileId;
   await source.frame.evaluate(args => window.__try(async () => {
     const done = await window.__s.saveChosenExport({ exp: args.exp, name: args.exp.name, selection: args.selection });
     return window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
@@ -202,7 +203,7 @@ try {
     const [download] = await Promise.all([page.waitForEvent('download'), wanted.first().click()]);
     const chunks = [];
     for await (const chunk of await download.createReadStream()) chunks.push(chunk);
-    const was = await source.rest.attachment((await source.rest.rows('GFS_Fichiers')).find(each => each.Identifiant === idOf('Facture.pdf')).Contenu[1]);
+    const was = await source.rest.attachment((await source.rest.rows('GFS_Files')).find(each => each.FileId === idOf('Facture.pdf')).Content[1]);
     check('« Télécharger » donne les mêmes octets que l\'envoyeur, sous le nom reçu', sha256(Buffer.concat(chunks)) === was.hash && download.suggestedFilename() === 'Facture v2.pdf', { name: download.suggestedFilename() });
   } else {
     say(`(le bouton dit « ${readLabel} » : une app lit les PDF dans ce document d'essai)`);

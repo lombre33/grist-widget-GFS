@@ -5,9 +5,9 @@
 
 import { levelOfNote } from './rights.js';
 import { isGfsNote, isSharingNote, planSharing, planUnsharing, sharedRules, RANGEMENT_NEEDED } from '../sharing/sharing-model.js';
-import { FILES_COLUMNS } from '../files/gfs-files.js';
+import { filesColumns } from '../files/gfs-files.js';
 
-export const RANGEMENT = 'GFS_Rangement';
+export const RANGEMENT = 'GFS_Filing';
 export const NEEDED_COLUMNS = RANGEMENT_NEEDED;
 const STRUCTURE_NOTE = 'GFS : Structure fermée · seul un propriétaire change les tables, les colonnes et les pages';
 const STRUCTURE_ANY = /^\s*GFS\s*:\s*Structure/i;
@@ -100,7 +100,7 @@ export function planOpenStructure(existing) {
 // point 13.n.d) et le partage n'est qu'un verrou d'interface. Seulement à l'activation, jamais quand le partage est déjà là (« Compléter le partage… » ne
 // referme pas ce qu'une personne a rouvert) ; `closes` le dit à la question.
 export function planSharingFor(existing) {
-  const plan = planSharing(existing, FILES_COLUMNS);
+  const plan = planSharing(existing, filesColumns());
   return !plan.ok || plan.extends ? plan : withStructureClosed(existing, plan);
 }
 

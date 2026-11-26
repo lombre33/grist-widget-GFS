@@ -42,7 +42,7 @@ export class FolderShares {
     if (missing.length) await this.#o.rangement.folderIds(missing, true);
     const rows = missing.length ? await this.#o.rangement.folderRows() : before;
     // La personne est-elle propriétaire du document ? Seulement quand un lien à l'ancienne mode le demande (un propriétaire seul réécrit un lien).
-    const owner = places.some(row => legacyPath(row.Lien, identity) !== null) && (await this.#o.owner()) === true;
+    const owner = places.some(row => legacyPath(row.Link, identity) !== null) && (await this.#o.owner()) === true;
     const out = relocationExtra({ identity, rows, from, to, known: [...new Set([...exist, ...rows.map(row => row.path)])], shares, places, owner });
     return { ...out, spare: [...new Set(rows.map(row => row.path))] };
   }

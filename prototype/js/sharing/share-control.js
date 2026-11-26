@@ -3,10 +3,11 @@
 // js/rights/rights-actions.js). Le premier lot couvre les PDF que GFS garde ; les fichiers d'une app attendent leurs colonnes d'aide.
 
 import { rowsOf } from '../rights/rights.js';
-import { FILES_TABLE } from '../files/gfs-files.js';
-import { GROUPS_TABLE, PLACE_TABLE, ROOT, SHARES_TABLE, SPACES_TABLE, STAMP, TARGETS, folderTarget, groupsOf, personalTarget, sharesOf,
+import { filesNames } from '../files/gfs-files.js';
+import { GROUPS_TABLE, PLACE_TABLE, ROOT, SHARES_TABLE, SPACES_TABLE, STAMP, defaultTargets, folderTarget, groupsOf, personalTarget, sharesOf,
   spaceTarget } from './sharing-model.js';
 import { listOf } from './direct-shares.js';
+import { aliased } from './helper-names.js';
 import { idKey, keysOf } from './folder-identity.js';
 import { openShare } from './share-window.js';
 import { runAction, writeActions } from '../rights/rights-actions.js';
@@ -45,15 +46,15 @@ function whatIs(file, { me, author, placed, stateRows }) {
   return [keysOf(me, file.path, stateRows), mineOrigins(me, partsOf(file.path).slice(0, -1), stateRows)];
 }
 
-// La personne administre-t-elle la cible ? Une ligne `admin` à son adresse, ou à un groupe dont elle est membre (Grist l'a calculé : `AdminsCible` dit qui
+// La personne administre-t-elle la cible ? Une ligne `admin` à son adresse, ou à un groupe dont elle est membre (Grist l'a calculé : `AdminsTarget` dit qui
 // administre la cible, la racine comprise).
 function administers({ me, key, rows, shares }) {
   if (me === '') return false;
   return shares.some(share => share.valid && share.active && share.right === 'admin' && lower(share.who) === me) ||
-    rows.some(row => (row.Cible === key || row.Cible === ROOT) && listOf(row.AdminsCible).map(lower).includes(me));
+    rows.some(row => (row.Target === key || row.Target === ROOT) && listOf(row.AdminsTarget).map(lower).includes(me));
 }
 
-const peopleOf = rows => [...new Set(rows.map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@') &&
+const peopleOf = rows => [...new Set(rows.map(row => lower(row.PersonL || row.Person)).filter(who => who && !who.startsWith('@') &&
   !who.startsWith('#')))].sort();
 
 export class ShareControl {
@@ -65,8 +66,8 @@ export class ShareControl {
 
   // La table de fichiers que le partage couvre pour ce fichier (un PDF de GFS, ou le fichier d'une app qui déclare sa table), ou null.
   #target(file) {
-    const targets = this.#o.targets ? this.#o.targets() : TARGETS;
-    return file ? targets.find(item => item.prefix === `${file.app}:` && item.table === (file.table || FILES_TABLE)) || null : null;
+    const targets = this.#o.targets ? this.#o.targets() : defaultTargets();
+    return file ? targets.find(item => item.prefix === `${file.app}:` && item.table === (file.table || filesNames().table)) || null : null;
   }
 
   // Pourquoi ce fichier ne se partage pas (une phrase), ou null quand il se partage.
@@ -174,25 +175,26 @@ export class ShareControl {
 
   // L'auteur d'un fichier (d'une app ou un PDF), ou `{ extend }` quand sa table n'est pas prête au partage. La table de fichiers porte-t-elle les colonnes
   // d'aide ? Sinon le partage n'y est pas étendu (une app ajoutée après coup) ; si elle porte celles d'avant les espaces ou d'avant le dossier de « Moi » (pas
-  // `GFS_Directs`, pas `GFS_Dossier`, pas `GFS_Vus`, pas `GFS_Ids`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
+  // `GFS_Direct`, pas `GFS_Folder`, pas `GFS_Seen`, pas `GFS_Ids`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
   async #authorOf(file, target) {
-    const table = await this.#try(() => this.#o.port.doc.fetchTable(target.table), null);
+    // les colonnes d'avant d'une table que Sync+ tient se lisent aussi
+    const table = aliased(await this.#try(() => this.#o.port.doc.fetchTable(target.table), null));
     const has = name => Boolean(table) && Object.prototype.hasOwnProperty.call(table, name);
-    if (target.stamped && !has('GFS_Lecteurs')) return { extend: true };
-    if (has('GFS_Lecteurs') && !(has('GFS_Directs') && has('GFS_Dossier') && has('GFS_Vus') && has('GFS_Ids'))) return { extend: 'upgrade' };
+    if (target.stamped && !has('GFS_Readers')) return { extend: true };
+    if (has('GFS_Readers') && !(has('GFS_Direct') && has('GFS_Folder') && has('GFS_Seen') && has('GFS_Ids'))) return { extend: 'upgrade' };
     // un partage d'avant l'auteur protégé des PDF : « compléter » reprend l'auteur de la colonne « Auteur »
-    if (target.stamped && has('GFS_Lecteurs') && !has(STAMP)) return { extend: 'upgrade' };
+    if (target.stamped && has('GFS_Readers') && !has(STAMP)) return { extend: 'upgrade' };
     return { author: target.stamped ? lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]) : lower(file.by) };
   }
 
   // Ce que le fichier hérite de l'espace où il est placé : l'espace, puis chaque dossier du chemin (rien si le fichier n'est dans aucun espace, ou si la
   // personne ne lit pas le placement).
   async #inherited(key) {
-    const place = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(PLACE_TABLE)).find(row => row.Cible === key), null);
-    if (!place || !place.Espace) return [];
+    const place = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(PLACE_TABLE)).find(row => row.Target === key), null);
+    if (!place || !place.Space) return [];
     const spaces = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SPACES_TABLE)), []);
-    const name = (spaces.find(row => row.Cle === place.Espace) || {}).Nom || place.Espace;
-    return originsOf(place.Espace, name, String(place.Dossier || '').split('/').filter(Boolean));
+    const name = (spaces.find(row => row.Key === place.Space) || {}).Name || place.Space;
+    return originsOf(place.Space, name, String(place.Folder || '').split('/').filter(Boolean));
   }
 
   #write(actions) { return writeActions(this.#o, actions); }
@@ -208,7 +210,7 @@ export class ShareControl {
   // Écrit un partage : un dossier de « Moi » le reçoit par le numéro de sa ligne d'état (`keyOf`), que la fenêtre ne connaît pas encore quand le dossier
   // n'avait aucun partage.
   async add(file, record) {
-    return this.#write([['AddRecord', SHARES_TABLE, null, file.mine ? { ...record, Cible: await this.keyOf(file) } : record]]);
+    return this.#write([['AddRecord', SHARES_TABLE, null, file.mine ? { ...record, Target: await this.keyOf(file) } : record]]);
   }
 
   // Ouvre la fenêtre du fichier ; rend la promesse de sa fermeture.

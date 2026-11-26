@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadFiles, loadAttachments } from '../js/explorer/explorer-data.js';
-import { FILES_ENTRY } from '../js/files/gfs-files.js';
+import { filesEntry } from '../js/files/gfs-files.js';
 import { sumWeights } from '../js/weight/weight.js';
 import { publipostage } from './helpers.mjs';
 
@@ -15,7 +15,7 @@ const legacy = (() => { const copy = structuredClone(manifest); delete copy.fich
 const tables = () => ({
   [spec.table]: { id: [1, 2], Nom: ['Convocation', 'Attestation'], TypeModele: ['', ''], DateModif: [0, 0], ModifiePar: ['', ''] },
   [spec.rangement.table]: { id: [1, 2], Utilisateur: ['', ''], ModeleId: [1, 2], Dossier: ['Formation', 'Formation'], Epingle: [true, false] },
-  gfs_rangement: { id: [1, 2], Utilisateur: ['@document', ''], App: ['gfs', 'publipostage'], Fichier: ['apps', '2'], Favori: [false, true], Dossier: ['', 'Archives'] },
+  gfs_filing: { id: [1, 2], User: ['@document', ''], App: ['gfs', 'publipostage'], File: ['apps', '2'], Favorite: [false, true], Folder: ['', 'Archives'] },
 });
 
 function port(data, { broken = null } = {}) {
@@ -43,7 +43,7 @@ test('un rangement de GFS illisible ne cache aucun fichier : ils restent à leur
   const warned = [];
   console.warn = (...args) => warned.push(args[0]);
   try {
-    const { files, problems } = await loadFiles(port(tables(), { broken: 'gfs_rangement' }), [{ manifest }], '');
+    const { files, problems } = await loadFiles(port(tables(), { broken: 'gfs_filing' }), [{ manifest }], '');
     assert.deepEqual(files.map(file => [file.id, file.folder]), [['1', 'Formation'], ['2', 'Formation']]);
     assert.deepEqual(problems, []);
     assert.deepEqual(warned, ['GFS : le rangement de GFS est illisible']);
@@ -52,10 +52,10 @@ test('un rangement de GFS illisible ne cache aucun fichier : ils restent à leur
 
 test('les fichiers à la corbeille sont rendus à part : `files` ne montre que les vivants (ce que lisent « choisir » et « ouvrir »), `trash` les supprimés, avec leur dossier de retour', async () => {
   const data = {
-    GFS_Fichiers: { id: [1, 2, 3], Identifiant: ['aa', 'bb', 'cc'], Nom: ['A.pdf', 'B.pdf', 'C.pdf'], Type: ['pdf', 'pdf', 'pdf'], Date: [10, 20, 30], Auteur: ['', '', ''], SupprimeLe: [null, 1762000000, null], SupprimePar: ['', 'paul@exemple.fr', ''] },
-    gfs_rangement: { id: [1], Utilisateur: [''], App: ['gfs-fichiers'], Fichier: ['bb'], Favori: [true], Dossier: ['Factures'] },
+    GFS_Files: { id: [1, 2, 3], FileId: ['aa', 'bb', 'cc'], Name: ['A.pdf', 'B.pdf', 'C.pdf'], Type: ['pdf', 'pdf', 'pdf'], Date: [10, 20, 30], Author: ['', '', ''], DeletedAt: [null, 1762000000, null], DeletedBy: ['', 'paul@exemple.fr', ''] },
+    gfs_filing: { id: [1], User: [''], App: ['gfs-fichiers'], File: ['bb'], Favorite: [true], Folder: ['Factures'] },
   };
-  const found = await loadFiles(port(data), [FILES_ENTRY], '');
+  const found = await loadFiles(port(data), [filesEntry()], '');
   assert.deepEqual(found.files.map(file => file.key), ['gfs-fichiers:aa', 'gfs-fichiers:cc']);
   assert.deepEqual(found.trash.map(file => [file.key, file.trashed, file.folder]), [['gfs-fichiers:bb', { ts: 1762000000, by: 'paul@exemple.fr' }, 'Factures']]);
   assert.deepEqual(found.problems, []);
@@ -67,11 +67,11 @@ test('sans fichier à la corbeille, ou avec des apps seulement : `trash` est vid
   assert.deepEqual([found.files.length, found.trash], [2, []]);
 });
 
-test('les fichiers d\'une app mis à la corbeille ne sont plus dans sa table : ils se lisent dans GFS_Corbeille, gardent leur dossier (celui du rangement de l\'app), et ne se mêlent jamais aux vivants', async () => {
+test('les fichiers d\'une app mis à la corbeille ne sont plus dans sa table : ils se lisent dans GFS_Trash, gardent leur dossier (celui du rangement de l\'app), et ne se mêlent jamais aux vivants', async () => {
   const data = tables();
-  data.GFS_Corbeille = {
-    id: [5, 6], App: ['publipostage', 'form'], Table: [spec.table, spec.table], FichierId: ['9', '9'], Nom: ['Relance', 'D\'une autre app'], Type: ['email', ''], Date: [300, null], Auteur: ['', ''],
-    SupprimeLe: [1762000000, 1762000000], SupprimePar: ['paul@exemple.fr', ''],
+  data.GFS_Trash = {
+    id: [5, 6], App: ['publipostage', 'form'], Table: [spec.table, spec.table], FileId: ['9', '9'], Name: ['Relance', 'D\'une autre app'], Type: ['email', ''], Date: [300, null], Author: ['', ''],
+    DeletedAt: [1762000000, 1762000000], DeletedBy: ['paul@exemple.fr', ''],
   };
   data[spec.rangement.table] = { id: [1, 2, 3], Utilisateur: ['', '', ''], ModeleId: [1, 2, 9], Dossier: ['Formation', 'Formation', 'Relances'], Epingle: [true, false, true] };
   const found = await loadFiles(port(data), [{ manifest }], '');
@@ -86,8 +86,8 @@ test('une corbeille des apps illisible ne cache aucun fichier vivant, et la cons
   const warned = [];
   console.warn = (...args) => warned.push(args[0]);
   try {
-    const data = { ...tables(), GFS_Corbeille: { id: [] } };
-    const found = await loadFiles(port(data, { broken: 'GFS_Corbeille' }), [{ manifest }], '');
+    const data = { ...tables(), GFS_Trash: { id: [] } };
+    const found = await loadFiles(port(data, { broken: 'GFS_Trash' }), [{ manifest }], '');
     assert.deepEqual(found.files.map(file => file.id), ['1', '2']);
     assert.deepEqual(found.trash, []);
     assert.deepEqual(warned, ['GFS : la corbeille des apps est illisible']);
@@ -95,15 +95,15 @@ test('une corbeille des apps illisible ne cache aucun fichier vivant, et la cons
   assert.deepEqual((await loadFiles(port(tables()), [{ manifest }], '')).trash, []);
 });
 
-test('les dossiers que la personne garde sans fichier (lignes d\'état de GFS_Rangement : ni app ni fichier) sont rendus à part, pour elle seule ; ils ne sont jamais des fichiers ni des favoris', async () => {
+test('les dossiers que la personne garde sans fichier (lignes d\'état de GFS_Filing : ni app ni fichier) sont rendus à part, pour elle seule ; ils ne sont jamais des fichiers ni des favoris', async () => {
   const data = tables();
-  data.gfs_rangement = {
+  data.gfs_filing = {
     id: [1, 2, 3, 4, 5, 6],
-    Utilisateur: ['@document', 'ana@exemple.org', 'ana@exemple.org', 'ben@exemple.org', 'ana@exemple.org', 'ana@exemple.org'],
+    User: ['@document', 'ana@exemple.org', 'ana@exemple.org', 'ben@exemple.org', 'ana@exemple.org', 'ana@exemple.org'],
     App: ['gfs', '', '', '', 'publipostage', ''],
-    Fichier: ['apps', '', '', '', '2', ''],
-    Favori: [false, false, false, false, true, false],
-    Dossier: ['', 'Contrats/2026', ' Contrats // 2026/ ', 'De Ben', 'Archives', ''],
+    File: ['apps', '', '', '', '2', ''],
+    Favorite: [false, false, false, false, true, false],
+    Folder: ['', 'Contrats/2026', ' Contrats // 2026/ ', 'De Ben', 'Archives', ''],
   };
   const ana = await loadFiles(port(data), [{ manifest }], 'ana@exemple.org');
   assert.deepEqual(ana.folders, ['Contrats/2026'], 'une seule fois, normalisé ; le dossier d\'un autre, la ligne réservée, la ligne d\'un fichier et une ligne sans dossier n\'en sont pas');
@@ -114,30 +114,30 @@ test('les dossiers que la personne garde sans fichier (lignes d\'état de GFS_Ra
 
 test('sans la table de GFS, ou avec une table illisible, aucun dossier n\'est gardé', async () => {
   const data = tables();
-  delete data.gfs_rangement;
+  delete data.gfs_filing;
   assert.deepEqual((await loadFiles(port(data), [{ manifest }], '')).folders, []);
   const warn = console.warn;
   console.warn = () => {};
-  try { assert.deepEqual((await loadFiles(port(tables(), { broken: 'gfs_rangement' }), [{ manifest }], '')).folders, []); } finally { console.warn = warn; }
+  try { assert.deepEqual((await loadFiles(port(tables(), { broken: 'gfs_filing' }), [{ manifest }], '')).folders, []); } finally { console.warn = warn; }
 });
 
 test('la lecture rend le nom que le document donne à la table du rangement (sans tenir compte de la casse), ou null quand elle manque ou qu\'elle est illisible', async () => {
-  assert.equal((await loadFiles(port(tables()), [{ manifest }], '')).gfsTable, 'gfs_rangement');
+  assert.equal((await loadFiles(port(tables()), [{ manifest }], '')).gfsTable, 'gfs_filing');
   const data = tables();
-  delete data.gfs_rangement;
+  delete data.gfs_filing;
   assert.equal((await loadFiles(port(data), [{ manifest }], '')).gfsTable, null);
   const warn = console.warn;
   console.warn = () => {};
-  try { assert.equal((await loadFiles(port(tables(), { broken: 'gfs_rangement' }), [{ manifest }], '')).gfsTable, null); } finally { console.warn = warn; }
+  try { assert.equal((await loadFiles(port(tables(), { broken: 'gfs_filing' }), [{ manifest }], '')).gfsTable, null); } finally { console.warn = warn; }
 });
 
 test('la lecture rend le nom que le document donne à la table de la corbeille, ou null quand elle manque ou qu\'elle est illisible', async () => {
-  const withBin = { ...tables(), GFS_Corbeille: { id: [] } };
-  assert.equal((await loadFiles(port(withBin), [{ manifest }], '')).binTable, 'GFS_Corbeille');
+  const withBin = { ...tables(), GFS_Trash: { id: [] } };
+  assert.equal((await loadFiles(port(withBin), [{ manifest }], '')).binTable, 'GFS_Trash');
   assert.equal((await loadFiles(port(tables()), [{ manifest }], '')).binTable, null);
   const warn = console.warn;
   console.warn = () => {};
-  try { assert.equal((await loadFiles(port(withBin, { broken: 'GFS_Corbeille' }), [{ manifest }], '')).binTable, null); } finally { console.warn = warn; }
+  try { assert.equal((await loadFiles(port(withBin, { broken: 'GFS_Trash' }), [{ manifest }], '')).binTable, null); } finally { console.warn = warn; }
 });
 
 // La lecture légère (elle sert d'abord, et tant que le document n'est pas connu léger : js/explorer/heavy-hint.js) : les colonnes utiles seulement, et le poids de chaque ligne. Aucune table ne se lit en
@@ -164,7 +164,7 @@ test('la lecture légère ne prépare que les tables que le document a ; une app
   const plans = [];
   const learnt = [];
   const reader = { isActive: () => true, learn: (...args) => learnt.push(args), prepare: async plan => { plans.push(plan.map(item => item.table)); }, read: async () => null };
-  await loadFiles(port(tables()), [{ manifest }, FILES_ENTRY], '', reader);
+  await loadFiles(port(tables()), [{ manifest }, filesEntry()], '', reader);
   assert.deepEqual(plans, [[spec.table]], 'ni la corbeille, ni les versions, ni les fichiers de GFS : ce document ne les a pas');
   assert.equal(learnt[0][1], false);
   const warn = console.warn;
@@ -183,25 +183,25 @@ test('une lecture légère refusée (une personne qui n\'est pas propriétaire :
 
 test('le poids : un PDF de GFS pèse sa ligne et sa pièce jointe (`Taille`), une copie qui cite la même pièce ne la compte pas deux fois dans une somme', async () => {
   const data = {
-    GFS_Fichiers: {
-      id: [1, 2, 3], Identifiant: ['aa', 'bb', 'cc'], Nom: ['Facture.pdf', 'Facture (1).pdf', 'Devis.pdf'], Type: ['pdf', 'pdf', 'pdf'], Date: [10, 10, 30], Auteur: ['', '', ''],
-      Contenu: [['L', 7], ['L', 7], ['L', 8]], Taille: [3000000, 3000000, 500000], SupprimeLe: [null, null, 1762000000], SupprimePar: ['', '', 'paul@exemple.fr'],
+    GFS_Files: {
+      id: [1, 2, 3], FileId: ['aa', 'bb', 'cc'], Name: ['Facture.pdf', 'Facture (1).pdf', 'Devis.pdf'], Type: ['pdf', 'pdf', 'pdf'], Date: [10, 10, 30], Author: ['', '', ''],
+      Content: [['L', 7], ['L', 7], ['L', 8]], Size: [3000000, 3000000, 500000], DeletedAt: [null, null, 1762000000], DeletedBy: ['', '', 'paul@exemple.fr'],
     },
   };
-  const { files, trash } = await loadFiles(port(data), [FILES_ENTRY], '');
+  const { files, trash } = await loadFiles(port(data), [filesEntry()], '');
   assert.deepEqual(files.map(file => file.pieces), [[['7', 3000000]], [['7', 3000000]]]);
   assert.ok(files[0].weight > 3000000 && files[0].weight < 3000100, 'la pièce et quelques octets de ligne');
   assert.equal(sumWeights(files), files[0].weight + files[1].weight - 3000000, 'la pièce citée deux fois est comptée une fois');
   assert.ok(trash[0].weight > 500000 && trash[0].weight < 500100, 'à la corbeille, le fichier pèse encore (sa pièce jointe est gardée)');
 });
 
-test('le poids : un fichier d\'une app pèse les octets de sa ligne, et une entrée de GFS_Corbeille tout ce que la corbeille garde (la copie JSON de la ligne y est pour presque tout)', async () => {
+test('le poids : un fichier d\'une app pèse les octets de sa ligne, et une entrée de GFS_Trash tout ce que la corbeille garde (la copie JSON de la ligne y est pour presque tout)', async () => {
   const data = tables();
   data[spec.table].Contenu = ['x'.repeat(1000), 'é'.repeat(500)];
   const snapshot = JSON.stringify({ format: 1, id: 9, valeurs: { Nom: 'Relance', Contenu: 'é'.repeat(3000) } });
-  data.GFS_Corbeille = {
-    id: [5], Identifiant: ['aabbccddeeff'], App: ['publipostage'], Table: [spec.table], FichierId: ['9'], Nom: ['Relance'], Type: ['email'], Date: [300], Auteur: [''],
-    SupprimeLe: [1762000000], SupprimePar: ['paul@exemple.fr'], Instantane: [snapshot],
+  data.GFS_Trash = {
+    id: [5], EntryId: ['aabbccddeeff'], App: ['publipostage'], Table: [spec.table], FileId: ['9'], Name: ['Relance'], Type: ['email'], Date: [300], Author: [''],
+    DeletedAt: [1762000000], DeletedBy: ['paul@exemple.fr'], Snapshot: [snapshot],
   };
   const found = await loadFiles(port(data), [{ manifest }], '');
   const bytes = text => Buffer.byteLength(text);
@@ -257,11 +257,11 @@ test('le poids : sans la table des versions (l\'app ne l\'a pas encore créée),
   assert.ok(warnings.some(line => /Publipostage_Versions.*illisible/.test(line)), 'la console le dit');
 });
 
-test('le poids : à la corbeille, une entrée ne compte que ce que GFS_Corbeille garde ; les versions restent dans leur table (l\'app les purge comme orphelines) et ne la suivent pas', async () => {
+test('le poids : à la corbeille, une entrée ne compte que ce que GFS_Trash garde ; les versions restent dans leur table (l\'app les purge comme orphelines) et ne la suivent pas', async () => {
   const data = withVersions();
-  data.GFS_Corbeille = {
-    id: [5], Identifiant: ['aabbccddeeff'], App: ['publipostage'], Table: [spec.table], FichierId: ['9'], Nom: ['Relance'], Type: ['email'], Date: [300], Auteur: [''],
-    SupprimeLe: [1762000000], SupprimePar: [''], Instantane: [JSON.stringify({ format: 1, id: 9, valeurs: { Nom: 'Relance', Jeton: 'jeton-1' } })],
+  data.GFS_Trash = {
+    id: [5], EntryId: ['aabbccddeeff'], App: ['publipostage'], Table: [spec.table], FileId: ['9'], Name: ['Relance'], Type: ['email'], Date: [300], Author: [''],
+    DeletedAt: [1762000000], DeletedBy: [''], Snapshot: [JSON.stringify({ format: 1, id: 9, valeurs: { Nom: 'Relance', Jeton: 'jeton-1' } })],
   };
   const { trash } = await loadFiles(port(data), [{ manifest }], '');
   assert.equal(trash.length, 1);
@@ -284,8 +284,8 @@ test('une table d\'app illisible est dite (l\'app et la raison) et n\'arrête pa
   const warn = console.warn;
   console.warn = () => {};
   try {
-    const data = { ...tables(), GFS_Fichiers: { id: [1], Identifiant: ['aa'], Nom: ['A.pdf'], Type: ['pdf'], Date: [10], Auteur: [''] } };
-    const found = await loadFiles(port(data, { broken: spec.table }), [{ manifest }, FILES_ENTRY], '');
+    const data = { ...tables(), GFS_Files: { id: [1], FileId: ['aa'], Name: ['A.pdf'], Type: ['pdf'], Date: [10], Author: [''] } };
+    const found = await loadFiles(port(data, { broken: spec.table }), [{ manifest }, filesEntry()], '');
     assert.deepEqual(found.problems, [{ app: 'publipostage', reason: 'accès refusé', held: false }]);
     assert.deepEqual(found.files.map(file => file.key), ['gfs-fichiers:aa'], 'les fichiers de GFS se lisent quand même');
     assert.deepEqual([found.stats.tables, found.stats.rows], [1, 1], 'seules les tables lues comptent');
@@ -294,10 +294,10 @@ test('une table d\'app illisible est dite (l\'app et la raison) et n\'arrête pa
 
 test('la corbeille des apps ne rend que les fichiers des apps dont la table se supprime par ligne (`suppression.ligne`), et rien d\'une autre app ni d\'une autre table', async () => {
   const bin = {
-    id: [1, 2, 3], Identifiant: ['b1', 'b2', 'b3'], App: ['publipostage', 'form', 'publipostage'], Table: [spec.table, spec.table, 'Autre'], FichierId: ['7', '8', '9'], Nom: ['Vieux', 'Autre app', 'Autre table'],
-    Type: ['', '', ''], Date: [0, 0, 0], Auteur: ['', '', ''], SupprimeLe: [1762000000, 1762000000, 1762000000], SupprimePar: ['', '', ''], Instantane: ['{}', '{}', '{}'], Dossier: ['', '', ''],
+    id: [1, 2, 3], EntryId: ['b1', 'b2', 'b3'], App: ['publipostage', 'form', 'publipostage'], Table: [spec.table, spec.table, 'Autre'], FileId: ['7', '8', '9'], Name: ['Vieux', 'Autre app', 'Autre table'],
+    Type: ['', '', ''], Date: [0, 0, 0], Author: ['', '', ''], DeletedAt: [1762000000, 1762000000, 1762000000], DeletedBy: ['', '', ''], Snapshot: ['{}', '{}', '{}'], Folder: ['', '', ''],
   };
-  const data = { ...tables(), GFS_Corbeille: bin };
+  const data = { ...tables(), GFS_Trash: bin };
   const withRecipe = await loadFiles(port(data), [{ manifest }], '');
   assert.deepEqual(withRecipe.trash.map(file => file.name), ['Vieux'], 'la ligne de cette app et de cette table seulement');
   const without = { ...manifest, fichiers: [{ ...spec, suppression: undefined }] };
@@ -308,8 +308,8 @@ test('la corbeille des apps ne rend que les fichiers des apps dont la table se s
 test('un fichier placé dans un espace en prend le dossier ; les dossiers de l\'espace sont ajoutés à ceux de la personne', async () => {
   const data = {
     ...tables(),
-    GFS_Espaces: { id: [1], Cle: ['achats'], Nom: ['Achats'] },
-    GFS_Placement: { id: [1], Cible: ['publipostage:1'], Espace: ['achats'], Dossier: ['Contrats'] },
+    GFS_Spaces: { id: [1], Key: ['achats'], Name: ['Achats'] },
+    GFS_Placement: { id: [1], Target: ['publipostage:1'], Space: ['achats'], Folder: ['Contrats'] },
   };
   const { files, folders, spaces } = await loadFiles(port(data), [{ manifest: legacy }], '');
   assert.equal(files.find(file => file.id === '1').folder, 'Espaces/Achats/Contrats');
@@ -318,11 +318,11 @@ test('un fichier placé dans un espace en prend le dossier ; les dossiers de l\'
   assert.equal(spaces.spaces.length, 1);
 });
 
-test('les fichiers reçus d\'un autre document (GFS_Recus, GFS_Recus_2…) sont lus à part : jamais dans `files`, tous états confondus, un document sans partage en rend une liste vide', async () => {
-  const arrival = (id, name, extra = {}) => ({ id: [1], Identifiant: [id], Nom: [name], Type: ['pdf'], Date: [1762000000], Auteur: ['compta@exemple.fr'], Contenu: [['L', 1]], Taille: [100], ...Object.fromEntries(Object.entries(extra).map(([key, value]) => [key, [value]])) });
-  const data = { ...tables(), GFS_Recus: arrival('r1', 'Facture.pdf'), GFS_Recus_2: arrival('r2', 'Devis.pdf', { Accepte: true, Refuse: false }) };
+test('les fichiers reçus d\'un autre document (GFS_Received, GFS_Received_2…) sont lus à part : jamais dans `files`, tous états confondus, un document sans partage en rend une liste vide', async () => {
+  const arrival = (id, name, extra = {}) => ({ id: [1], FileId: [id], Name: [name], Type: ['pdf'], Date: [1762000000], Author: ['compta@exemple.fr'], Content: [['L', 1]], Size: [100], ...Object.fromEntries(Object.entries(extra).map(([key, value]) => [key, [value]])) });
+  const data = { ...tables(), GFS_Received: arrival('r1', 'Facture.pdf'), GFS_Received_2: arrival('r2', 'Devis.pdf', { Accepted: true, Refused: false }) };
   const loaded = await loadFiles(port(data), [{ manifest }], '');
-  assert.deepEqual(loaded.received.map(file => [file.name, file.received.table, file.received.state]), [['Facture.pdf', 'GFS_Recus', 'pending'], ['Devis.pdf', 'GFS_Recus_2', 'accepted']]);
+  assert.deepEqual(loaded.received.map(file => [file.name, file.received.table, file.received.state]), [['Facture.pdf', 'GFS_Received', 'pending'], ['Devis.pdf', 'GFS_Received_2', 'accepted']]);
   assert.deepEqual(loaded.files.map(file => file.id).sort(), ['1', '2'], 'les arrivées ne sont pas des fichiers vivants : choisir, ouvrir et lire ne les voient pas');
   assert.deepEqual((await loadFiles(port(tables()), [{ manifest }], '')).received, []);
 });
@@ -341,14 +341,14 @@ function gatedPort(data) {
   return { port: { doc }, started, settle, release: () => gates.splice(0).forEach(open => open()) };
 }
 
-const arrivalRow = (id, name) => ({ id: [1], Identifiant: [id], Nom: [name], Type: ['pdf'], Date: [1762000000], Auteur: ['compta@exemple.fr'], Contenu: [['L', 1]], Taille: [100] });
+const arrivalRow = (id, name) => ({ id: [1], FileId: [id], Name: [name], Type: ['pdf'], Date: [1762000000], Author: ['compta@exemple.fr'], Content: [['L', 1]], Size: [100] });
 
 test('toutes les tables de la lecture sont demandées à Grist ensemble, sans attendre l\'une pour demander l\'autre : table des fichiers, rangement de l\'app, tables liées, rangement de GFS, fichiers reçus', async () => {
-  const data = { ...tables(), Publipostage_Versions: { id: [1], Jeton: ['x'] }, GFS_Recus: arrivalRow('r1', 'Facture.pdf'), GFS_Recus_2: arrivalRow('r2', 'Devis.pdf') };
+  const data = { ...tables(), Publipostage_Versions: { id: [1], Jeton: ['x'] }, GFS_Received: arrivalRow('r1', 'Facture.pdf'), GFS_Received_2: arrivalRow('r2', 'Devis.pdf') };
   const gated = gatedPort(data);
   const pending = loadFiles(gated.port, [{ manifest }], '');
   await gated.settle();
-  const wanted = [spec.table, spec.rangement.table, 'gfs_rangement', 'Publipostage_Versions', 'GFS_Recus', 'GFS_Recus_2'];
+  const wanted = [spec.table, spec.rangement.table, 'gfs_filing', 'Publipostage_Versions', 'GFS_Received', 'GFS_Received_2'];
   assert.deepEqual([...gated.started].sort(), [...wanted].sort(), 'toutes les lectures sont déjà parties alors qu\'aucune n\'a répondu');
   gated.release();
   const loaded = await pending;
@@ -379,8 +379,8 @@ const appTables = () => ({
   [spec.table]: { id: [1, 2, 3], Nom: ['Convocation', 'Attestation', 'Facture'], TypeModele: ['', '', ''], DateModif: [0, 0, 0], ModifiePar: ['', '', ''] },
   [spec.rangement.table]: { id: [1, 2, 3, 4, 5], Utilisateur: ['', '', '', '', 'autre@exemple.org'], ModeleId: [1, 2, 0, 0, 0], Dossier: ['Formation', 'Formation', 'Vide', 'Vide/Sous-dossier', 'Prive'],
     Epingle: [true, false, false, false, false] },
-  // GFS_Rangement dit autre chose pour 2 (rangé dans GFS avant la reprise) et seul parle du fichier 3 (l'app n'a aucune ligne pour lui).
-  gfs_rangement: { id: [1, 2], Utilisateur: ['', ''], App: ['publipostage', 'publipostage'], Fichier: ['2', '3'], Favori: [true, true], Dossier: ['Archives', 'Factures'] },
+  // GFS_Filing dit autre chose pour 2 (rangé dans GFS avant la reprise) et seul parle du fichier 3 (l'app n'a aucune ligne pour lui).
+  gfs_filing: { id: [1, 2], User: ['', ''], App: ['publipostage', 'publipostage'], File: ['2', '3'], Favorite: [true, true], Folder: ['Archives', 'Factures'] },
 });
 
 test('app avec `ecriture` : sa table fait foi, la ligne de GFS ne sert que pour un fichier que l\'app n\'a jamais rangé', async () => {
@@ -415,8 +415,8 @@ test('app avec `ecriture` : sans sa table, ou sans l\'une de ses colonnes, GFS r
 test('app avec `ecriture` : un fichier à la corbeille de GFS garde le dossier que l\'app lui donne', async () => {
   const data = appTables();
   data[spec.table] = { id: [1, 2], Nom: ['Convocation', 'Attestation'], TypeModele: ['', ''], DateModif: [0, 0], ModifiePar: ['', ''], Jeton: ['a', 'b'] };
-  data.GFS_Corbeille = { id: [1], App: ['publipostage'], Table: [spec.table], FichierId: ['3'], Nom: ['Facture'], Type: [''], Date: [0], Auteur: [''], SupprimeLe: [1762000000],
-    SupprimePar: [''], Instantane: ['{"Nom":"Facture","Jeton":"c"}'] };
+  data.GFS_Trash = { id: [1], App: ['publipostage'], Table: [spec.table], FileId: ['3'], Nom: ['Facture'], Type: [''], Date: [0], Auteur: [''], DeletedAt: [1762000000],
+    DeletedBy: [''], Snapshot: ['{"Nom":"Facture","Jeton":"c"}'] };
   data[spec.rangement.table] = { ...data[spec.rangement.table], id: [1, 2, 3, 4, 5, 6], Utilisateur: ['', '', '', '', 'autre@exemple.org', ''], ModeleId: [1, 2, 0, 0, 0, 3],
     Dossier: ['Formation', 'Formation', 'Vide', 'Vide/Sous-dossier', 'Prive', 'Compta'], Epingle: [true, false, false, false, false, false] };
   const recipe = structuredClone(manifest);
@@ -432,10 +432,10 @@ test('avec l\'index des noms : la table de l\'app n\'est jamais lue, les fichier
   const data = {
     ...tables(),
     _grist_Tables: { id: [1], tableId: [spec.table] },
-    _grist_Tables_column: { id: [1, 2, 3, 4, 5, 6], parentId: [1, 1, 1, 1, 1, 1], colId: ['Nom', 'TypeModele', 'DateModif', 'ModifiePar', 'Jeton', 'GFS_Cle'] },
-    Publipostage_Modeles_summary_GFS_Cle: { id: [1, 2], GFS_Cle: [4, 6], group: [['L', 4], ['L', 6]], count: [1, 1], Nom: ['Convocation', 'Attestation'], TypeModele: ['document', 'document'],
-      DateModif: [10, 20], ModifiePar: ['', ''], Jeton: ['j4', 'j6'], GFS_Ligne: [4, 6], GFS_Poids: [1000, 2000] },
-    [`${link.table}_summary_${link.colonne}`]: { id: [1], Jeton: ['j4'], group: [['L', 1]], count: [1], GFS_Poids: [300] },
+    _grist_Tables_column: { id: [1, 2, 3, 4, 5, 6], parentId: [1, 1, 1, 1, 1, 1], colId: ['Nom', 'TypeModele', 'DateModif', 'ModifiePar', 'Jeton', 'GFS_Key'] },
+    Publipostage_Modeles_summary_GFS_Key: { id: [1, 2], GFS_Key: [4, 6], group: [['L', 4], ['L', 6]], count: [1, 1], Nom: ['Convocation', 'Attestation'], TypeModele: ['document', 'document'],
+      DateModif: [10, 20], ModifiePar: ['', ''], Jeton: ['j4', 'j6'], GFS_Row: [4, 6], GFS_Weight: [1000, 2000] },
+    [`${link.table}_summary_${link.colonne}`]: { id: [1], Jeton: ['j4'], group: [['L', 1]], count: [1], GFS_Weight: [300] },
     [link.table]: { id: [1], Jeton: ['j4'], Contenu: ['x'] },
     [spec.table]: { id: [4, 6], Nom: ['x', 'y'] },
   };
@@ -453,10 +453,10 @@ test('un index qui n\'est pas sûr (deux lignes d\'origine dans un groupe) : la 
   const data = {
     ...tables(),
     _grist_Tables: { id: [1], tableId: [spec.table] },
-    _grist_Tables_column: { id: [1, 2, 3, 4, 5, 6], parentId: [1, 1, 1, 1, 1, 1], colId: ['Nom', 'TypeModele', 'DateModif', 'ModifiePar', 'Jeton', 'GFS_Cle'] },
-    Publipostage_Modeles_summary_GFS_Cle: { id: [1, 2], GFS_Cle: [1, 2], group: [], count: [1, 2], Nom: ['A', 'B'], TypeModele: ['', ''], DateModif: [0, 0], ModifiePar: ['', ''], Jeton: ['', ''],
-      GFS_Ligne: [1, 2], GFS_Poids: [1, 1] },
-    [`${link.table}_summary_${link.colonne}`]: { id: [], Jeton: [], group: [], count: [], GFS_Poids: [] },
+    _grist_Tables_column: { id: [1, 2, 3, 4, 5, 6], parentId: [1, 1, 1, 1, 1, 1], colId: ['Nom', 'TypeModele', 'DateModif', 'ModifiePar', 'Jeton', 'GFS_Key'] },
+    Publipostage_Modeles_summary_GFS_Key: { id: [1, 2], GFS_Key: [1, 2], group: [], count: [1, 2], Nom: ['A', 'B'], TypeModele: ['', ''], DateModif: [0, 0], ModifiePar: ['', ''], Jeton: ['', ''],
+      GFS_Row: [1, 2], GFS_Weight: [1, 1] },
+    [`${link.table}_summary_${link.colonne}`]: { id: [], Jeton: [], group: [], count: [], GFS_Weight: [] },
     [link.table]: { id: [], Jeton: [], Contenu: [] },
   };
   const found = await loadFiles(port(data), [{ manifest }], '');

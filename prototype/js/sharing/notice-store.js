@@ -118,7 +118,7 @@ export class NoticeStore {
       if (!add.length) return true;
       const column = name => add.map(row => row[name]);
       await doc.applyUserActions([['BulkAddRecord', table, add.map(() => null),
-        { Pour: column('Pour'), Type: column('Type'), Cible: column('Cible'), Par: column('Par'), Cle: column('Cle') }]]);
+        { Recipient: column('Recipient'), Type: column('Type'), Target: column('Target'), By: column('By'), Key: column('Key') }]]);
       this.#input = { ...this.#input, sources: { ...this.#input.sources, data: await doc.fetchTable(table) } };
       return true;
     } catch (error) {
@@ -135,7 +135,7 @@ export class NoticeStore {
     let written = new Set();
     if (rows.length && this.#writable()) {
       try {
-        await this.#o.doc.applyUserActions([['BulkUpdateRecord', this.#input.sources.table, rows, { Lu: rows.map(() => true) }]]);
+        await this.#o.doc.applyUserActions([['BulkUpdateRecord', this.#input.sources.table, rows, { Read: rows.map(() => true) }]]);
         written = new Set(rows);
         this.#patch(written);
       } catch (error) {
@@ -152,9 +152,9 @@ export class NoticeStore {
   #patch(ids) {
     const data = this.#input.sources.data;
     if (!data || !Array.isArray(data.id)) return;
-    const lu = (Array.isArray(data.Lu) ? data.Lu : []).slice();
+    const lu = (Array.isArray(data.Read) ? data.Read : []).slice();
     data.id.forEach((id, at) => { if (ids.has(id)) lu[at] = true; });
-    this.#input = { ...this.#input, sources: { ...this.#input.sources, data: { ...data, Lu: lu } } };
+    this.#input = { ...this.#input, sources: { ...this.#input.sources, data: { ...data, Read: lu } } };
   }
 
   #emit(plan) {

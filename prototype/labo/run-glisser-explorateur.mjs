@@ -49,13 +49,13 @@ const said = async text => {
 const quiet = () => toast.waitFor({ state: 'hidden', timeout: 20000 }).catch(() => {});
 // Ce que le document retient du rangement : où est chaque fichier (le dossier de sa ligne), et les dossiers gardés sans fichier.
 const filing = () => frame.evaluate(async () => {
-  if (!(await grist.docApi.listTables()).includes('GFS_Rangement')) return null;
-  const data = await grist.docApi.fetchTable('GFS_Rangement');
-  return data.id.map((id, i) => ({ app: data.App[i], file: data.Fichier[i], folder: data.Dossier[i] }));
+  if (!(await grist.docApi.listTables()).includes('GFS_Filing')) return null;
+  const data = await grist.docApi.fetchTable('GFS_Filing');
+  return data.id.map((id, i) => ({ app: data.App[i], file: data.File[i], folder: data.Folder[i] }));
 });
 const placeOf = async id => { const rows = (await filing()) || []; const found = rows.find(each => each.app === 'sonde-zf' && each.file === String(id)); return found ? found.folder : ''; };
 const keptFolders = async () => ((await filing()) || []).filter(each => !each.app && !each.file).map(each => each.folder).sort();
-const writes = () => lab.actions().then(list => list.filter(each => /^(AddRecord|UpdateRecord|BulkAddRecord|RemoveRecord|BulkUpdateRecord) GFS_Rangement/.test(each)).length);
+const writes = () => lab.actions().then(list => list.filter(each => /^(AddRecord|UpdateRecord|BulkAddRecord|RemoveRecord|BulkUpdateRecord) GFS_Filing/.test(each)).length);
 const lit = () => frame.locator('.is-drop').evaluateAll(nodes => nodes.map(node => (node.dataset.path !== undefined ? `chemin:${node.dataset.path}` : node.dataset.key)));
 
 // Un glissement à la vraie souris : appuyer sur `from`, s'écarter (le navigateur ne lance le glissement qu'alors), traverser par pas jusqu'à `to`, s'y arrêter `hold` ms (`during(page)` regarde ce qui s'éclaire), relâcher.

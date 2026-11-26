@@ -8,6 +8,7 @@
 // deux lignes d'origine dans un même groupe (une clé qui n'est pas unique : le résumé les fusionnerait). Rien n'est écrit, rien n'est gardé.
 
 import { neededColumns } from './explorer-sql.js';
+import { wantedBoth } from '../sharing/helper-names.js';
 import { ROW, WEIGHT, keyOf, summaryName } from './index-model.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
@@ -50,7 +51,7 @@ export async function readIndexedTable(doc, tables, spec) {
   try { raw = await doc.fetchTable(name); } catch (error) { return null; }
   const have = await baseColumns(doc, spec.table);
   const found = name => (have || []).find(column => sameName(column, name));
-  const wanted = [key, ...neededColumns(spec).filter(column => column !== key)].map(found).filter(Boolean);
+  const wanted = [key, ...wantedBoth(neededColumns(spec)).filter(column => column !== key)].map(found).filter(Boolean);
   if (!found(key) || !usable(raw, wanted)) return null;
   const data = { id: raw[ROW] };
   for (const column of Object.keys(raw)) if (!LEFT_OUT.has(column)) data[column] = raw[column];

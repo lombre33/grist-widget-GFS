@@ -1,6 +1,6 @@
 // La lecture des fichiers pour l'explorateur (contrats 2.4) : GFS lit les tables de fichiers que les manifestes déclarent, par sa propre
 // connexion à Grist, et n'en garde que les colonnes déclarées. Une table que l'app n'a pas encore créée n'est pas un problème (aucun fichier) ;
-// une table présente mais illisible est dite, app par app. Le rangement de GFS (`GFS_Rangement`, 6.4) passe devant celui de chaque app.
+// une table présente mais illisible est dite, app par app. Le rangement de GFS (`GFS_Filing`, 6.4) passe devant celui de chaque app.
 
 import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling } from './explorer-model.js';
 import { TABLE } from '../files/rangement.js';
@@ -16,12 +16,13 @@ import { loadReceived } from '../sharing/received-files.js';
 import { loadNoticeSources } from '../sharing/notice-store.js';
 import { neededColumns } from './explorer-sql.js';
 import { hasIndex, readIndexedTable, readIndexedLinks } from './index-reader.js';
+import { aliased, wantedBoth } from '../sharing/helper-names.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
 // Les colonnes de la corbeille que l'explorateur montre (js/files/gfs-trash.js, `binFiles`) : l'identifiant de l'entrée et la copie JSON de la ligne
-// (`Instantane`) n'y sont pas, mais pèsent dans le poids.
-const BIN_LIGHT = ['App', 'Table', 'FichierId', 'Nom', 'Type', 'Date', 'Auteur', 'SupprimeLe', 'SupprimePar'];
+// (`Snapshot`) n'y sont pas, mais pèsent dans le poids.
+const BIN_LIGHT = ['App', 'Table', 'FileId', 'Name', 'Type', 'Date', 'Author', 'DeletedAt', 'DeletedBy'];
 
 // Les lectures que la lecture légère aura à faire (js/explorer/explorer-sql.js, `prepare`) : [{ table, wanted }], une par table lue plus bas avec les mêmes
 // colonnes voulues : les tables des fichiers des apps, leurs tables liées et la corbeille, sous le nom que le document leur donne.
@@ -30,7 +31,7 @@ function lightPlan(tables, apps) {
   for (const { manifest } of apps) {
     for (const spec of manifest.fichiers || []) {
       if (hasIndex(tables, spec)) continue; // l'index des noms rend ces lignes sans la lecture SQL (js/explorer/index-reader.js)
-      plan.push({ table: nameIn(tables, spec.table), wanted: neededColumns(spec) });
+      plan.push({ table: nameIn(tables, spec.table), wanted: wantedBoth(neededColumns(spec)) });
       for (const rule of (spec.poids && spec.poids.liees) || []) plan.push({ table: nameIn(tables, rule.table), wanted: [rule.colonne] });
     }
   }
@@ -56,9 +57,9 @@ const nameIn = (tables, tableId) => (tables && tables.find(name => sameName(name
 async function readTable(port, tables, tableId, light = null, wanted = null) {
   if (tables && !tables.some(name => sameName(name, tableId))) return { data: null };
   const found = nameIn(tables, tableId);
-  const one = light && wanted ? await light.read(found, wanted) : null;
-  if (one) return one;
-  try { return { data: await port.doc.fetchTable(found) }; } catch (error) { return { error }; }
+  const one = light && wanted ? await light.read(found, wantedBoth(wanted)) : null;
+  if (one) return { ...one, data: aliased(one.data) };
+  try { return { data: aliased(await port.doc.fetchTable(found)) }; } catch (error) { return { error }; }
 }
 
 // Les tables liées aux fichiers d'une table (`poids.liees`, contrats 2.4, point 5) : [{ table, fichier, bytes }], `bytes` les octets des lignes de la table
@@ -87,7 +88,7 @@ export async function loadAttachments(port) {
 async function readIndexed(port, tables, spec) {
   if (!tables || !hasIndex(tables, spec)) return null;
   const [main, links] = await Promise.all([readIndexedTable(port.doc, tables, spec), readIndexedLinks(port.doc, tables, spec)]);
-  return main && links ? { main, links } : null;
+  return main && links ? { main: { ...main, data: aliased(main.data) }, links } : null;
 }
 
 // Les tables d'une table de fichiers d'une app, lues ensemble : { main, filing, links, indexed } (la table des fichiers, son rangement, ses tables liées ;
@@ -202,7 +203,7 @@ function readAppFiles({ identity, address, spaces, bin, gfsFiling }, { manifest,
   return { found, folders, binned: binnedFiles(manifest, spec, bin, { filing, gfsFiling, appFirst }) };
 }
 
-// Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Corbeille` (js/files/gfs-trash.js), et gardent
+// Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Trash` (js/files/gfs-trash.js), et gardent
 // leur dossier, que le rangement n'a pas quitté.
 function binnedFiles(manifest, spec, bin, { filing, gfsFiling, appFirst }) {
   if (!recipeOf(spec) || !bin.data) return [];

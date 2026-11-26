@@ -2,19 +2,19 @@
 // ici un faux qui note ses appels ; ce qu'il fait dans un vrai Grist est mesuré par labo/run-sync-retrait.mjs (faits vérifiés 70).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NONE, SEND_MAX, SENT_COLUMNS, applyLevel, carriesFolder, docOf, filesOf, idsWith, isTooBig, levelOf, linksFrom, maxText, selectionFor, setCondition, settle, sizeOf, stopLink } from '../js/sharing/share-links.js';
+import { NONE, SEND_MAX, sentColumns, applyLevel, carriesFolder, docOf, filesOf, idsWith, isTooBig, levelOf, linksFrom, maxText, selectionFor, setCondition, settle, sizeOf, stopLink } from '../js/sharing/share-links.js';
 import { FILE_MAX } from '../kit/js/synchro/logic/files.js';
 
-const tablesWith = values => [{ table: 'GFS_Fichiers', columns: [], filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values }] } }];
+const tablesWith = values => [{ table: 'GFS_Files', columns: [], filter: { mode: 'all', conds: [{ id: 'FileId', op: 'in', values }] } }];
 const hook = (id, memo = 'ami@exemple.fr · abcdef123456 · Equipe/Compta') => ({ id, fields: { memo, enabled: true } });
 
 test('la sélection nomme les fichiers par leur identifiant ; sans fichier elle nomme un identifiant qui n\'existe pas (une condition vide enverrait tous les fichiers : mesuré)', () => {
   const [one] = selectionFor(['a', 'b']);
-  assert.equal(one.table, 'GFS_Fichiers');
-  assert.deepEqual(one.filter.conds, [{ id: 'Identifiant', op: 'in', values: ['a', 'b'] }]);
-  assert.ok(SENT_COLUMNS.includes('Contenu') && !SENT_COLUMNS.includes('SupprimeLe'));
-  assert.ok(!SENT_COLUMNS.includes('Dossier_partage') && !one.columns.includes('Dossier_partage'), 'le nom d\'un dossier ne part pas avec un lien qui ne reçoit que des fichiers seuls');
-  assert.ok(selectionFor(['a'], { folder: true })[0].columns.includes('Dossier_partage'), 'un lien qui reçoit un dossier envoie le nom du dossier avec chaque fichier (le moteur ne l\'envoie que si la table porte la colonne)');
+  assert.equal(one.table, 'GFS_Files');
+  assert.deepEqual(one.filter.conds, [{ id: 'FileId', op: 'in', values: ['a', 'b'] }]);
+  assert.ok(sentColumns().includes('Content') && !sentColumns().includes('DeletedAt'));
+  assert.ok(!sentColumns().includes('SharedFolder') && !one.columns.includes('SharedFolder'), 'le nom d\'un dossier ne part pas avec un lien qui ne reçoit que des fichiers seuls');
+  assert.ok(selectionFor(['a'], { folder: true })[0].columns.includes('SharedFolder'), 'un lien qui reçoit un dossier envoie le nom du dossier avec chaque fichier (le moteur ne l\'envoie que si la table porte la colonne)');
   const [none] = selectionFor([]);
   assert.deepEqual(none.filter.conds[0].values, [NONE], 'jamais une liste vide');
   assert.deepEqual(filesOf(tablesWith([NONE])), [], 'l\'identifiant fictif n\'est pas un fichier');
@@ -23,34 +23,34 @@ test('la sélection nomme les fichiers par leur identifiant ; sans fichier elle 
 // Un moteur qui note les colonnes de chaque enregistrement.
 const columnsSeen = () => {
   const seen = [];
-  return { seen, saveChosenExport: async args => { seen.push(args.selection[0].columns); return { changed: ['GFS_Fichiers'] }; }, finishEdit: async () => {} };
+  return { seen, saveChosenExport: async args => { seen.push(args.selection[0].columns); return { changed: ['GFS_Files'] }; }, finishEdit: async () => {} };
 };
-const withColumns = (...columns) => ({ id: 'e1', name: 'Compta', files: ['a'], exp: { id: 'e1', name: 'Compta', tables: [{ table: 'GFS_Fichiers', columns: columns.map(id => ({ id, type: 'Text' })) }] } });
+const withColumns = (...columns) => ({ id: 'e1', name: 'Compta', files: ['a'], exp: { id: 'e1', name: 'Compta', tables: [{ table: 'GFS_Files', columns: columns.map(id => ({ id, type: 'Text' })) }] } });
 
 test('carriesFolder : un lien envoie le nom du dossier quand sa colonne est dans son export, sinon non (audit « contournement » du 11/11)', () => {
-  assert.equal(carriesFolder(withColumns('Identifiant', 'Dossier_partage')), true);
-  assert.equal(carriesFolder(withColumns('Identifiant', 'Nom')), false);
+  assert.equal(carriesFolder(withColumns('FileId', 'SharedFolder')), true);
+  assert.equal(carriesFolder(withColumns('FileId', 'Name')), false);
   for (const link of [null, undefined, {}, { exp: {} }, { exp: { tables: [] } }, { exp: { tables: [{ columns: null }] } }]) assert.equal(carriesFolder(link), false);
 });
 
 test('setCondition : le nom du dossier ne part jamais chez un document qui ne reçoit que des fichiers seuls ; un dossier le fait partir, et le lien le garde ensuite', async () => {
   const alone = columnsSeen();
-  await setCondition(alone, withColumns('Identifiant', 'Nom'), ['a', 'b']);
-  assert.ok(!alone.seen[0].includes('Dossier_partage'), 'un fichier seul de plus : pas de nom de dossier, même si un autre document en a reçu un');
+  await setCondition(alone, withColumns('FileId', 'Name'), ['a', 'b']);
+  assert.ok(!alone.seen[0].includes('SharedFolder'), 'un fichier seul de plus : pas de nom de dossier, même si un autre document en a reçu un');
   const first = columnsSeen();
-  await setCondition(first, withColumns('Identifiant', 'Nom'), ['a', 'b'], { folder: true });
-  assert.ok(first.seen[0].includes('Dossier_partage'), 'le premier dossier ajoute la colonne à l\'export');
+  await setCondition(first, withColumns('FileId', 'Name'), ['a', 'b'], { folder: true });
+  assert.ok(first.seen[0].includes('SharedFolder'), 'le premier dossier ajoute la colonne à l\'export');
   const later = columnsSeen();
-  await setCondition(later, withColumns('Identifiant', 'Nom', 'Dossier_partage'), ['a', 'b', 'c']);
-  assert.ok(later.seen[0].includes('Dossier_partage'), 'un fichier seul de plus, chez un lien qui a reçu un dossier : la colonne reste (elle n\'est jamais retirée de l\'export)');
+  await setCondition(later, withColumns('FileId', 'Name', 'SharedFolder'), ['a', 'b', 'c']);
+  assert.ok(later.seen[0].includes('SharedFolder'), 'un fichier seul de plus, chez un lien qui a reçu un dossier : la colonne reste (elle n\'est jamais retirée de l\'export)');
 });
 
 test('applyLevel : l\'option « dossier » suit tout le parcours, « une fois » compris (le retrait relit la condition et garde la colonne)', async () => {
   const engine = { ...columnsSeen(), catchUp: async () => {}, catchState: () => ({ why: 'idle', running: false }), filesPending: () => 0,
-    readLinks: async () => [{ ...withColumns('Identifiant'), files: ['a', 'b'] }] };
-  const done = await applyLevel(engine, withColumns('Identifiant'), ['b'], 'once', async () => {}, { folder: true });
+    readLinks: async () => [{ ...withColumns('FileId'), files: ['a', 'b'] }] };
+  const done = await applyLevel(engine, withColumns('FileId'), ['b'], 'once', async () => {}, { folder: true });
   await done.later;
-  assert.deepEqual(engine.seen.map(columns => columns.includes('Dossier_partage')), [true, true], 'l\'entrée et la sortie gardent la colonne du dossier');
+  assert.deepEqual(engine.seen.map(columns => columns.includes('SharedFolder')), [true, true], 'l\'entrée et la sortie gardent la colonne du dossier');
 });
 
 test('filesOf : seule la condition de GFS compte ; tout autre export est laissé', () => {
@@ -58,8 +58,8 @@ test('filesOf : seule la condition de GFS compte ; tout autre export est laissé
   assert.equal(filesOf(null), null);
   assert.equal(filesOf([]), null);
   assert.equal(filesOf([{ table: 'Clients', columns: [], filter: null }]), null, 'une autre table');
-  assert.equal(filesOf([{ table: 'GFS_Fichiers', columns: [], filter: null }]), null, 'sans condition : tous les fichiers, pas un lien de GFS');
-  assert.equal(filesOf([{ table: 'GFS_Fichiers', columns: [], filter: { mode: 'all', conds: [{ id: 'Nom', op: 'in', values: ['x'] }] } }]), null, 'une autre colonne');
+  assert.equal(filesOf([{ table: 'GFS_Files', columns: [], filter: null }]), null, 'sans condition : tous les fichiers, pas un lien de GFS');
+  assert.equal(filesOf([{ table: 'GFS_Files', columns: [], filter: { mode: 'all', conds: [{ id: 'Name', op: 'in', values: ['x'] }] } }]), null, 'une autre colonne');
 });
 
 test('le document se lit dans le mémo du webhook : le nom après l\'équipe, l\'identifiant ensuite', () => {
@@ -126,7 +126,7 @@ function fakeEngine({ links = [], passes = [{ why: 'sent' }, { why: 'idle' }], p
   let at = -1;
   return {
     calls,
-    saveChosenExport: async args => { calls.push(['save', args.selection[0].filter.conds[0].values]); return { changed: ['GFS_Fichiers'] }; },
+    saveChosenExport: async args => { calls.push(['save', args.selection[0].filter.conds[0].values]); return { changed: ['GFS_Files'] }; },
     finishEdit: async () => { calls.push(['finish']); },
     catchUp: async () => { at += 1; calls.push(['catchUp']); },
     catchState: () => ({ why: (passes[Math.min(at, passes.length - 1)] || {}).why, running: Boolean((passes[Math.min(at, passes.length - 1)] || {}).running) }),

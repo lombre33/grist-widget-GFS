@@ -16,10 +16,10 @@ test('contrats 3.2 point 2 : « * » désigne les tables de la personne, jamais 
   assert.equal(classify(pp, 'publipostage_modeles'), 'propre');
   assert.equal(classify(pp, '_Publipostage_Modeles'), 'propre');
   assert.equal(classify(pp, 'Automation_Etat'), 'autre-app');
-  assert.equal(classify(pp, 'GFS_Rangement'), 'gfs');
+  assert.equal(classify(pp, 'GFS_Filing'), 'gfs');
   assert.equal(classify(pp, '_grist_Tables'), 'interne');
   assert.equal(readRefusal(pp, 'Clients'), null);
-  assert.notEqual(readRefusal(pp, 'GFS_Rangement'), null);
+  assert.notEqual(readRefusal(pp, 'GFS_Filing'), null);
   assert.notEqual(readRefusal(pp, 'Automation_Etat'), null);
   assert.notEqual(readRefusal(au, 'Publipostage_Modeles'), null);
 });
@@ -46,13 +46,13 @@ test('contrats 3.2 point 4 : Grist-BI lit la langue et la devise du document (`_
 });
 
 test('contrats 3.2 point 5 : listTables rend les tables lisibles, triées, sans _grist_ ni GFS_', () => {
-  const all = ['Publipostage_Modeles', 'Clients', '', 'GFS_Rangement', 'Automation_Etat', '_grist_Tables', 'Alpha'];
+  const all = ['Publipostage_Modeles', 'Clients', '', 'GFS_Filing', 'Automation_Etat', '_grist_Tables', 'Alpha'];
   assert.deepEqual(visibleTables(pp, all), ['Alpha', 'Clients', 'Publipostage_Modeles']);
   assert.deepEqual(visibleTables(au, all), ['Alpha', 'Automation_Etat', 'Clients']);
 });
 
 test('contrats 3.3 point 1 : un lot est permis en entier ou refusé en entier, avec le rang de l\'action fautive', () => {
-  const r = refused(pp, [['AddRecord', 'Clients', null, { a: 1 }], ['UpdateRecord', 'GFS_Rangement', 1, { a: 1 }]]);
+  const r = refused(pp, [['AddRecord', 'Clients', null, { a: 1 }], ['UpdateRecord', 'GFS_Filing', 1, { a: 1 }]]);
   assert.equal(r.rank, 1);
   allowed(pp, [['AddRecord', 'Clients', null, { a: 1 }], ['BulkUpdateRecord', 'Publipostage_Modeles', [1, 2], { Nom: ['a', 'b'] }]]);
 });
@@ -93,10 +93,10 @@ test('contrats 3.3 point 10 : jamais une table de la personne, d\'une autre app 
   refused(pp, [['RenameTable', 'Publipostage_Modeles', 'Clients']]);
   refused(pp, [['RenameTable', 'Publipostage_Modeles', 'Automation_Modeles']]);
   refused(pp, [['RenameTable', 'Publipostage_Modeles', 'GFS_Modeles']]);
-  refused(pp, [['RenameTable', 'GFS_Rangement', 'Publipostage_Rangement']]);
+  refused(pp, [['RenameTable', 'GFS_Filing', 'Publipostage_Rangement']]);
   refused(pp, [['RenameTable', '_grist_Tables', 'Publipostage_Tables']]);
   refused(pp, [['RenameColumn', 'Clients', 'Nom', 'Name']]);
-  refused(pp, [['RenameColumn', 'GFS_Rangement', 'Nom', 'Name']]);
+  refused(pp, [['RenameColumn', 'GFS_Filing', 'Nom', 'Name']]);
   refused(pp, [['RenameColumn', '_grist_Tables_column', 'label', 'Label']]);
   refused(pp, [['ModifyColumn', 'Clients', 'Nom', { label: 'Name' }]]);
   refused(pp, [['ModifyColumn', '_grist_Tables_column', 'label', { label: 'Label' }]]);
@@ -123,14 +123,14 @@ test('contrats 3.3 point 10 : un lot de renommage est permis en entier ou refus�
 test('contrats 3.3 point 3 : jamais GFS_, jamais la table d\'une autre app, même si un motif la nomme', () => {
   refused(au, [['AddRecord', 'Publipostage_Modeles', null, {}]]);
   refused(policyOf({ ...automation(), permissions: { acces: 'full', lit: ['*', 'Publipostage_*'], ecrit: ['Publipostage_*'] } }), [['AddRecord', 'Publipostage_Modeles', null, {}]]);
-  refused(pp, [['AddTable', 'GFS_Rangement', [{ id: 'A' }]]]);
-  refused(pp, [['RemoveTable', 'GFS_Rangement']]);
+  refused(pp, [['AddTable', 'GFS_Filing', [{ id: 'A' }]]]);
+  refused(pp, [['RemoveTable', 'GFS_Filing']]);
   refused(pp, [['RenameTable', 'Clients', 'GFS_Clients']]);
-  refused(pp, [['AddColumn', 'GFS_Rangement', 'X', {}]]);
+  refused(pp, [['AddColumn', 'GFS_Filing', 'X', {}]]);
 });
 
 test('contrats 3.3 point 4 : un nom est jugé sans « _ » de tête et sans la casse', () => {
-  refused(pp, [['AddTable', '_gfs_Rangement', [{ id: 'A' }]]]);
+  refused(pp, [['AddTable', '_gfs_Filing', [{ id: 'A' }]]]);
   refused(pp, [['AddTable', 'Automation_Etat2', [{ id: 'A' }]]]);
   refused(pp, [['AddTable', 'GFS Rangement', [{ id: 'A' }]]]);
   refused(pp, [['AddTable', 'GFS-Rangement', [{ id: 'A' }]]]);
@@ -193,7 +193,7 @@ test('contrats 3.4 point 2 : sans « formules », toute colonne à formule est r
 
 test('contrats 3.4 point 3 : CreateViewSection demande « structure », une table permise, pas de synthèse', () => {
   const withStructure = policyOf({ ...publipostage(), permissions: { ...publipostage().permissions, structure: { pourquoi: { fr: 'a', en: 'a' } } } });
-  const refs = new Map([[7, 'Clients'], [8, 'GFS_Rangement'], [9, '_grist_Tables']]);
+  const refs = new Map([[7, 'Clients'], [8, 'GFS_Filing'], [9, '_grist_Tables']]);
   assert.match(refused(pp, [['CreateViewSection', 7, 0, 'record', null, null]], { tableRefs: refs }).reason, /structure/);
   allowed(withStructure, [['CreateViewSection', 7, 0, 'record', null, null]], { tableRefs: refs });
   allowed(withStructure, [['CreateViewSection', 0, 0, 'record', null, 'MesDonnees']], { tableRefs: refs });

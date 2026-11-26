@@ -3,13 +3,13 @@
 // puis il est RENOMMÉ comme le fera l'app (`RenameTable` et `RenameColumn` de Grist, les lignes suivent), et chaque geste de l'explorateur qui touche la table de l'app est rejoué sur ce document.
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-pp-noms-anglais-reel.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
 //   1. Témoin : le document aux noms d'avant montre ses modèles. Il est renommé : la liste est la même, le rangement de l'app (dossiers, étoiles) aussi, au rechargement.
-//   2. Une étoile (vraie souris) : la ligne s'écrit dans `Publipostage_TemplatePreferences` (User, TemplateId, Pinned), `GFS_Rangement` n'a rien pour ce modèle.
+//   2. Une étoile (vraie souris) : la ligne s'écrit dans `Publipostage_TemplatePreferences` (User, TemplateId, Pinned), `GFS_Filing` n'a rien pour ce modèle.
 //   3. F2 : le nom s'écrit dans `Name` de `Publipostage_Templates` ; « Dupliquer » : la copie a les valeurs de l'original, sauf le nom et `Token` (vide) ; l'étoile par défaut ne passe pas à la copie.
 //   4. Suppr puis la corbeille : l'entrée garde le nom du manifeste (`Table`), la ligne revient au même numéro avec les mêmes valeurs, sous les noms anglais.
 //   5. Un modèle mis à la corbeille AVANT le renommage se restaure APRÈS, sans rien perdre (nom, type, contenu) : l'instantané est écrit sous les noms du manifeste.
 //   6. La vraie Publipostage+ ouvre un modèle du document renommé (nom et texte).
 //   7. (a6465c1 : les deux interrupteurs de l'app sont allumés, mais sa reprise des documents d'avant ne tourne pas dans GFS : `isHostedByGfs()`, le courtier refuse RenameColumn et ModifyColumn) le document est
-//      remis aux noms d'avant, la vraie app ouvre un modèle : elle ne renomme rien, elle et GFS le lisent tel quel ; GFS rechargé montre les mêmes modèles, dossiers et étoiles, sans rien écrire dans `GFS_Rangement`.
+//      remis aux noms d'avant, la vraie app ouvre un modèle : elle ne renomme rien, elle et GFS le lisent tel quel ; GFS rechargé montre les mêmes modèles, dossiers et étoiles, sans rien écrire dans `GFS_Filing`.
 //   8. Un document neuf pour l'app (ses tables retirées) : la vraie app crée ses tables SOUS LES NOMS ANGLAIS (aucun nom d'avant), la personne enregistre un modèle, GFS le liste et le rouvre.
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
@@ -24,8 +24,8 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const { t } = createI18n(lang);
 const TAG = `noms-anglais-${lang}-${scheme}`;
 const ME = 'essai@example.com';
-const BIN = 'GFS_Corbeille';
-const FILING = 'GFS_Rangement';
+const BIN = 'GFS_Trash';
+const FILING = 'GFS_Filing';
 const APP_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/apps/publipostage/`;
 // Le registre de l'app (b32f450, inchangé à a6465c1) pour les tables que GFS lit : [table d'avant, table anglaise, [[colonne d'avant, colonne anglaise]…]].
 const RENAMES = [
@@ -53,7 +53,7 @@ const reload = async run => {
   await run.page.waitForTimeout(1000);
 };
 
-// Un premier favori : GFS connaît la personne que Grist donne (avec l'accord de la personne, la table `GFS_Rangement` naît).
+// Un premier favori : GFS connaît la personne que Grist donne (avec l'accord de la personne, la table `GFS_Filing` naît).
 async function pinFirst(run, name) {
   const { frame } = run;
   await rowOf(frame, name).hover();
@@ -112,7 +112,7 @@ async function playPin(run) {
   const mine = (await run.rest.rows(PREFS)).filter(row => row.TemplateId === target.id);
   check('la ligne s\'écrit dans la table de l\'app renommée, par ses noms anglais (la personne, le modèle, l\'étoile)', mine.length === 1 && mine[0].User === ME && mine[0].Pinned === true, mine);
   const lines = (await run.rest.rows(FILING)).filter(row => row.App === 'publipostage' && row.Fichier === String(target.id));
-  check('GFS_Rangement ne garde rien pour ce modèle : celui de l\'app fait foi', lines.length === 0, lines);
+  check('GFS_Filing ne garde rien pour ce modèle : celui de l\'app fait foi', lines.length === 0, lines);
   await reload(run);
   await goHome(frame);
   check('l\'étoile se relit au rechargement', await rowOf(frame, 'Quittance de loyer').locator('.rb.pin.on').count() === 1);
@@ -238,7 +238,7 @@ async function playHostedKeepsNames(run) {
   check('GFS rechargé montre les mêmes modèles, les mêmes dossiers et les mêmes étoiles', same(sorted(await fileNames(frame)), before) &&
     same(await frame.locator('.ls-row.folder .t').allInnerTexts(), foldersBefore) && await frame.locator('.ls-row .rb.pin.on').count() === starBefore, [sorted(await fileNames(frame)), before]);
   const lines = (await run.rest.rows(FILING)).filter(row => row.App === 'publipostage');
-  check('GFS_Rangement ne garde rien de Publipostage+ : le rangement de l\'app fait foi', lines.length === 0, lines);
+  check('GFS_Filing ne garde rien de Publipostage+ : le rangement de l\'app fait foi', lines.length === 0, lines);
   await shot(frame, `${TAG}-3-noms-d-avant-dans-gfs`);
 }
 

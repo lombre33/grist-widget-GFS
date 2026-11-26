@@ -1,4 +1,4 @@
-// La corbeille des fichiers des apps, sans Grist (js/files/gfs-trash.js, contrats 2.4 `suppression` et 6.7) : la recette du manifeste, l'instantané d'une ligne, l'entrée de `GFS_Corbeille`, sa lecture
+// La corbeille des fichiers des apps, sans Grist (js/files/gfs-trash.js, contrats 2.4 `suppression` et 6.7) : la recette du manifeste, l'instantané d'une ligne, l'entrée de `GFS_Trash`, sa lecture
 // pour l'explorateur et ce que la restauration remet. Ce que Grist fait de ces écritures se mesure dans le labo (labo/run-corbeille-apps.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -51,20 +51,20 @@ test('l\'entrée de la corbeille : ce que l\'explorateur montre, le geste (la da
   const snapshot = snapshotOf(models(), 0, COLUMNS);
   const record = entryRecord({ id: 'ab12', app: 'publipostage', spec, file: { id: 1, name: 'Convocation', type: 'document', ts: 100, by: 'ana@exemple.org' }, snapshot, now: 1762000000999, author: 'paul@exemple.fr' });
   assert.deepEqual(Object.keys(record), BIN_COLUMN_IDS);
-  assert.deepEqual({ ...record, Instantane: undefined }, {
-    Identifiant: 'ab12', App: 'publipostage', Table: 'Publipostage_Modeles', FichierId: '1', Nom: 'Convocation', Type: 'document', Date: 100, Auteur: 'ana@exemple.org',
-    SupprimeLe: 1762000000, SupprimePar: 'paul@exemple.fr', Instantane: undefined,
+  assert.deepEqual({ ...record, Snapshot: undefined }, {
+    EntryId: 'ab12', App: 'publipostage', Table: 'Publipostage_Modeles', FileId: '1', Name: 'Convocation', Type: 'document', Date: 100, Author: 'ana@exemple.org',
+    DeletedAt: 1762000000, DeletedBy: 'paul@exemple.fr', Snapshot: undefined,
   });
-  assert.deepEqual(parseSnapshot(record.Instantane), snapshot);
+  assert.deepEqual(parseSnapshot(record.Snapshot), snapshot);
   const bare = entryRecord({ id: 'cd34', app: 'publipostage', spec, file: { id: 2, name: 'X', type: '', ts: null, by: '' }, snapshot, now: 5000, author: '' });
-  assert.deepEqual([bare.Date, bare.Auteur, bare.SupprimePar, bare.Type], [null, '', '', '']);
+  assert.deepEqual([bare.Date, bare.Author, bare.DeletedBy, bare.Type], [null, '', '', '']);
 });
 
-// `GFS_Corbeille` telle que `fetchTable` la rend, avec deux fichiers de Publipostage+, un d'une autre app et un d'une autre table.
+// `GFS_Trash` telle que `fetchTable` la rend, avec deux fichiers de Publipostage+, un d'une autre app et un d'une autre table.
 const bin = () => ({
   id: [7, 8, 9, 10], App: ['publipostage', 'publipostage', 'automation', 'publipostage'], Table: ['Publipostage_Modeles', 'Publipostage_Modeles', 'Publipostage_Modeles', 'Publipostage_Autre'],
-  FichierId: ['1', '5', '1', '1'], Nom: ['Convocation', 'Bilan', 'Autre app', 'Autre table'], Type: ['document', 'grille', '', ''], Date: [100, 500, null, null], Auteur: ['ana@exemple.org', '', '', ''],
-  SupprimeLe: [1762000000, 1762000100, 1762000200, 1762000300], SupprimePar: ['paul@exemple.fr', '', '', ''],
+  FileId: ['1', '5', '1', '1'], Name: ['Convocation', 'Bilan', 'Autre app', 'Autre table'], Type: ['document', 'grille', '', ''], Date: [100, 500, null, null], Author: ['ana@exemple.org', '', '', ''],
+  DeletedAt: [1762000000, 1762000100, 1762000200, 1762000300], DeletedBy: ['paul@exemple.fr', '', '', ''],
 });
 
 test('la corbeille relue pour l\'explorateur : seulement les entrées de l\'app et de la table, dans la forme de `readFiles` ; l\'identifiant du fichier est celui de l\'app, le numéro de ligne celui de la corbeille', () => {

@@ -86,7 +86,7 @@ check('un appel avec `id` reçoit { retenu: true } ; celui sans `id` n\'a reçu 
 say('chez GFS :', await kept());
 check('GFS garde les clés sous gfs.stockage.<id>.<clé>, dans son propre navigateur', JSON.stringify(await kept()) === JSON.stringify({ 'gfs.stockage.sonde-s.pp_page_zoom': '{"m1":120}', 'gfs.stockage.sonde-s.pp_theme': 'dark' }), await kept());
 const after = await documentState();
-check('rien n\'a été écrit dans le document (ni table, ni ligne de GFS_Rangement)', JSON.stringify(after) === JSON.stringify(before), { avant: [before.tables, before.rows], apres: [after.tables, after.rows] });
+check('rien n\'a été écrit dans le document (ni table, ni ligne de GFS_Filing)', JSON.stringify(after) === JSON.stringify(before), { avant: [before.tables, before.rows], apres: [after.tables, after.rows] });
 
 // ---------- 3. relire ----------
 seen = await reloadApp(app);

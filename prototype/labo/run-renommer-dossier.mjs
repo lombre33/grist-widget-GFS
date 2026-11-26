@@ -33,8 +33,8 @@ const PLACE = 'GFS_Placement';
 const unexpected = run => run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
 const refused = answer => answer.status >= 400 || /error|refus|denied|forbidden|not allowed|blocked/i.test(answer.text || '');
 const goHome = frame => goTo(frame, new RegExp(`^\\s*${t('ex.me')}\\s*\\d*\\s*$`));
-const readers = async (run, name) => (await fileRow(run, name))?.GFS_Lecteurs;
-const dossierOf = async (run, name) => (await fileRow(run, name))?.GFS_Dossier;
+const readers = async (run, name) => (await fileRow(run, name))?.GFS_Readers;
+const dossierOf = async (run, name) => (await fileRow(run, name))?.GFS_Folder;
 
 // Les gestes de la personne : F2 puis le nouveau nom, Ctrl+X puis Ctrl+V dans un dossier, Suppr.
 async function renameFolder(run, frame, from, to) {
@@ -69,7 +69,7 @@ async function playOwner(run) {
   check('la colonne d\'aide GFS_Ids (les numéros des lignes d\'état du dossier de chaque fichier) est dans la table des fichiers', columns.includes('GFS_Ids'), columns);
   const facture = await fileRow(run, 'Facture.pdf');
   const devis = await fileRow(run, 'Devis.pdf');
-  let answer = await apply(run, [['UpdateRecord', FILES, facture.id, { GFS_Auteur: OWNER }], ['UpdateRecord', FILES, devis.id, { GFS_Auteur: OWNER }]]);
+  let answer = await apply(run, [['UpdateRecord', FILES, facture.id, { GFS_Author: OWNER }], ['UpdateRecord', FILES, devis.id, { GFS_Author: OWNER }]]);
   check('un propriétaire écrit l\'auteur des deux fichiers importés avant l\'activation', answer.status === 200, answer.text);
   const named = {};
   for (const [name, id] of [['Contrat.pdf', 'lab-contrat'], ['Archive.pdf', 'lab-archive'], ['Ancien.pdf', 'lab-ancien'], ['F1.pdf', 'lab-f1'], ['F2.pdf', 'lab-f2'], ['Fb1.pdf', 'lab-fb1'], ['Fb2.pdf', 'lab-fb2'],
@@ -90,17 +90,17 @@ async function playOwner(run) {
   const contratsId = await folderId(run, OWNER, 'Contrats');
   check('le dossier a une ligne d\'état à lui dans le rangement (son numéro est celui que le partage porte)', contratsId !== null, await stateRows(run, OWNER));
   let shares = await sharesOn(run, idTarget(OWNER, contratsId));
-  check('la ligne de partage vise `dossier:moi:<adresse>//<numéro>`, valide, pour l\'éditeur', shares.length === 1 && shares[0].Personne === EDITOR && shares[0].Valide === true, await rows(run, SHARES));
+  check('la ligne de partage vise `dossier:moi:<adresse>//<numéro>`, valide, pour l\'éditeur', shares.length === 1 && shares[0].Person === EDITOR && shares[0].Valid === true, await rows(run, SHARES));
   check('aucune ligne de partage ne porte encore le chemin « Contrats »', (await sharesOn(run, personal(OWNER, 'Contrats'))).length === 0);
   check('l\'éditeur lit les fichiers du dossier et du sous-dossier', has(await readers(run, 'Facture.pdf'), EDITOR) && has(await readers(run, 'Devis.pdf'), EDITOR) && has(await readers(run, 'Contrat.pdf'), EDITOR));
   const shareRowId = shares[0].id;
 
   say('--- 3. F2 : « Contrats » devient « Marchés », le partage reste ---');
   await renameFolder(run, frame, 'Contrats', 'Marchés');
-  check('la ligne d\'état garde son numéro et change de chemin sur place', (await stateRows(run, OWNER)).some(row => row.id === contratsId && row.Dossier === 'Marchés')
-    && !(await stateRows(run, OWNER)).some(row => row.Dossier === 'Contrats'), await stateRows(run, OWNER));
+  check('la ligne d\'état garde son numéro et change de chemin sur place', (await stateRows(run, OWNER)).some(row => row.id === contratsId && row.Folder === 'Marchés')
+    && !(await stateRows(run, OWNER)).some(row => row.Folder === 'Contrats'), await stateRows(run, OWNER));
   shares = await sharesOn(run, idTarget(OWNER, contratsId));
-  check('la ligne de partage n\'a pas changé (même ligne, même cible, valide)', shares.length === 1 && shares[0].id === shareRowId && shares[0].Valide === true, shares);
+  check('la ligne de partage n\'a pas changé (même ligne, même cible, valide)', shares.length === 1 && shares[0].id === shareRowId && shares[0].Valid === true, shares);
   check('les fichiers sont dans « Marchés » et « Marchés/Sous », lus de l\'éditeur comme avant', await dossierOf(run, 'Facture.pdf') === 'Marchés' && await dossierOf(run, 'Devis.pdf') === 'Marchés/Sous'
     && has(await readers(run, 'Facture.pdf'), EDITOR) && has(await readers(run, 'Devis.pdf'), EDITOR), [await dossierOf(run, 'Facture.pdf'), await readers(run, 'Devis.pdf')]);
   await openFolderShare(frame, 'Marchés');
@@ -109,13 +109,13 @@ async function playOwner(run) {
 
   say('--- 4. Ctrl+X puis Ctrl+V : « Marchés » va dans « Archives », le partage reste ---');
   await moveFolder(run, frame, toasts, 'Marchés', 'Archives');
-  check('la ligne d\'état garde son numéro : « Archives/Marchés »', (await stateRows(run, OWNER)).some(row => row.id === contratsId && row.Dossier === 'Archives/Marchés'), await stateRows(run, OWNER));
+  check('la ligne d\'état garde son numéro : « Archives/Marchés »', (await stateRows(run, OWNER)).some(row => row.id === contratsId && row.Folder === 'Archives/Marchés'), await stateRows(run, OWNER));
   check('le partage est le même et l\'éditeur lit encore tout (le sous-dossier suit)', (await sharesOn(run, idTarget(OWNER, contratsId))).length === 1 && await dossierOf(run, 'Devis.pdf') === 'Archives/Marchés/Sous'
     && has(await readers(run, 'Facture.pdf'), EDITOR) && has(await readers(run, 'Devis.pdf'), EDITOR), await dossierOf(run, 'Devis.pdf'));
   check('« Archive.pdf », resté dans « Archives », n\'est pas lu de l\'éditeur (le dossier parent n\'est pas partagé)', !has(await readers(run, 'Archive.pdf'), EDITOR));
 
   say('--- 5. un partage posé à l\'ancienne mode (le chemin) est converti au premier renommage ---');
-  answer = await apply(run, [['AddRecord', SHARES, null, { Cible: personal(OWNER, 'Vieux'), Personne: VIEWER, Droit: 'lecture' }]]);
+  answer = await apply(run, [['AddRecord', SHARES, null, { Target: personal(OWNER, 'Vieux'), Person: VIEWER, Right: 'lecture' }]]);
   check('le propriétaire pose le partage à l\'ancienne mode (API)', answer.status === 200, answer.text);
   check('la formule de Grist lit encore ce partage : le lecteur lit « Ancien.pdf »', has(await readers(run, 'Ancien.pdf'), VIEWER), await readers(run, 'Ancien.pdf'));
   check('« Vieux » n\'a pas de ligne d\'état', await folderId(run, OWNER, 'Vieux') === null);
@@ -128,7 +128,7 @@ async function playOwner(run) {
   check('le lecteur lit toujours « Ancien.pdf »', has(await readers(run, 'Ancien.pdf'), VIEWER), await readers(run, 'Ancien.pdf'));
 
   say('--- 6. un dossier déplacé sur un dossier qui existe déjà s\'y fond : le dossier d\'arrivée garde ses partages ---');
-  answer = await apply(run, [['AddRecord', SHARES, null, { Cible: personal(OWNER, 'Dest/Fus'), Personne: EDITOR, Droit: 'lecture' }]]);
+  answer = await apply(run, [['AddRecord', SHARES, null, { Target: personal(OWNER, 'Dest/Fus'), Person: EDITOR, Right: 'lecture' }]]);
   check('« Dest/Fus » est partagé à l\'éditeur, à l\'ancienne mode', answer.status === 200, answer.text);
   await fresh();
   await openFolderShare(frame, 'Fus');
@@ -146,7 +146,7 @@ async function playOwner(run) {
     && !has(await readers(run, 'F1.pdf'), VIEWER), [await readers(run, 'F1.pdf'), await readers(run, 'F2.pdf')]);
   check('la phrase dit que le dossier existait déjà et qu\'un partage est retiré', said.includes(t('ex.folderMerged', { name: 'Fus', n: 1 })), said);
   say('(deux : un dossier à l\'ancienne mode qui se fond dans un dossier qui existe)');
-  answer = await apply(run, [['AddRecord', SHARES, null, { Cible: personal(OWNER, 'Fb'), Personne: VIEWER, Droit: 'lecture' }]]);
+  answer = await apply(run, [['AddRecord', SHARES, null, { Target: personal(OWNER, 'Fb'), Person: VIEWER, Right: 'lecture' }]]);
   check('« Fb » est partagé au lecteur, à l\'ancienne mode', answer.status === 200 && has(await readers(run, 'Fb1.pdf'), VIEWER), answer.text);
   await fresh();
   await moveFolder(run, frame, toasts, 'Fb', 'Dest');
@@ -154,20 +154,20 @@ async function playOwner(run) {
     (await sharesOn(run, personal(OWNER, 'Fb'))).length === 0 && !has(await readers(run, 'Fb1.pdf'), VIEWER) && !has(await readers(run, 'Fb2.pdf'), VIEWER), await rows(run, SHARES));
 
   say('--- 7. un dossier montré par un lien se renomme (le lien suit) et ne se supprime pas ---');
-  answer = await apply(run, [['AddRecord', FILING, null, { Utilisateur: OWNER, App: '', Fichier: '', Dossier: 'Lie', Favori: false }]]);
-  const lieId = (await stateRows(run, OWNER)).find(row => row.Dossier === 'Lie')?.id;
-  answer = await apply(run, [['AddRecord', PLACE, null, { Espace: 'ventes', Dossier: '', Lien: idTarget(OWNER, lieId), Partages: '' }]]);
+  answer = await apply(run, [['AddRecord', FILING, null, { User: OWNER, App: '', File: '', Folder: 'Lie', Favorite: false }]]);
+  const lieId = (await stateRows(run, OWNER)).find(row => row.Folder === 'Lie')?.id;
+  answer = await apply(run, [['AddRecord', PLACE, null, { Space: 'ventes', Folder: '', Link: idTarget(OWNER, lieId), Shares: '' }]]);
   check('le propriétaire pose un lien sur « Lie » (par son numéro)', answer.status === 200, answer.text);
   await fresh();
   await deleteFolder(run, frame, 'Lie');
   check('Suppr : le dossier reste (la phrase demande de retirer le lien d\'abord), sa ligne et le lien aussi', (await toasts()).includes(t('ex.folderLinked')) && await folderId(run, OWNER, 'Lie') === lieId
-    && ((await rows(run, PLACE)) || []).some(row => row.Lien === idTarget(OWNER, lieId)), await toasts());
+    && ((await rows(run, PLACE)) || []).some(row => row.Link === idTarget(OWNER, lieId)), await toasts());
   await renameFolder(run, frame, 'Lie', 'Lie2');
-  check('F2 : le dossier change de nom, le lien reste (il porte le numéro)', await folderId(run, OWNER, 'Lie2') === lieId && ((await rows(run, PLACE)) || []).some(row => row.Lien === idTarget(OWNER, lieId)),
+  check('F2 : le dossier change de nom, le lien reste (il porte le numéro)', await folderId(run, OWNER, 'Lie2') === lieId && ((await rows(run, PLACE)) || []).some(row => row.Link === idTarget(OWNER, lieId)),
     await rows(run, PLACE));
 
   say('--- 8. un dossier supprimé emporte ses partages ; le numéro que Grist redonne n\'ouvre rien ---');
-  answer = await apply(run, [['AddRecord', FILING, null, { Utilisateur: OWNER, App: '', Fichier: '', Dossier: 'Temp', Favori: false }]]);
+  answer = await apply(run, [['AddRecord', FILING, null, { User: OWNER, App: '', File: '', Folder: 'Temp', Favorite: false }]]);
   await fresh();
   await openFolderShare(frame, 'Temp');
   await pickWho(frame, VIEWER);
@@ -177,7 +177,7 @@ async function playOwner(run) {
   await deleteFolder(run, frame, 'Temp');
   check('Suppr : la ligne d\'état et le partage partent dans le même lot, la phrase compte le partage', await folderId(run, OWNER, 'Temp') === null && (await sharesOn(run, idTarget(OWNER, tempId))).length === 0
     && (await toasts()).includes(t('ex.folderDeletedShared', { name: 'Temp', n: 1 })), await toasts());
-  answer = await apply(run, [['AddRecord', FILING, null, { Utilisateur: OWNER, App: '', Fichier: '', Dossier: 'Reprise', Favori: false }]]);
+  answer = await apply(run, [['AddRecord', FILING, null, { User: OWNER, App: '', File: '', Folder: 'Reprise', Favorite: false }]]);
   const repriseId = await folderId(run, OWNER, 'Reprise');
   say(`(le dossier « Reprise » reçoit le numéro ${repriseId} ; « Temp » avait le ${tempId} : ${repriseId === tempId ? 'Grist l\'a redonné, comme mesuré' : 'pas redonné cette fois'})`);
   answer = await apply(run, [filing(OWNER, named['Reprise.pdf'], 'Reprise')]);
@@ -192,7 +192,7 @@ async function playOwner(run) {
   const orphan = await sharesOn(run, idTarget(OWNER, handId));
   say(`(la ligne ${handId} supprimée à la main : ${answer.status === 200 ? 'acceptée' : 'refusée'} ; le partage reste, orphelin : ${orphan.length} ligne ; « Reprise.pdf » n'est plus lu du lecteur : ${!has(await readers(run, 'Reprise.pdf'), VIEWER)})`);
   const lastFile = await addFile(run, 'Suite.pdf', 'lab-suite', OWNER);
-  answer = await apply(run, [['AddRecord', FILING, null, { Utilisateur: OWNER, App: '', Fichier: '', Dossier: 'Suite', Favori: false }], filing(OWNER, lastFile, 'Suite')]);
+  answer = await apply(run, [['AddRecord', FILING, null, { User: OWNER, App: '', File: '', Folder: 'Suite', Favorite: false }], filing(OWNER, lastFile, 'Suite')]);
   const suiteId = await folderId(run, OWNER, 'Suite');
   say(`(le dossier « Suite » reçoit le numéro ${suiteId} ; le partage orphelin visait le ${handId} : le lecteur ${has(await readers(run, 'Suite.pdf'), VIEWER) ? 'LIT' : 'ne lit pas'} « Suite.pdf » — reste à dire à la personne)`);
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
@@ -206,23 +206,23 @@ async function playEditor(run) {
   const mine = await addFile(run, 'Fichier editeur.pdf', 'lab-editeur', EDITOR);
   let answer = await apply(run, [filing(EDITOR, mine, 'Mien')]);
   check('il range son fichier dans « Mien » (son rangement est à lui)', answer.status === 200, answer.text);
-  answer = await apply(run, [['AddRecord', SHARES, null, { Cible: personal(EDITOR, 'Mien'), Personne: VIEWER, Droit: 'lecture' }]]);
+  answer = await apply(run, [['AddRecord', SHARES, null, { Target: personal(EDITOR, 'Mien'), Person: VIEWER, Right: 'lecture' }]]);
   const legacy = (await sharesOn(run, personal(EDITOR, 'Mien')))[0];
-  check('il partage « Mien » au lecteur à l\'ancienne mode : ligne valide sans être propriétaire du document', answer.status === 200 && legacy && legacy.Valide === true, answer.text);
+  check('il partage « Mien » au lecteur à l\'ancienne mode : ligne valide sans être propriétaire du document', answer.status === 200 && legacy && legacy.Valid === true, answer.text);
   frame = await reopen(run);
   await renameFolder(run, frame, 'Mien', 'Mien2');
   const mienId = await folderId(run, EDITOR, 'Mien2');
   check('il a sa ligne d\'état (le rangement de chacun est à lui)', mienId !== null, await stateRows(run, EDITOR));
   const converted = await sharesOn(run, idTarget(EDITOR, mienId));
   check('la conversion passe par lui : la ligne est au numéro, valide, plus aucune au chemin (Grist le tient pour administrateur du partage de son dossier)',
-    converted.length === 1 && converted[0].Valide === true && (await sharesOn(run, personal(EDITOR, 'Mien'))).length === 0, await rows(run, SHARES));
+    converted.length === 1 && converted[0].Valid === true && (await sharesOn(run, personal(EDITOR, 'Mien'))).length === 0, await rows(run, SHARES));
   check('le lecteur lit toujours son fichier', has(await readers(run, 'Fichier editeur.pdf'), VIEWER), await readers(run, 'Fichier editeur.pdf'));
   check('la console de GFS reste muette', unexpected(run).length === 0, unexpected(run));
 
   say('--- éditeur : ce qu\'il ne peut pas faire par l\'API de Grist, sans GFS ---');
-  answer = await apply(run, [['AddRecord', FILING, null, { Utilisateur: OWNER, App: '', Fichier: '', Dossier: 'Pirate', Favori: false }]]);
-  check('il ne peut PAS écrire une ligne d\'état au nom du propriétaire', refused(answer) && !(await stateRows(run, OWNER)).some(row => row.Dossier === 'Pirate'), answer.text);
-  answer = await apply(run, [['UpdateRecord', SHARES, state.shareRowId, { Cible: idTarget(OWNER, 999) }]]);
+  answer = await apply(run, [['AddRecord', FILING, null, { User: OWNER, App: '', File: '', Folder: 'Pirate', Favorite: false }]]);
+  check('il ne peut PAS écrire une ligne d\'état au nom du propriétaire', refused(answer) && !(await stateRows(run, OWNER)).some(row => row.Folder === 'Pirate'), answer.text);
+  answer = await apply(run, [['UpdateRecord', SHARES, state.shareRowId, { Target: idTarget(OWNER, 999) }]]);
   const ownerShare = (await sharesOn(run, idTarget(OWNER, state.contratsId)))[0];
   check('il ne peut PAS changer la cible du partage du dossier du propriétaire (refusé, la ligne reste telle quelle)', refused(answer) && ownerShare && ownerShare.id === state.shareRowId, [answer.text, ownerShare]);
   answer = await apply(run, [['RemoveRecord', SHARES, state.shareRowId]]);
@@ -231,10 +231,10 @@ async function playEditor(run) {
   check('il ne peut PAS réécrire la formule de GFS_Ids (structure fermée)', refused(answer), answer.text);
   answer = await apply(run, [['RemoveColumn', FILES, 'GFS_Ids']]);
   check('il ne peut PAS retirer la colonne GFS_Ids', refused(answer), answer.text);
-  answer = await apply(run, [['AddRecord', SHARES, null, { Cible: idTarget(OWNER, state.contratsId), Personne: EDITOR, Droit: 'admin' }]]);
-  const forgedAdmin = ((await rows(run, SHARES)) || []).filter(row => String(row.Auteur).toLowerCase() === EDITOR && row.Cible === idTarget(OWNER, state.contratsId));
-  check('un faux partage « admin » au dossier du propriétaire (par son numéro) est refusé ou invalide', refused(answer) || forgedAdmin.every(row => row.Valide === false), [answer.status, forgedAdmin]);
-  answer = await apply(run, [['AddRecord', FILING, null, { Utilisateur: EDITOR, App: '', Fichier: '', Dossier: 'Archives/Marchés', Favori: false }]]);
+  answer = await apply(run, [['AddRecord', SHARES, null, { Target: idTarget(OWNER, state.contratsId), Person: EDITOR, Right: 'admin' }]]);
+  const forgedAdmin = ((await rows(run, SHARES)) || []).filter(row => String(row.Auteur).toLowerCase() === EDITOR && row.Target === idTarget(OWNER, state.contratsId));
+  check('un faux partage « admin » au dossier du propriétaire (par son numéro) est refusé ou invalide', refused(answer) || forgedAdmin.every(row => row.Valid === false), [answer.status, forgedAdmin]);
+  answer = await apply(run, [['AddRecord', FILING, null, { User: EDITOR, App: '', File: '', Folder: 'Archives/Marchés', Favorite: false }]]);
   const forgedId = await folderId(run, EDITOR, 'Archives/Marchés');
   check('il peut se donner une ligne d\'état à son nom, au même chemin que le dossier du propriétaire (son rangement est à lui) : elle a son numéro à elle', answer.status === 200 && forgedId !== null
     && forgedId !== state.contratsId, [answer.text, forgedId, state.contratsId]);
@@ -260,19 +260,19 @@ async function playAfter(run) {
   const state = JSON.parse(readFileSync(STATE, 'utf8'));
   say('--- le propriétaire relit ---');
   const shares = (await rows(run, SHARES)) || [];
-  const forged = shares.filter(row => String(row.Auteur).toLowerCase() === EDITOR && row.Cible === idTarget(OWNER, state.contratsId));
-  check('le faux partage de l\'éditeur est invalide s\'il est là', forged.every(row => row.Valide === false), forged);
-  check('le vrai partage de « Marchés » est intact', (await sharesOn(run, idTarget(OWNER, state.contratsId))).some(row => row.id === state.shareRowId && row.Personne === EDITOR && row.Valide === true));
-  const answer = await apply(run, [['AddRecord', SHARES, null, { Cible: idTarget(OWNER, state.forgedId), Personne: VIEWER, Droit: 'lecture' }]]);
+  const forged = shares.filter(row => String(row.Auteur).toLowerCase() === EDITOR && row.Target === idTarget(OWNER, state.contratsId));
+  check('le faux partage de l\'éditeur est invalide s\'il est là', forged.every(row => row.Valid === false), forged);
+  check('le vrai partage de « Marchés » est intact', (await sharesOn(run, idTarget(OWNER, state.contratsId))).some(row => row.id === state.shareRowId && row.Person === EDITOR && row.Valid === true));
+  const answer = await apply(run, [['AddRecord', SHARES, null, { Target: idTarget(OWNER, state.forgedId), Person: VIEWER, Right: 'lecture' }]]);
   check('le propriétaire pose (par erreur ou par ruse) un partage qui vise le numéro de la ligne d\'état de l\'éditeur', answer.status === 200, answer.text);
   const archive = await fileRow(run, 'Archive.pdf');
   const facture = await fileRow(run, 'Facture.pdf');
   check('ce partage n\'ouvre rien : la ligne d\'état de l\'éditeur ne compte pas pour les fichiers du propriétaire (« Facture.pdf » n\'est pas lu du lecteur)',
-    !has(facture.GFS_Lecteurs, VIEWER) && !has(archive.GFS_Lecteurs, VIEWER), [facture.GFS_Lecteurs, archive.GFS_Lecteurs]);
+    !has(facture.GFS_Readers, VIEWER) && !has(archive.GFS_Readers, VIEWER), [facture.GFS_Readers, archive.GFS_Readers]);
   const counted = (facture.GFS_Ids || []).slice(1).map(pair => pair[1]);
   check('GFS_Ids de « Facture.pdf » ne compte que les lignes d\'état du propriétaire (le numéro de « Marchés », pas celui de la ligne de l\'éditeur au même chemin)',
     counted.includes(state.contratsId) && !counted.includes(state.forgedId), facture.GFS_Ids);
-  const mine = (await stateRows(run, EDITOR)).map(row => row.Dossier);
+  const mine = (await stateRows(run, EDITOR)).map(row => row.Folder);
   check('le propriétaire lit le rangement de chacun : les lignes d\'état de l\'éditeur y sont', mine.includes('Mien2') && mine.includes('Archives/Marchés'), mine);
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
 }

@@ -50,16 +50,16 @@ try {
   const { page } = source;
   let frame = source.frame; // reprise après la fermeture de la fenêtre du premier envoi (Grist recharge la page : les règles de GFS_Synchro)
   await importSamples(source);
-  const devisId = (await source.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Devis.pdf').Identifiant;
+  const devisId = (await source.rest.rows('GFS_Files')).find(row => row.Name === 'Devis.pdf').FileId;
   const target = await openGfs(context, { lang });
   await startEngine(target.frame);
   // Un passage du côté qui reçoit (la boucle du moteur : ce que GFS fera de lui-même à l'ouverture d'une page) ; l'envoyeur, lui, est GFS, qui rattrape tout seul.
   const pass = async () => {
     await target.frame.evaluate(() => window.__s.consolidateAll({ reread: true }));
-    return target.rest.rows('GFS_Recus');
+    return target.rest.rows('GFS_Received');
   };
   const until = async (test, tries = 60) => { let rows = []; for (let i = 0; i < tries; i += 1) { rows = await pass(); if (test(rows)) return rows; await page.waitForTimeout(1500); } return rows; };
-  const has = (rows, name) => rows.some(row => row.Nom === name && row.Contenu);
+  const has = (rows, name) => rows.some(row => row.Name === name && row.Content);
 
   say('--- 1. une copie qui se met à jour : le lien reste après l\'envoi ---');
   await openTab(frame, 'Facture.pdf');
@@ -70,7 +70,7 @@ try {
   const code = await frame.locator('[data-fk="so-code"]').inputValue();
   const invitation = await target.frame.evaluate(value => window.__try(() => window.__s.readInvitation(value)), code);
   const made = await target.frame.evaluate(invite => window.__try(async () => {
-    const reception = await window.__s.createReception(invite, invite.tables.map(tb => ({ tb, dest: 'GFS_Recus' })), { reserve: true, options: { archive: true } });
+    const reception = await window.__s.createReception(invite, invite.tables.map(tb => ({ tb, dest: 'GFS_Received' })), { reserve: true, options: { archive: true } });
     return { journal: reception.journal, note: reception.note };
   }), invitation.value);
   check('l\'autre document lit l\'invitation et crée sa réception (en archive)', invitation.ok && made.ok, { invitation, made });
@@ -86,7 +86,7 @@ try {
   await shot(frame, '1-fini');
   check('le lien reste chez l\'envoyeur : un webhook et la table technique', (await webhooks(source)) === 1 && (await source.rest.tables()).includes('GFS_Synchro'), { hooks: await webhooks(source), tables: await source.rest.tables() });
   let rows = await until(rows => has(rows, 'Facture.pdf'));
-  check('Facture est chez l\'autre, avec son contenu, et elle seule', has(rows, 'Facture.pdf') && rows.length === 1, rows.map(row => row.Nom));
+  check('Facture est chez l\'autre, avec son contenu, et elle seule', has(rows, 'Facture.pdf') && rows.length === 1, rows.map(row => row.Name));
   await frame.locator('[data-fk="so-close"]').click();
   await reopenedFrame(source);
   frame = source.frame;
@@ -106,13 +106,13 @@ try {
   await frame.waitForFunction(() => document.querySelector('.mod.sh .rr[data-link]').dataset.level === 'live', null, { timeout: 30000 });
   check('aucune fenêtre d\'envoi ne s\'est ouverte (pas de nouveau code)', (await frame.locator('.mod.so').count()) === 0);
   rows = await until(rows => has(rows, 'Devis.pdf'));
-  check('Devis est arrivé chez l\'autre avec son contenu', has(rows, 'Devis.pdf'), rows.map(row => row.Nom));
+  check('Devis est arrivé chez l\'autre avec son contenu', has(rows, 'Devis.pdf'), rows.map(row => row.Name));
 
   say('--- 4. « Arrêter la copie » : le fichier sort du partage, la copie reste ---');
   await pickLevel(frame, t('so.level.stop'));
   await frame.waitForFunction(() => document.querySelector('.mod.sh .rr[data-link]').dataset.level === 'none', null, { timeout: 30000 });
   rows = await until(() => false, 6);
-  check('Devis est resté chez l\'autre, avec son contenu (réception en archive)', has(rows, 'Devis.pdf') && rows.filter(row => row.Nom === 'Devis.pdf').length === 1, rows.map(row => row.Nom));
+  check('Devis est resté chez l\'autre, avec son contenu (réception en archive)', has(rows, 'Devis.pdf') && rows.filter(row => row.Name === 'Devis.pdf').length === 1, rows.map(row => row.Name));
 
   say('--- 5. « Une copie, une fois » : il repart puis sort tout seul ---');
   await pickLevel(frame, t('so.level.once'));
@@ -128,7 +128,7 @@ try {
     if (!gone) await page.waitForTimeout(1500);
   }
   rows = await until(() => false, 4);
-  check('Devis est sorti de la condition tout seul, et reste chez l\'autre', gone && has(rows, 'Devis.pdf'), { gone, rows: rows.map(row => row.Nom) });
+  check('Devis est sorti de la condition tout seul, et reste chez l\'autre', gone && has(rows, 'Devis.pdf'), { gone, rows: rows.map(row => row.Name) });
   await closeAll(page, frame);
 
   say('--- 6. « Gérer les partages > Autres documents » ---');
@@ -152,8 +152,8 @@ try {
   for (let i = 0; i < 30 && !ended; i += 1) { ended = (await webhooks(source)) === 0 && !(await source.rest.tables()).includes('GFS_Synchro'); if (!ended) await page.waitForTimeout(1000); }
   check('plus de webhook ni de table technique chez l\'envoyeur', ended, { hooks: await webhooks(source), tables: await source.rest.tables() });
   rows = await until(() => false, 3);
-  check('les deux PDF restent chez l\'autre', has(rows, 'Facture.pdf') && has(rows, 'Devis.pdf'), rows.map(row => row.Nom));
-  check('les deux PDF de l\'envoyeur sont intacts', (await source.rest.rows('GFS_Fichiers')).map(row => row.Nom).sort().join() === 'Devis.pdf,Facture.pdf');
+  check('les deux PDF restent chez l\'autre', has(rows, 'Facture.pdf') && has(rows, 'Devis.pdf'), rows.map(row => row.Name));
+  check('les deux PDF de l\'envoyeur sont intacts', (await source.rest.rows('GFS_Files')).map(row => row.Name).sort().join() === 'Devis.pdf,Facture.pdf');
   await closeAll(page, frame);
   await closeAll(page, frame);
   check('aucune erreur de GFS dans la console', unexpected(source).length === 0 && unexpected(target).length === 0, [...unexpected(source), ...unexpected(target)]);

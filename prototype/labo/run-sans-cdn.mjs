@@ -23,7 +23,7 @@ const lab = await startLab({ lang, colorScheme: scheme, patches: [{ chemin: '/pr
 const { page } = lab;
 await lab.fitPanel(undefined, 700, 400);
 const frame = lab.frame;
-// Ce que le document retient (la table `GFS_Rangement`, contrats 7.4) : la valeur de sa ligne réservée, ou rien tant qu'aucun geste ne l'a fait naître.
+// Ce que le document retient (la table `GFS_Filing`, contrats 7.4) : la valeur de sa ligne réservée, ou rien tant qu'aucun geste ne l'a fait naître.
 const stored = async () => (await lab.rangement(frame)).value;
 // La première écriture demande l'accord de la personne pour créer la table ; elle le donne, à la vraie souris.
 const agree = async () => {

@@ -20,9 +20,9 @@ test('levelOfNote : la note « GFS : <niveau> », sans casse ni accent ; toute a
 
 test('userRules : la règle intégrée de Grist n\'est pas une règle de la personne', () => {
   assert.deepEqual(userRules([DEFAULT], [BUILT_IN]), []);
-  const rules = userRules([DEFAULT, { id: 2, tableId: 'GFS_Rangement', colIds: '*' }], [BUILT_IN, rule(2, 2, 'user.Access == EDITOR', '-C', 'GFS : Encadré')]);
+  const rules = userRules([DEFAULT, { id: 2, tableId: 'GFS_Filing', colIds: '*' }], [BUILT_IN, rule(2, 2, 'user.Access == EDITOR', '-C', 'GFS : Encadré')]);
   assert.equal(rules.length, 1);
-  assert.deepEqual(rules[0], { id: 2, tableId: 'GFS_Rangement', colIds: '*', formula: 'user.Access == EDITOR', rights: '-C', note: 'GFS : Encadré', level: 'encadre' });
+  assert.deepEqual(rules[0], { id: 2, tableId: 'GFS_Filing', colIds: '*', formula: 'user.Access == EDITOR', rights: '-C', note: 'GFS : Encadré', level: 'encadre' });
   const closing = userRules([DEFAULT], [BUILT_IN, rule(3, 1, 'user.Access != OWNER', '-S')]);
   assert.equal(closing.length, 1, 'une règle sur la ressource par défaut avec une condition est bien une règle');
 });
@@ -37,12 +37,12 @@ test('structureClosed : la règle « user.Access != OWNER » → -S sur la resso
 });
 
 test('tableLevels : le plus fermé des niveaux notés par GFS ; « autre » pour une règle à la main ; « ouvert » sans règle', () => {
-  const resources = [DEFAULT, { id: 2, tableId: 'GFS_Rangement', colIds: '*' }, { id: 3, tableId: 'PP_Modeles', colIds: '*' }, { id: 4, tableId: 'FP_Reponses', colIds: '*' }];
+  const resources = [DEFAULT, { id: 2, tableId: 'GFS_Filing', colIds: '*' }, { id: 3, tableId: 'PP_Modeles', colIds: '*' }, { id: 4, tableId: 'FP_Reponses', colIds: '*' }];
   const rules = userRules(resources, [BUILT_IN, rule(2, 2, 'user.Access in [OWNER]', '+CRUD', 'GFS : Partagé'), rule(3, 2, '', '-CRUD', 'GFS : Encadré'), rule(4, 3, 'user.Email == "a@b.c"', '+R', 'pour la compta')]);
-  const levels = tableLevels(rules, ['GFS_Rangement', 'PP_Modeles', 'FP_Reponses']);
-  assert.deepEqual([...levels], [['GFS_Rangement', 'encadre'], ['PP_Modeles', 'autre'], ['FP_Reponses', 'ouvert']]);
+  const levels = tableLevels(rules, ['GFS_Filing', 'PP_Modeles', 'FP_Reponses']);
+  assert.deepEqual([...levels], [['GFS_Filing', 'encadre'], ['PP_Modeles', 'autre'], ['FP_Reponses', 'ouvert']]);
   const everywhere = userRules([DEFAULT, { id: 5, tableId: '*', colIds: '*' }], [BUILT_IN, rule(5, 5, '', '-U', 'GFS : Partagé')]);
-  assert.equal(tableLevels(everywhere, ['GFS_Espaces']).get('GFS_Espaces'), 'partage', 'une règle sur toutes les tables compte pour chacune');
+  assert.equal(tableLevels(everywhere, ['GFS_Spaces']).get('GFS_Spaces'), 'partage', 'une règle sur toutes les tables compte pour chacune');
 });
 
 test('rowsOf : les colonnes de Grist deviennent des lignes (réexporté pour le lecteur)', () => {

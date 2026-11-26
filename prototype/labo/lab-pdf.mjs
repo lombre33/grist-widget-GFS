@@ -161,7 +161,7 @@ export async function importSamples(run) {
   await frame.locator('[data-fk="ask-yes"]').click();
   check('le PDF de 3 pages est dans l\'explorateur', JSON.stringify(await waitForNames(frame, ['Facture.pdf'])) === '["Facture.pdf"]');
   await waitForToast(frame, /GFS/);
-  run.id = (await run.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Facture.pdf').Identifiant;
+  run.id = (await run.rest.rows('GFS_Files')).find(row => row.Name === 'Facture.pdf').FileId;
   run.devis = pdfFile('Devis.pdf', 1, 'Devis');
   await importPdf(page, frame, run.devis.file);
   await waitForNames(frame, ['Devis.pdf', 'Facture.pdf']);
@@ -259,7 +259,8 @@ export const windowFits = frame => frame.evaluate(() => {
   const mod = document.querySelector('.mod');
   if (!mod) return { shown: false };
   const box = mod.getBoundingClientRect();
-  const overflowing = [...mod.querySelectorAll('*')].filter(node => {
+  // Ce qu'on ne voit pas (le contenu d'un « details » fermé) ne déborde de rien.
+  const overflowing = [...mod.querySelectorAll('*')].filter(node => (node.checkVisibility ? node.checkVisibility() : true)).filter(node => {
     const at = node.getBoundingClientRect();
     return at.width > 0 && (at.right > box.right + 1 || at.left < box.left - 1 || at.bottom > box.bottom + 1 || at.top < box.top - 1);
   }).map(node => node.className || node.tagName).slice(0, 5);

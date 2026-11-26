@@ -64,30 +64,30 @@ async function playOld(run) {
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   const tables = ((await call(page, 'GET', `/api/docs/${run.docId}/tables`)).json.tables || []).map(table => table.id);
   // OLD_LOT=4 : la version d'avant est celle des espaces (avant l'administration par un groupe et les dossiers de « Moi », 13/11) ; OLD_LOT=5 : celle d'avant les liens entre espaces (13/11, `c7cc1e4`) ; sinon celle des groupes (lot 3).
-  if (OLD_LOT === '4' || OLD_LOT === '5') check('la version d\'avant a les espaces et le placement', tables.includes('GFS_Espaces') && tables.includes('GFS_Placement') && tables.includes('GFS_Groupes'), tables);
-  else check('la version d\'avant n\'a ni espaces ni placement', !tables.includes('GFS_Espaces') && !tables.includes('GFS_Placement') && tables.includes('GFS_Groupes'), tables);
+  if (OLD_LOT === '4' || OLD_LOT === '5') check('la version d\'avant a les espaces et le placement', tables.includes('GFS_Spaces') && tables.includes('GFS_Placement') && tables.includes('GFS_Groups'), tables);
+  else check('la version d\'avant n\'a ni espaces ni placement', !tables.includes('GFS_Spaces') && !tables.includes('GFS_Placement') && tables.includes('GFS_Groups'), tables);
   await frame.locator('[data-fk="share-close"]').click();
   const now = Math.floor(Date.now() / 1000);
   let answer = await apply(run, [['BulkAddRecord', MODELS, [null, null, null], { Nom: [A, B, PRIVATE], TypeModele: ['document', 'document', 'document'], DateModif: [now, now, now] }]]);
   check('trois fichiers créés', answer.status === 200, answer.text);
   const models = await byName(run);
   answer = await apply(run, [
-    ['AddRecord', 'GFS_Groupes', null, { Nom: 'Achats', PersonnesIci: EDITOR }],
-    ['BulkAddRecord', 'GFS_Partages', [null, null], { Cible: [`publipostage:${models[A].id}`, `publipostage:${models[B].id}`], Personne: [EDITOR, '#Achats'], Droit: ['lecture', 'lecture'] }],
+    ['AddRecord', 'GFS_Groups', null, { Name: 'Achats', People: EDITOR }],
+    ['BulkAddRecord', 'GFS_Shares', [null, null], { Target: [`publipostage:${models[A].id}`, `publipostage:${models[B].id}`], Person: [EDITOR, '#Achats'], Right: ['lecture', 'lecture'] }],
   ]);
   check('A partagé à l\'éditeur, B au groupe Achats', answer.status === 200, answer.text);
   const after = await byName(run);
-  check('avant : A et B sont lus de l\'éditeur, le fichier privé non', has(after[A].GFS_Lecteurs, EDITOR) && has(after[B].GFS_Lecteurs, EDITOR) && !has(after[PRIVATE].GFS_Lecteurs, EDITOR), [after[A].GFS_Lecteurs, after[B].GFS_Lecteurs]);
+  check('avant : A et B sont lus de l\'éditeur, le fichier privé non', has(after[A].GFS_Readers, EDITOR) && has(after[B].GFS_Readers, EDITOR) && !has(after[PRIVATE].GFS_Readers, EDITOR), [after[A].GFS_Readers, after[B].GFS_Readers]);
   if (OLD_LOT === '5') {
-    check('avant : la table de l\'app a GFS_Dossier, pas encore GFS_Vus', 'GFS_Dossier' in after[A] && !('GFS_Vus' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
+    check('avant : la table de l\'app a GFS_Folder, pas encore GFS_Seen', 'GFS_Folder' in after[A] && !('GFS_Seen' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
     const placeColumns = (await run.rest.columns('GFS_Placement')).map(column => column.id);
-    check('avant : le placement n\'a pas encore les colonnes du lien (Lien, Partages)', !placeColumns.includes('Lien') && !placeColumns.includes('Partages'), placeColumns);
+    check('avant : le placement n\'a pas encore les colonnes du lien (Lien, Partages)', !placeColumns.includes('Link') && !placeColumns.includes('Shares'), placeColumns);
   } else if (OLD_LOT === '4') {
-    check('avant : la table de l\'app a GFS_Calc, pas encore GFS_Dossier', 'GFS_Calc' in after[A] && !('GFS_Dossier' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
+    check('avant : la table de l\'app a GFS_Calc, pas encore GFS_Folder', 'GFS_Calc' in after[A] && !('GFS_Folder' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
     const rules = (await rows(run, '_grist_ACLRules')) || [];
     check('avant : le rangement n\'a pas encore ses règles « GFS : Partagé »', !rules.some(rule => /^GFS : Partagé/.test(rule.memo || '')), rules.map(rule => rule.memo));
   } else check('avant : la table de l\'app n\'a pas GFS_Calc', !('GFS_Calc' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
-  const shares = await rows(run, 'GFS_Partages');
+  const shares = await rows(run, 'GFS_Shares');
   writeFileSync(STATE, JSON.stringify({ path: run.path, docId: run.docId, shares: shares.length }));
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
 }
@@ -110,17 +110,17 @@ async function playNew(run) {
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   check('la fenêtre du même fichier revient, active', (await frame.locator('[data-fk="share-add"]').count()) === 1 && (await frame.locator('#share-title').innerText()).includes(A));
   const tables = ((await call(page, 'GET', `/api/docs/${run.docId}/tables`)).json.tables || []).map(table => table.id);
-  check('GFS_Espaces et GFS_Placement sont nées', tables.includes('GFS_Espaces') && tables.includes('GFS_Placement'), tables);
-  const shares = await rows(run, 'GFS_Partages');
+  check('GFS_Spaces et GFS_Placement sont nées', tables.includes('GFS_Spaces') && tables.includes('GFS_Placement'), tables);
+  const shares = await rows(run, 'GFS_Shares');
   check('rien n\'est repartagé : le même nombre de lignes de partage', shares.length === before, [before, shares.length]);
   const models = await byName(run);
-  check('GFS_Directs est là : A a été donné à l\'éditeur par son adresse (par le propriétaire), B par un groupe (non compté)', has(models[A].GFS_Directs, `${EDITOR}>${OWNER}`) && !has(models[B].GFS_Directs, EDITOR), [models[A].GFS_Directs, models[B].GFS_Directs]);
-  check('GFS_Calc est là et les listes gardent les mêmes personnes (A : éditeur ; B : éditeur par le groupe)', Boolean(models[A].GFS_Calc) && has(models[A].GFS_Lecteurs, EDITOR) && has(models[B].GFS_Lecteurs, EDITOR) && !has(models[PRIVATE].GFS_Lecteurs, EDITOR), [models[A].GFS_Calc, models[B].GFS_Lecteurs]);
+  check('GFS_Direct est là : A a été donné à l\'éditeur par son adresse (par le propriétaire), B par un groupe (non compté)', has(models[A].GFS_Direct, `${EDITOR}>${OWNER}`) && !has(models[B].GFS_Direct, EDITOR), [models[A].GFS_Direct, models[B].GFS_Direct]);
+  check('GFS_Calc est là et les listes gardent les mêmes personnes (A : éditeur ; B : éditeur par le groupe)', Boolean(models[A].GFS_Calc) && has(models[A].GFS_Readers, EDITOR) && has(models[B].GFS_Readers, EDITOR) && !has(models[PRIVATE].GFS_Readers, EDITOR), [models[A].GFS_Calc, models[B].GFS_Readers]);
   if (OLD_LOT === '4' || OLD_LOT === '5') {
     const columns = (await run.rest.columns('Publipostage_Modeles')).map(column => column.id);
-    check('la colonne d\'aide GFS_Dossier est née dans la table de l\'app', columns.includes('GFS_Dossier'), columns);
+    check('la colonne d\'aide GFS_Folder est née dans la table de l\'app', columns.includes('GFS_Folder'), columns);
     const placeColumns = (await run.rest.columns('GFS_Placement')).map(column => column.id);
-    check('les liens entre espaces : GFS_Vus est née dans la table de l\'app, Lien et Partages dans le placement', columns.includes('GFS_Vus') && placeColumns.includes('Lien') && placeColumns.includes('Partages'), [columns, placeColumns]);
+    check('les liens entre espaces : GFS_Seen est née dans la table de l\'app, Lien et Partages dans le placement', columns.includes('GFS_Seen') && placeColumns.includes('Link') && placeColumns.includes('Shares'), [columns, placeColumns]);
     const rules = (await rows(run, '_grist_ACLRules')) || [];
     check('les six règles « GFS : Partagé » du rangement sont posées', rules.filter(rule => /^GFS : Partagé/.test(rule.memo || '')).length === 6, rules.map(rule => rule.memo));
   }

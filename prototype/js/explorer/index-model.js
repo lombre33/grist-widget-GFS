@@ -1,30 +1,31 @@
 // L'index des noms (choix du porteur, 26/11 : « Index tenu par Grist ») : pour chaque table de fichiers d'une app, une TABLE-RÉSUMÉ de Grist, groupée par la
 // clé du fichier, qui ne garde que ce que l'explorateur montre (le nom, le type, la date, l'auteur, le dossier, les colonnes d'aide du partage) et le POIDS que
 // le moteur de Grist a compté lui-même. L'explorateur la lit à la place de la table entière : quelques millisecondes pour un document de plusieurs centaines
-// de mégaoctets, un renommage, une création et une suppression s'y voient, aucun contenu ne voyage (mesuré dans un vrai Grist, faits vérifiés 180).
+// de mégaoctets, un renommage, une création et une suppression s'y voient, aucun contenu ne voyage (mesuré dans un vrai Grist, faits vérifiés 182).
 //
 // Ce module ne lit ni n'écrit rien : il dit quoi poser (`planIndex`, d'après les lignes que `RightsReader` lit) et quelles colonnes lire (`indexColumns`).
-//   - Une table dont l'identifiant est le numéro de ligne (`colonnes.id: "id"`, les apps) ne se groupe pas par `id` : une colonne d'aide `GFS_Cle` (formule
+//   - Une table dont l'identifiant est le numéro de ligne (`colonnes.id: "id"`, les apps) ne se groupe pas par `id` : une colonne d'aide `GFS_Key` (formule
 //     `$id`) sert de groupe. Une table à identifiant propre (`GFS_Fichiers`) se groupe par lui.
-//   - Chaque colonne que la lecture légère garde (js/explorer/explorer-sql.js, `keptColumns`) est reprise par une formule `$group[0].<colonne>` ; `GFS_Ligne`
+//   - Chaque colonne que la lecture légère garde (js/explorer/explorer-sql.js, `keptColumns`) est reprise par une formule `$group[0].<colonne>` ; `GFS_Row`
 //   dit le
-//     numéro de la ligne d'origine (les gestes d'écriture le visent), `GFS_Poids` les octets de la ligne comme `cellBytes` (js/weight/weight.js) les compte :
+//     numéro de la ligne d'origine (les gestes d'écriture le visent), `GFS_Weight` les octets de la ligne comme `cellBytes` (js/weight/weight.js) les compte :
 //     écrit en Python pour chaque type de colonne, égal à l'octet près dans un vrai Grist.
-//   - Les tables liées au poids d'un fichier (`poids.liees`) ont la leur, groupée par la clé de liaison : une ligne par clé, `GFS_Poids` la somme des lignes.
+//   - Les tables liées au poids d'un fichier (`poids.liees`) ont la leur, groupée par la clé de liaison : une ligne par clé, `GFS_Weight` la somme des lignes.
 //   - Les règles de lecture de la table d'origine (`fileRules`, js/sharing/sharing-model.js) se posent à l'identique sur le résumé, en lecture seule : sans
 //   elles, il
-//     laisserait voir les noms des fichiers des autres (mesuré, faits vérifiés 180). Une table qui porte une règle d'un autre auteur n'est pas indexée.
+//     laisserait voir les noms des fichiers des autres (mesuré, faits vérifiés 182). Une table qui porte une règle d'un autre auteur n'est pas indexée.
 
 import { keptColumns, neededColumns } from './explorer-sql.js';
+import { wantedBoth, helperSetOf } from '../sharing/helper-names.js';
 import { fileRules, isSharingNote, onTable, rulesActions } from '../sharing/sharing-model.js';
 
-export const KEY = 'GFS_Cle'; // la colonne d'aide qui groupe une table dont l'identifiant est le numéro de ligne
-export const ROW = 'GFS_Ligne'; // le numéro de la ligne d'origine
-export const WEIGHT = 'GFS_Poids'; // les octets de la ligne d'origine (ou la somme du groupe, pour une table liée)
+export const KEY = 'GFS_Key'; // la colonne d'aide qui groupe une table dont l'identifiant est le numéro de ligne
+export const ROW = 'GFS_Row'; // le numéro de la ligne d'origine
+export const WEIGHT = 'GFS_Weight'; // les octets de la ligne d'origine (ou la somme du groupe, pour une table liée)
 
 export const summaryName = (table, key) => `${table}_summary_${key}`;
 
-// La colonne qui groupe la table d'une déclaration `spec` (contrats 2.4) : l'identifiant du manifeste, ou `GFS_Cle` quand c'est le numéro de ligne.
+// La colonne qui groupe la table d'une déclaration `spec` (contrats 2.4) : l'identifiant du manifeste, ou `GFS_Key` quand c'est le numéro de ligne.
 export const keyOf = spec => {
   const id = spec && spec.colonnes && spec.colonnes.id;
   return !id || id === 'id' ? KEY : id;
@@ -91,7 +92,7 @@ export const linkedWeightFormula = columns => [...HELPERS, 'total = 0', 'for r i
 
 // Les colonnes reprises d'une table de fichiers : celles que la lecture légère garde, la clé exceptée (le résumé la porte déjà). [{ colId, type }].
 export function mirrored(columns, spec, key) {
-  return keptColumns(columns.filter(col => col.colId !== key), new Set(neededColumns(spec)));
+  return keptColumns(columns.filter(col => col.colId !== key), new Set(wantedBoth(neededColumns(spec))));
 }
 
 const mirrorFormula = colId => `$group[0].${colId} if len($group) else None`;
@@ -160,7 +161,10 @@ function build(existing, todo, skipped) {
   const actions = []; const creates = []; const groups = [];
   const refs = new Map(existing.tables.map(row => [row.tableId, row.id]));
   const colRef = (table, colId) => (existing.columns.find(col => col.parentId === refs.get(table) && col.colId === colId) || {}).id;
-  const rule = target => (target ? readOnly(fileRules(target)) : []);
+  // Les règles de la table, dans le jeu de noms de ses colonnes d'aide (un document que la mise à jour des noms n'a pas atteint les a en français) : le résumé
+  // les reprend sous les mêmes noms.
+  const rule = (target, table) => (target ? readOnly(fileRules({ ...target, set: helperSetOf((columnsOf(existing, table) || []).map(col => col.colId)) })) :
+    []);
   for (const { item, state } of todo) {
     const name = summaryName(item.table, state.key);
     if (!state.summary) {
@@ -168,7 +172,7 @@ function build(existing, todo, skipped) {
       creates.push(name);
       const target = (existing.targets || []).find(each => each.table === item.table);
       const mine = onTable(existing, item.table).some(each => isSharingNote(each.memo));
-      if (target && mine) groups.push({ tableId: name, colIds: '*', rules: rule(target) });
+      if (target && mine) groups.push({ tableId: name, colIds: '*', rules: rule(target, item.table) });
     }
     const have = state.summary || [];
     const wanted = mirrored(state.cols, item.spec, state.key);

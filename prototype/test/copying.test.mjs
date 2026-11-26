@@ -53,7 +53,7 @@ test('copier dans un dossier : la copie y est rangée (la ligne du rangement por
 });
 
 test('la copie existe même quand son dossier n\'a pas pu être écrit : la phrase le dit, sans bruit si la personne a refusé la table du rangement', async () => {
-  const declined = setup({ file: async () => { throw new TableDeclined('GFS_Rangement'); } });
+  const declined = setup({ file: async () => { throw new TableDeclined('GFS_Filing'); } });
   const [result, warned] = await quiet(() => declined.copying.copy(file(), 'A'));
   assert.equal(result.name, 'Facture (1).pdf', 'la copie est rendue : elle existe');
   assert.deepEqual(declined.log.notices, [`${FR.t('copy.done', { as: 'Facture (1).pdf' })} ${FR.t('ex.filingDeclined')}`]);

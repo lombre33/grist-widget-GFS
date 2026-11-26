@@ -1,6 +1,6 @@
 // L'identité d'un dossier de « Moi » (contrats 11.7, point 13.n.g ; choix du porteur, 18/11 : « l'id de ligne de Grist ») : un dossier n'existe que par le
 // texte du chemin que portent ses fichiers, donc un partage écrit avec ce texte se perdait au premier renommage. Un dossier partagé a désormais sa propre ligne
-// d'état dans `GFS_Rangement` (ni app ni fichier, le chemin en `Dossier`), et c'est le **numéro de cette ligne** que le partage et le lien portent :
+// d'état dans `GFS_Filing` (ni app ni fichier, le chemin en `Folder`), et c'est le **numéro de cette ligne** que le partage et le lien portent :
 // `dossier:moi:<adresse>//<numéro>` (deux « / » de suite : un chemin n'en a jamais, aucun nom de dossier ne peut donc s'y confondre). Renommer ou déplacer le
 // dossier change le texte de sa ligne, sur place ; le numéro, lui, reste. Du code pur : il lit les lignes que les appelants ont relues et rend les actions à
 // écrire dans le même lot que le rangement.
@@ -34,7 +34,7 @@ export const keysOf = (identity, path, rows) => [personalTarget(identity, path),
 // Les chemins des dossiers de `known` (ceux qui existent) à l'intérieur de `from` que porte un partage ou un lien à l'ancienne mode : à convertir au premier
 // renommage. Un chemin qui ne nomme plus aucun dossier est laissé (rien ne le suit : il n'a pas de ligne à lui donner).
 export function legacyPaths({ identity, from, known, shares = [], places = [] }) {
-  const paths = [...shares.map(row => row.Cible), ...places.map(row => row.Lien)].map(cible => legacyPath(cible, identity));
+  const paths = [...shares.map(row => row.Target), ...places.map(row => row.Link)].map(cible => legacyPath(cible, identity));
   return [...new Set(paths.filter(path => path && inside(path, from) && known.includes(path)))].sort();
 }
 
@@ -49,10 +49,10 @@ function fusedRows(rows, from, to, known) {
   return rows.filter(row => inside(row.path, from) && staying.has(arrival(row.path, from, to)));
 }
 
-const linkIn = (places, keys) => places.some(row => keys.includes(row.Lien));
+const linkIn = (places, keys) => places.some(row => keys.includes(row.Link));
 
 // Ce que le dossier `from` qui devient `to` change aux partages et aux liens, dans le même lot que le rangement. Rend { refuse, extra, lost } :
-// - `extra` : les actions sur `GFS_Partages` et `GFS_Placement` (les partages et liens à l'ancienne mode passent au numéro de leur ligne ; ceux d'un dossier
+// - `extra` : les actions sur `GFS_Shares` et `GFS_Placement` (les partages et liens à l'ancienne mode passent au numéro de leur ligne ; ceux d'un dossier
 //   fondu dans un autre sont retirés) ;
 // - `lost` : le nombre de partages retirés ;
 // - `refuse` : la clé de la phrase quand un lien empêche le geste (un lien se change par un propriétaire : un dossier fondu qui en porte un, ou un lien à
@@ -60,14 +60,14 @@ const linkIn = (places, keys) => places.some(row => keys.includes(row.Lien));
 // `rows` : les lignes d'état de la personne, celles des chemins à convertir comprises.
 export function relocationExtra({ identity, rows, from, to, known = [], shares = [], places = [], owner = false }) {
   const ctx = { identity, rows, from, fused: new Set(fusedRows(rows, from, to, known).map(row => row.id)) };
-  const sharing = shares.map(row => followed(ctx, row, row.Cible)).filter(Boolean);
-  const linking = places.map(row => followed(ctx, row, row.Lien)).filter(Boolean);
+  const sharing = shares.map(row => followed(ctx, row, row.Target)).filter(Boolean);
+  const linking = places.map(row => followed(ctx, row, row.Link)).filter(Boolean);
   const refuse = linking.some(({ fused, path }) => fused || (path && !owner)) ? 'ex.folderLinked' : null;
   const lost = sharing.filter(item => item.fused).length;
   const extra = [
     ...sharing.map(item => (item.fused ? ['RemoveRecord', SHARES_TABLE, item.row.id] : item.path && ['UpdateRecord', SHARES_TABLE, item.row.id,
-      { Cible: idKey(identity, item.found.id) }])),
-    ...linking.map(item => !item.fused && item.path && ['UpdateRecord', PLACE_TABLE, item.row.id, { Lien: idKey(identity, item.found.id) }])].filter(Boolean);
+      { Target: idKey(identity, item.found.id) }])),
+    ...linking.map(item => !item.fused && item.path && ['UpdateRecord', PLACE_TABLE, item.row.id, { Link: idKey(identity, item.found.id) }])].filter(Boolean);
   return { refuse, extra: refuse ? [] : extra, lost };
 }
 
@@ -86,6 +86,6 @@ function followed({ identity, rows, from, fused }, row, cible) {
 export function removalExtra({ identity, rows, paths, shares = [], places = [] }) {
   const keys = paths.flatMap(path => keysOf(identity, path, rows));
   if (linkIn(places, keys)) return { refuse: 'ex.folderLinked', extra: [], removed: 0 };
-  const gone = shares.filter(row => keys.includes(row.Cible));
+  const gone = shares.filter(row => keys.includes(row.Target));
   return { refuse: null, extra: gone.map(row => ['RemoveRecord', SHARES_TABLE, row.id]), removed: gone.length };
 }

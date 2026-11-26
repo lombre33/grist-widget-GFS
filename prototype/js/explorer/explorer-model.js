@@ -103,43 +103,43 @@ export function readFiling(rangement, data, identity = '') {
   return byFile;
 }
 
-// Le rangement de GFS pour la personne `identity` (`GFS_Rangement`, 6.4) : Map « app:fichier » -> { folder, pinned }. Les lignes réservées (« @… ») et les
+// Le rangement de GFS pour la personne `identity` (`GFS_Filing`, 6.4) : Map « app:fichier » -> { folder, pinned }. Les lignes réservées (« @… ») et les
 // lignes d'état de dossier (sans app ni fichier) n'ont rien à dire d'un fichier ; plusieurs lignes pour un même fichier : la première fait foi.
 export function readGfsFiling(data, identity = '') {
   const byFile = new Map();
   for (let i = 0; i < rowCount(data); i++) {
-    const user = text(cell(data, 'Utilisateur', i));
+    const user = text(cell(data, 'User', i));
     const app = text(cell(data, 'App', i));
-    const file = text(cell(data, 'Fichier', i));
+    const file = text(cell(data, 'File', i));
     if (user !== identity || user.startsWith('@') || !app || !file || byFile.has(fileKey(app, file))) continue;
-    byFile.set(fileKey(app, file), { folder: normalizePath(cell(data, 'Dossier', i)), pinned: cell(data, 'Favori', i) === true });
+    byFile.set(fileKey(app, file), { folder: normalizePath(cell(data, 'Folder', i)), pinned: cell(data, 'Favorite', i) === true });
   }
   return byFile;
 }
 
-// Les dossiers que la personne `identity` garde même sans fichier (`GFS_Rangement`, les lignes d'état de dossier : ni app ni fichier, contrats 6.4, point 11) :
+// Les dossiers que la personne `identity` garde même sans fichier (`GFS_Filing`, les lignes d'état de dossier : ni app ni fichier, contrats 6.4, point 11) :
 // des chemins normalisés, sans doublon. Ceux qu'elle a créés, et ceux qu'un rangement a vidés de leur dernier fichier ; un dossier qui a des fichiers existe de
 // toute façon par eux.
 export function readGfsFolders(data, identity = '') {
   const found = new Set();
   for (let i = 0; i < rowCount(data); i++) {
-    const user = text(cell(data, 'Utilisateur', i));
-    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'Fichier', i))) continue;
-    const path = normalizePath(cell(data, 'Dossier', i));
+    const user = text(cell(data, 'User', i));
+    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'File', i))) continue;
+    const path = normalizePath(cell(data, 'Folder', i));
     if (path) found.add(path);
   }
   return [...found];
 }
 
-// Les lignes d'état des dossiers de la personne `identity` (`GFS_Rangement`, ni app ni fichier) : [{ id, path }], une par ligne, `id` le numéro de ligne de
+// Les lignes d'état des dossiers de la personne `identity` (`GFS_Filing`, ni app ni fichier) : [{ id, path }], une par ligne, `id` le numéro de ligne de
 // Grist. C'est ce numéro, jamais le chemin, qui désigne un dossier de « Moi » dans les partages et les liens (js/sharing/folder-identity.js) : le dossier garde
 // sa ligne quand on le renomme ou le déplace.
 export function readGfsFolderRows(data, identity = '') {
   const found = [];
   for (let i = 0; i < rowCount(data); i++) {
-    const user = text(cell(data, 'Utilisateur', i));
-    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'Fichier', i))) continue;
-    const path = normalizePath(cell(data, 'Dossier', i));
+    const user = text(cell(data, 'User', i));
+    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'File', i))) continue;
+    const path = normalizePath(cell(data, 'Folder', i));
     if (path) found.push({ id: data.id[i], path });
   }
   return found;

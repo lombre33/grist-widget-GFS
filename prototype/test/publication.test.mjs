@@ -168,7 +168,7 @@ test('protectedRefusal : un lien public ne lit, parmi les tables de l\'app qui p
   const writing = protectedRefusal(policy, { tables: [{ tableId: 'FormPlus_Pub_12', shown: [], unshown: [] }], reads: [] });
   assert.match(writing.message, /FormPlus_Pub_12 à l'ajout/);
   assert.match(writing.message, /un lien public n'y écrit jamais/, 'à l\'ajout, aucune table de l\'app n\'est ouverte, déclarée lisible ou non');
-  assert.match(reading('GFS_Espaces').message, /réservée à GFS/);
+  assert.match(reading('GFS_Spaces').message, /réservée à GFS/);
   assert.match(reading('Publipostage_Modeles').message, /autre app/);
   assert.equal(reading('Clients'), null, 'une table de la personne : la règle est celle de `lit`');
 });

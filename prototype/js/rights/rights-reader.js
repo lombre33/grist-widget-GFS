@@ -4,8 +4,8 @@
 // elles leur arrivent vides) ; seul `GET /webhooks` les distingue (Transfer.isOwner). Les lignes ne se rendent donc (`raw`) qu'à un propriétaire prouvé. La
 // lecture des règles pour un mot du pied, et celle des liens publics, ont disparu avec la fenêtre « Permissions » (13/11).
 
-import { FILES_TABLE } from '../files/gfs-files.js';
-import { TARGETS } from '../sharing/sharing-model.js';
+import { filesNames } from '../files/gfs-files.js';
+import { defaultTargets } from '../sharing/sharing-model.js';
 import { rowsOf } from './rights.js';
 
 const RETRY_MS = 30 * 1000;
@@ -52,14 +52,14 @@ export class RightsReader {
       const [resources, rules, tables, columns] = await Promise.all(['_grist_ACLResources', '_grist_ACLRules', '_grist_Tables',
         '_grist_Tables_column'].map(name => this.#rows(name)));
       // Les identifiants des fichiers que GFS garde déjà : l'activation du partage les laisse lisibles de tous, comme avant (contrats 11.7, point 13).
-      const targets = this.#opts.targets ? this.#opts.targets() : TARGETS;
+      const targets = this.#opts.targets ? this.#opts.targets() : defaultTargets();
       const files = {};
       for (const target of withFiles ? targets : []) {
         if (!tables.some(row => row.tableId === target.table)) continue;
         files[target.table] = rowsOf(await this.#opts.port.doc.fetchTable(target.table)).map(row => String(target.id ? row[target.id] || '' : row.id)).filter(
           Boolean);
       }
-      return { resources, rules, tables, columns, fileIds: files[FILES_TABLE] || [], files, targets, specs: this.#opts.specs ? this.#opts.specs() : [] };
+      return { resources, rules, tables, columns, fileIds: files[filesNames().table] || [], files, targets, specs: this.#opts.specs ? this.#opts.specs() : [] };
     } catch (error) {
       return null;
     }

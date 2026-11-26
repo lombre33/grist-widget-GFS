@@ -82,7 +82,7 @@ test('le dossier du dépôt n\'est pas celui que la personne a ouvert dans l\'ex
 });
 
 test('le rangement refusé (la table du rangement) : le fichier est gardé, l\'app n\'a pas d\'erreur, et le même lot n\'est plus interrogé', async () => {
-  const run = setup({ setFiling: async () => { throw new TableDeclined('GFS_Rangement'); } });
+  const run = setup({ setFiling: async () => { throw new TableDeclined('GFS_Filing'); } });
   const batch = newBatch();
   assert.equal((await run.kept.deposit(request({ folder: 'A', batch }))).status, 'added');
   assert.equal(batch.noFolder, true);
@@ -106,14 +106,14 @@ test('le rangement en échec (autre cause) : le fichier est gardé, l\'avertisse
   assert.equal(warnings.length, 2);
 });
 
-test('la table GFS_Fichiers refusée : GFS_ANNULE, et le reste du lot est refusé tout de suite, sans redemander la table', async () => {
-  const run = setup({ add: async () => { throw new TableDeclined('GFS_Fichiers'); } });
+test('la table GFS_Files refusée : GFS_ANNULE, et le reste du lot est refusé tout de suite, sans redemander la table', async () => {
+  const run = setup({ add: async () => { throw new TableDeclined('GFS_Files'); } });
   const batch = newBatch();
-  await refusedWith(run.kept.deposit(request({ batch })), ERR.ANNULE, FR.t('files.declined'));
+  await refusedWith(run.kept.deposit(request({ batch })), ERR.ANNULE, FR.t('files.declined', { table: 'GFS_Files' }));
   assert.equal(batch.declined, true);
-  await refusedWith(run.kept.deposit(request({ batch })), ERR.ANNULE, FR.t('files.declined'));
+  await refusedWith(run.kept.deposit(request({ batch })), ERR.ANNULE, FR.t('files.declined', { table: 'GFS_Files' }));
   assert.equal(run.log.adds.length, 1, 'le second fichier ne rouvre pas la question');
-  const another = setup({ add: async () => { throw new TableDeclined('GFS_Fichiers'); } });
+  const another = setup({ add: async () => { throw new TableDeclined('GFS_Files'); } });
   await refusedWith(another.kept.deposit(request()), ERR.ANNULE);
   await refusedWith(another.kept.deposit(request()), ERR.ANNULE);
   assert.equal(another.log.adds.length, 2, 'sans lot, chaque fichier est seul : la question revient');

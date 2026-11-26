@@ -5,48 +5,46 @@ import { validateManifest } from '../js/apps/manifest.js';
 import { readFiles } from '../js/explorer/explorer-model.js';
 import { importFormats } from '../js/files/import-file.js';
 import { loadFiles } from '../js/explorer/explorer-data.js';
-import {
-  FILES_APP, FILES_TABLE, FILES_COLUMNS, FILES_MANIFEST, FILES_ENTRY, TRASH_COLUMN_IDS, sameName, cleanName, freeName, newId, looksLikePdf, newRecord, replacementRecord, trashRecord, restoreRecord,
-} from '../js/files/gfs-files.js';
+import { FILES_APP, filesNames, filesColumns, filesManifest, filesEntry, trashColumnIds, sameName, cleanName, freeName, newId, looksLikePdf, newRecord, replacementRecord, trashRecord, restoreRecord } from '../js/files/gfs-files.js';
 
 test('le manifeste intégré se lit comme celui d\'une app : l\'explorateur y trouve la table, les colonnes déclarées, le type PDF et l\'icône du type', () => {
-  const spec = FILES_MANIFEST.fichiers[0];
-  assert.deepEqual([FILES_MANIFEST.id, spec.table, spec.typeParDefaut], [FILES_APP, FILES_TABLE, 'pdf']);
-  const data = { id: [4, 9], Identifiant: ['aa', 'bb'], Nom: ['Facture.pdf', 'Devis.pdf'], Type: ['pdf', 'pdf'], Date: [1762000000, 1762100000], Auteur: ['marie@exemple.fr', ''], Contenu: [['L', 1], ['L', 2]] };
-  const files = readFiles(FILES_MANIFEST, spec, data);
+  const spec = filesManifest().fichiers[0];
+  assert.deepEqual([filesManifest().id, spec.table, spec.typeParDefaut], [FILES_APP, filesNames().table, 'pdf']);
+  const data = { id: [4, 9], FileId: ['aa', 'bb'], Name: ['Facture.pdf', 'Devis.pdf'], Type: ['pdf', 'pdf'], Date: [1762000000, 1762100000], Author: ['marie@exemple.fr', ''], Content: [['L', 1], ['L', 2]] };
+  const files = readFiles(filesManifest(), spec, data);
   assert.deepEqual(files.map(file => [file.key, file.id, file.name, file.type, file.known, file.icon, file.family, file.ts, file.by, file.row]), [
     ['gfs-fichiers:aa', 'aa', 'Facture.pdf', 'pdf', true, 'pdf', 'pdf', 1762000000, 'marie@exemple.fr', 4],
     ['gfs-fichiers:bb', 'bb', 'Devis.pdf', 'pdf', true, 'pdf', 'pdf', 1762100000, '', 9],
   ]);
-  assert.equal(files[0].table, FILES_TABLE);
+  assert.equal(files[0].table, filesNames().table);
 });
 
 test('le type PDF a sa famille de couleur, le rouge (décision du porteur, 04/11) : l\'icône et le mot du type vont toujours ensemble', () => {
-  const [type] = FILES_MANIFEST.fichiers[0].types;
+  const [type] = filesManifest().fichiers[0].types;
   assert.deepEqual([type.valeur, type.icone, type.couleur], ['pdf', 'pdf', 'pdf']);
   assert.ok(type.nom.fr && type.nom.en, 'le mot du type, dans les deux langues : la couleur ne porte jamais seule le type');
 });
 
 test('le PDF est un format que « Importer » propose, avec le type qu\'il crée', () => {
-  const [format] = importFormats(FILES_MANIFEST);
+  const [format] = importFormats(filesManifest());
   assert.deepEqual([format.item.valeur, format.item.extensions, format.type.valeur, format.type.icone], ['pdf', ['.pdf'], 'pdf', 'pdf']);
 });
 
 test('les colonnes déclarées par le manifeste existent toutes dans la table', () => {
-  const declared = [...Object.values(FILES_MANIFEST.fichiers[0].colonnes), ...Object.values(FILES_MANIFEST.fichiers[0].corbeille)];
-  const ids = FILES_COLUMNS.map(column => column.id);
+  const declared = [...Object.values(filesManifest().fichiers[0].colonnes), ...Object.values(filesManifest().fichiers[0].corbeille)];
+  const ids = filesColumns().map(column => column.id);
   for (const column of declared) assert.ok(ids.includes(column), column);
-  assert.equal(FILES_COLUMNS.find(column => column.id === 'Contenu').type, 'Attachments');
-  assert.equal(FILES_COLUMNS.find(column => column.id === 'Date').type, 'DateTime:UTC');
+  assert.equal(filesColumns().find(column => column.id === 'Content').type, 'Attachments');
+  assert.equal(filesColumns().find(column => column.id === 'Date').type, 'DateTime:UTC');
 });
 
 test('la table des fichiers que GFS garde est lue avec celles des apps ; une table absente n\'est pas un problème', async () => {
-  const data = { id: [1], Identifiant: ['aa'], Nom: ['Facture.pdf'], Type: ['pdf'], Date: [0], Auteur: [''], Contenu: [['L', 3]] };
+  const data = { id: [1], FileId: ['aa'], Name: ['Facture.pdf'], Type: ['pdf'], Date: [0], Author: [''], Content: [['L', 3]] };
   const port = tables => ({ doc: { listTables: async () => Object.keys(tables), fetchTable: async name => tables[name] } });
-  const found = await loadFiles(port({ GFS_Fichiers: data }), [FILES_ENTRY], '');
+  const found = await loadFiles(port({ GFS_Files: data }), [filesEntry()], '');
   assert.deepEqual(found.files.map(file => file.key), ['gfs-fichiers:aa']);
   assert.deepEqual(found.problems, []);
-  const none = await loadFiles(port({ Clients: { id: [] } }), [FILES_ENTRY], '');
+  const none = await loadFiles(port({ Clients: { id: [] } }), [filesEntry()], '');
   assert.deepEqual([none.files.length, none.problems.length], [0, 0]);
 });
 
@@ -97,28 +95,28 @@ test('looksLikePdf : « %PDF- » dans les 1 024 premiers octets', () => {
 
 test('newRecord : toutes les colonnes d\'un nouveau fichier, la date en secondes et la pièce jointe citée par son numéro', () => {
   const record = newRecord({ id: 'aa', name: 'Facture.pdf', attachment: 7, size: 1234, author: 'marie@exemple.fr', now: 1762000123456, origin: 'import' });
-  assert.deepEqual(record, { Identifiant: 'aa', Nom: 'Facture.pdf', Type: 'pdf', Contenu: ['L', 7], Origine: 'import', Date: 1762000123, Auteur: 'marie@exemple.fr', Taille: 1234 });
-  for (const column of Object.keys(record)) assert.ok(FILES_COLUMNS.some(known => known.id === column), `la colonne ${column} existe`);
-  assert.equal(newRecord({ id: 'bb', name: 'x.pdf', attachment: 1, size: 1, now: 0, origin: 'import' }).Auteur, '', 'sans adresse connue, l\'auteur est vide');
+  assert.deepEqual(record, { FileId: 'aa', Name: 'Facture.pdf', Type: 'pdf', Content: ['L', 7], Origin: 'import', Date: 1762000123, Author: 'marie@exemple.fr', Size: 1234 });
+  for (const column of Object.keys(record)) assert.ok(filesColumns().some(known => known.id === column), `la colonne ${column} existe`);
+  assert.equal(newRecord({ id: 'bb', name: 'x.pdf', attachment: 1, size: 1, now: 0, origin: 'import' }).Author, '', 'sans adresse connue, l\'auteur est vide');
 });
 
 test('replacementRecord : le contenu change, ni l\'identifiant ni le nom ne sont écrits (la place et les favoris restent)', () => {
   const record = replacementRecord({ attachment: 8, size: 99, author: 'paul@exemple.fr', now: 5000, origin: 'import' });
-  assert.deepEqual(record, { Contenu: ['L', 8], Origine: 'import', Date: 5, Auteur: 'paul@exemple.fr', Taille: 99 });
-  assert.equal('Identifiant' in record || 'Nom' in record, false);
+  assert.deepEqual(record, { Content: ['L', 8], Origin: 'import', Date: 5, Author: 'paul@exemple.fr', Size: 99 });
+  assert.equal('FileId' in record || 'Name' in record, false);
 });
 
 test('le manifeste intégré n\'est pas un manifeste d\'app : il garde un préfixe réservé et n\'est jamais accepté par la validation des apps', () => {
-  assert.equal(validateManifest(JSON.parse(JSON.stringify(FILES_MANIFEST))).ok, false);
-  assert.equal(FILES_MANIFEST.integre, true);
+  assert.equal(validateManifest(JSON.parse(JSON.stringify(filesManifest()))).ok, false);
+  assert.equal(filesManifest().integre, true);
 });
 
 test('la corbeille : le manifeste dit les deux colonnes du marqueur, la table les a (une date en secondes, un auteur), et trashRecord / restoreRecord les écrivent', () => {
-  assert.deepEqual(FILES_MANIFEST.fichiers[0].corbeille, { date: 'SupprimeLe', par: 'SupprimePar' });
-  assert.deepEqual(TRASH_COLUMN_IDS, ['SupprimeLe', 'SupprimePar']);
-  assert.deepEqual(FILES_COLUMNS.filter(column => TRASH_COLUMN_IDS.includes(column.id)).map(column => [column.id, column.type]), [['SupprimeLe', 'DateTime:UTC'], ['SupprimePar', 'Text']]);
-  assert.deepEqual(trashRecord({ now: 1762000123456, author: 'marie@exemple.fr' }), { SupprimeLe: 1762000123, SupprimePar: 'marie@exemple.fr' });
-  assert.deepEqual(trashRecord({ now: 1762000123456, author: '' }), { SupprimeLe: 1762000123, SupprimePar: '' }, 'sans adresse connue, l\'auteur est vide');
-  assert.deepEqual(restoreRecord(), { SupprimeLe: null, SupprimePar: '' });
-  assert.equal(Object.isFrozen(FILES_MANIFEST.fichiers[0].corbeille), true);
+  assert.deepEqual(filesManifest().fichiers[0].corbeille, { date: 'DeletedAt', par: 'DeletedBy' });
+  assert.deepEqual(trashColumnIds(), ['DeletedAt', 'DeletedBy']);
+  assert.deepEqual(filesColumns().filter(column => trashColumnIds().includes(column.id)).map(column => [column.id, column.type]), [['DeletedAt', 'DateTime:UTC'], ['DeletedBy', 'Text']]);
+  assert.deepEqual(trashRecord({ now: 1762000123456, author: 'marie@exemple.fr' }), { DeletedAt: 1762000123, DeletedBy: 'marie@exemple.fr' });
+  assert.deepEqual(trashRecord({ now: 1762000123456, author: '' }), { DeletedAt: 1762000123, DeletedBy: '' }, 'sans adresse connue, l\'auteur est vide');
+  assert.deepEqual(restoreRecord(), { DeletedAt: null, DeletedBy: '' });
+  assert.equal(Object.isFrozen(filesManifest().fichiers[0].corbeille), true);
 });

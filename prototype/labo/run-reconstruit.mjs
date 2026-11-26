@@ -20,7 +20,7 @@ let frame = lab.frame;
 const levelOf = f => (/access=([^&]+)/.exec(f.url()) || [])[1];
 const text = async locator => (await locator.innerText()).replace(/\s+/g, ' ').trim();
 const tables = f => f.evaluate(async () => (await grist.docApi.listTables()).slice().sort());
-// Les apps installées : la ligne réservée de la table `GFS_Rangement` (null tant qu'aucune app n'a été installée). Sous « read table », Grist refuse la lecture.
+// Les apps installées : la ligne réservée de la table `GFS_Filing` (null tant qu'aucune app n'a été installée). Sous « read table », Grist refuse la lecture.
 const option = async f => (await lab.rangement(f)).value ?? null;
 const facts = async f => f.evaluate(() => ({
   etat: document.body.dataset.gfs,

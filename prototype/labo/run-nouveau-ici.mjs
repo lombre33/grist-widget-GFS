@@ -98,7 +98,7 @@ async function createDocument(run, name, { save = true } = {}) {
 }
 const prefsOf = async (run, id) => (await rows(run, PREFS)).filter(row => String(row.ModeleId) === String(id));
 const placements = run => rows(run, 'GFS_Placement');
-const rangement = run => rows(run, 'GFS_Rangement');
+const rangement = run => rows(run, 'GFS_Filing');
 
 const pluginApi = await requireServer();
 const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(/prototype[/\\]transfer[/\\]index\.html$/))).listen(PAGE_PORT, '127.0.0.1');
@@ -117,7 +117,7 @@ try {
   check('à la racine de « Moi » : la fenêtre le dit', (await newFolder(run, 'Alpha')) === t('ex.newFolderTitle', { folder: t('ex.me') }));
   await enter(frame, 'Alpha');
   check('dans « Alpha » : la fenêtre le dit, le dossier naît dedans', (await newFolder(run, 'Beta')) === t('ex.newFolderTitle', { folder: 'Alpha' }) && same(await folders(frame), ['Beta']), await folders(frame));
-  check('les lignes d\'état sont « Alpha » et « Alpha/Beta » (jamais « Beta » à la racine)', same((await rangement(run)).filter(row => row.Utilisateur === ME && !row.App && row.Dossier).map(row => row.Dossier).sort(), ['Alpha', 'Alpha/Beta']));
+  check('les lignes d\'état sont « Alpha » et « Alpha/Beta » (jamais « Beta » à la racine)', same((await rangement(run)).filter(row => row.User === ME && !row.App && row.Folder).map(row => row.Folder).sort(), ['Alpha', 'Alpha/Beta']));
 
   say('--- 2. « Nouveau > Document » depuis un sous-dossier de « Moi » ---');
   await goHome(frame);
@@ -156,7 +156,7 @@ try {
   frame = await gfsFrame(page, { keep: true }); run.frame = frame;
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   await frame.locator('[data-fk="share-close"]').click();
-  const decor = await apply(run, [['AddRecord', 'GFS_Espaces', null, { Cle: 'achats', Nom: 'Achats' }], ['AddRecord', 'GFS_Placement', null, { Cible: '', Espace: 'achats', Dossier: 'Contrats' }]]);
+  const decor = await apply(run, [['AddRecord', 'GFS_Spaces', null, { Key: 'achats', Name: 'Achats' }], ['AddRecord', 'GFS_Placement', null, { Target: '', Space: 'achats', Folder: 'Contrats' }]]);
   check('le décor (un espace « Achats » et son dossier « Contrats ») s\'écrit', decor.status === 200, decor.text);
   await page.reload();
   frame = await gfsFrame(page); run.frame = frame;
@@ -168,9 +168,9 @@ try {
   check('le fil d\'Ariane part d\'« Espaces »', (await crumbs(frame)).startsWith(t('ex.spaces')), await crumbs(frame));
   const inSpace = await createDocument(run, 'Neuf dans l\'espace');
   check('l\'app a créé son modèle', Boolean(inSpace), inSpace);
-  const placed = inSpace ? (await placements(run)).filter(row => row.Cible === `publipostage:${inSpace.id}`) : [];
-  check('le modèle est placé dans l\'espace « achats », dossier « Contrats » (une ligne de placement)', placed.length === 1 && placed[0].Espace === 'achats' && placed[0].Dossier === 'Contrats', placed);
-  const mine = (await rangement(run)).map(row => row.Dossier).concat((await rows(run, PREFS)).map(row => row.Dossier));
+  const placed = inSpace ? (await placements(run)).filter(row => row.Target === `publipostage:${inSpace.id}`) : [];
+  check('le modèle est placé dans l\'espace « achats », dossier « Contrats » (une ligne de placement)', placed.length === 1 && placed[0].Space === 'achats' && placed[0].Folder === 'Contrats', placed);
+  const mine = (await rangement(run)).map(row => row.Folder).concat((await rows(run, PREFS)).map(row => row.Dossier));
   check('le rangement de la personne ne reçoit jamais le chemin d\'un espace', mine.every(path => !String(path || '').startsWith('Espaces')), mine.filter(path => String(path || '').startsWith('Espaces')));
   await frame.locator('.tr-row[data-path="Espaces"]').click();
   await enter(frame, 'Achats', 'Contrats');

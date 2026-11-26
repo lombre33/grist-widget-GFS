@@ -27,7 +27,10 @@ import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling 
 import { Copying } from '/js/files/copying.js';
 import { applyPlacement, readSpaces } from '/js/sharing/spaces-filing.js';
 import { LinkControl } from '/js/sharing/link-control.js';
-import { FILES_MANIFEST, FILES_COLUMN_IDS } from '/js/files/gfs-files.js';
+import { filesManifest, filesColumnIds } from '/js/files/gfs-files.js';
+import { showNamesWindow } from '/js/ui/names-window.js';
+import { NAMES_STRINGS } from '/kit/js/names-update/strings.js';
+import { createI18n as createKitI18n } from '/kit/js/i18n.js';
 import { ReceivedControl } from '/js/sharing/received-control.js';
 import { loadReceived, answerFile, answerFolder } from '/js/sharing/received-files.js';
 import { fakeGrist } from '/test/fake-grist.mjs';
@@ -198,7 +201,7 @@ async function mount() {
   const bin = new Trash({
     managers: [guardian], ask: opts => ask({ ...opts, container: stage, inertTargets: () => [explorer.root] }), t: i18n.t, notice: text => window.__notices.push(text), refresh: async () => show(), keepFolders: file => filing.keepFoldersOf(file),
   });
-  // Les dossiers sans fichier : le vrai `Filing` sur un rangement de doublure qui range les fichiers et tient les dossiers gardés, comme `GFS_Rangement` (un lot noté « setFiling:+gardé:-retiré »).
+  // Les dossiers sans fichier : le vrai `Filing` sur un rangement de doublure qui range les fichiers et tient les dossiers gardés, comme `GFS_Filing` (un lot noté « setFiling:+gardé:-retiré »).
   const layer = opts => ({ ...opts, t: i18n.t, container: stage, inertTargets: () => [explorer.root] });
   const rangement = {
     setFiling: async (entries, folders = {}) => {
@@ -215,7 +218,7 @@ async function mount() {
   });
   // Un espace « Achats » (les espaces partagés, lot 4b) : le premier modèle est rangé dans son dossier Contrats, qui a un sous-dossier vide ; « Espaces » est une racine à côté de « Moi ».
   window.__spaces = () => {
-    const info = readSpaces({ id: [1], Cle: ['achats'], Nom: ['Achats'] }, { id: [1, 2], Cible: [live[0].key, ''], Espace: ['achats', 'achats'], Dossier: ['Contrats', 'Contrats/Sous'] });
+    const info = readSpaces({ id: [1], Key: ['achats'], Name: ['Achats'] }, { id: [1, 2], Target: [live[0].key, ''], Space: ['achats', 'achats'], Folder: ['Contrats', 'Contrats/Sous'] });
     applyPlacement(live, info);
     kept = [...new Set([...kept, ...info.folders])];
     show();
@@ -226,13 +229,13 @@ async function mount() {
   window.__spaceLinks = (variant = 'neuf') => {
     const linked = variant === 'lie';
     const tables = {
-      GFS_Espaces: { columns: ['id', 'Cle', 'Nom'], rows: [{ id: 1, Cle: 'achats', Nom: 'Achats' }, { id: 2, Cle: 'ventes', Nom: 'Ventes' }] },
-      GFS_Partages: { columns: ['id', 'Cible', 'Personne', 'Droit', 'Telecharger', 'Fin'], rows: [{ id: 1, Cible: 'espace:achats', Personne: '#Achats', Droit: 'lecture' }, { id: 2, Cible: 'espace:ventes', Personne: '#Commerciaux', Droit: 'lecture' },
-        ...(linked ? [{ id: 3, Cible: 'dossier:achats/Contrats', Personne: '#Commerciaux', Droit: 'lecture' }] : [])] },
-      GFS_Placement: { columns: ['id', 'Cible', 'Espace', 'Dossier', 'Lien', 'Partages'], rows: [
-        { id: 1, Cible: live[0].key, Espace: 'achats', Dossier: 'Contrats', Lien: '', Partages: '' },
-        { id: 2, Cible: '', Espace: 'achats', Dossier: 'Contrats/Sous', Lien: '', Partages: '' },
-        ...(linked ? [{ id: 3, Cible: '', Espace: 'ventes', Dossier: 'Contrats achats', Lien: 'dossier:achats/Contrats', Partages: '#Commerciaux' }] : [])] },
+      GFS_Spaces: { columns: ['id', 'Key', 'Name'], rows: [{ id: 1, Key: 'achats', Name: 'Achats' }, { id: 2, Key: 'ventes', Name: 'Ventes' }] },
+      GFS_Shares: { columns: ['id', 'Target', 'Person', 'Right', 'Download', 'End'], rows: [{ id: 1, Target: 'espace:achats', Person: '#Achats', Right: 'lecture' }, { id: 2, Target: 'espace:ventes', Person: '#Commerciaux', Right: 'lecture' },
+        ...(linked ? [{ id: 3, Target: 'dossier:achats/Contrats', Person: '#Commerciaux', Right: 'lecture' }] : [])] },
+      GFS_Placement: { columns: ['id', 'Target', 'Space', 'Folder', 'Link', 'Shares'], rows: [
+        { id: 1, Target: live[0].key, Space: 'achats', Folder: 'Contrats', Link: '', Shares: '' },
+        { id: 2, Target: '', Space: 'achats', Folder: 'Contrats/Sous', Link: '', Shares: '' },
+        ...(linked ? [{ id: 3, Target: '', Space: 'ventes', Folder: 'Contrats achats', Link: 'dossier:achats/Contrats', Shares: '#Commerciaux' }] : [])] },
     };
     const grist = fakeGrist(tables);
     window.__linkTables = grist.tables;
@@ -242,8 +245,8 @@ async function mount() {
     const read = () => {
       const column = (rows, id) => rows.map(row => row[id]);
       const place = tables.GFS_Placement.rows;
-      info = readSpaces({ id: column(tables.GFS_Espaces.rows, 'id'), Cle: column(tables.GFS_Espaces.rows, 'Cle'), Nom: column(tables.GFS_Espaces.rows, 'Nom') },
-        { id: column(place, 'id'), Cible: column(place, 'Cible'), Espace: column(place, 'Espace'), Dossier: column(place, 'Dossier'), Lien: column(place, 'Lien'), Partages: column(place, 'Partages') });
+      info = readSpaces({ id: column(tables.GFS_Spaces.rows, 'id'), Key: column(tables.GFS_Spaces.rows, 'Key'), Name: column(tables.GFS_Spaces.rows, 'Name') },
+        { id: column(place, 'id'), Target: column(place, 'Target'), Space: column(place, 'Space'), Folder: column(place, 'Folder'), Link: column(place, 'Link'), Shares: column(place, 'Shares') });
       applyPlacement(live, info);
       kept = [...new Set([...kept, ...info.folders])];
       show();
@@ -381,19 +384,19 @@ async function mount() {
   window.__sharedBlocked = '';
   // Un fichier arrive pendant que l'explorateur est ouvert : la ligne est posée dans le faux Grist, puis la liste des arrivées se remplace seule (`Explorer.setReceived`, comme le fait le contrôleur).
   window.__arrive = async name => {
-    const rows = sharedGrist.tables.GFS_Recus.rows;
+    const rows = sharedGrist.tables.GFS_Received.rows;
     const id = rows.length + 1;
-    rows.push({ ...rows[0], id, Identifiant: `r${id}`, Nom: name, Accepte: false, Refuse: false, Contenu: ['L', id] });
+    rows.push({ ...rows[0], id, FileId: `r${id}`, Name: name, Accepted: false, Refused: false, Content: ['L', id] });
     arrivals = await loadReceived(sharedGrist.port, await sharedGrist.port.doc.listTables());
     explorer.setReceived(arrivals);
   };
   window.__shared = async kind => {
     const day = Math.floor(Date.now() / 1000) - 86400;
-    const row = (id, name, extra = {}) => ({ id, Identifiant: `r${id}`, Nom: name, Type: 'pdf', Date: day - id * 3600, Auteur: 'Comptabilité <compta@exemple.fr>', Contenu: ['L', id], Taille: 1500 * id, Origine: 'import', Supprimee_a_la_source: false, ...extra });
-    const rows = kind === 'vide' ? [] : kind === 'dossier' ? [row(1, 'Contrat de prestation.pdf', { Dossier_partage: 'Contrats' }), row(2, 'Avenant 1.pdf', { Dossier_partage: 'Contrats' }), row(3, 'Avenant 2.pdf', { Dossier_partage: 'Contrats', Accepte: true, Refuse: false }),
-      row(4, 'Plan.pdf', { Dossier_partage: 'Archives', Accepte: true, Refuse: false }), row(5, 'Rapport.pdf', { Dossier_partage: 'Archives', Accepte: true, Refuse: false }), row(6, 'Seul.pdf', { Dossier_partage: '' })] : [row(1, 'Facture de la session de formation de septembre 2026.pdf'), row(2, 'Devis.pdf'), row(3, 'Contrat.pdf', { Accepte: true, Refuse: false }), row(4, 'Ancien refus.pdf', { Accepte: false, Refuse: true }), row(5, 'Retiré.pdf', { Accepte: true, Refuse: false, Supprimee_a_la_source: true })];
-    const columns = ['id', ...FILES_COLUMN_IDS, 'Supprimee_a_la_source', 'Accepte', 'Refuse', 'Dossier_partage'];
-    sharedGrist = fakeGrist(kind === 'vide' ? {} : { GFS_Recus: { columns, rows } });
+    const row = (id, name, extra = {}) => ({ id, FileId: `r${id}`, Name: name, Type: 'pdf', Date: day - id * 3600, Author: 'Comptabilité <compta@exemple.fr>', Content: ['L', id], Size: 1500 * id, Origin: 'import', Supprimee_a_la_source: false, ...extra });
+    const rows = kind === 'vide' ? [] : kind === 'dossier' ? [row(1, 'Contrat de prestation.pdf', { SharedFolder: 'Contrats' }), row(2, 'Avenant 1.pdf', { SharedFolder: 'Contrats' }), row(3, 'Avenant 2.pdf', { SharedFolder: 'Contrats', Accepted: true, Refused: false }),
+      row(4, 'Plan.pdf', { SharedFolder: 'Archives', Accepted: true, Refused: false }), row(5, 'Rapport.pdf', { SharedFolder: 'Archives', Accepted: true, Refused: false }), row(6, 'Seul.pdf', { SharedFolder: '' })] : [row(1, 'Facture de la session de formation de septembre 2026.pdf'), row(2, 'Devis.pdf'), row(3, 'Contrat.pdf', { Accepted: true, Refused: false }), row(4, 'Ancien refus.pdf', { Accepted: false, Refused: true }), row(5, 'Retiré.pdf', { Accepted: true, Refused: false, Supprimee_a_la_source: true })];
+    const columns = ['id', ...filesColumnIds(), 'Supprimee_a_la_source', 'Accepted', 'Refused', 'SharedFolder'];
+    sharedGrist = fakeGrist(kind === 'vide' ? {} : { GFS_Received: { columns, rows } });
     window.__sharedTables = sharedGrist.tables;
     window.__sharedActions = sharedGrist.actions;
     await readArrivals();
@@ -467,9 +470,9 @@ async function mount() {
   window.__ambiance = id => setting.choose(id);
   const themeWindow = new ThemeWindow({ container: stage, i18n, locale, setting, mode, inertTargets: () => [explorer.root] });
   theme.open = () => themeWindow.open();
-  // Un PDF gardé par GFS, lu comme l'explorateur le lit : les colonnes de `GFS_Fichiers` et le manifeste de GFS. `__reset` remet `live` aux fichiers de départ : le PDF disparaît.
+  // Un PDF gardé par GFS, lu comme l'explorateur le lit : les colonnes de `GFS_Files` et le manifeste de GFS. `__reset` remet `live` aux fichiers de départ : le PDF disparaît.
   window.__withPdf = () => {
-    const [pdf] = readFiles(FILES_MANIFEST, FILES_MANIFEST.fichiers[0], { id: [900], Identifiant: ['essai-pdf'], Nom: ['Attestation.pdf'], Type: ['pdf'], Date: [Math.floor(Date.now() / 1000) - 3600], Auteur: ['Service RH'], Contenu: [['L', 900]], Taille: [640000] });
+    const [pdf] = readFiles(filesManifest(), filesManifest().fichiers[0], { id: [900], FileId: ['essai-pdf'], Name: ['Attestation.pdf'], Type: ['pdf'], Date: [Math.floor(Date.now() / 1000) - 3600], Author: ['Service RH'], Content: [['L', 900]], Size: [640000] });
     live.push(pdf);
     show();
   };
@@ -514,6 +517,20 @@ async function mount() {
     window.__sharing = null;
     const plan = { ok: true, closes: true, firstRule: true, filing: true, extends: false, appTables: ['Publipostage_Modeles', 'FormPlus_Formulaires', 'Automation_Fichiers'] };
     ask({ ...askOptions(i18n.t, 'sharing', plan), container: stage, inertTargets: () => [explorer.root] }).then(answer => { window.__sharing = answer ? 'yes' : 'no'; });
+  };
+  // La fenêtre de mise à jour des noms (js/ui/names-window.js, test/noms-gfs-firefox.mjs) : la vraie fenêtre sur ce que `prepare` du kit rendrait (neuf tables, de longs noms) ; `kind` : 'fait' (le lot réussit après
+  // un temps), 'refus' (Grist refuse : « Réessayer » et « Continuer sans mettre à jour »). `window.__names` garde l'état final dit à GFS (`done`, `skipped`).
+  window.__namesWindow = kind => {
+    window.__names = null;
+    const pairs = [['GFS_Rangement', 'GFS_Filing'], ['GFS_Groupes', 'GFS_Groups'], ['GFS_Espaces', 'GFS_Spaces'], ['GFS_Placement', 'GFS_Placement'], ['GFS_Partages', 'GFS_Shares'],
+      ['GFS_Corbeille', 'GFS_Trash'], ['GFS_Annuaires', 'GFS_Directories'], ['GFS_Notifications', 'GFS_Notifications'], ['GFS_Fichiers', 'GFS_Files']];
+    const prepared = { state: 'ready', summary: { tables: pairs, columns: 74 } };
+    const run = async () => {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      return kind === 'refus' ? { state: 'refused', detail: 'Blocked by table structure access rules' } : { state: 'done', tables: 9, rows: null, mismatch: [] };
+    };
+    const t = createKitI18n({ strings: NAMES_STRINGS, language }).t;
+    showNamesWindow({ container: stage, inertTargets: () => [explorer.root], t, appName: 'GFS', prepared, run }).then(answer => { window.__names = answer.state; });
   };
   // La fenêtre « Partager » (js/sharing/share-window.js, test/partager-firefox.mjs) : la vraie fenêtre sur un état que le contrôleur aurait lu ; `kind` : 'inactif' (le partage n'est pas activé, une personne propriétaire),
   // 'actif' (propriétaire : des lignes de personnes à l'adresse très longue, de catégories, une fin d'accès, un accès échu), 'lecture' (une personne qui ne peut rien changer). `window.__shareActs` note ce que la
@@ -575,12 +592,12 @@ async function mount() {
     return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' || kind === 'lien-neuf' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, filesTable: kind !== 'lien-neuf', createFlow: (chosen, strict) => { mode = chosen; acts.push(['mode', chosen, Boolean(strict)]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
   };
   // La fenêtre « Recevoir d'un autre document Grist » (js/sharing/share-receive-window.js, test/partager-recevoir-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur et Grist se mesurent
-  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'reprise' (Grist a rechargé la page pendant que la fenêtre attendait le lien du formulaire : la fenêtre s'ouvre directement sur ce lien), 'serveur' (le code vient d'un autre serveur Grist : refusé dès la lecture), 'refus' (accepter échoue).
+  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Received), 'second' (la table libre suivante : GFS_Received_2), 'connu' (une réception qui reprend), 'reprise' (Grist a rechargé la page pendant que la fenêtre attendait le lien du formulaire : la fenêtre s'ouvre directement sur ce lien), 'serveur' (le code vient d'un autre serveur Grist : refusé dès la lecture), 'refus' (accepter échoue).
   // `window.__receiveActs` note ce que le parcours a reçu.
   const SERVER_OTHER = 'grist-de-la-direction-des-systemes-d-information.exemple.gouv.fr'; // le même nom dans test/partager-recevoir-firefox.mjs
   window.__receive = kind => {
     const acts = window.__receiveActs = [];
-    const table = kind === 'second' ? 'GFS_Recus_2' : 'GFS_Recus';
+    const table = kind === 'second' ? 'GFS_Received_2' : 'GFS_Received';
     let replied = false;
     const flow = {
       read: async text => {
@@ -646,7 +663,7 @@ async function mount() {
     const space = folder && folder.wholeSpace ? folder : null;
     const file = space ? { key: space.key, name: space.name, app: i18n.t('share.space.kind') } : dir ? { key: dir.key, name: dir.name, app: dir.mine ? i18n.t('share.folder.inMine', { name: i18n.t('ex.me') }) : i18n.t('share.folder.in', { name: 'Achats' }) } : { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' };
     return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], other: window.__shareOther ? state => otherTab(state, dir) : null, file, startTab: 'here',
-      load: async () => (dir && dir.mine ? { ...shareStates.actif, folder: true, author: '', shares: [share(1, 'marc@example.com', 'lecture')] } : shareStates[kind]), onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
+      load: async () => (dir && dir.mine ? { ...shareStates.actif, folder: true, author: '', shares: [share(1, 'marc@example.com', 'lecture')] } : shareStates[kind]), onAdd: row => record(['add', row.Person, row.Right]), onChange: (id, patch) => record(['change', id, patch.Right]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
   };
   // La fenêtre « Poids du document » (js/weight/weight-window.js, test/poids-fenetre-firefox.mjs) : la vraie fenêtre et le vrai lecteur (js/weight/weight-reader.js) sur une doublure de `Transfer.sql`. `window.__weightKind` choisit ce
   // que le serveur répond : 'ok' (un document de dix-huit tables dont une au nom très long et une trop longue à lire), 'refuse' (pas le droit de tout copier : 403), 'muet' (le serveur ne répond pas).

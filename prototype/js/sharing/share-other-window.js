@@ -11,7 +11,7 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { area, button, codeWithCopy, openSteps, structureNotes } from './steps-window.js';
 import { betaNotice } from './other-beta-notice.js';
-import { FILES_TABLE } from '../files/gfs-files.js';
+import { filesNames } from '../files/gfs-files.js';
 import { HELPER_COLUMNS, RECEIVED_TABLE, SYNC_TABLE_NAME } from './share-other-flow.js';
 
 const DAY_S = 24 * 60 * 60;
@@ -29,7 +29,7 @@ function accordDetails(ctx) {
     h('div', { class: 'sec' }, t('so.accord.adds')),
     h('ul', { class: 'so-list' },
       h('li', null, t(live ? 'so.accord.table.live' : 'so.accord.table', { table: SYNC_TABLE_NAME })),
-      h('li', null, t(ctx.filesTable ? 'so.accord.columns' : 'so.accord.files', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') })),
+      h('li', null, t(ctx.filesTable ? 'so.accord.columns' : 'so.accord.files', { table: filesNames().table, columns: HELPER_COLUMNS.join(', ') })),
       h('li', null, t(live ? 'so.accord.hook.live' : 'so.accord.hook'))),
     h('p', { class: 'fine' }, t('so.accord.rules')),
     ...structureNotes(t),

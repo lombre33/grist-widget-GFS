@@ -133,24 +133,24 @@ test('`show` redit la dernière phrase dans la langue qui vaut maintenant, sans 
 });
 
 // La table du rangement telle que `fetchTable` la rend : les colonnes que GFS lit, sans une ligne.
-const rangementTable = () => ({ id: [], Utilisateur: [], App: [], Fichier: [], Favori: [], Dossier: [], Valeur: [] });
+const rangementTable = () => ({ id: [], User: [], App: [], File: [], Favorite: [], Folder: [], Value: [] });
 
 test('la lecture dit au rangement le nom que le document donne à sa table (ou qu\'elle manque) : un geste de rangement le sait sans la relire', async () => {
   const without = bench();
   await without.reading.refresh();
   assert.deepEqual(without.notes, [null]);
-  const withTable = bench({ data: { ...tables(), gfs_rangement: rangementTable() } });
+  const withTable = bench({ data: { ...tables(), gfs_filing: rangementTable() } });
   await withTable.reading.refresh();
-  assert.deepEqual(withTable.notes, ['gfs_rangement']);
+  assert.deepEqual(withTable.notes, ['gfs_filing']);
 });
 
 test('la lecture dit aussi le nom que le document donne à la table de la corbeille (ou qu\'elle manque) : mettre un fichier à la corbeille le sait sans la relire', async () => {
   const without = bench();
   await without.reading.refresh();
   assert.deepEqual(without.bins, [null]);
-  const withBin = bench({ data: { ...tables(), GFS_Corbeille: { id: [] } } });
+  const withBin = bench({ data: { ...tables(), GFS_Trash: { id: [] } } });
   await withBin.reading.refresh();
-  assert.deepEqual(withBin.bins, ['GFS_Corbeille']);
+  assert.deepEqual(withBin.bins, ['GFS_Trash']);
 });
 
 test('les gestes affichés d\'avance : la lecture note, au départ, ce qui était confirmé, et le retire avant que la liste lue ne soit posée', async () => {

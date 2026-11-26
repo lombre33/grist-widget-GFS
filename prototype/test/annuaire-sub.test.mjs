@@ -1,5 +1,5 @@
 // Les sous-annuaires (module Annuaire, 25/11) : le critère, la copie des personnes (ce qu'elle garde, ce qu'elle ne garde jamais), sa relecture sans exception,
-// l'ordre de la liste, et la cible de partage de `GFS_Annuaires` (le verrou est celui du moteur de partage de GFS). Sur le document fictif des essais.
+// l'ordre de la liste, et la cible de partage de `GFS_Directories` (le verrou est celui du moteur de partage de GFS). Sur le document fictif des essais.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readConfig, writeConfig, annuairesOf, ANNUAIRES_COLUMNS } from '../js/annuaire/annuaire-config.js';
@@ -7,9 +7,9 @@ import { schemaOf } from '../js/annuaire/annuaire-schema.js';
 import { buildPeople, buildTree, filterOptions, levelKey } from '../js/annuaire/annuaire-model.js';
 import { isSub, parentOf, subsOf, orderAnnuaires, criteriaOf, peopleOfSub, copyable, miniSchema, packFiches, unpackFiches, subRecord, refreshRecord,
   FICHES_VERSION } from '../js/annuaire/annuaire-sub.js';
-import { ANNUAIRES_TARGET, targetsOf, helperColumns, fileRules, planSharing, FILES_TARGET } from '../js/sharing/sharing-model.js';
+import { ANNUAIRES_TARGET, targetsOf, helperColumns, fileRules, planSharing, filesTarget } from '../js/sharing/sharing-model.js';
 import { ANNUAIRES_MANIFEST, ANNUAIRES_APP, annuaireKey, annuaireFile } from '../js/files/annuaire-files.js';
-import { FILES_COLUMNS } from '../js/files/gfs-files.js';
+import { filesColumns } from '../js/files/gfs-files.js';
 import { documentFixture, configFixture } from './annuaire-fixtures.mjs';
 
 const doc = documentFixture();
@@ -27,20 +27,20 @@ test('config : le critère d\'un sous-annuaire se relit, et un critère incomple
   for (const sub of [undefined, null, 'x', {}, { key: '@L0' }, { key: '@L0', values: [] }, { values: ['a'] }]) assert.equal(readConfig({ sub }).sub, undefined, JSON.stringify(sub));
 });
 
-test('colonnes : GFS_Annuaires garde sa copie dans une colonne « Fiches », en plus des quatre d\'avant', () => {
-  assert.deepEqual(ANNUAIRES_COLUMNS.map(column => column.id), ['Nom', 'Table', 'Config', 'Parent', 'Fiches']);
+test('colonnes : GFS_Directories garde sa copie dans une colonne « Copy », en plus des quatre d\'avant', () => {
+  assert.deepEqual(ANNUAIRES_COLUMNS.map(column => column.id), ['Name', 'Table', 'Config', 'Parent', 'Copy']);
 });
 
 test('annuairesOf : le numéro de l\'annuaire d\'origine, la copie et ce que Grist dit des droits de la ligne', () => {
-  const data = { id: [1, 2], Nom: ['Principal', 'RH'], Table: ['Personnes', 'Personnes'], Config: ['{}', '{}'], Parent: ['', '1'], Fiches: ['', '{"people":[]}'],
-    GFS_Ecrivains: [null, ['L', 'Ecrit@Exemple.fr']], GFS_Admins: [null, ['L', 'chef@exemple.fr', ' ']] };
+  const data = { id: [1, 2], Name: ['Principal', 'RH'], Table: ['Personnes', 'Personnes'], Config: ['{}', '{}'], Parent: ['', '1'], Copy: ['', '{"people":[]}'],
+    GFS_Writers: [null, ['L', 'Ecrit@Exemple.fr']], GFS_Admins: [null, ['L', 'chef@exemple.fr', ' ']] };
   const [first, second] = annuairesOf(data);
   assert.equal(first.parent, '');
   assert.equal(second.parent, '1');
   assert.equal(second.fiches, '{"people":[]}');
   assert.deepEqual(second.access, { writers: ['ecrit@exemple.fr'], admins: ['chef@exemple.fr'] }, 'adresses en minuscules, sans blanc');
   assert.deepEqual(first.access, { writers: [], admins: [] });
-  assert.deepEqual(annuairesOf({ id: [1], Nom: ['A'], Table: ['T'] })[0].access, { writers: [], admins: [] }, 'sans partage, la table n\'a pas ces colonnes');
+  assert.deepEqual(annuairesOf({ id: [1], Name: ['A'], Table: ['T'] })[0].access, { writers: [], admins: [] }, 'sans partage, la table n\'a pas ces colonnes');
 });
 
 test('liste : chaque annuaire principal est suivi de ses sous-annuaires ; un sous-annuaire orphelin reste, à la fin', () => {
@@ -121,58 +121,58 @@ test('enregistrement : la ligne d\'un sous-annuaire porte son annuaire d\'origin
   const at = '2026-11-25T14:00:00.000Z';
   const { people: kept, record } = subRecord({ name: '  Pôle Ressources ', parent: main, sub: RESSOURCES, read, at });
   assert.equal(kept.length, 4);
-  assert.deepEqual(Object.keys(record).sort(), ['Config', 'Fiches', 'Nom', 'Parent', 'Table']);
-  assert.equal(record.Nom, 'Pôle Ressources');
+  assert.deepEqual(Object.keys(record).sort(), ['Config', 'Copy', 'Name', 'Parent', 'Table']);
+  assert.equal(record.Name, 'Pôle Ressources');
   assert.equal(record.Parent, '1', 'le numéro de la ligne de l\'annuaire d\'origine');
   assert.equal(record.Table, 'Personnes');
   assert.deepEqual(readConfig(record.Config).sub, { ...RESSOURCES, at });
   assert.deepEqual(readConfig(record.Config).levels, read.config.levels, 'la définition de l\'annuaire d\'origine est reprise');
-  assert.equal(unpackFiches(record.Fiches, 3).people.length, 4);
-  assert.ok(record.Fiches.includes('Camille Durand') && !record.Fiches.includes('Louis Girard'), 'la copie ne contient que les personnes du critère');
+  assert.equal(unpackFiches(record.Copy, 3).people.length, 4);
+  assert.ok(record.Copy.includes('Camille Durand') && !record.Copy.includes('Louis Girard'), 'la copie ne contient que les personnes du critère');
   const masked = subRecord({ name: 'x', parent: main, sub: RESSOURCES, read: { ...read, masked: new Set([people.find(each => each.name === 'Camille Durand').row]) }, at });
   assert.equal(masked.people.length, 3);
-  assert.ok(!masked.record.Fiches.includes('Camille Durand'), 'une fiche masquée n\'entre pas dans la copie');
+  assert.ok(!masked.record.Copy.includes('Camille Durand'), 'une fiche masquée n\'entre pas dans la copie');
 });
 
 test('actualiser : la copie, la définition et le moment changent ; le nom, l\'origine et le partage restent', () => {
   const { record } = refreshRecord({ sub: RESSOURCES, parent: main, read, at: '2026-11-26T08:00:00.000Z' });
-  assert.deepEqual(Object.keys(record).sort(), ['Config', 'Fiches', 'Table']);
+  assert.deepEqual(Object.keys(record).sort(), ['Config', 'Copy', 'Table']);
   assert.equal(readConfig(record.Config).sub.at, '2026-11-26T08:00:00.000Z');
 });
 
-test('partage : GFS_Annuaires est une cible du moteur, ouverte pour les annuaires principaux et verrouillée pour les sous-annuaires', () => {
-  assert.equal(ANNUAIRES_TARGET.table, 'GFS_Annuaires');
+test('partage : GFS_Directories est une cible du moteur, ouverte pour les annuaires principaux et verrouillée pour les sous-annuaires', () => {
+  assert.equal(ANNUAIRES_TARGET.table, 'GFS_Directories');
   assert.equal(ANNUAIRES_TARGET.prefix, `${ANNUAIRES_APP}:`);
   assert.equal(ANNUAIRES_TARGET.id, null, 'la clé d\'un annuaire est le numéro de sa ligne');
   assert.equal(ANNUAIRES_TARGET.stamped, true, 'Grist écrit l\'auteur à la création');
   assert.equal(ANNUAIRES_TARGET.open, 'not rec.Parent', 'un annuaire principal reste lisible comme avant');
-  assert.deepEqual(targetsOf([]).map(target => target.table), [FILES_TARGET.table, 'GFS_Annuaires']);
+  assert.deepEqual(targetsOf([]).map(target => target.table), [filesTarget().table, 'GFS_Directories']);
   const rules = fileRules(ANNUAIRES_TARGET);
   assert.ok(rules.some(rule => rule.formula === 'not rec.Parent' && rule.rights === '+R'), 'les annuaires principaux se lisent');
   assert.equal(rules.at(-1).formula, '', 'la dernière règle refuse le reste');
   assert.equal(rules.at(-1).rights, '-CRUD');
-  assert.ok(helperColumns(ANNUAIRES_TARGET).some(column => column.id === 'GFS_Lecteurs'), 'les colonnes d\'aide que lisent les règles');
+  assert.ok(helperColumns(ANNUAIRES_TARGET).some(column => column.id === 'GFS_Readers'), 'les colonnes d\'aide que lisent les règles');
   assert.equal(annuaireKey(7), 'gfs-annuaires:7');
-  assert.deepEqual(annuaireFile({ row: 7, name: 'RH' }), { key: 'gfs-annuaires:7', app: 'gfs-annuaires', id: '7', table: 'GFS_Annuaires', row: 7, name: 'RH',
+  assert.deepEqual(annuaireFile({ row: 7, name: 'RH' }), { key: 'gfs-annuaires:7', app: 'gfs-annuaires', id: '7', table: 'GFS_Directories', row: 7, name: 'RH',
     type: 'annuaire', by: '' });
 });
 
-test('partage : activer le partage d\'un document qui a des annuaires étend GFS_Annuaires (colonnes d\'aide et règles), sans toucher à ses données', () => {
-  const existing = { resources: [], rules: [], tables: [{ id: 1, tableId: 'GFS_Annuaires' }], columns: ['Nom', 'Table', 'Config', 'Parent', 'Fiches'].map(colId => ({ parentId: 1,
-    colId })), files: { GFS_Annuaires: ['1'] }, targets: targetsOf([]) };
-  const plan = planSharing(existing, FILES_COLUMNS, existing.targets);
+test('partage : activer le partage d\'un document qui a des annuaires étend GFS_Directories (colonnes d\'aide et règles), sans toucher à ses données', () => {
+  const existing = { resources: [], rules: [], tables: [{ id: 1, tableId: 'GFS_Directories' }], columns: ['Name', 'Table', 'Config', 'Parent', 'Copy'].map(colId => ({ parentId: 1,
+    colId })), files: { GFS_Directories: ['1'] }, targets: targetsOf([]) };
+  const plan = planSharing(existing, filesColumns(), existing.targets);
   assert.equal(plan.ok, true);
-  assert.deepEqual(plan.appTables, ['GFS_Annuaires']);
-  const added = plan.actions.filter(action => action[0] === 'AddColumn' && action[1] === 'GFS_Annuaires').map(action => action[2]);
-  assert.ok(added.includes('GFS_Lecteurs') && added.includes('GFS_Auteur'), added.join());
-  assert.ok(!plan.actions.some(action => action[0] === 'AddRecord' && action[1] === 'GFS_Annuaires'), 'aucune ligne d\'annuaire n\'est écrite');
-  assert.ok(!plan.actions.some(action => ['UpdateRecord', 'BulkUpdateRecord', 'RemoveRecord'].includes(action[0]) && action[1] === 'GFS_Annuaires'));
+  assert.deepEqual(plan.appTables, ['GFS_Directories']);
+  const added = plan.actions.filter(action => action[0] === 'AddColumn' && action[1] === 'GFS_Directories').map(action => action[2]);
+  assert.ok(added.includes('GFS_Readers') && added.includes('GFS_Author'), added.join());
+  assert.ok(!plan.actions.some(action => action[0] === 'AddRecord' && action[1] === 'GFS_Directories'), 'aucune ligne d\'annuaire n\'est écrite');
+  assert.ok(!plan.actions.some(action => ['UpdateRecord', 'BulkUpdateRecord', 'RemoveRecord'].includes(action[0]) && action[1] === 'GFS_Directories'));
 });
 
 test('explorateur : l\'annuaire est un fichier intégré, de type « annuaire », dont la clé est le numéro de ligne', () => {
   const [spec] = ANNUAIRES_MANIFEST.fichiers;
   assert.equal(ANNUAIRES_MANIFEST.integre, true);
-  assert.equal(spec.table, 'GFS_Annuaires');
-  assert.deepEqual(spec.colonnes, { id: 'id', nom: 'Nom', par: 'GFS_Auteur' });
+  assert.equal(spec.table, 'GFS_Directories');
+  assert.deepEqual(spec.colonnes, { id: 'id', nom: 'Name', par: 'GFS_Author' });
   assert.deepEqual(spec.types.map(type => [type.valeur, type.icone, type.couleur]), [['annuaire', 'annuaire', 'annuaire']]);
 });

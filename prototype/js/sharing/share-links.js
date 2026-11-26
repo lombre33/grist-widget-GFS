@@ -8,13 +8,13 @@
 //   identifiant qui n'existe pas ;
 //   - un fichier retiré de la condition est effacé chez l'autre, sauf quand sa réception est « en archive » (la copie reste, marquée « supprimée à la source
 //   ») : GFS reçoit toujours en archive.
-import { FILES_COLUMN_IDS, FILES_TABLE, SHARED_FOLDER_COLUMN, TRASH_COLUMN_IDS } from '../files/gfs-files.js';
+import { filesColumnIds, filesNames, trashColumnIds } from '../files/gfs-files.js';
 
 // Les colonnes qui partent : celles du fichier, sans la corbeille (qui n'a de sens que dans le document d'origine). Le nom du dossier partagé n'y est PAS : il
 // ne part qu'avec un lien qui reçoit un dossier (`selectionFor`, `folder`). Sans cela, le nom de dossier écrit pour un document A partait aussi chez un
 // document B qui ne reçoit que des fichiers seuls : il y voyait un fichier rangé dans un dossier qu'on ne lui a jamais partagé (audit « contournement » du
 // 11/11).
-export const SENT_COLUMNS = Object.freeze(FILES_COLUMN_IDS.filter(id => !TRASH_COLUMN_IDS.includes(id)));
+export const sentColumns = (names = filesNames()) => filesColumnIds(names).filter(id => !trashColumnIds(names).includes(id));
 export const NONE = 'gfs-aucun';
 
 // Ce que le partage ne porte pas : un fichier de plus de 25 Mo. Le moteur ne l'envoie pas (kit/js/synchro/logic/files.js, `FILE_MAX` :
@@ -22,7 +22,8 @@ export const NONE = 'gfs-aucun';
 // accepter, 100 o ») et l'envoyeur voyait « À jour » (audit « trois Grist » du 18/11). GFS le dit AVANT l'envoi (choix du porteur, 18/11 : « Prévenir avant
 // l'envoi ») : le fichier ne part pas, et la fenêtre dit pourquoi.
 export const SEND_MAX = 25 * 1024 * 1024;
-// Le contenu d'un fichier de l'explorateur : la somme de ses pièces jointes (`pieces`, [[clé, octets]] : le PDF que GFS garde en a une, que dit `Taille`).
+// Le contenu d'un fichier de l'explorateur : la somme de ses pièces jointes (`pieces`, [[clé, octets]] : le PDF que GFS garde en a une, que dit la colonne de
+// taille).
 export const sizeOf = file => ((file && file.pieces) || []).reduce((total, piece) => total + (Number(piece[1]) || 0), 0);
 export const isTooBig = file => sizeOf(file) > SEND_MAX;
 // « 25 Mo » dans la langue de `t` (le nombre vient de `SEND_MAX` : un texte écrit à la main dirait un jour autre chose que le code).
@@ -33,20 +34,20 @@ export const PASSES = 90; // trois minutes au plus avant de dire que l'envoi n'e
 // La sélection du moteur : la table des fichiers, ses colonnes, et les fichiers voulus (leur identifiant ne change jamais, ni au renommage ni au remplacement).
 // Jamais une condition vide (voir plus haut). `folder` : le lien reçoit un dossier, le nom du dossier part avec chaque fichier (le moteur ne l'envoie que si la
 // table porte la colonne à l'enregistrement : faits vérifiés, 99).
-export const selectionFor = (ids, { folder = false } = {}) => [{ table: FILES_TABLE,
-  columns: folder ? [...SENT_COLUMNS, SHARED_FOLDER_COLUMN] : [...SENT_COLUMNS],
-  filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: ids.length ? [...ids] : [NONE] }] } }];
+export const selectionFor = (ids, { folder = false } = {}) => [{ table: filesNames().table,
+  columns: folder ? [...sentColumns(), filesNames().folder] : sentColumns(),
+  filter: { mode: 'all', conds: [{ id: filesNames().id, op: 'in', values: ids.length ? [...ids] : [NONE] }] } }];
 
 // Le lien envoie-t-il déjà le nom du dossier ? (sa colonne est dans l'export : un lien qui a reçu un dossier la garde, même pour un fichier seul de plus.)
 export const carriesFolder = link => (((link && link.exp && link.exp.tables) || [])[0]?.columns || []).some(column => column &&
-  column.id === SHARED_FOLDER_COLUMN);
+  column.id === filesNames().folder);
 
 // Les fichiers d'une sélection, lue dans les tables d'un export (`tables` : [{ table, columns, filter }] ; null si la condition n'est pas celle de GFS :
 // l'export est ignoré).
 export function filesOf(tables) {
-  if (!Array.isArray(tables) || tables.length !== 1 || tables[0].table !== FILES_TABLE) return null;
+  if (!Array.isArray(tables) || tables.length !== 1 || tables[0].table !== filesNames().table) return null;
   const conds = (tables[0].filter && tables[0].filter.conds) || [];
-  if (conds.length !== 1 || conds[0].id !== 'Identifiant' || conds[0].op !== 'in') return null;
+  if (conds.length !== 1 || conds[0].id !== filesNames().id || conds[0].op !== 'in') return null;
   return (conds[0].values || []).map(String).filter(id => id !== NONE);
 }
 

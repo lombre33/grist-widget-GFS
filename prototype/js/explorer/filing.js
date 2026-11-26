@@ -1,6 +1,6 @@
-// Épingler, ranger et renommer depuis l'explorateur, avant d'ouvrir aucune app (le porteur, 21/10) : favoris et dossiers dans la table de GFS (`GFS_Rangement`,
+// Épingler, ranger et renommer depuis l'explorateur, avant d'ouvrir aucune app (le porteur, 21/10) : favoris et dossiers dans la table de GFS (`GFS_Filing`,
 // contrats 6.4), le nom dans la table de l'app, sa seule colonne du nom (6.3, point 2). Créer et supprimer un dossier sont d'ici, même vide : il tient alors à
-// une ligne d'état de `GFS_Rangement` (6.4, point 11), et un dossier que la personne vide ne disparaît pas. Copier et supprimer un fichier ne sont pas d'ici :
+// une ligne d'état de `GFS_Filing` (6.4, point 11), et un dossier que la personne vide ne disparaît pas. Copier et supprimer un fichier ne sont pas d'ici :
 // js/files/copying.js et js/files/trash.js (le porteur, 04/11). Un geste à la fois, et chacun part de la liste relue après le précédent ; il relit la table
 // avant d'écrire, en un seul lot. Les fenêtres et l'accord de la personne viennent du contrôleur. Chaque geste qui a abouti dépose dans la pile d'annulation
 // (`undoStack`, js/files/undo-stack.js) de quoi se défaire : Ctrl+Z remet le rangement ou le nom comme ils étaient (l'état d'avant est relu juste avant
@@ -144,7 +144,7 @@ export class Filing {
     });
   }
 
-  // Un dossier neuf, même vide (« Nouveau dossier ») : dans le dossier ouvert, ou dans `parent`. Il tient à une ligne d'état de `GFS_Rangement` (6.4, point
+  // Un dossier neuf, même vide (« Nouveau dossier ») : dans le dossier ouvert, ou dans `parent`. Il tient à une ligne d'état de `GFS_Filing` (6.4, point
   // 11). Deux dossiers voisins ne portent pas le même nom (comme pour renommer). Rend son chemin, ou rien quand la personne renonce ou que rien ne s'écrit.
   newFolder(parent = this.#opts.here()) {
     return this.#gesture(async () => {
@@ -184,7 +184,7 @@ export class Filing {
   }
 
   // Le fichier part à la corbeille (js/files/trash.js) : son dossier, s'il n'a plus de fichier, reste, comme après un déplacement. Sans la table
-  // `GFS_Rangement`, rien ne s'écrit et rien n'est demandé : on ne crée pas une table pour cela. Peut lever (Grist refuse le lot) : la corbeille le dit à la
+  // `GFS_Filing`, rien ne s'écrit et rien n'est demandé : on ne crée pas une table pour cela. Peut lever (Grist refuse le lot) : la corbeille le dit à la
   // console seulement, le fichier est à la corbeille.
   async keepFoldersOf(file) {
     const plan = this.#keepPlan(file);
@@ -337,7 +337,7 @@ export class Filing {
 
   #title(file) { return file.name || this.#opts.t('ex.untitled'); }
 
-  // Les dossiers que la personne garde sans fichier (la ligne d'état de `GFS_Rangement`).
+  // Les dossiers que la personne garde sans fichier (la ligne d'état de `GFS_Filing`).
   #spare() { return (this.#opts.folders && this.#opts.folders()) || []; }
 
   #folders() { return folderPaths(this.#opts.files(), this.#opts.locale(), this.#spare()); }

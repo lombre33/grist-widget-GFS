@@ -1,5 +1,5 @@
 // Ce que GFS retient des apps installées (contrats 7.4) : un objet `{ "<id>": { "extensions": [ "…" ], "modes": { "<extension>": "cdn" | "vendorise" } } }`,
-// rangé en JSON dans la ligne réservée `@document` / `gfs` / `apps` de la table `GFS_Rangement` (rangement.js). `modes` est facultatif (le défaut est
+// rangé en JSON dans la ligne réservée `@document` / `gfs` / `apps` de la table `GFS_Filing` (rangement.js). `modes` est facultatif (le défaut est
 // le CDN) : proposé par le prototype, d'après la question 11 du cahier (le mode se retient par extension).
 // Du code sans effet de bord : il lit, il rend de nouveaux objets ; le contrôleur écrit, et seulement sur un geste de la personne.
 

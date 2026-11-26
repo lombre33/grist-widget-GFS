@@ -1,6 +1,6 @@
 // « Partager » pour les fichiers d'une app (contrats 11.7, point 13, lot 2) : les modèles de Publipostage+ (la table et les colonnes que l'app crée, `seed.mjs`) dans GFS, dans un VRAI Grist (`bash vrai-serveur.sh`),
 // à 700 × 400, à la vraie souris, à trois comptes en trois temps (un seul compte à la fois, GRIST_EMAIL ; l'état passe par /tmp/partager-apps-etat.json).
-//   PHASE=proprietaire  « Partager… » d'un modèle : activer (la question cite la table de l'app), Grist recharge, la fenêtre revient ; GFS a posé `GFS_Auteur` et les colonnes d'aide ; les modèles d'avant restent lisibles de tous ;
+//   PHASE=proprietaire  « Partager… » d'un modèle : activer (la question cite la table de l'app), Grist recharge, la fenêtre revient ; GFS a posé `GFS_Author` et les colonnes d'aide ; les modèles d'avant restent lisibles de tous ;
 //                       un modèle créé par le propriétaire après l'activation n'est lu que de lui ; partage d'un modèle en écriture à l'éditeur.
 //   PHASE=editeur       editor@ : lit les modèles d'avant, pas celui du propriétaire ; crée un modèle (comme le fait l'app) : Grist écrit son adresse ; ne triche pas sur l'auteur ; écrit le modèle qu'on lui a
 //                       ouvert en écriture, pas un modèle en lecture ; la ligne de réglages reste ouverte ; partage son modèle avec viewer@ par la fenêtre.
@@ -87,20 +87,20 @@ async function playOwner(run) {
   say('--- 2. ce que GFS a posé ---');
   const columns = await call(page, 'GET', `/api/docs/${run.docId}/tables/${MODELS}/columns`);
   const ids = (columns.json.columns || []).map(column => column.id);
-  check('la table de l\'app porte GFS_Auteur et les cinq colonnes d\'aide', ['GFS_Auteur', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Cats', 'GFS_CatsEcrit'].every(id => ids.includes(id)), ids);
-  const shares = await rows(run, 'GFS_Partages');
-  say('   partages :', shares.length, 'dont tous :', shares.filter(row => row.Personne === '@tous').length);
-  check('les modèles d\'avant restent lisibles de tous : un partage « tous » par ligne de la table', shares.filter(row => row.Personne === '@tous' && /^publipostage:/.test(row.Cible)).length >= 18, shares.length);
+  check('la table de l\'app porte GFS_Author et les cinq colonnes d\'aide', ['GFS_Author', 'GFS_Readers', 'GFS_Writers', 'GFS_Admins', 'GFS_Cats', 'GFS_CatsWrite'].every(id => ids.includes(id)), ids);
+  const shares = await rows(run, 'GFS_Shares');
+  say('   partages :', shares.length, 'dont tous :', shares.filter(row => row.Person === '@tous').length);
+  check('les modèles d\'avant restent lisibles de tous : un partage « tous » par ligne de la table', shares.filter(row => row.Person === '@tous' && /^publipostage:/.test(row.Target)).length >= 18, shares.length);
   const before = (await rows(run, MODELS)).find(row => row.Nom === FIRST);
-  say('   auteur des lignes d\'avant :', JSON.stringify(before.GFS_Auteur));
+  say('   auteur des lignes d\'avant :', JSON.stringify(before.GFS_Author));
   await closeShare(frame);
 
   say('--- 3. un modèle créé après l\'activation (comme le fait l\'app) ---');
   let answer = await apply(run, [['AddRecord', MODELS, null, { Nom: 'Privé du propriétaire', TypeModele: 'document', DateModif: Math.floor(Date.now() / 1000) }]]);
   check('le propriétaire crée un modèle', answer.status === 200, answer.text);
   const mine = (await rows(run, MODELS)).find(row => row.Nom === 'Privé du propriétaire');
-  check('Grist écrit son adresse dans GFS_Auteur (l\'app n\'écrit rien)', mine.GFS_Auteur === OWNER, mine.GFS_Auteur);
-  check('un modèle neuf n\'est lu que de son auteur : GFS_Lecteurs = lui seul', JSON.stringify(mine.GFS_Lecteurs).includes(OWNER) && !JSON.stringify(mine.GFS_Lecteurs).includes('example.com","') , mine.GFS_Lecteurs);
+  check('Grist écrit son adresse dans GFS_Author (l\'app n\'écrit rien)', mine.GFS_Author === OWNER, mine.GFS_Author);
+  check('un modèle neuf n\'est lu que de son auteur : GFS_Readers = lui seul', JSON.stringify(mine.GFS_Readers).includes(OWNER) && !JSON.stringify(mine.GFS_Readers).includes('example.com","') , mine.GFS_Readers);
 
   say('--- 4. partager par la fenêtre ---');
   await page.reload();
@@ -114,8 +114,8 @@ async function playOwner(run) {
   await frame.getByRole('menuitemradio', { name: new RegExp(t('share.right.ecriture')) }).first().click();
   await page.waitForTimeout(1500);
   const writableKey = `publipostage:${await idOf(run, WRITABLE)}`;
-  const given = (await rows(run, 'GFS_Partages')).find(row => row.Cible === writableKey && row.Personne === EDITOR);
-  check('l\'éditeur a l\'écriture sur ce modèle dans la table des partages', given && given.Droit === 'ecriture' && given.Valide === true, given);
+  const given = (await rows(run, 'GFS_Shares')).find(row => row.Target === writableKey && row.Person === EDITOR);
+  check('l\'éditeur a l\'écriture sur ce modèle dans la table des partages', given && given.Right === 'ecriture' && given.Valid === true, given);
   await shot(frame, '3-partage');
   await closeShare(frame);
 
@@ -137,7 +137,7 @@ async function playOwner(run) {
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   check('GFS a rouvert la fenêtre du formulaire, prête à partager', (await frame.locator('[data-fk="share-add"]').count()) === 1);
   const formColumns = ((await call(page, 'GET', `/api/docs/${run.docId}/tables/FormPlus_Formulaires/columns`)).json.columns || []).map(column => column.id);
-  check('la table de Form+ porte GFS_Auteur et les colonnes d\'aide', ['GFS_Auteur', 'GFS_Lecteurs', 'GFS_CatsEcrit'].every(id => formColumns.includes(id)), formColumns);
+  check('la table de Form+ porte GFS_Author et les colonnes d\'aide', ['GFS_Author', 'GFS_Readers', 'GFS_CatsWrite'].every(id => formColumns.includes(id)), formColumns);
   const modelsAfter = await modelNames(run);
   check('les modèles de Publipostage+ n\'ont pas bougé', modelsAfter.includes(FIRST) && modelsAfter.includes('Privé du propriétaire'), modelsAfter.length);
   await shot(frame, '6-formulaire-partage');
@@ -155,8 +155,8 @@ async function playEditor(run) {
   let answer = await apply(run, [['AddRecord', MODELS, null, { Nom: 'Modèle de l\'éditeur', TypeModele: 'document', DateModif: Math.floor(Date.now() / 1000) }]]);
   check('il crée un modèle (comme l\'app)', answer.status === 200, answer.text);
   const mine = (await rows(run, MODELS)).find(row => row.Nom === 'Modèle de l\'éditeur');
-  check('Grist écrit son adresse dans GFS_Auteur', mine && mine.GFS_Auteur === EDITOR, mine);
-  answer = await apply(run, [['AddRecord', MODELS, null, { Nom: 'Au nom du propriétaire', TypeModele: 'document', GFS_Auteur: OWNER }]]);
+  check('Grist écrit son adresse dans GFS_Author', mine && mine.GFS_Author === EDITOR, mine);
+  answer = await apply(run, [['AddRecord', MODELS, null, { Nom: 'Au nom du propriétaire', TypeModele: 'document', GFS_Author: OWNER }]]);
   check('il ne crée pas un modèle au nom d\'un autre', answer.status !== 200, answer.text);
   const editable = (await rows(run, MODELS)).find(row => row.Nom === WRITABLE);
   answer = await apply(run, [['UpdateRecord', MODELS, editable.id, { ModifiePar: 'editeur' }]]);
@@ -168,7 +168,7 @@ async function playEditor(run) {
   check('la ligne de réglages de l\'app lui reste ouverte, en lecture', Boolean(settings));
   answer = await apply(run, [['UpdateRecord', MODELS, settings.id, { Contenu: '{"a":1}' }]]);
   check('et en écriture (l\'app y garde ses réglages)', answer.status === 200, answer.text);
-  answer = await apply(run, [['UpdateRecord', MODELS, mine.id, { GFS_Auteur: OWNER }]]);
+  answer = await apply(run, [['UpdateRecord', MODELS, mine.id, { GFS_Author: OWNER }]]);
   check('il ne change pas l\'auteur d\'une ligne', answer.status !== 200, answer.text);
 
   say('--- la fenêtre ---');
@@ -178,8 +178,8 @@ async function playEditor(run) {
   await openShareFor(refreshed, 'Modèle de l\'éditeur');
   check('auteur de son modèle : il peut ajouter quelqu\'un', (await refreshed.locator('[data-fk="share-add"]').count()) === 1 && (await refreshed.locator('[data-fixed="author"]').count()) === 1, await panel(refreshed));
   await addPerson(refreshed, VIEWER);
-  const shared = (await rows(run, 'GFS_Partages')).find(row => row.Personne === VIEWER && row.Auteur === EDITOR);
-  check('son partage est écrit sans propriétaire, valide', shared && shared.Valide === true, shared);
+  const shared = (await rows(run, 'GFS_Shares')).find(row => row.Person === VIEWER && row.Author === EDITOR);
+  check('son partage est écrit sans propriétaire, valide', shared && shared.Valid === true, shared);
   await shot(refreshed, '4-editeur');
   await closeShare(refreshed);
   await openShareFor(refreshed, FIRST);

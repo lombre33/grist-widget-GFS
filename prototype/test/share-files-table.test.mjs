@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { filesTableOf } from '../js/sharing/share-files-table.js';
-import { FILES_COLUMNS, FILES_TABLE } from '../js/files/gfs-files.js';
+import { FILES_NAMES, filesColumns, filesNames, useFilesNames } from '../js/files/gfs-files.js';
 
 // Un document : `tables` (identifiant → colonnes), les écritures reçues dans `actions`.
 function fakeDoc(tables = {}) {
@@ -30,15 +30,15 @@ test('sans PDF, `exists` le dit sans rien écrire ; `ensure` crée la table vide
   assert.equal(doc.actions.length, 1);
   const [name, table, columns] = doc.actions[0];
   assert.equal(name, 'AddTable');
-  assert.equal(table, FILES_TABLE);
-  assert.deepEqual(columns.map(column => column.id), FILES_COLUMNS.map(column => column.id), 'les colonnes que GFS écrit ensuite sont déjà là');
+  assert.equal(table, 'GFS_Files', 'la table naît sous son nom anglais');
+  assert.deepEqual(columns.map(column => column.id), filesColumns().map(column => column.id), 'les colonnes que GFS écrit ensuite sont déjà là');
   assert.equal(await files.exists(), true);
   assert.equal(await files.ensure(), false, 'un second geste ne la recrée pas');
   assert.equal(doc.actions.length, 1);
 });
 
 test('un document qui garde déjà des PDF : la table n\'est pas touchée, aucune écriture', async () => {
-  const doc = fakeDoc({ [FILES_TABLE]: FILES_COLUMNS.map(column => column.id) });
+  const doc = fakeDoc({ [filesNames().table]: filesColumns().map(column => column.id) });
   const files = filesTableOf(doc);
   assert.equal(await files.exists(), true);
   assert.equal(await files.ensure(), false);
@@ -46,8 +46,19 @@ test('un document qui garde déjà des PDF : la table n\'est pas touchée, aucun
 });
 
 test('une table d\'avant, sans la corbeille : ses colonnes manquantes ne sont pas ajoutées ici (ce n\'est pas au lien de les réparer)', async () => {
-  const old = FILES_COLUMNS.map(column => column.id).filter(id => !id.startsWith('Supprime'));
-  const doc = fakeDoc({ [FILES_TABLE]: old });
+  const old = filesColumns().map(column => column.id).filter(id => !id.startsWith('Deleted'));
+  const doc = fakeDoc({ [filesNames().table]: old });
   await filesTableOf(doc).ensure();
   assert.deepEqual(doc.actions, []);
+});
+
+test('un document où Sync+ tient la table sous son nom d\'avant : elle est reconnue, rien n\'est créé à côté', async () => {
+  useFilesNames(FILES_NAMES.fr);
+  try {
+    const doc = fakeDoc({ GFS_Fichiers: filesColumns().map(column => column.id) });
+    const files = filesTableOf(doc);
+    assert.equal(await files.exists(), true);
+    assert.equal(await files.ensure(), false);
+    assert.deepEqual(doc.actions, []);
+  } finally { useFilesNames(); }
 });

@@ -4,7 +4,7 @@
 // la liste ; celui-ci écrit.
 //
 // Mettre à la corbeille : la ligne du fichier est relue (c'est elle qui compte, pas la liste que la personne avait sous les yeux), copiée en JSON dans
-// `GFS_Corbeille` (la table naît avec l'accord de la personne, au premier fichier mis à la corbeille) et retirée de la table de l'app, dans UN SEUL lot : Grist
+// `GFS_Trash` (la table naît avec l'accord de la personne, au premier fichier mis à la corbeille) et retirée de la table de l'app, dans UN SEUL lot : Grist
 // applique tout ou rien, un fichier n'est jamais ni perdu ni en double. Restaurer : la ligne est remise, au même numéro quand il est libre (les commentaires,
 // le rangement et les choix d'export d'une app le désignent), et l'entrée de la corbeille part dans le même lot. Supprimer pour de bon : l'entrée seule est
 // retirée. Seules les colonnes de données (sans formule) sont gardées : Grist refuse d'écrire une formule. Copier : la ligne relue est ajoutée à la table de
@@ -61,7 +61,7 @@ export class AppFiles {
   #bin;
   #queue = Promise.resolve();
 
-  // opts : { port ({ doc }), apps() -> [{ manifest }] (les apps installées), consent() -> Promise<boolean> (créer GFS_Corbeille ?), identity() -> l'adresse de
+  // opts : { port ({ doc }), apps() -> [{ manifest }] (les apps installées), consent() -> Promise<boolean> (créer GFS_Trash ?), identity() -> l'adresse de
   //   la personne ou '', now() -> millisecondes, readonly(), fullAccess(), t, columnsOf(doc, tableId) -> [{ id, type }] (par défaut : les tables internes de
   //   Grist), appReady(app) -> bool (l'app est ouverte et prête), appCall(app, nom, corps) -> Promise<réponse> (js/broker/app-calls.js), appName(app) -> son
   //   nom,
@@ -172,11 +172,11 @@ export class AppFiles {
     return (data.id || []).findIndex((row, i) => String(cell(data, column, i)) === file.id && !isExcluded(spec, data, i));
   }
 
-  // La place de l'entrée de `file` dans `GFS_Corbeille` (relue), ou -1 : le numéro de ligne, l'app, le fichier et la date du geste doivent tous correspondre à
+  // La place de l'entrée de `file` dans `GFS_Trash` (relue), ou -1 : le numéro de ligne, l'app, le fichier et la date du geste doivent tous correspondre à
   // ce que la personne avait sous les yeux.
   #entryOf(bin, file) {
-    return (bin.id || []).findIndex((row, i) => row === file.row && text(cell(bin, 'App', i)) === file.app && text(cell(bin, 'FichierId', i)) === file.id &&
-      cell(bin, 'SupprimeLe', i) === file.trashed.ts);
+    return (bin.id || []).findIndex((row, i) => row === file.row && text(cell(bin, 'App', i)) === file.app && text(cell(bin, 'FileId', i)) === file.id &&
+      cell(bin, 'DeletedAt', i) === file.trashed.ts);
   }
 
   // La ligne du fichier, relue : { table, at }, ou null quand elle n'est plus dans la table de l'app.
@@ -273,7 +273,7 @@ export class AppFiles {
       const state = spec ? await this.#bin.existing() : null;
       const entry = state ? this.#entryOf(state.data, file) : -1;
       if (entry < 0) return null;
-      const snapshot = parseSnapshot(cell(state.data, 'Instantane', entry));
+      const snapshot = parseSnapshot(cell(state.data, 'Snapshot', entry));
       if (!snapshot) throw new Error(t('trash.unreadable'));
       const table = await this.#read(spec);
       if (!table) throw new Error(t('trash.tableGone'));

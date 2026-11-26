@@ -17,7 +17,7 @@ const META = {
 };
 
 // Une doublure de tout ce que le contrôleur donne : `stored` est ce que la table de GFS retient, et la liste relue après chaque geste en part.
-// `spare` : les dossiers que la personne garde sans fichier (les lignes d'état de `GFS_Rangement`) ; la doublure les suit quand un lot en ajoute ou en retire. Un lot de dossiers n'est noté que s'il y en a.
+// `spare` : les dossiers que la personne garde sans fichier (les lignes d'état de `GFS_Filing`) ; la doublure les suit quand un lot en ajoute ou en retire. Un lot de dossiers n'est noté que s'il y en a.
 function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], spare = [], block = null, answers = [], setFiling = null, meta = META, cleanName = undefined, folderShares = null, pending = null, known = true, hold = null, refuse = null } = {}) {
   const log = { writes: [], actions: [], notices: [], windows: [], refreshes: 0, refreshed: [] };
   let list = files;
@@ -201,7 +201,7 @@ test('coller : un document qui ne s\'enregistre pas, ou un rangement refusé, ne
   assert.equal(await blocked.filing.moveFileTo(file(1), 'A'), undefined);
   assert.equal(await blocked.filing.moveFolderTo('A/B', 'X'), undefined);
   assert.deepEqual([blocked.log.notices, blocked.log.writes], [[t('mod.readonly'), t('mod.readonly')], []]);
-  const declined = harness({ setFiling: async () => { throw new TableDeclined('GFS_Rangement'); } });
+  const declined = harness({ setFiling: async () => { throw new TableDeclined('GFS_Filing'); } });
   assert.equal(await declined.filing.moveFileTo(file(1), 'A'), undefined);
   assert.deepEqual(declined.log.notices, [t('ex.filingDeclined')]);
   assert.equal(declined.log.refreshes, 0, 'rien n\'a changé : la liste n\'est pas relue');
@@ -259,7 +259,7 @@ test('nouveau dossier : un document qui ne s\'enregistre pas, une table refusée
   const blocked = harness({ block: t('mod.readonly'), answers: ['Neuf'] });
   assert.equal(await blocked.filing.newFolder(), undefined);
   assert.deepEqual([blocked.log.notices, blocked.log.windows, blocked.log.writes], [[t('mod.readonly')], [], []]);
-  const declined = harness({ answers: ['Neuf'], setFiling: async () => { throw new TableDeclined('GFS_Rangement'); } });
+  const declined = harness({ answers: ['Neuf'], setFiling: async () => { throw new TableDeclined('GFS_Filing'); } });
   assert.equal(await declined.filing.newFolder(), undefined);
   assert.deepEqual(declined.log.notices, [t('ex.filingDeclined')]);
   assert.equal(declined.log.refreshes, 0);
@@ -678,7 +678,7 @@ const shares = (over = {}) => {
 };
 
 test('renommer un dossier partagé : sa ligne d\'état change de chemin sur place, ses partages passent au numéro dans le même lot, rien n\'est refusé', async () => {
-  const extra = [['UpdateRecord', 'GFS_Partages', 3, { Cible: 'dossier:moi:a@b.fr//9' }]];
+  const extra = [['UpdateRecord', 'GFS_Shares', 3, { Target: 'dossier:moi:a@b.fr//9' }]];
   const folderShares = shares({ extra });
   const { filing, log, kept } = harness({ spare: ['A/B'], answers: ['Neuf'], folderShares });
   await filing.renameFolder('A/B');
@@ -713,7 +713,7 @@ test('un dossier fondu dans un dossier qui existe déjà : la phrase dit combien
 });
 
 test('supprimer un dossier partagé : ses partages partent dans le même lot (le numéro d\'une ligne supprimée peut être redonné à un dossier neuf), la phrase les compte', async () => {
-  const extra = [['RemoveRecord', 'GFS_Partages', 4], ['RemoveRecord', 'GFS_Partages', 5]];
+  const extra = [['RemoveRecord', 'GFS_Shares', 4], ['RemoveRecord', 'GFS_Shares', 5]];
   const folderShares = shares({ extra, removed: 2 });
   const { filing, log, kept } = harness({ spare: ['E', 'E/F', 'G'], folderShares });
   assert.equal(await filing.deleteFolder('E'), true);
@@ -815,7 +815,7 @@ test('la table du rangement jamais vue : le geste s\'écrit d\'abord (elle se cr
 
 test('un dossier partagé qui s\'écrit avec ses partages : le geste attend Grist (le numéro de sa ligne est l\'identité du partage)', async () => {
   const { hold, go } = held();
-  const folderShares = { removal: async () => ({ extra: [['RemoveRecord', 'GFS_Partages', 7]], removed: 1 }) };
+  const folderShares = { removal: async () => ({ extra: [['RemoveRecord', 'GFS_Shares', 7]], removed: 1 }) };
   const { filing, log, shown } = instant({ spare: ['Partagé'], hold, folderShares });
   const done = filing.deleteFolder('Partagé');
   await new Promise(resolve => setImmediate(resolve));

@@ -35,6 +35,7 @@ import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
 import { isNewer } from './files/structure.js';
+import { updateNames } from './files/names-update.js';
 import { appFilingOf } from './files/app-filing.js';
 import { RightsControl } from './rights/rights-control.js';
 import { openAnnuaire, pickPerson, cancelPick } from './shell/annuaire-entry.js';
@@ -43,7 +44,7 @@ import { createFollower } from './sharing/share-follow.js';
 import { resumeSharing } from './sharing/sync-resume.js';
 import { whenReceived } from './sharing/sync-service.js';
 import { WeightControl } from './weight/weight-control.js';
-import { FILES_APP, FILES_MANIFEST } from './files/gfs-files.js';
+import { FILES_APP, filesManifest, filesNamesOfTables, useFilesNames } from './files/gfs-files.js';
 import { ANNUAIRES_APP, ANNUAIRES_MANIFEST } from './files/annuaire-files.js';
 import { Transfer, buildTransferFrame } from './broker/transfer.js';
 import { Attach } from './broker/attach.js';
@@ -88,6 +89,7 @@ export class GfsController {
   session = null;
   explorer = null;
   modulesWindow = null;
+  legacyTables = []; // les tables de GFS qui portent encore leurs noms d'avant, faute de mise à jour des noms (js/files/names-update.js)
   themeWindow = null;
   #noticeTimer = null;
   #told = new AppContext(this); // ce que GFS a dit à l'app active (js/broker/app-context.js)
@@ -132,7 +134,7 @@ export class GfsController {
     this.live = liveSwitch(search);
     const docId = docKey(() => this.port.doc.getDocName()); // demandé une fois à Grist, pour ce qui se garde par document sur le navigateur
     this.#buildLightReads(docId);
-    // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste de la
+    // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Filing` (contrats 7.4), écrit seulement sur un geste de la
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
     // reste inconnue.
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.writeBlock(),
@@ -257,7 +259,7 @@ export class GfsController {
 
   appById(id) { return this.names.adaptItem(this.apps.find(item => item.app.id === id && item.ok) || null); }
   // Le manifeste d'une app installable, ou celui des fichiers que GFS garde lui-même (js/files/gfs-files.js) : null quand l'id n'est ni l'un ni l'autre.
-  manifestOf = id => (id === FILES_APP ? FILES_MANIFEST : id === ANNUAIRES_APP ? ANNUAIRES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
+  manifestOf = id => (id === FILES_APP ? filesManifest() : id === ANNUAIRES_APP ? ANNUAIRES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
   appName = id => { const manifest = this.manifestOf(id); return manifest ? label(manifest.nom, this.lang) : id; };
   validApps() { return this.apps.filter(item => item.ok).map(item => this.names.adaptItem(item)); }
   typeLabel = file => (file.typeInfo ? label(file.typeInfo.nom, this.lang) : (file.type || '—'));
@@ -267,7 +269,7 @@ export class GfsController {
   #installPageTree() {
     this.pageTree = new PageTree({
       doc: this.port.doc, state: this.state, section: () => this.viewOptions.section(), mark: list => this.viewOptions.write([[PAGES_KEY, list]]),
-      enabled: () => this.fullAccess && !this.readonly && !isNewer(this.registry.structure), names: () => indexNamesOf(fileSpecsOf(this.manifests())),
+      enabled: () => !this.writeBlock(), names: () => indexNamesOf(fileSpecsOf(this.manifests())),
     });
     onTableCreated(() => this.pageTree.tidy());
   }
@@ -293,8 +295,10 @@ export class GfsController {
     // L'adresse de la personne s'apprend pendant que le reste se lit : la sonde coûte plusieurs allers-retours de réseau, et la liste des fichiers n'en a
     // besoin qu'au moment de ranger (js/explorer/explorer-data.js). Une app qui s'ouvre d'emblée, et « prêt », l'attendent.
     const identified = this.fullAccess ? this.rangement.identify() : Promise.resolve('');
+    if (this.fullAccess) await this.#updateNames();
     if (this.fullAccess) await this.registry.load();
     if (isNewer(this.registry.structure)) this.notice(this.t('doc.newer'));
+    if (this.legacyTables.length) this.notice(this.t('doc.legacy'));
     buildExplorer(this);
     buildDock(this);
     const arrived = await this.#arrive(identified);
@@ -310,6 +314,16 @@ export class GfsController {
       isOwner: () => this.transfer.isOwner(), resumeReception: () => this.otherDocuments.resumeReceive() }).catch(error =>
         console.warn('GFS : le partage entre documents ne reprend pas', error));
     this.weight.watch(); // le poids du document, 5 s plus tard (js/weight/weight-guard.js) : en dernier, rien d'autre n'attend après lui
+  }
+
+  // Les noms des tables de GFS passent à l'anglais avant toute lecture (js/files/names-update.js) : la fenêtre commune du kit, pour qui est propriétaire. Sans
+  // elle (pas propriétaire, refus), le document garde ses noms d'avant : GFS n'y crée ni n'y écrit rien (`legacyTables`, `writeBlock`).
+  async #updateNames() {
+    const outcome = await updateNames({ doc: this.port.doc, isOwner: () => this.transfer.isOwner(), readOnly: () => this.readonly, language: () => this.lang,
+      container: this.$('stage'), inertTargets: () => [this.$('frames'), this.$('floaters')].filter(Boolean) });
+    this.legacyTables = outcome.legacy;
+    // La table des PDF sous les noms que le document porte (celle d'une réception Sync+ d'avant garde les siens : js/files/gfs-files.js).
+    useFilesNames(filesNamesOfTables(outcome.tables));
   }
 
   // L'arrivée (cahier 6.2, point 2 ; js/broker/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon
@@ -510,6 +524,7 @@ export class GfsController {
   writeBlock() {
     if (this.readonly) return this.t('mod.readonly');
     if (!this.fullAccess) return this.t('mod.needsAccess');
+    if (this.legacyTables.length) return this.t('doc.legacy');
     return this.registry && isNewer(this.registry.structure) ? this.t('doc.newer') : null;
   }
 

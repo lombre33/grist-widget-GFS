@@ -35,9 +35,9 @@ const REFUSAL = /Failed to load resource: the server responded with a status of 
 // Le document : une table lourde (trois textes de 600 000 signes, réécrits : l'historique grossit), mille petites lignes, une table que la règle cachera, et des pièces jointes que nulle cellule ne cite.
 async function seed(run) {
   say('--- le document ---');
-  await apply(run, [['AddTable', 'Gros', [{ id: 'Texte', type: 'Text' }]], ['AddTable', 'Petits', [{ id: 'Nom', type: 'Text' }, { id: 'Valeur', type: 'Text' }]], ['AddTable', 'Secrets', [{ id: 'Note', type: 'Text' }]]]);
+  await apply(run, [['AddTable', 'Gros', [{ id: 'Texte', type: 'Text' }]], ['AddTable', 'Petits', [{ id: 'Nom', type: 'Text' }, { id: 'Value', type: 'Text' }]], ['AddTable', 'Secrets', [{ id: 'Note', type: 'Text' }]]]);
   for (let i = 1; i <= 3; i++) await apply(run, [['AddRecord', 'Gros', null, { Texte: text(600000, i) }]]);
-  await apply(run, [['BulkAddRecord', 'Petits', Array.from({ length: 1000 }, () => null), { Nom: Array.from({ length: 1000 }, (unused, i) => `Nom ${i}`), Valeur: Array.from({ length: 1000 }, (unused, i) => `Valeur ${i * 7}`) }]]);
+  await apply(run, [['BulkAddRecord', 'Petits', Array.from({ length: 1000 }, () => null), { Nom: Array.from({ length: 1000 }, (unused, i) => `Nom ${i}`), Value: Array.from({ length: 1000 }, (unused, i) => `Valeur ${i * 7}`) }]]);
   await apply(run, [['AddRecord', 'Secrets', null, { Note: 'à ne pas montrer' }]]);
   for (let i = 1; i <= 3; i++) await apply(run, [['UpdateRecord', 'Gros', 1, { Texte: text(300000, 10 + i) }]]);
   await upload(run, [{ name: 'a.jpg', type: 'image/jpeg', buffer: noise(200000, 21) }, { name: 'b.jpg', type: 'image/jpeg', buffer: noise(350000, 22) }, { name: 'a-bis.jpg', type: 'image/jpeg', buffer: noise(200000, 21) }]);

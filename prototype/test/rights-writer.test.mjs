@@ -7,7 +7,7 @@ import { runAction, askOptions } from '../js/rights/rights-actions.js';
 import { RANGEMENT } from '../js/rights/rights-plan.js';
 
 const BUILT_IN = { id: 1, resource: 1, permissions: 63, aclFormula: '', permissionsText: '', rulePos: 1, memo: '' };
-const RAW = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }], tables: [{ id: 5, tableId: RANGEMENT }], columns: [{ parentId: 5, colId: 'Utilisateur' }, { parentId: 5, colId: 'Adresse' }] });
+const RAW = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }], tables: [{ id: 5, tableId: RANGEMENT }], columns: [{ parentId: 5, colId: 'User' }, { parentId: 5, colId: 'Address' }] });
 const memoryStore = () => { let value = null; return { read: () => value, write: next => { value = next; return true; } }; };
 
 function setup({ raw = RAW(), fail = null } = {}) {
@@ -119,10 +119,10 @@ test('la question d\u2019activation dit que la structure se ferme, et ce que les
 test('activer le partage : les PDF déjà rangés restent lisibles de tous (un partage « tout le document » par fichier), les nouveaux ne le sont pas', async () => {
   const { writer, sent } = setup({ raw: { ...RAW(), fileIds: ['a1', 'b2'] } });
   await writer.apply('sharing');
-  const bulk = sent[0].find(action => action[0] === 'BulkAddRecord' && action[1] === 'GFS_Partages');
-  assert.deepEqual(bulk[3].Cible, ['gfs-fichiers:a1', 'gfs-fichiers:b2']);
-  assert.deepEqual(bulk[3].Personne, ['@tous', '@tous']);
-  assert.deepEqual(bulk[3].Droit, ['lecture', 'lecture']);
+  const bulk = sent[0].find(action => action[0] === 'BulkAddRecord' && action[1] === 'GFS_Shares');
+  assert.deepEqual(bulk[3].Target, ['gfs-fichiers:a1', 'gfs-fichiers:b2']);
+  assert.deepEqual(bulk[3].Person, ['@tous', '@tous']);
+  assert.deepEqual(bulk[3].Right, ['lecture', 'lecture']);
   const none = setup();
   await none.writer.apply('sharing');
   assert.ok(!none.sent[0].some(action => action[0] === 'BulkAddRecord'), 'aucun fichier : aucune ligne à écrire');
@@ -160,7 +160,7 @@ function indexDocument({ withKey = false, rules = false } = {}) {
   const spec = { table: 'Pub_Modeles', colonnes: { id: 'id', nom: 'Nom' } };
   const tables = [{ id: 1, tableId: 'Pub_Modeles' }];
   const columns = [{ id: 1, parentId: 1, colId: 'Nom', type: 'Text', isFormula: false, formula: '' },
-    ...(withKey ? [{ id: 2, parentId: 1, colId: 'GFS_Cle', type: 'Int', isFormula: true, formula: '$id' }] : [])];
+    ...(withKey ? [{ id: 2, parentId: 1, colId: 'GFS_Key', type: 'Int', isFormula: true, formula: '$id' }] : [])];
   const resources = rules ? [{ id: 1, tableId: 'Pub_Modeles', colIds: '*' }] : [];
   const acl = rules ? [{ id: 1, resource: 1, aclFormula: 'user.Access in [OWNER]', permissionsText: '+CRUD', rulePos: 1, memo: 'GFS : Partages · les propriétaires gardent la main' }] : [];
   const targets = [{ table: 'Pub_Modeles', prefix: 'pub:', app: 'pub' }];
@@ -171,7 +171,7 @@ function indexSetup({ rules = false, fail = null, owner = true } = {}) {
   const sent = []; const reads = [];
   const store = memoryStore();
   const port = { doc: { applyUserActions: async actions => { if (fail) throw new Error(fail); sent.push(actions); } } };
-  const reader = { raw: async options => { reads.push(options); return owner ? indexDocument({ rules, withKey: sent.some(actions => actions.some(action => action[2] === 'GFS_Cle')) }) : null; } };
+  const reader = { raw: async options => { reads.push(options); return owner ? indexDocument({ rules, withKey: sent.some(actions => actions.some(action => action[2] === 'GFS_Key')) }) : null; } };
   return { writer: new RightsWriter({ port, reader, store }), sent, store, reads };
 }
 

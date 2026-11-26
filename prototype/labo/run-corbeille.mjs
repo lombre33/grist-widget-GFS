@@ -29,9 +29,9 @@ const exact = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const said = (frame, key, params) => waitForToast(frame, exact(t(key, params)));
 
 // Ce que le serveur retient de la table des PDF.
-const rowNamed = async (rest, name) => (await rest.rows('GFS_Fichiers')).find(row => row.Nom === name);
-const columnTypes = async rest => Object.fromEntries((await rest.columns('GFS_Fichiers')).map(column => [column.id, column.type]));
-const marked = row => Boolean(row) && row.SupprimeLe > 0;
+const rowNamed = async (rest, name) => (await rest.rows('GFS_Files')).find(row => row.Name === name);
+const columnTypes = async rest => Object.fromEntries((await rest.columns('GFS_Files')).map(column => [column.id, column.type]));
+const marked = row => Boolean(row) && row.DeletedAt > 0;
 
 // Une écriture directe dans le document (le serveur de la personne d'essai : la page de Grist est de son origine, sa session suffit).
 const apply = (run, actions) => run.page.evaluate(async ([docId, body]) => (await fetch(`/api/docs/${docId}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json(), [run.docId, actions]);
@@ -53,8 +53,8 @@ async function pinFirst(run) {
   await frame.locator('.mod.ask').waitFor();
   await frame.locator('[data-fk="ask-yes"]').click();
   await frame.waitForFunction(() => document.querySelector('.ls-row .rb.pin.on'), null, { timeout: 20000 });
-  const lines = (await rest.rows('GFS_Rangement')).filter(row => row.App === 'gfs-fichiers');
-  check('le favori est rangé pour la personne que Grist connaît', lines.length === 1 && lines[0].Utilisateur === ME, lines);
+  const lines = (await rest.rows('GFS_Filing')).filter(row => row.App === 'gfs-fichiers');
+  check('le favori est rangé pour la personne que Grist connaît', lines.length === 1 && lines[0].User === ME, lines);
 }
 
 // ----- 1. Une table d'une version plus ancienne : Suppr ajoute les colonnes et marque la ligne.
@@ -62,12 +62,12 @@ async function playFirstTrash(run) {
   const { page, frame, rest } = run;
   say('--- 1. Suppr, sur une table d\'une version plus ancienne ---');
   const types = await columnTypes(rest);
-  check('la table de GFS a les deux colonnes de la corbeille, dans les types voulus', types.SupprimeLe === 'DateTime:UTC' && types.SupprimePar === 'Text', types);
+  check('la table de GFS a les deux colonnes de la corbeille, dans les types voulus', types.DeletedAt === 'DateTime:UTC' && types.DeletedBy === 'Text', types);
   const before = await rowNamed(rest, 'Devis.pdf');
-  check('une cellule de date jamais écrite est vide pour Grist (null), pas une date', before.SupprimeLe === null || before.SupprimeLe === 0 || before.SupprimeLe === undefined, before.SupprimeLe);
-  await apply(run, [['RemoveColumn', 'GFS_Fichiers', 'SupprimeLe'], ['RemoveColumn', 'GFS_Fichiers', 'SupprimePar']]);
+  check('une cellule de date jamais écrite est vide pour Grist (null), pas une date', before.DeletedAt === null || before.DeletedAt === 0 || before.DeletedAt === undefined, before.DeletedAt);
+  await apply(run, [['RemoveColumn', 'GFS_Files', 'DeletedAt'], ['RemoveColumn', 'GFS_Files', 'DeletedBy']]);
   const old = await columnTypes(rest);
-  check('la table devient celle d\'une version plus ancienne : sans les deux colonnes, avec ses lignes', !('SupprimeLe' in old) && !('SupprimePar' in old) && (await rest.rows('GFS_Fichiers')).length === 2, old);
+  check('la table devient celle d\'une version plus ancienne : sans les deux colonnes, avec ses lignes', !('DeletedAt' in old) && !('DeletedBy' in old) && (await rest.rows('GFS_Files')).length === 2, old);
   const tables = await rest.tables();
 
   await rowOf(frame, 'Devis.pdf').click();
@@ -82,10 +82,10 @@ async function playFirstTrash(run) {
   check('et le clavier passe à la ligne qui reste', await selectedName(frame) === 'Facture.pdf', await selectedName(frame));
 
   const after = await columnTypes(rest);
-  check('GFS a ajouté les deux colonnes sans demander (la table existait) et sans en créer une autre', after.SupprimeLe === 'DateTime:UTC' && after.SupprimePar === 'Text' && JSON.stringify(await rest.tables()) === JSON.stringify(tables), [after, await rest.tables()]);
+  check('GFS a ajouté les deux colonnes sans demander (la table existait) et sans en créer une autre', after.DeletedAt === 'DateTime:UTC' && after.DeletedBy === 'Text' && JSON.stringify(await rest.tables()) === JSON.stringify(tables), [after, await rest.tables()]);
   const devis = await rowNamed(rest, 'Devis.pdf');
-  check('la ligne reste dans la table, marquée de la date (en secondes) et de la personne ; son contenu n\'a pas bougé', marked(devis) && Math.abs(devis.SupprimeLe - Date.now() / 1000) < 120 && devis.SupprimePar === ME && devis.Contenu.length === 2 && devis.Identifiant === run.devisId, devis);
-  check('la pièce jointe reste citée : rien n\'est perdu, rien n\'est copié', (await rest.attachments()).length === 2 && (await rest.attachment(devis.Contenu[1])).hash === run.devis.hash);
+  check('la ligne reste dans la table, marquée de la date (en secondes) et de la personne ; son contenu n\'a pas bougé', marked(devis) && Math.abs(devis.DeletedAt - Date.now() / 1000) < 120 && devis.DeletedBy === ME && devis.Content.length === 2 && devis.FileId === run.devisId, devis);
+  check('la pièce jointe reste citée : rien n\'est perdu, rien n\'est copié', (await rest.attachments()).length === 2 && (await rest.attachment(devis.Content[1])).hash === run.devis.hash);
   check('l\'autre ligne n\'est pas marquée', !marked(await rowNamed(rest, 'Facture.pdf')));
   await shot(frame, `${TAG}-1-liste`);
 }
@@ -108,7 +108,7 @@ async function playTrashView(run) {
   const restored = await said(frame, 'trash.restored', { name: 'Devis.pdf' });
   check('Entrée restaure le fichier : la phrase le dit, la corbeille est vide et le dit', restored === t('trash.restored', { name: 'Devis.pdf' }) && JSON.stringify(await waitForNames(frame, [])) === '[]' && (await frame.locator('.ex-scroll').textContent()).includes(t('trash.emptyList')), restored);
   const back = await rowNamed(rest, 'Devis.pdf');
-  check('la table efface les marques (la date redevient vide) ; la ligne et son identifiant sont les mêmes', !marked(back) && !back.SupprimePar && back.Identifiant === run.devisId && back.Contenu.length === 2, back);
+  check('la table efface les marques (la date redevient vide) ; la ligne et son identifiant sont les mêmes', !marked(back) && !back.DeletedBy && back.FileId === run.devisId && back.Content.length === 2, back);
   check('le compte de l\'arbre disparaît avec la dernière ligne', (await trashCount(frame)) === null, await trashCount(frame));
   await goHome(frame);
   check('le PDF est de retour dans « Moi »', await sameNames(frame, ['Devis.pdf', 'Facture.pdf']), await names(frame));
@@ -130,10 +130,10 @@ async function playNameTaken(run) {
   await rowOf(frame, 'Devis.pdf').locator('.rb.rs').click();
   const renamed = await said(frame, 'trash.restoredAs', { name: 'Devis.pdf', as: 'Devis (1).pdf' });
   check('« Restaurer » (à la souris) prend un autre nom, et la phrase dit lequel', renamed === t('trash.restoredAs', { name: 'Devis.pdf', as: 'Devis (1).pdf' }), renamed);
-  const rows = await rest.rows('GFS_Fichiers');
-  const old = rows.find(row => row.Identifiant === run.devisId);
-  const fresh = rows.find(row => row.Nom === 'Devis.pdf');
-  check('la table : l\'ancienne ligne porte le nouveau nom et plus de marque, la nouvelle garde « Devis.pdf »', old.Nom === 'Devis (1).pdf' && !marked(old) && fresh && fresh.Identifiant !== run.devisId && !marked(fresh), rows.map(row => [row.Nom, row.SupprimeLe]));
+  const rows = await rest.rows('GFS_Files');
+  const old = rows.find(row => row.FileId === run.devisId);
+  const fresh = rows.find(row => row.Name === 'Devis.pdf');
+  check('la table : l\'ancienne ligne porte le nouveau nom et plus de marque, la nouvelle garde « Devis.pdf »', old.Name === 'Devis (1).pdf' && !marked(old) && fresh && fresh.FileId !== run.devisId && !marked(fresh), rows.map(row => [row.Name, row.DeletedAt]));
   await goHome(frame);
   check('les trois PDF sont dans « Moi »', await sameNames(frame, ['Devis (1).pdf', 'Devis.pdf', 'Facture.pdf']), await names(frame));
 }
@@ -146,7 +146,7 @@ async function playPurge(run) {
   await frame.getByRole('menuitem', { name: new RegExp(`^${t('trash.move')}`) }).click();
   await said(frame, 'trash.moved', { name: 'Devis (1).pdf' });
   const attachmentsBefore = (await rest.attachments()).length;
-  const rowsBefore = (await rest.rows('GFS_Fichiers')).length;
+  const rowsBefore = (await rest.rows('GFS_Files')).length;
   await openTrash(frame);
   await rowOf(frame, 'Devis (1).pdf').click();
   await page.keyboard.press('Delete');
@@ -158,13 +158,13 @@ async function playPurge(run) {
   await shot(frame, `${TAG}-3-supprimer`);
   await page.keyboard.press('Escape');
   await frame.locator('.mod.ask').waitFor({ state: 'detached' });
-  check('Échap : rien n\'est supprimé', (await rest.rows('GFS_Fichiers')).length === rowsBefore && await sameNames(frame, ['Devis (1).pdf']));
+  check('Échap : rien n\'est supprimé', (await rest.rows('GFS_Files')).length === rowsBefore && await sameNames(frame, ['Devis (1).pdf']));
   await page.keyboard.press('Delete');
   await frame.locator('.mod.ask').waitFor();
   await frame.locator('[data-fk="ask-yes"]').click();
   const purged = await said(frame, 'trash.purged', { name: 'Devis (1).pdf' });
   check('« Supprimer définitivement » le dit', purged === t('trash.purged', { name: 'Devis (1).pdf' }), purged);
-  check('la ligne n\'est plus dans la table ; les autres n\'ont pas bougé', (await rest.rows('GFS_Fichiers')).length === rowsBefore - 1 && !(await rowNamed(rest, 'Devis (1).pdf')) && Boolean(await rowNamed(rest, 'Devis.pdf')) && Boolean(await rowNamed(rest, 'Facture.pdf')));
+  check('la ligne n\'est plus dans la table ; les autres n\'ont pas bougé', (await rest.rows('GFS_Files')).length === rowsBefore - 1 && !(await rowNamed(rest, 'Devis (1).pdf')) && Boolean(await rowNamed(rest, 'Devis.pdf')) && Boolean(await rowNamed(rest, 'Facture.pdf')));
   check('la pièce jointe reste sur le serveur (Grist l\'efface seul au bout de 7 jours)', (await rest.attachments()).length === attachmentsBefore);
   check('la corbeille est vide', JSON.stringify(await waitForNames(frame, [])) === '[]');
   await goHome(frame);
@@ -190,12 +190,12 @@ async function playEmpty(run) {
   await shot(frame, `${TAG}-4-vider`);
   // Pendant que la fenêtre est ouverte, une autre personne met « Contrat.pdf » à la corbeille : la personne ne l'a pas sous les yeux, il doit rester.
   const contract = await rowNamed(rest, 'Contrat.pdf');
-  await apply(run, [['UpdateRecord', 'GFS_Fichiers', contract.id, { SupprimeLe: Math.floor(Date.now() / 1000), SupprimePar: 'autre@example.com' }]]);
+  await apply(run, [['UpdateRecord', 'GFS_Files', contract.id, { DeletedAt: Math.floor(Date.now() / 1000), DeletedBy: 'autre@example.com' }]]);
   await frame.locator('[data-fk="ask-yes"]').click();
   const emptied = await said(frame, 'trash.emptied', { n: 2 });
   check('la phrase dit combien de fichiers sont partis', emptied === t('trash.emptied', { n: 2 }), emptied);
-  const rows = await rest.rows('GFS_Fichiers');
-  check('un seul lot a retiré les deux lignes vues ; la ligne que l\'autre personne vient de supprimer reste, marquée', rows.length === 1 && rows[0].Nom === 'Contrat.pdf' && marked(rows[0]) && rows[0].SupprimePar === 'autre@example.com', rows.map(row => row.Nom));
+  const rows = await rest.rows('GFS_Files');
+  check('un seul lot a retiré les deux lignes vues ; la ligne que l\'autre personne vient de supprimer reste, marquée', rows.length === 1 && rows[0].Name === 'Contrat.pdf' && marked(rows[0]) && rows[0].DeletedBy === 'autre@example.com', rows.map(row => row.Name));
   check('la liste est relue : la corbeille montre ce fichier-là, avec le nom de l\'autre personne', await sameNames(frame, ['Contrat.pdf']) && await trashCount(frame) === '1');
   await rowOf(frame, 'Contrat.pdf').click();
   await page.keyboard.press('Enter');
@@ -240,7 +240,7 @@ try {
   check('GFS est à 700 × 400 dans le vrai Grist', Math.abs(run.box.width - 700) <= 1 && Math.abs(run.box.height - 400) <= 1, run.box);
   await importSamples(run);
   await pinFirst(run);
-  run.devisId = (await rowNamed(run.rest, 'Devis.pdf')).Identifiant;
+  run.devisId = (await rowNamed(run.rest, 'Devis.pdf')).FileId;
   await playFirstTrash(run);
   await playTrashView(run);
   await playNameTaken(run);

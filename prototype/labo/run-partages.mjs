@@ -1,6 +1,6 @@
 // Mesure (06/11, « Partager ») : des règles posées UNE fois par un propriétaire, qui lisent une table de partages que d'autres écrivent (11.7, point 13). Jouée dans un VRAI Grist, en trois temps (le serveur d'essai
 // ne connaît qu'une personne à la fois : `GRIST_EMAIL`, voir labo/LISEZ-MOI.md) :
-//   PHASE=proprietaire  essai@example.com : crée `Fichiers` et `Partages` (colonnes-formules, `Auteur` déclenchée), pose les règles, un administrateur de dossier (editor@), vérifie aussi si une règle peut lire l'heure ;
+//   PHASE=proprietaire  essai@example.com : crée `Fichiers` et `Shares` (colonnes-formules, `Auteur` déclenchée), pose les règles, un administrateur de dossier (editor@), vérifie aussi si une règle peut lire l'heure ;
 //   PHASE=editeur       editor@example.com, administrateur du dossier « Ventes » : il ne lit que ce qui lui est partagé, partage « Ventes » avec viewer@ SANS propriétaire, son partage hors de son dossier ne vaut rien ;
 //   PHASE=lecteur       viewer@example.com : il lit le fichier partagé par l'éditeur, rien d'autre.
 import { chromium, say, check } from './lab-common.mjs';
@@ -23,26 +23,26 @@ const names = list => (Array.isArray(list) ? list.map(row => row.Nom).sort().joi
 const OWNER = 'essai@example.com', EDITOR = 'editor@example.com', VIEWER = 'viewer@example.com';
 const own = 'user.Email and rec.Auteur and rec.Auteur.lower() == user.Email.lower()';
 const FICHIERS = [
-  { id: 'Nom', type: 'Text' }, { id: 'Dossier', type: 'Text' },
+  { id: 'Nom', type: 'Text' }, { id: 'Folder', type: 'Text' },
   { id: 'Auteur', type: 'Text', isFormula: false, formula: 'user.Email', recalcWhen: 0, recalcDeps: null },
-  { id: 'Chemin', type: 'Text', isFormula: true, formula: '($Dossier + "/" if $Dossier else "") + $Nom' },
+  { id: 'Chemin', type: 'Text', isFormula: true, formula: '($Folder + "/" if $Folder else "") + $Nom' },
   { id: 'Lecteurs', type: 'Any', isFormula: true, formula: [
     'emails = set([str($Auteur).lower()])',
     'for p in Partages.all:',
-    '  if p.Valide and p.Actif and ($Chemin == p.Cible or $Chemin.startswith(p.Cible + "/")):',
-    '    emails.add(p.PersonneL)',
+    '  if p.Valid and p.Active and ($Chemin == p.Target or $Chemin.startswith(p.Target + "/")):',
+    '    emails.add(p.PersonL)',
     'return tuple(sorted(emails))'].join('\n') },
 ];
 const PARTAGES = [
-  { id: 'Cible', type: 'Text' }, { id: 'Personne', type: 'Text' }, { id: 'Droit', type: 'Text' }, { id: 'Fin', type: 'Date' },
-  { id: 'Actif', type: 'Bool', isFormula: true, formula: 'not $Fin or $Fin >= TODAY()' },
+  { id: 'Target', type: 'Text' }, { id: 'Person', type: 'Text' }, { id: 'Right', type: 'Text' }, { id: 'End', type: 'Date' },
+  { id: 'Active', type: 'Bool', isFormula: true, formula: 'not $End or $End >= TODAY()' },
   { id: 'Auteur', type: 'Text', isFormula: false, formula: 'user.Email', recalcWhen: 0, recalcDeps: null },
-  { id: 'PersonneL', type: 'Text', isFormula: true, formula: 'str($Personne).strip().lower()' },
+  { id: 'PersonL', type: 'Text', isFormula: true, formula: 'str($Person).strip().lower()' },
   // Au premier niveau : l'auteur est une ligne « proprietaire » ; au second : l'auteur est administrateur (d'un dossier qui couvre la cible) d'un partage du premier niveau.
-  { id: 'Valide1', type: 'Bool', isFormula: true, formula: '$Droit == "proprietaire" or any(p.Droit == "proprietaire" and p.PersonneL == str($Auteur).lower() for p in Partages.all)' },
-  { id: 'Valide', type: 'Bool', isFormula: true, formula: [
-    '$Valide1 or any(p.Valide1 and p.Droit == "admin" and p.PersonneL == str($Auteur).lower() and ($Cible == p.Cible or $Cible.startswith(p.Cible + "/")) for p in Partages.all)'].join('\n') },
-  { id: 'AdminsCible', type: 'Any', isFormula: true, formula: 'tuple(p.PersonneL for p in Partages.all if p.Valide and p.Droit == "admin" and ($Cible == p.Cible or $Cible.startswith(p.Cible + "/")))' },
+  { id: 'AuthorOwner', type: 'Bool', isFormula: true, formula: '$Right == "proprietaire" or any(p.Right == "proprietaire" and p.PersonL == str($Auteur).lower() for p in Partages.all)' },
+  { id: 'Valid', type: 'Bool', isFormula: true, formula: [
+    '$AuthorOwner or any(p.AuthorOwner and p.Right == "admin" and p.PersonL == str($Auteur).lower() and ($Target == p.Target or $Target.startswith(p.Target + "/")) for p in Partages.all)'].join('\n') },
+  { id: 'AdminsTarget', type: 'Any', isFormula: true, formula: 'tuple(p.PersonL for p in Partages.all if p.Valid and p.Right == "admin" and ($Target == p.Target or $Target.startswith(p.Target + "/")))' },
 ];
 const rule = (formula, rights, memo) => ({ formula, rights, memo });
 const RULES = {
@@ -51,11 +51,11 @@ const RULES = {
     rule('user.Email and rec.Lecteurs and user.Email.lower() in rec.Lecteurs', '+R', 'lecteurs du fichier'),
     rule('', '-CRUD', 'le reste'),
   ],
-  Partages: [
+  Shares: [
     rule('user.Access in [OWNER]', '+CRUD', 'propriétaires'),
-    rule('user.Email and rec.AdminsCible and user.Email.lower() in rec.AdminsCible', '+RUD', 'administrateurs de la cible'),
+    rule('user.Email and rec.AdminsTarget and user.Email.lower() in rec.AdminsTarget', '+RUD', 'administrateurs de la cible'),
     rule(own, '+RUD', 'auteur'),
-    rule('user.Email and rec.PersonneL == user.Email.lower()', '+R', 'la personne concernée'),
+    rule('user.Email and rec.PersonL == user.Email.lower()', '+R', 'la personne concernée'),
     rule('user.Access in [EDITOR]', '+C', 'tout éditeur peut ajouter une ligne (elle ne vaut que si elle est valide)'),
     rule('', '-CRUD', 'le reste'),
   ],
@@ -80,14 +80,14 @@ try {
     const id = docIdOf(path);
     writeFileSync(STATE, JSON.stringify({ id }));
     say('partage au document :', await shareWithEditorAndViewer(page, id));
-    let answer = await apply(page, id, [['AddTable', 'Partages', PARTAGES], ['AddTable', 'Fichiers', FICHIERS]]);
+    let answer = await apply(page, id, [['AddTable', 'Shares', PARTAGES], ['AddTable', 'Fichiers', FICHIERS]]);
     check('les deux tables et leurs colonnes-formules se créent', answer.status === 200, answer.text);
     answer = await apply(page, id, [
-      ['AddRecord', 'Partages', null, { Cible: '', Personne: OWNER, Droit: 'proprietaire' }],
-      ['AddRecord', 'Partages', null, { Cible: 'Ventes', Personne: EDITOR, Droit: 'admin' }],
-      ['AddRecord', 'Fichiers', null, { Nom: 'Devis', Dossier: 'Ventes' }],
-      ['AddRecord', 'Fichiers', null, { Nom: 'Secret', Dossier: 'RH' }],
-      ['AddRecord', 'Fichiers', null, { Nom: 'Plan', Dossier: '' }],
+      ['AddRecord', 'Shares', null, { Target: '', Person: OWNER, Right: 'proprietaire' }],
+      ['AddRecord', 'Shares', null, { Target: 'Ventes', Person: EDITOR, Right: 'admin' }],
+      ['AddRecord', 'Fichiers', null, { Nom: 'Devis', Folder: 'Ventes' }],
+      ['AddRecord', 'Fichiers', null, { Nom: 'Secret', Folder: 'RH' }],
+      ['AddRecord', 'Fichiers', null, { Nom: 'Plan', Folder: '' }],
     ]);
     check('les lignes se posent', answer.status === 200, answer.text);
     const files = await rows(page, id, 'Fichiers');
@@ -97,14 +97,14 @@ try {
     const devis = files.find(row => row.Nom === 'Devis');
     check('« Ventes » est lu par l\'administrateur du dossier (partage du propriétaire) et l\'auteur', JSON.stringify(list(devis)) === JSON.stringify([EDITOR, OWNER].sort()), devis.Lecteurs);
     // La fin d'accès : une colonne-formule lit la date du jour (`TODAY()`), que Grist recalcule à chaque ouverture du document.
-    answer = await apply(page, id, [['AddRecord', 'Partages', null, { Cible: 'Plan', Personne: VIEWER, Droit: 'read', Fin: 1577836800 }], ['AddRecord', 'Partages', null, { Cible: 'RH/Secret', Personne: VIEWER, Droit: 'read', Fin: 4070908800 }]]);
+    answer = await apply(page, id, [['AddRecord', 'Shares', null, { Target: 'Plan', Person: VIEWER, Right: 'read', End: 1577836800 }], ['AddRecord', 'Shares', null, { Target: 'RH/Secret', Person: VIEWER, Right: 'read', End: 4070908800 }]]);
     const dated = await rows(page, id, 'Fichiers');
     const byName = Object.fromEntries(dated.map(row => [row.Nom, list(row)]));
     check('une fin d\'accès passée ne compte plus, une fin à venir compte (formule sur `TODAY()`)', !byName.Plan.includes(VIEWER) && byName.Secret.includes(VIEWER), byName);
     answer = await apply(page, id, aclActions());
     check('les règles se posent (une seule fois)', answer.status === 200, answer.text);
     // L'heure : une règle peut-elle la lire ? (Grist vérifie la formule quand la règle s'écrit.)
-    for (const formula of ['rec.Fin and rec.Fin < NOW()', 'rec.Fin and rec.Fin < DATE.today()', 'rec.Fin and rec.Fin < datetime.now()', 'rec.Fin and rec.Fin < TODAY()']) {
+    for (const formula of ['rec.End and rec.End < NOW()', 'rec.End and rec.End < DATE.today()', 'rec.End and rec.End < datetime.now()', 'rec.End and rec.End < TODAY()']) {
       const probe = await apply(page, id, [['AddRecord', '_grist_ACLResources', 200, { tableId: 'Clients', colIds: '*' }], ['AddRecord', '_grist_ACLRules', 200, { resource: 200, aclFormula: formula, permissionsText: '-R', rulePos: 1, memo: 'essai : heure' }]]);
       say(`règle « ${formula} » :`, probe.status, probe.text.replace(/\s+/g, ' ').slice(0, 220));
       await apply(page, id, [['RemoveRecord', '_grist_ACLRules', 200], ['RemoveRecord', '_grist_ACLResources', 200]]);
@@ -118,23 +118,23 @@ try {
       say('--- editor@ : administrateur de « Ventes » ---');
       const seen = await rows(page, id, 'Fichiers');
       check('il ne lit que « Devis » (partagé avec lui par le dossier)', names(seen) === 'Devis', names(seen));
-      let answer = await apply(page, id, [['AddRecord', 'Partages', null, { Cible: 'Ventes', Personne: VIEWER, Droit: 'read' }]]);
+      let answer = await apply(page, id, [['AddRecord', 'Shares', null, { Target: 'Ventes', Person: VIEWER, Right: 'read' }]]);
       check('il ajoute, SANS propriétaire, un partage « Ventes » pour viewer@', answer.status === 200, answer.text);
-      answer = await apply(page, id, [['AddRecord', 'Partages', null, { Cible: 'RH', Personne: EDITOR, Droit: 'read' }]]);
+      answer = await apply(page, id, [['AddRecord', 'Shares', null, { Target: 'RH', Person: EDITOR, Right: 'read' }]]);
       say('partage hors de son dossier (RH) :', answer.status, answer.text);
       const after = await rows(page, id, 'Fichiers');
       check('un partage hors de son dossier ne lui ouvre rien : « Secret » reste caché', names(after) === 'Devis', names(after));
-      const mine = await rows(page, id, 'Partages');
-      say('ses lignes de partage :', JSON.stringify(Array.isArray(mine) ? mine.map(row => [row.Cible, row.PersonneL, row.Droit, row.Valide]) : mine));
+      const mine = await rows(page, id, 'Shares');
+      say('ses lignes de partage :', JSON.stringify(Array.isArray(mine) ? mine.map(row => [row.Target, row.PersonL, row.Right, row.Valid]) : mine));
       answer = await apply(page, id, [['UpdateRecord', 'Fichiers', 1, { Nom: 'Pirate' }]]);
       check('il ne peut pas modifier un fichier (le rôle d\'éditeur ne suffit pas)', answer.status !== 200, answer.text);
     } else {
       say('--- viewer@ ---');
       const seen = await rows(page, id, 'Fichiers');
       check('il lit « Devis » (partagé par l\'éditeur) et « Secret » (partagé par le propriétaire, fin à venir), pas « Plan » (fin passée)', names(seen) === 'Devis,Secret', names(seen));
-      const shares = await rows(page, id, 'Partages');
-      say('ses lignes de partage :', JSON.stringify(Array.isArray(shares) ? shares.map(row => [row.Cible, row.PersonneL, row.Droit]) : shares));
-      check('il ne lit que le partage qui le concerne', Array.isArray(shares) && shares.every(row => row.PersonneL === VIEWER), shares);
+      const shares = await rows(page, id, 'Shares');
+      say('ses lignes de partage :', JSON.stringify(Array.isArray(shares) ? shares.map(row => [row.Target, row.PersonL, row.Right]) : shares));
+      check('il ne lit que le partage qui le concerne', Array.isArray(shares) && shares.every(row => row.PersonL === VIEWER), shares);
     }
   }
 } finally {

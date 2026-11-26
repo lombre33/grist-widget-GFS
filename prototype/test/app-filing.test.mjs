@@ -1,5 +1,5 @@
 // Le rangement que l'app tient elle-même et que GFS écrit (js/files/app-filing.js ; contrats 2.4 `rangement.ecriture`, 6.4 point 8) : ce qu'il lit, les actions qu'il
-// rend (jamais une colonne absente, toutes les lignes d'un fichier, une ligne d'état par dossier) et ce qu'il reprend de `GFS_Rangement`. Les tables sont celles que
+// rend (jamais une colonne absente, toutes les lignes d'un fichier, une ligne d'état par dossier) et ce qu'il reprend de `GFS_Filing`. Les tables sont celles que
 // `fetchTable` rend ; l'envoi du lot à Grist est essayé dans rangement.test.mjs, et dans un vrai Grist par labo/run-rangement-app.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -73,36 +73,36 @@ test('appActions : sans identité, la ligne commune (Utilisateur vide) est celle
   assert.deepEqual(actions, [['AddRecord', T, null, { Utilisateur: '', ModeleId: 7, Epingle: false, Dossier: 'B' }]]);
 });
 
-const gfs = rows => ({ tableId: 'GFS_Rangement', data: { id: rows.map((row, i) => i + 1), ...Object.fromEntries(['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier'].map(column => [column,
+const gfs = rows => ({ tableId: 'GFS_Filing', data: { id: rows.map((row, i) => i + 1), ...Object.fromEntries(['User', 'App', 'File', 'Favorite', 'Folder'].map(column => [column,
   rows.map(row => row[column])])) } });
-const line = (extra) => ({ Utilisateur: 'moi@exemple.org', App: '', Fichier: '', Favori: false, Dossier: '', ...extra });
+const line = (extra) => ({ User: 'moi@exemple.org', App: '', File: '', Favorite: false, Folder: '', ...extra });
 
-test('carryOver : ce que GFS disait de l\'app passe chez elle (la première ligne de chaque fichier) et part de GFS_Rangement ; ses dossiers sans fichier aussi ; une autre app ou une autre personne n\'est pas touchée', () => {
+test('carryOver : ce que GFS disait de l\'app passe chez elle (la première ligne de chaque fichier) et part de GFS_Filing ; ses dossiers sans fichier aussi ; une autre app ou une autre personne n\'est pas touchée', () => {
   const lines = gfs([
-    line({ App: 'publipostage', Fichier: '7', Favori: true, Dossier: 'Archives' }),
-    line({ App: 'publipostage', Fichier: '7', Dossier: 'Doublon' }),
-    line({ App: 'publipostage', Fichier: '8', Dossier: 'Contrats' }),
-    line({ App: 'form', Fichier: '3', Dossier: 'Formulaires' }),
-    line({ Utilisateur: 'autre@exemple.org', App: 'publipostage', Fichier: '9', Dossier: 'Prive' }),
-    line({ Dossier: 'Gardé' }),
-    line({ Utilisateur: 'autre@exemple.org', Dossier: 'Gardé par un autre' }),
-    line({ Utilisateur: '@document', App: 'gfs', Fichier: 'apps' }),
+    line({ App: 'publipostage', File: '7', Favorite: true, Folder: 'Archives' }),
+    line({ App: 'publipostage', File: '7', Folder: 'Doublon' }),
+    line({ App: 'publipostage', File: '8', Folder: 'Contrats' }),
+    line({ App: 'form', File: '3', Folder: 'Formulaires' }),
+    line({ User: 'autre@exemple.org', App: 'publipostage', File: '9', Folder: 'Prive' }),
+    line({ Folder: 'Gardé' }),
+    line({ User: 'autre@exemple.org', Folder: 'Gardé par un autre' }),
+    line({ User: '@document', App: 'gfs', File: 'apps' }),
   ]);
   const carried = carryOver(filing, { data: prefs() }, lines, 'moi@exemple.org');
   assert.deepEqual(carried.entries, [{ file: '7', pinned: true, folder: 'Archives' }, { file: '8', pinned: false, folder: 'Contrats' }]);
   assert.deepEqual(carried.folders, ['Gardé']);
-  assert.deepEqual(carried.removed, [['RemoveRecord', 'GFS_Rangement', 1], ['RemoveRecord', 'GFS_Rangement', 2], ['RemoveRecord', 'GFS_Rangement', 3]]);
+  assert.deepEqual(carried.removed, [['RemoveRecord', 'GFS_Filing', 1], ['RemoveRecord', 'GFS_Filing', 2], ['RemoveRecord', 'GFS_Filing', 3]]);
 });
 
 test('carryOver : une ligne de GFS sans dossier ni favori n\'est reprise que pour défaire une ligne de l\'app (le fichier est revenu à la racine dans GFS) ; sinon elle part sans rien écrire chez l\'app', () => {
-  const lines = gfs([line({ App: 'publipostage', Fichier: '7' }), line({ App: 'publipostage', Fichier: '8' })]);
+  const lines = gfs([line({ App: 'publipostage', File: '7' }), line({ App: 'publipostage', File: '8' })]);
   const carried = carryOver(filing, { data: prefs() }, lines, 'moi@exemple.org');
   assert.deepEqual(carried.entries, [{ file: '7', pinned: false, folder: '' }], 'l\'app range 7 dans Factures : GFS l\'avait remis à la racine');
   assert.equal(carried.removed.length, 2);
 });
 
 test('carryOver : sans table de GFS ni rien à reprendre, rien ; une app sans ligne d\'état ne reçoit pas les dossiers', () => {
-  assert.deepEqual(carryOver(filing, { data: prefs() }, { tableId: 'GFS_Rangement', data: null }, 'moi@exemple.org'), { entries: [], folders: [], removed: [] });
-  const lines = gfs([line({ Dossier: 'Gardé' })]);
+  assert.deepEqual(carryOver(filing, { data: prefs() }, { tableId: 'GFS_Filing', data: null }, 'moi@exemple.org'), { entries: [], folders: [], removed: [] });
+  const lines = gfs([line({ Folder: 'Gardé' })]);
   assert.deepEqual(carryOver({ ...filing, marque: undefined }, { data: prefs() }, lines, 'moi@exemple.org').folders, []);
 });

@@ -12,7 +12,7 @@ const t = (key, vars) => (vars ? `${key} ${JSON.stringify(vars)}` : key);
 const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', rulePos: null, memo: '' };
 const base = () => ({
   resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }],
-  tables: [{ id: 5, tableId: RANGEMENT }], columns: [{ parentId: 5, colId: 'Utilisateur' }, { parentId: 5, colId: 'Adresse' }],
+  tables: [{ id: 5, tableId: RANGEMENT }], columns: [{ parentId: 5, colId: 'User' }, { parentId: 5, colId: 'Address' }],
 });
 // Applique une liasse à une copie des tables internes, comme le ferait Grist (assez pour relire les règles ensuite).
 function apply(existing, actions) {
@@ -60,7 +60,7 @@ test('Partagé : une règle de lecture ne cite que rec ; seules celles d’écri
 
 test('Partagé : refusé sans le rangement, sans une colonne, déjà posé, ou sous des règles d’un autre auteur', () => {
   assert.equal(planShared({ ...base(), tables: [] }).reason, 'no-table');
-  assert.equal(planShared({ ...base(), columns: [{ parentId: 5, colId: 'Utilisateur' }] }).reason, 'no-column');
+  assert.equal(planShared({ ...base(), columns: [{ parentId: 5, colId: 'User' }] }).reason, 'no-column');
   assert.equal(planShared(apply(base(), planShared(base()).actions)).reason, 'already');
   const foreign = { ...base(), resources: [...base().resources, { id: 2, tableId: RANGEMENT, colIds: '*' }], rules: [...base().rules, { id: 2, resource: 2, aclFormula: '', permissionsText: '-C', rulePos: 1, memo: 'à moi' }] };
   assert.equal(planShared(foreign).reason, 'foreign');

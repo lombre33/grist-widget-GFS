@@ -551,7 +551,7 @@ async function optionsEditProblems(page, t, note, click, where) {
   const before = (await page.run(writes)).length;
   await click('[data-fk="set-save"]');
   await delay(600);
-  const saved = (await page.run(writes)).slice(before).find(each => each[0] === 'UpdateRecord' && each[1] === 'GFS_Annuaires');
+  const saved = (await page.run(writes)).slice(before).find(each => each[0] === 'UpdateRecord' && each[1] === 'GFS_Directories');
   const config = saved ? JSON.parse(saved[3].Config) : null;
   if (!config) { note('options', `${where} : « Enregistrer » n'écrit pas la définition de l'annuaire`); return; }
   if (JSON.stringify(config.edit) !== JSON.stringify({ self: true, level: 'below', role: 'Masquee' })) note('options', `${where} : qui modifie est écrit ${JSON.stringify(config.edit)} ({ self: true, level: "below", role: "Masquee" } attendu)`);

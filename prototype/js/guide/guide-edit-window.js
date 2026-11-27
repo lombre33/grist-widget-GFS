@@ -134,6 +134,7 @@ export class GuideEdit {
     const { body, note, save } = this.#refs;
     const parent = this.#field('parent');
     const kind = this.#field('kind');
+    const draft = this.#field('draft');
     const roles = this.#fields.filter(item => item.key.startsWith('role:'));
     const type = this.#config.types.find(each => each.id === this.#values.kind);
     const keep = body.ownerDocument.activeElement;
@@ -144,6 +145,8 @@ export class GuideEdit {
         t('gd.proc.h.kind')) : null,
       parent ? formRow(t('gd.proc.f.parent'), chooser(t, 'pf:parent', this.#labelOf(parent) || t('gd.proc.noMother'), { act: 'mother' }),
         t('gd.proc.h.parent')) : null,
+      draft ? formRow(t('gd.proc.f.status'), chooser(t, 'pf:draft', t(this.#values.draft ? 'gd.status.draft' : 'gd.status.published'), { act: 'draft' },
+        { disabled: !draft.mode, title: this.#why(draft) }), t(this.#values.draft ? 'gd.proc.h.draft' : 'gd.proc.h.published')) : null,
       ...this.#visible().filter(item => item.key.startsWith('x:')).map(item => this.#extraRow(item)),
       ...TEXT_FIELDS.slice(1).map(([key, label, shape]) => this.#textRow(key, label, shape)),
       roles.length ? h('h3', { class: 'gd-set-h' }, t('gd.proc.contacts')) : null,
@@ -169,7 +172,7 @@ export class GuideEdit {
   #input(event) {
     const fk = event.target.dataset ? event.target.dataset.fk : '';
     if (fk && fk.startsWith('pf:x:')) this.#values.extra[fk.slice(5)] = event.target.value;
-    else if (fk && fk.startsWith('pf:') && fk !== 'pf:parent' && fk !== 'pf:kind') this.#values[fk.slice(3)] = event.target.value;
+    else if (fk && fk.startsWith('pf:') && fk !== 'pf:parent' && fk !== 'pf:kind' && fk !== 'pf:draft') this.#values[fk.slice(3)] = event.target.value;
     else if (fk && fk.startsWith('pr:')) this.#values.roles[fk.slice(3)] = { id: null, text: event.target.value };
     const problem = this.#problem();
     this.#refs.note.textContent = problem;
@@ -182,6 +185,7 @@ export class GuideEdit {
     if (!button || button.getAttribute('aria-disabled') === 'true') return;
     if (button.dataset.act === 'mother') void this.#pickMother();
     else if (button.dataset.act === 'kind') void this.#pickKind();
+    else if (button.dataset.act === 'draft') { this.#values.draft = !this.#values.draft; this.#paint(); }
     else if (button.dataset.act === 'role') void this.#pickRole(this.#field(`role:${button.dataset.col}`));
   }
 

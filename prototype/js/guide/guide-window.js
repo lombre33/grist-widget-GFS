@@ -12,9 +12,11 @@ import { themeTiles, treeNav, procedureRow, infoPane, contactsPane, visibleAnswe
 import { typeOf } from './guide-types.js';
 import { planTree, contactsView, planFolded, personView } from './guide-plan.js';
 import { treeKeys } from './guide-keys.js';
+import { checkView } from './guide-check-view.js';
+import { checksOf, verifiedValue } from './guide-checks.js';
 
 const VIEWS = Object.freeze([['themes', 'tiles', 'gd.view.themes'], ['list', 'list', 'gd.view.list'], ['plan', 'org', 'gd.view.plan'],
-  ['contacts', 'users', 'gd.view.contacts']]);
+  ['contacts', 'users', 'gd.view.contacts'], ['check', 'verify', 'gd.view.check']]);
 
 export class GuideWindow {
   #o;
@@ -217,7 +219,20 @@ export class GuideWindow {
       this.#folded ??= planFolded(data);
       return [planTree(data, { t, folded: this.#folded, answerFor: data.answerFor })];
     }
+    if (this.#view === 'check') return [checkView(data, { t, checks: this.#checks(data), mark: { blocked: this.#markWhy() } })];
     return [contactsView(data, { t, open: this.#contactsOpen, answerFor: data.answerFor })];
+  }
+
+  // Le relevé de « À vérifier » : recalculé à chaque dessin (rapide : une lecture de rôles par démarche, déjà en mémoire).
+  #checks(data) { return checksOf(data, { answerFor: data.answerFor, today: data.today }); }
+
+  // Pourquoi « Marquer vérifiée » est grisé : le document ne s'écrit pas, le guide n'a pas de colonne « Vérifiée le », ou GFS ne sait pas l'écrire.
+  #markWhy() {
+    const t = this.#o.t;
+    const blocked = this.#o.writeBlock ? this.#o.writeBlock() : null;
+    if (blocked) return blocked;
+    const { data } = this.#show;
+    return verifiedValue((data.verifiedGenre || ''), data.today) === null ? t('gd.chk.noColumn') : '';
   }
 
   // Les démarches qui répondent à la recherche, d'un bout à l'autre du guide.
@@ -278,6 +293,7 @@ export class GuideWindow {
     else if (this.#view === 'themes') note.textContent = t('gd.foot.themes', { n: data.index.roots.length, total });
     else if (this.#view === 'plan') note.textContent = t('gd.foot.plan', { total });
     else if (this.#view === 'contacts') note.textContent = t('gd.foot.contacts', { total });
+    else if (this.#view === 'check') note.textContent = t('gd.foot.check', { n: this.#checks(data).count });
     else note.textContent = this.#node === null ? t('gd.foot.all', { total }) : t('gd.foot.list',
       { n: below(data.index, this.#node), name: data.index.byRow.get(this.#node).title, total });
   }
@@ -314,6 +330,7 @@ export class GuideWindow {
       mapoff: () => this.say(this.#o.t('gd.map.off')),
       edit: () => this.#guardedEdit(row),
       'person-clear': () => { this.#person = null; this.#proc = null; this.#repaint(); },
+      mark: () => { const why = this.#markWhy(); if (why) this.say(why); else this.#o.onMark(row); },
       view: () => { this.#view = data.view; this.#person = null; this.#proc = null; this.#note = ''; this.#repaint(); },
       open: () => this.#openProc(row),
       back: () => { this.#proc = null; this.#note = ''; this.#repaint(); },

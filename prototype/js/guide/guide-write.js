@@ -15,7 +15,8 @@ const TEXTUAL = Object.freeze(['text', 'choice']);
 export function fieldsOf(config, schema, table, directory = null) {
   const field = (key, col, extra = {}) => {
     const column = col ? columnOf(schema, table, col) : null;
-    const mode = !column ? '' : (column.genre === 'ref' && key !== 'title' ? 'ref' : (TEXTUAL.includes(column.genre) ? 'text' : ''));
+    const mode = !column ? '' : (column.genre === 'ref' && key !== 'title' ? 'ref' : (column.genre === 'bool' && key === 'draft' ? 'bool' :
+      (TEXTUAL.includes(column.genre) ? 'text' : '')));
     return { key, col, column, mode, kind: 'text', ...extra };
   };
   const plain = ['title', 'parent', 'keywords', 'steps', 'details'].filter(key => config[key]).map(key => field(key, config[key]));
@@ -23,7 +24,7 @@ export function fieldsOf(config, schema, table, directory = null) {
     const base = field(`role:${role.col}`, role.col, { role });
     return { ...base, kind: kindOf(base.column, directory), mode: base.column && base.column.genre === 'ref' ? 'ref' : base.mode };
   });
-  const kind = config.kind ? [field('kind', config.kind)] : [];
+  const kind = [...(config.kind ? [field('kind', config.kind)] : []), ...(config.draft ? [field('draft', config.draft)] : [])];
   const extras = config.fields.map(each => field(`x:${each.id}`, each.col, { extra: each }));
   return [...plain.filter(item => item.key !== 'parent' || (item.column && item.column.genre === 'ref' && item.column.ref === table)), ...kind, ...extras,
     ...roles];
@@ -41,7 +42,8 @@ export function visibleFields(fields, config, kindId) {
 export function valuesFrom(proc, parent = null) {
   const own = key => (proc ? proc.roles[key] : null);
   const values = { title: proc ? proc.title : '', parent: proc ? proc.parent : parent, keywords: proc ? proc.keywords.join(', ') : '',
-    steps: proc ? proc.steps.join('\n') : '', details: proc ? proc.details : '', kind: proc ? proc.kind : '', extra: proc ? { ...proc.extra } : {}, roles: {} };
+    steps: proc ? proc.steps.join('\n') : '', details: proc ? proc.details : '', kind: proc ? proc.kind : '', draft: proc ? proc.draft : false,
+      extra: proc ? { ...proc.extra } : {}, roles: {} };
   for (const key of Object.keys(proc ? proc.roles : {})) {
     const cell = own(key);
     values.roles[key] = cell.ids.length ? { id: cell.ids[0], text: cell.texts[0] || '' } : { id: null, text: cell.texts[0] || '' };
@@ -49,14 +51,18 @@ export function valuesFrom(proc, parent = null) {
   return values;
 }
 
-// La valeur d'une colonne d'après le formulaire.
+// La valeur d'une colonne d'après le formulaire : celle d'un rôle, de la mère, du brouillon, du type ou d'un champ du type, sinon le texte saisi.
 function cellOf(item, values) {
   if (item.key.startsWith('role:')) {
     const own = values.roles[item.col] || { id: null, text: '' };
     return item.mode === 'ref' ? (own.id || 0) : String(own.text || '').trim();
   }
-  if (item.key === 'parent') return values.parent || 0;
-  if (item.key === 'kind') return String(values.kind || '');
+  const own = {
+    parent: () => values.parent || 0,
+    kind: () => String(values.kind || ''),
+    draft: () => (item.mode === 'bool' ? Boolean(values.draft) : (values.draft ? 'draft' : '')),
+  }[item.key];
+  if (own) return own();
   if (item.key.startsWith('x:')) return String((values.extra || {})[item.extra.id] ?? '').trim();
   return String(values[item.key] ?? '').trim();
 }

@@ -13,8 +13,8 @@
 .gd-top h2 { margin-right: 2px; }
 .gd-logo { flex: none; width: 18px; height: 18px; color: var(--accent); }
 .gd-grow { flex: 1 1 0; min-width: 0; }
-.inp-search.gd-search { flex: 1 1 130px; width: auto; min-width: 110px; max-width: 230px; }
-.gd-name { display: inline-flex; align-items: center; gap: 6px; max-width: 170px; height: 28px; padding: 0 8px 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill);
+.inp-search.gd-search { flex: 1 1 120px; width: auto; min-width: 96px; max-width: 230px; }
+.gd-name { display: inline-flex; align-items: center; gap: 6px; max-width: 140px; height: 28px; padding: 0 8px 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill);
   background: var(--surface); color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); font-weight: 600; cursor: pointer; }
 .gd-name:hover { background: var(--surface-sunken); }
 .gd-name-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -243,3 +243,16 @@
 .gd-pv-head .btn { margin-left: auto; }
 .gd-pv-chips { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
 .gd-pv-list .gd-kid { gap: 12px; }
+
+/* La vue « À vérifier » */
+.gd-cks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.gd-ck { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); padding: 6px 0; }
+.gd-ck-b { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; padding: 2px 4px; cursor: pointer; }
+.gd-ck-b:hover .gd-ck-t { color: var(--accent-ink); }
+.gd-ck-b:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.gd-ck-t { font-weight: 600; overflow-wrap: anywhere; }
+.gd-ck-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.gd-ck-mark { flex: none; }
+.gd-ok { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; color: var(--text); }
+.gd-ok .ic { flex: none; width: 16px; height: 16px; color: var(--accent-ink); }
+.gd-num { max-width: 6em; }

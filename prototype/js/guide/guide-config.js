@@ -36,6 +36,8 @@ const text = value => (typeof value === 'string' ? value.trim() : '');
 export const FIELD_SHAPES = Object.freeze(['text', 'long', 'list', 'link']);
 export const MAX_FIELDS = 16;
 export const MAX_TYPES = 12;
+export const REVIEW_MONTHS = 12; // la relecture que « À vérifier » attend d'une démarche tant que le guide n'en dit pas d'autre
+export const MAX_REVIEW_MONTHS = 60;
 const ID_RE = /^[a-z][a-z0-9]{0,23}$/;
 
 // Les champs en plus et les types (27/11, option A du porteur : « champs par type, plus un texte libre ») : `kind` est la colonne qui garde le type d'une
@@ -70,7 +72,7 @@ function readTypes(input, fields) {
 
 // La configuration lue d'un texte JSON (ou d'un objet) : toujours complète, jamais d'exception. Ce que GFS ne connaît pas (une clé d'une version plus récente)
 // est ignoré à la lecture et perdu à la réécriture. { v, title, parent, keywords, steps, details, directory, roles: [{ col, label, preset }], kind, fields,
-// types }
+// types, draft (la colonne « Brouillon »), verified (la colonne « Vérifiée le »), reviewMonths (tous les combien de mois relire ; 0 : jamais) }
 // `directory` : le numéro de ligne de l'annuaire dont viennent les contacts (vide : aucun, les rôles se lisent comme du texte, les gestes de contact sont
 //   grisés). Une colonne ne sert qu'à un seul usage (titre, mère, mots-clés, étapes, détails, un rôle, le type, un champ).
 export function readConfig(source) {
@@ -94,6 +96,10 @@ export function readConfig(source) {
     return col ? { col, label: text(role.label) || col, preset } : null;
   }).filter(Boolean).slice(0, MAX_ROLES);
   config.kind = once(input.kind);
+  config.draft = once(input.draft);
+  config.verified = once(input.verified);
+  const months = Number(input.reviewMonths);
+  config.reviewMonths = Number.isInteger(months) && months >= 0 && months <= MAX_REVIEW_MONTHS ? months : REVIEW_MONTHS;
   config.fields = readFields(input.fields, once);
   config.types = readTypes(input.types, config.fields);
   return config;

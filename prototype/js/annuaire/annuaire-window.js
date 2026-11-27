@@ -58,7 +58,8 @@ export class AnnuaireWindow {
 
   // opts : { container, t, locale() (la langue des dates), inertTargets(), writeBlock() (ce qui empêche d'écrire : le texte, ou rien), onSwitch(),
   //   onConfigure(), onMergePick(ligne) -> Promise<faux si c'était le dernier annuaire coché> (la vue fusionnée),
-  //   onNew(), onEdit(ligne) (la fenêtre « Modifier »), onAdd() (la fenêtre « Ajouter »), onPlanImage(lieu, fichier | null) (l'image d'un plan), onCheck() (« À
+  //   onNew(), onEdit(ligne) (la fenêtre « Modifier »), onAdd() (la fenêtre « Ajouter »), onPlan({ image(lieu, fichier | null), trace(lieu) }) (l'image d'un
+  //   plan, le tracé de ses locaux), onCheck() (« À
   //   vérifier »), onMail(personnes) (« Écrire au groupe »),
   //   onPresence(ligne, apparaît) (« Ma
   //   présence »), onFilterMore(colonne, option) -> Promise<valeur ou null>, onSortPick(clés, tri), onClose() }
@@ -294,7 +295,7 @@ export class AnnuaireWindow {
     const model = this.#filterModel(data.people);
     this.#plan.tools.replaceChildren(this.#menu.button(model, this.#filters), addButton(this.#addBlock(), t), mailButton(this.#mailState(people), t));
     place(this.#plan.filters, this.#menu.bar(model, this.#filters));
-    this.#plan.paint({ t, data, people, selected: this.#person, send: this.#o.onPlanImage });
+    this.#plan.paint({ t, data, people, selected: this.#person, send: this.#o.onPlan });
   }
 
   // Les filtres de ce que `base` contient (les mêmes dans la liste, les cartes et l'organigramme : retour du porteur, 25/11) : ce qu'on peut cocher, et combien

@@ -10,11 +10,12 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { imageIn, loadImage } from './annuaire-images.js';
-import { FIT, MAX_ZOOM, clampView, zoomAt, panBy, isFit, wheelFactor, keyMove, focusView } from './annuaire-plan-zoom.js';
+import { FIT, MAX_ZOOM, clampView, zoomAt, panBy, isFit, wheelFactor, keyMove, focusView, fitRect } from './annuaire-plan-zoom.js';
 import { ShapeLayer } from './annuaire-plan-shapes.js';
 import { boundsOf, UNITS } from './annuaire-plan-shape.js';
 
-const BUTTONS = Object.freeze([['zoom-in', 'plus', 'an.plan.zoomIn'], ['zoom-out', 'minus', 'an.plan.zoomOut'], ['zoom-fit', 'fit', 'an.plan.zoomFit']]);
+const BUTTONS = Object.freeze([['zoom-in', 'plus', 'an.plan.zoomIn'], ['zoom-out', 'minus', 'an.plan.zoomOut'], ['zoom-fit', 'fit', 'an.plan.zoomFit'],
+  ['trace', 'shape-poly', 'an.plan.trace']]);
 const DRAG_FROM = 4; // en deçà, un appui reste un clic
 const DEFAULT_RATIO = 1.5; // largeur / hauteur d'une image dont le navigateur ne dit pas la taille
 
@@ -29,6 +30,7 @@ export class PlanMap {
   #ratio = DEFAULT_RATIO;
   #drag = null;
   #t = null;
+  #trace = { id: 0, why: '', go: null }; // « Tracer les locaux » : le lieu dont on trace l'image, pourquoi c'est grisé (le texte, ou ''), et le geste
 
   constructor() {
     const frame = h('div', { class: 'an-pl-vp', tabindex: '0', role: 'group', dataset: { fk: 'plan-map' } });
@@ -55,13 +57,14 @@ export class PlanMap {
   // Montre le plan de `place` ({ id, name, plan : le numéro de la pièce jointe }) ; le même lieu avec la même image ne recommence rien (l'agrandissement
   // reste).
   // `layer` : les tracés et les places (js/annuaire/annuaire-plan-shapes.js : `layerOf`) ; `focus` : le lieu à cadrer ({ id, shape }), ou null (l'image
-  //   entière).
-  show({ t, place, layer = null, focus = null }) {
+  //   entière) ; `trace` : { id, why, go(id) } : le bouton qui ouvre la fenêtre de tracé (grisé avec sa raison quand `why` n'est pas vide).
+  show({ t, place, layer = null, focus = null, trace = null }) {
     const { frame, img, note } = this.#refs;
     this.#t = t;
     frame.setAttribute('aria-label', t('an.plan.mapLabel', { name: place.name }));
     frame.title = t('an.plan.mapHint');
     for (const button of this.#refs.bar.children) button.setAttribute('aria-label', t(BUTTONS.find(([act]) => act === button.dataset.pl)[2]));
+    this.#trace = trace || { id: 0, why: '', go: null };
     const key = `${place.id}:${place.plan}`;
     if (key !== this.#shown) {
       this.#shown = key;
@@ -80,6 +83,7 @@ export class PlanMap {
       this.#want = focus && focus.shape ? focus.shape : 'fit';
     }
     this.#drawn = layer || { shapes: [], seats: null };
+    this.#traceButton();
     this.#redraw();
     this.#apply();
   }
@@ -115,10 +119,7 @@ export class PlanMap {
     const { frame } = this.#refs;
     const vw = frame.clientWidth || 0;
     const vh = frame.clientHeight || 0;
-    const wide = vw / (vh || 1) > this.#ratio;
-    const dw = wide ? vh * this.#ratio : vw;
-    const dh = wide ? vh : vw / this.#ratio;
-    return { vw, vh, dw, dh, ox: (vw - dw) / 2, oy: (vh - dh) / 2 };
+    return { vw, vh, ...fitRect(vw, vh, this.#ratio) };
   }
 
   // La vue qui cadre `shape` (en unités du plan) dans le cadre.
@@ -141,8 +142,18 @@ export class PlanMap {
     stage.style.transform = isFit(this.#view) ? '' : `translate(${this.#view.x}px, ${this.#view.y}px) scale(${this.#view.k})`;
     if (size.dw) this.#layer.fit(UNITS / (size.dw * this.#view.k));
     frame.classList.toggle('is-zoomed', !isFit(this.#view));
-    const grey = { 'zoom-in': this.#view.k >= MAX_ZOOM, 'zoom-out': isFit(this.#view), 'zoom-fit': isFit(this.#view) };
+    const grey = { 'zoom-in': this.#view.k >= MAX_ZOOM, 'zoom-out': isFit(this.#view), 'zoom-fit': isFit(this.#view), trace: Boolean(this.#trace.why) };
     for (const button of bar.children) button.setAttribute('aria-disabled', String(Boolean(grey[button.dataset.pl])));
+  }
+
+  // Le bouton « Tracer les locaux » : grisé, il garde sa place et un clic en dit la raison dans le pied de la fenêtre (le même geste que les autres boutons
+  // grisés).
+  #traceButton() {
+    const button = [...this.#refs.bar.children].find(each => each.dataset.pl === 'trace');
+    if (!button) return;
+    const { why } = this.#trace;
+    button.title = why || this.#t('an.plan.trace');
+    if (why) { button.dataset.act = 'plan-note'; button.dataset.why = why; } else { delete button.dataset.act; delete button.dataset.why; }
   }
 
   #zoom(factor, px, py) {
@@ -155,6 +166,7 @@ export class PlanMap {
   #press(event) {
     const button = event.target.closest('[data-pl]');
     if (!button || button.getAttribute('aria-disabled') === 'true') return;
+    if (button.dataset.pl === 'trace') { if (this.#trace.go) this.#trace.go(this.#trace.id); return; }
     const { vw, vh } = this.#size();
     const factor = { 'zoom-in': 1.5, 'zoom-out': 1 / 1.5, 'zoom-fit': 0 }[button.dataset.pl];
     if (factor !== undefined) this.#zoom(factor, vw / 2, vh / 2);
@@ -162,8 +174,9 @@ export class PlanMap {
 
   // Le point du cadre sous le pointeur.
   #at(event) {
-    const box = this.#refs.frame.getBoundingClientRect();
-    return { x: event.clientX - box.left, y: event.clientY - box.top };
+    const { frame } = this.#refs;
+    const box = frame.getBoundingClientRect();
+    return { x: event.clientX - box.left - frame.clientLeft, y: event.clientY - box.top - frame.clientTop }; // sans le liseré du cadre
   }
 
   #wheel(event) {

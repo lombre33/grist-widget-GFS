@@ -24,6 +24,13 @@ export function imageWhy(data) {
   return canUpload() ? '' : 'an.img.noUpload';
 }
 
+// Pourquoi « Tracer les locaux » est grisé (la clé du texte), ou '' : la table a sa colonne « Shape » et la personne administre le document (GFS l'a prouvé).
+// Grist garde le dernier mot (ses règles d'accès).
+export function traceWhy(data) {
+  if (!data.plan.canShape) return 'an.plan.noShapeCol';
+  return data.admin ? '' : 'an.plan.traceAdmin';
+}
+
 export class PlanPane {
   #view = new PlanView();
   #place = 0; // le lieu que le plan montre (0 : tous les lieux)
@@ -44,11 +51,13 @@ export class PlanPane {
   }
 
   // Dessine le lieu où l'on est (un lieu qui n'existe plus ramène à tous les lieux). `state` : { t, data (la lecture : `plan`, `masked`, `admin`), people
-  // (celles que l'annuaire montre), selected (la ligne de la personne dont la fiche est ouverte), send ((lieu, fichier | null) : le geste d'écrire l'image d'un
-  // plan) }.
+  // (celles que l'annuaire montre), selected (la ligne de la personne dont la fiche est ouverte), send ({ image((lieu, fichier | null) : écrire l'image d'un
+  // plan),
+  // trace(lieu) : ouvrir la fenêtre de tracé de ses locaux }) }.
   paint({ t, data, people, selected, send }) {
     if (!data.plan.byId.has(this.#place)) this.#place = 0;
-    this.#view.show({ t, plan: data.plan, people, current: this.#place, here: this.#here, selected, masked: data.masked, send, imageWhy: imageWhy(data) });
+    this.#view.show({ t, plan: data.plan, people, current: this.#place, here: this.#here, selected, masked: data.masked, send, imageWhy: imageWhy(data),
+      traceWhy: traceWhy(data) });
   }
 
   // Descend ou remonte au lieu `id` (0 : tous les lieux) ; faux quand il n'existe pas.

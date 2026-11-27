@@ -14,7 +14,7 @@ const { targetSize, useImages, canUpload } = await import('../js/annuaire/annuai
 const { readConfig } = await import('../js/annuaire/annuaire-config.js');
 const { planOf } = await import('../js/annuaire/annuaire-plan.js');
 const { writePlanImage } = await import('../js/annuaire/annuaire-plan-image.js');
-const { imageWhy } = await import('../js/annuaire/annuaire-plan-pane.js');
+const { imageWhy, traceWhy } = await import('../js/annuaire/annuaire-plan-pane.js');
 const { PlanView } = await import('../js/annuaire/annuaire-plan-view.js');
 const { createI18n } = await import('../js/i18n/i18n.js');
 
@@ -131,7 +131,7 @@ const shown = [{ row: 1, name: 'Camille', levels: [], title: '', avatar: 0 }];
 
 function paint(view, extra = {}) {
   const plan = planWith({ Plan: [null, ['L', 7]] });
-  view.show({ t, plan, people: shown, current: 2, here: 0, selected: null, masked: new Set(), imageWhy: '', send: () => {}, ...extra });
+  view.show({ t, plan, people: shown, current: 2, here: 0, selected: null, masked: new Set(), imageWhy: '', send: { image: () => {}, trace: () => {} }, ...extra });
 }
 
 test('la vue : un lieu qui porte une image montre son cadre, avec les trois boutons de zoom ; sans cadre d\'envoi, la vue marche sans', () => {
@@ -147,8 +147,9 @@ test('la vue : un lieu qui porte une image montre son cadre, avec les trois bout
   assert.ok(frame, 'le cadre de l\'image est là');
   assert.equal(frame.attrs['aria-label'], t('an.plan.mapLabel', { name: 'Bâtiment A' }));
   const zoom = byClass(view.element, 'an-pl-zb');
-  assert.deepEqual(zoom.map(button => button.dataset.pl), ['zoom-in', 'zoom-out', 'zoom-fit']);
-  assert.deepEqual(zoom.map(button => button.attrs['aria-disabled']), ['false', 'true', 'true'], 'tout entier : on peut agrandir, pas réduire ni ajuster (grisés, jamais masqués)');
+  assert.deepEqual(zoom.map(button => button.dataset.pl), ['zoom-in', 'zoom-out', 'zoom-fit', 'trace']);
+  assert.deepEqual(zoom.map(button => button.attrs['aria-disabled']), ['false', 'true', 'true', 'false'],
+    'tout entier : on peut agrandir, pas réduire ni ajuster (grisés, jamais masqués) ; « Tracer les locaux » est ouvert à l\'administrateur');
   assert.ok(byClass(view.element, 'an-pl-body')[0].className.includes('has-map'));
   useImages(null);
 });
@@ -165,8 +166,41 @@ test('la vue : « Remplacer l\'image… » et « Retirer » sont ouverts à l\'a
   assert.deepEqual(grey.map(button => [button.attrs['aria-disabled'], button.dataset.act, button.dataset.why]), [['true', 'plan-note', t('an.plan.imgAdmin')], ['true', 'plan-note', t('an.plan.imgAdmin')]],
     'grisé, jamais masqué : un clic dit pourquoi (la phrase du plan, déjà dite par la fenêtre)');
   const bare = new PlanView();
-  bare.show({ t, plan: planWith({ Plan: [null, null] }), people: shown, current: 2, here: 0, selected: null, masked: new Set(), imageWhy: '', send: () => {} });
+  bare.show({ t, plan: planWith({ Plan: [null, null] }), people: shown, current: 2, here: 0, selected: null, masked: new Set(), imageWhy: '', send: { image: () => {}, trace: () => {} } });
   assert.deepEqual(byClass(bare.element, 'an-pl-img-b').map(button => text(button)), [t('an.plan.imgPick')], 'sans image : un seul bouton, « Image du plan… »');
+});
+
+test('la vue : « Tracer les locaux » est grisé avec sa raison pour qui n\'administre pas, ou sans colonne « Shape » ; ouvert, il demande le tracé du lieu', () => {
+  useImages({ download: async () => { throw new Error('refusé'); }, upload: async () => 1 });
+  const asked = [];
+  const view = new PlanView();
+  paint(view, { send: { image: () => {}, trace: id => asked.push(id) } });
+  const [button] = byClass(view.element, 'an-pl-zb').filter(each => each.dataset.pl === 'trace');
+  assert.equal(button.attrs['aria-label'], t('an.plan.trace'));
+  assert.equal(button.dataset.act, undefined, 'ouvert : pas de note à dire');
+  paint(view, { traceWhy: 'an.plan.traceAdmin' });
+  const [grey] = byClass(view.element, 'an-pl-zb').filter(each => each.dataset.pl === 'trace');
+  assert.deepEqual([grey.attrs['aria-disabled'], grey.dataset.act, grey.dataset.why], ['true', 'plan-note', t('an.plan.traceAdmin')], 'grisé, jamais masqué : un clic dit pourquoi');
+  assert.deepEqual(asked, []);
+  useImages(null);
+});
+
+test('un cadre qui se mesure avant d\'avoir montré un plan (l\'observateur de taille tire à la pose) ne casse rien : le bouton de tracé n\'a pas besoin des textes', () => {
+  const seen = globalThis.ResizeObserver;
+  globalThis.ResizeObserver = class { constructor(callback) { this.callback = callback; } observe() { this.callback(); } disconnect() {} };
+  try {
+    assert.doesNotThrow(() => new PlanView());
+  } finally {
+    if (seen === undefined) delete globalThis.ResizeObserver; else globalThis.ResizeObserver = seen;
+  }
+});
+
+test('qui peut tracer : la colonne « Shape » d\'abord, puis l\'administrateur du document (preuve de GFS, jamais devinée)', () => {
+  const plan = planWith({ Plan: [null, ['L', 7]] });
+  assert.equal(traceWhy({ plan: { ...plan, canShape: false }, admin: true }), 'an.plan.noShapeCol');
+  assert.equal(traceWhy({ plan: { ...plan, canShape: true }, admin: false }), 'an.plan.traceAdmin');
+  assert.equal(traceWhy({ plan: { ...plan, canShape: true }, admin: null }), 'an.plan.traceAdmin', 'une preuve qui manque ne vaut pas un oui');
+  assert.equal(traceWhy({ plan: { ...plan, canShape: true }, admin: true }), '');
 });
 
 test('les textes du lot 2 : français et anglais ont les mêmes clés et toutes se traduisent', () => {

@@ -5,6 +5,7 @@
 import { PlanView } from './annuaire-plan-view.js';
 import { placeOfPerson } from './annuaire-plan.js';
 import { planReady } from './annuaire-config.js';
+import { canUpload } from './annuaire-images.js';
 
 // Pourquoi le plan ne s'allume pas dans cette lecture (la clé du texte : la vue reste grisée et un clic le dit), ou '' quand il s'allume : il se lit dans un
 // annuaire principal dont la table des lieux et la colonne du bureau sont réglées (js/annuaire/annuaire-setup-plan.js).
@@ -13,6 +14,14 @@ export function planWhy(data) {
   if (data.sub) return 'an.plan.noSub';
   if (data.plan) return '';
   return planReady(data.config) ? 'an.plan.gone' : 'an.plan.notSet';
+}
+
+// Pourquoi les boutons de l'image d'un plan sont grisés (la clé du texte), ou '' : la table a sa colonne « Plan », la personne administre le document (GFS l'a
+// prouvé) et GFS sait envoyer un fichier. Grist garde le dernier mot (ses règles d'accès).
+export function imageWhy(data) {
+  if (!data.plan.canImage) return 'an.plan.noPlanCol';
+  if (!data.admin) return 'an.plan.imgAdmin';
+  return canUpload() ? '' : 'an.img.noUpload';
 }
 
 export class PlanPane {
@@ -34,11 +43,12 @@ export class PlanPane {
     this.#here = 0;
   }
 
-  // Dessine le lieu où l'on est (un lieu qui n'existe plus ramène à tous les lieux). `state` : { t, data (la lecture : `plan`, `masked`), people (celles que
-  // l'annuaire montre), selected (la ligne de la personne dont la fiche est ouverte) }.
-  paint({ t, data, people, selected }) {
+  // Dessine le lieu où l'on est (un lieu qui n'existe plus ramène à tous les lieux). `state` : { t, data (la lecture : `plan`, `masked`, `admin`), people
+  // (celles que l'annuaire montre), selected (la ligne de la personne dont la fiche est ouverte), send ((lieu, fichier | null) : le geste d'écrire l'image d'un
+  // plan) }.
+  paint({ t, data, people, selected, send }) {
     if (!data.plan.byId.has(this.#place)) this.#place = 0;
-    this.#view.show({ t, plan: data.plan, people, current: this.#place, here: this.#here, selected, masked: data.masked });
+    this.#view.show({ t, plan: data.plan, people, current: this.#place, here: this.#here, selected, masked: data.masked, send, imageWhy: imageWhy(data) });
   }
 
   // Descend ou remonte au lieu `id` (0 : tous les lieux) ; faux quand il n'existe pas.

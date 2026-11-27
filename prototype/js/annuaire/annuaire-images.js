@@ -11,21 +11,24 @@
 // L'envoi (« Modifier la fiche » : la photo d'une personne s'envoie depuis le widget, la cellule cite alors la pièce jointe que Grist a créée) passe par le
 // même
 // cadre : l'image est lue, jugée (c'est une image que le navigateur sait décoder), réduite à 512 pixels (la photo d'une personne n'a pas besoin de plus, et
-// chaque lecture ultérieure en est allégée : Grist n'a pas de miniature), puis envoyée ; la photo réduite de la fiche est gardée en mémoire sous le numéro que
-// Grist a rendu (rien à retélécharger).
+//   chaque lecture ultérieure en est allégée : Grist n'a pas de miniature ; un plan : 2048 pixels), puis envoyée ; la photo réduite de la fiche est gardée en
+//   mémoire sous le numéro que Grist a rendu (rien à retélécharger).
 
 import { h } from '../ui/dom.js';
 
+// Les genres d'image : `box` et `max` la taille de l'image réduite pour l'affichage, `svg` le plus lourd SVG gardé tel quel, `send` le plus grand côté d'une
+// image envoyée et `keep` le poids en deçà duquel une image qui tient dans cette boîte s'envoie telle quelle. Le plan d'un lieu (lot 2 du plan des bâtiments)
+// est
+// grand : on y lit des numéros de locaux ; il ne reste donc en mémoire qu'à quelques exemplaires (`PLAN_KEPT`).
 const KINDS = Object.freeze({
-  avatar: { box: 128, fit: 'cover', max: 128 },
-  logo: { box: 192, fit: 'contain', max: 96 },
+  avatar: { box: 128, fit: 'cover', max: 128, svg: 200 * 1024, send: 512, keep: 300 * 1024 },
+  logo: { box: 192, fit: 'contain', max: 96, svg: 200 * 1024, send: 512, keep: 300 * 1024 },
+  plan: { box: 2048, fit: 'contain', max: 2048, svg: 2 * 1024 * 1024, send: 2048, keep: 1536 * 1024 },
 });
 const PARALLEL = 3; // combien de téléchargements à la fois
 const KEPT = 500; // combien d'images réduites on garde en mémoire
-const SVG_LIMIT = 200 * 1024; // un SVG plus lourd est écarté (il s'afficherait tel quel, sans réduction possible)
+const PLAN_KEPT = 6; // combien de plans (de grandes images) on garde en mémoire
 export const IMAGE_MAX = 20 * 1024 * 1024; // au-delà, une image choisie n'est pas lue (le navigateur la décoderait en entier)
-const SEND_BOX = 512; // le plus grand côté d'une photo envoyée
-const SEND_KEEP = 300 * 1024; // une image plus légère que cela, et qui tient dans la boîte, s'envoie telle quelle
 
 let source = null; // { download(numéro) -> Promise<Blob> }
 const done = new Map(); // `${genre}:${numéro}` -> l'adresse `data:` réduite, ou '' quand l'image n'est pas venue
@@ -78,7 +81,8 @@ export function targetSize(kind, width, height) {
 // logo garde sa transparence). Un SVG se garde tel quel (il se réduit à l'affichage).
 async function shrink(blob, kind, known = '') {
   const url = known || await readAsDataUrl(blob);
-  if (/^data:image\/svg\+xml/i.test(url)) return blob.size <= SVG_LIMIT ? url : '';
+  // un SVG plus lourd est écarté (il s'afficherait tel quel, sans réduction possible)
+  if (/^data:image\/svg\+xml/i.test(url)) return blob.size <= KINDS[kind].svg ? url : '';
   if (!/^data:image\//i.test(url)) return '';
   const image = await decode(url);
   const { width, height, crop } = targetSize(kind, image.naturalWidth, image.naturalHeight);
@@ -99,6 +103,8 @@ async function shrink(blob, kind, known = '') {
 function remember(key, value) {
   if (done.size >= KEPT) done.delete(done.keys().next().value);
   done.set(key, value);
+  const plans = [...done.keys()].filter(each => each.startsWith('plan:'));
+  for (const old of plans.slice(0, Math.max(0, plans.length - PLAN_KEPT))) done.delete(old);
 }
 
 function pump() {
@@ -144,12 +150,13 @@ export function rememberImage(kind, id, url) {
 
 // Le fichier à envoyer : le fichier lui-même quand il est léger et petit (ou un SVG), sinon l'image redessinée dans 512 pixels (un JPEG reste un JPEG, le reste
 // devient un PNG : la transparence se garde). Jamais plus lourd que l'original.
-async function reduced(file, url) {
+async function reduced(file, url, kind) {
   if (/^data:image\/svg\+xml/i.test(url)) return file;
   const image = await decode(url);
   const side = Math.max(image.naturalWidth, image.naturalHeight);
-  if (side <= SEND_BOX && file.size <= SEND_KEEP) return file;
-  const scale = Math.min(1, SEND_BOX / side);
+  const { send, keep } = KINDS[kind];
+  if (side <= send && file.size <= keep) return file;
+  const scale = Math.min(1, send / side);
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
   canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -177,7 +184,7 @@ export async function prepareImage(file, kind = 'avatar') {
     const raw = await readAsDataUrl(file);
     const url = await shrink(file, kind, raw);
     if (!url) return null;
-    const out = await reduced(file, raw);
+    const out = await reduced(file, raw, kind);
     const name = out === file ? file.name : nameFor(file.name, out.type);
     return { file: out === file ? file : new File([out], name, { type: out.type }), name, url };
   } catch (error) {

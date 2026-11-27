@@ -164,7 +164,7 @@ export async function loadFiles(port, apps, identity = '', reader = null, guard 
   stats.ms = Math.round(performance.now() - started);
   return { files, trash, folders, received: raw.received, spaces: raw.spaces, notices: raw.notices, problems, stats,
     shortcuts: raw.gfs.data ? readShortcuts(raw.gfs.data, who) : [],
-    looks: raw.gfs.data ? readFolderLooks(raw.gfs.data, who) : new Map(),
+    looks: new Map([...(raw.gfs.data ? readFolderLooks(raw.gfs.data, who) : []), ...((raw.spaces && raw.spaces.looks) || [])]),
     gfsTable: raw.gfs.data ? nameIn(raw.tables, TABLE) : null,
     binTable: raw.bin.data ? nameIn(raw.tables, BIN_TABLE) : null };
 }

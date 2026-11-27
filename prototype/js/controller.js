@@ -171,7 +171,7 @@ export class GfsController {
         // une table que Grist ne sait plus envoyer en entier n'est pas redemandée sans fin (js/explorer/read-guard.js)
         guard: createReadGuard({ docId, store: key => keyStore(window, key, 'sessionStorage') }),
       prepare: () => this.names.refresh(this.apps.filter(item => item.ok)),
-      explorer: () => this.explorer, openedBar: () => this.openedBar, appName: this.appName, t: this.t, onSpaces: spaces => { this.spaces = spaces; },
+      explorer: () => this.explorer, openedBar: () => this.openedBar, appName: this.appName, t: this.t, onSpaces: spaces => this.#onSpaces(spaces),
       onFiles: files => void this.followFolders(files),
       onNotices: result => void this.notices.update({ files: result.files, spaces: result.spaces, sources: result.notices }),
       onStats: stats => { this.doc.body.dataset.explorerStats = JSON.stringify(stats); this.liveList.note(stats); },
@@ -541,6 +541,13 @@ export class GfsController {
   }
 
   // La table n'existe pas encore : la personne décide de la créer (contrats 6.2, point 1). Une fenêtre du widget, au-dessus de celle des apps.
+  // Ce que disent les espaces, à chaque lecture : l'explorateur les garde, et la sonde « propriétaire ? » part dès qu'il y en a un (l'article « Apparence… »
+  // d'un espace est grisé pour qui ne l'est pas, js/explorer/look-gestures.js).
+  #onSpaces(spaces) {
+    this.spaces = spaces;
+    if (spaces && spaces.spaces.length && this.lookGestures) void this.lookGestures.warm();
+  }
+
   #askTableConsent() {
     return this.ask({ title: this.t('table.title'), message: this.t('table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
   }

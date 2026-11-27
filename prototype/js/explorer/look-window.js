@@ -3,7 +3,8 @@
 // la charte), l'icône (le dossier ou un repère dessiné dedans) et l'émoji, qui prend la place de l'icône. L'aperçu en haut suit les choix. Rien n'est écrit
 // ici : la fenêtre rend { look } (l'apparence choisie, ou null pour l'aspect d'origine), ou null quand la personne renonce.
 //
-// opts : { container, inertTargets, t, title, name (le nom du dossier), look (l'apparence d'aujourd'hui, ou null) }.
+// opts : { container, inertTargets, t, title, who (la ligne sous le nom : à qui est l'apparence), name (le nom du dossier ou de l'espace), look (l'apparence
+// d'aujourd'hui, ou null) }.
 
 import { h } from '../ui/dom.js';
 import { openModal } from '../ui/modal.js';
@@ -31,7 +32,7 @@ function radioGroup({ label, buttons, onPick }) {
   return { group, sync };
 }
 
-export function askLook({ container, inertTargets, t, title, name, look }) {
+export function askLook({ container, inertTargets, t, title, who = t('lk.who'), name, look }) {
   const start = cleanLook(look) || {};
   const state = { color: start.color || '', glyph: start.glyph || '', emoji: start.emoji || '' };
   let invalid = false;
@@ -80,7 +81,7 @@ export function askLook({ container, inertTargets, t, title, name, look }) {
     h('header', { class: 'mod-head' }, h('h2', { id: 'lk-title' }, title)),
     h('div', { class: 'ask-body lk-body' },
       h('div', { class: 'lk-top' }, preview, h('div', { class: 'lk-who' }, h('div', { class: 'lk-name', title: name }, name),
-        h('div', { class: 'lk-sub' }, t('lk.who')))),
+        h('div', { class: 'lk-sub' }, who))),
       h('div', { class: 'lk-sec' }, h('span', { class: 'lk-lab' }, t('lk.color')), colors.group),
       h('div', { class: 'lk-sec' }, h('span', { class: 'lk-lab' }, t('lk.glyph')), icons.group),
       h('div', { class: 'lk-sec' }, h('label', { class: 'lk-lab', for: 'lk-emoji' }, t('lk.emoji')),

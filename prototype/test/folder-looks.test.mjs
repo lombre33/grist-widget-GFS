@@ -1,5 +1,5 @@
-// L'apparence des dossiers de « Moi » (js/files/folder-looks.js, js/explorer/look-gestures.js, js/explorer/folder-look-view.js ; étude du 27/11, choix du porteur : l'émoji
-// se choisit dans la fenêtre « Apparence ») : ce qu'une ligne d'état dit de l'apparence, les actions écrites, ce que la liste en montre avant l'écriture, et le geste (avec
+// L'apparence des dossiers de « Moi » et des espaces (js/files/folder-looks.js, js/sharing/space-looks.js, js/explorer/look-gestures.js, js/explorer/folder-look-view.js ;
+// étude du 27/11, choix du porteur : l'émoji se choisit dans la fenêtre « Apparence ») : ce qu'une ligne d'état dit de l'apparence, les actions écrites, ce que la liste en montre avant l'écriture, et le geste (avec
 // Ctrl+Z et Ctrl+Y). Ce que Grist fait vraiment de ces lignes se mesure dans le labo (labo/run-apparence.mjs) ; la fenêtre et le dessin, sous Firefox (test/apparence-firefox.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,7 @@ import { Pending } from '../js/explorer/pending.js';
 import { listSignature } from '../js/explorer/list-signature.js';
 import { TableDeclined } from '../js/files/rangement.js';
 import { UndoStack } from '../js/files/undo-stack.js';
-import { isSpacePath } from '../js/sharing/spaces-filing.js';
+import { readSpaces } from '../js/sharing/spaces-filing.js';
 import { iconNames } from '../js/ui/icons.js';
 import { createI18n } from '../js/i18n/i18n.js';
 
@@ -159,7 +159,8 @@ test('folderIcon : un émoji prend la place du dessin (caché pour la lecture d\
 
 test('les textes : chaque couleur et chaque repère se nomment en français et en anglais, la fenêtre se vouvoie', () => {
   for (const [lang, say] of [['fr', t], ['en', en]]) {
-    for (const key of ['lk.menu', 'lk.title', 'lk.who', 'lk.color', 'lk.glyph', 'lk.emoji', 'lk.apply', 'lk.reset', 'lk.c.default', 'lk.g.folder', 'lk.why.space', 'lk.noAddress']) {
+    for (const key of ['lk.menu', 'lk.title', 'lk.who', 'lk.color', 'lk.glyph', 'lk.emoji', 'lk.apply', 'lk.reset', 'lk.c.default', 'lk.g.folder', 'lk.why.space', 'lk.noAddress', 'lk.title.space', 'lk.who.space', 'lk.why.root', 'lk.why.owners',
+      'lk.why.spaceUnknown', 'lk.col.title', 'lk.col.text', 'lk.col.ok', 'lk.col.declined', 'undo.lookSpace', 'redo.lookSpace']) {
       assert.notEqual(say(key), key, `${lang} ${key}`);
     }
     for (const color of COLORS) assert.notEqual(say(`lk.c.${color}`), `lk.c.${color}`, `${lang} ${color}`);
@@ -169,8 +170,24 @@ test('les textes : chaque couleur et chaque repère se nomment en français et e
 });
 
 // ----- Le geste. Une doublure de ce que le contrôleur donne : le rangement garde les lignes, la liste relue en part.
-function harness({ block = null, identity = ME, answers = [], rows = [state('Clients')], declined = false, fails = false, known = true, space = isSpacePath } = {}) {
-  const log = { notices: [], windows: [], refreshes: [], writes: 0 };
+// `owner` : la personne est propriétaire du document ; `styled` : `GFS_Spaces` a sa colonne `Style` ; `accept` : la réponse à la question de la colonne.
+const SPACE_ROWS = { id: [1, 2], Key: ['achats', 'ventes'], Name: ['Achats', 'Ventes'] };
+function harness({ block = null, identity = ME, answers = [], rows = [state('Clients')], declined = false, fails = false, known = true, owner = false, styled = true, accept = true,
+  spaceStyle = ['', ''] } = {}) {
+  const log = { notices: [], windows: [], refreshes: [], writes: 0, actions: [], consents: 0 };
+  const spaceTable = { ...SPACE_ROWS, ...(styled ? { Style: [...spaceStyle] } : {}) };
+  const spacesInfo = () => readSpaces(spaceTable, { id: [] });
+  const doc = {
+    fetchTable: async () => spaceTable,
+    applyUserActions: async actions => {
+      if (fails) throw new Error('Grist a refusé');
+      for (const action of actions) {
+        log.actions.push(action);
+        if (action[0] === 'AddColumn') spaceTable[action[2]] = spaceTable.id.map(() => '');
+        if (action[0] === 'UpdateRecord') spaceTable[Object.keys(action[3])[0]][spaceTable.id.indexOf(action[2])] = Object.values(action[3])[0];
+      }
+    },
+  };
   const looks = new Map(readFolderLooks(tableOf(rows), ME));
   const folders = new Set(['Clients', 'Vide', 'Espaces/Achats']);
   const rangement = {
@@ -195,18 +212,23 @@ function harness({ block = null, identity = ME, answers = [], rows = [state('Cli
   let queue = Promise.resolve();
   const pending = new Pending();
   const gestures = new LookGestures({
-    rangement, t, notice: text => log.notices.push(text), writeBlock: () => block, looks: () => looks, exists: path => folders.has(path), isSpace: space,
+    rangement, t, notice: text => log.notices.push(text), writeBlock: () => block, looks: () => looks, exists: path => folders.has(path),
+    spaces: { info: spacesInfo, owner: async () => owner }, port: { doc }, consent: async () => { log.consents += 1; return accept; },
     windows: { look: async opts => { log.windows.push({ ...opts, shown: pending.apply({ files: [], folders: [], looks }).looks }); return answers.shift() ?? null; } },
     queue: task => { queue = queue.then(task); return queue; }, undoStack, pending,
-    refresh: async opts => { log.refreshes.push({ ...opts, pendingAtRead: pending.size }); },
+    refresh: async opts => {
+      log.refreshes.push({ ...opts, pendingAtRead: pending.size });
+      for (const path of [...looks.keys()]) if (path.startsWith('Espaces/')) looks.delete(path);
+      for (const [path, each] of spacesInfo().looks) looks.set(path, each); // la lecture suivante rend ce que la table des espaces dit
+    },
   });
-  return { gestures, log, rows, looks, undoStack, pending, folders };
+  return { gestures, log, rows, looks, undoStack, pending, folders, spaceTable };
 }
 
-test('whyNot : un dossier d\'un espace dit pourquoi (grisé, jamais masqué) ; un dossier de « Moi » n\'a pas de raison', () => {
+test('whyNot : un dossier dans un espace et la racine disent pourquoi (grisé, jamais masqué) ; un dossier de « Moi » n\'a pas de raison', () => {
   const { gestures } = harness();
   assert.equal(gestures.whyNot('Espaces/Achats/Contrats'), t('lk.why.space'));
-  assert.equal(gestures.whyNot('Espaces'), t('lk.why.space'));
+  assert.equal(gestures.whyNot('Espaces'), t('lk.why.root'));
   assert.equal(gestures.whyNot('Clients/ACME'), null);
   assert.equal(gestures.whyNot('Espacesdisques'), null, 'un dossier qui commence par le même mot n\'est pas la racine des espaces');
 });
@@ -244,10 +266,10 @@ test('changer : renoncer (Échap) ou ne rien changer n\'écrit rien et ne relit 
   assert.equal(none.log.writes, 0);
 });
 
-test('changer : un dossier d\'un espace, la lecture seule et une adresse inconnue sont refusés avec leur phrase, sans fenêtre ni écriture', async () => {
-  const space = harness({ answers: [{ look: { color: 'red' } }] });
-  assert.equal(await space.gestures.change('Espaces/Achats'), false);
-  assert.deepEqual([space.log.windows.length, space.log.notices], [0, [t('lk.why.space')]]);
+test('changer : un dossier dans un espace, la lecture seule et une adresse inconnue sont refusés avec leur phrase, sans fenêtre ni écriture', async () => {
+  const inside = harness({ owner: true, answers: [{ look: { color: 'red' } }] });
+  assert.equal(await inside.gestures.change('Espaces/Achats/Contrats'), false);
+  assert.deepEqual([inside.log.windows.length, inside.log.notices, inside.log.actions.length], [0, [t('lk.why.space')], 0]);
   const locked = harness({ block: t('mod.readonly'), answers: [{ look: { color: 'red' } }] });
   assert.equal(await locked.gestures.change('Clients'), false);
   assert.deepEqual([locked.log.windows.length, locked.rows[0].Value, locked.log.notices], [0, '', [t('mod.readonly')]]);
@@ -299,4 +321,88 @@ test('une version de GFS qui ne connaît pas l\'apparence lit le même rangement
   const [only] = applyFiling([{ key: 'a:1', app: 'a', id: '1', name: 'X', folder: 'A', pinned: false, search: '' }], null, readGfsFiling(data, ME));
   assert.deepEqual([only.folder, only.pinned], ['A', false]);
   assert.deepEqual(readGfsFolders(data, ME), ['Clients']);
+});
+
+// ----- Les espaces (lot 2) : l'apparence d'un espace est dans la colonne `Style` de `GFS_Spaces`, à tous ses membres, écrite par un propriétaire.
+const styleWrites = log => log.actions.filter(action => action[0] === 'UpdateRecord');
+
+test('readSpaces : la colonne Style donne l\'apparence de l\'espace par son chemin ; une cellule illisible, vide ou une colonne absente ne disent rien', () => {
+  const data = { id: [1, 2, 3, 4], Key: ['achats', 'ventes', 'rh', 'it'], Name: ['Achats', 'Ventes', 'RH', 'IT'],
+    Style: [look({ color: 'red', emoji: '🧾' }), 'pas du json', '', look({ color: 'inconnue' })] };
+  assert.deepEqual([...readSpaces(data, { id: [] }).looks], [['Espaces/Achats', { color: 'red', emoji: '🧾' }]]);
+  assert.equal(readSpaces({ id: [1], Key: ['achats'], Name: ['Achats'] }, { id: [] }).looks.size, 0, 'un document d\'avant : pas de colonne, pas d\'apparence, pas d\'erreur');
+  assert.equal(readSpaces(null, null).looks.size, 0);
+  const renamed = readSpaces({ id: [1], Key: ['achats'], Name: ['Achats 2026'], Style: [look({ color: 'blue' })] }, { id: [] });
+  assert.deepEqual([...renamed.looks.keys()], ['Espaces/Achats 2026'], 'l\'espace garde son apparence quand on le renomme (la clé ne change pas)');
+});
+
+test('whyNot : un espace est grisé pour qui n\'est pas propriétaire (la sonde le sait), libre pour un propriétaire ; un espace inconnu le dit', async () => {
+  const member = harness({ owner: false });
+  assert.equal(member.gestures.whyNot('Espaces/Achats'), null, 'avant la sonde, rien n\'est connu : l\'article n\'est pas grisé à tort');
+  await member.gestures.warm();
+  assert.equal(member.gestures.whyNot('Espaces/Achats'), t('lk.why.owners'));
+  const owner = harness({ owner: true });
+  await owner.gestures.warm();
+  assert.equal(owner.gestures.whyNot('Espaces/Achats'), null);
+  assert.equal(owner.gestures.whyNot('Espaces/Inconnu'), t('lk.why.spaceUnknown'));
+  assert.equal(owner.gestures.whyNot('Espaces/Achats/Contrats'), t('lk.why.space'), 'un dossier dans l\'espace reste grisé (lot suivant)');
+});
+
+test('changer un espace : un propriétaire écrit Style sur la ligne de l\'espace, la fenêtre dit « espace », la liste est relue, et la colonne déjà là n\'est pas demandée', async () => {
+  const { gestures, log, looks, spaceTable } = harness({ owner: true, answers: [{ look: { color: 'green', glyph: 'house' } }] });
+  assert.equal(await gestures.change('Espaces/Achats'), true);
+  assert.deepEqual([log.windows[0].title, log.windows[0].who, log.windows[0].name, log.windows[0].look], [t('lk.title.space'), t('lk.who.space'), 'Achats', null]);
+  assert.deepEqual(log.actions, [['UpdateRecord', 'GFS_Spaces', 1, { Style: look({ color: 'green', glyph: 'house' }) }]]);
+  assert.equal(log.consents, 0, 'la colonne est là : aucune question');
+  assert.deepEqual(spaceTable.Style, [look({ color: 'green', glyph: 'house' }), ''], 'seule la ligne de cet espace change');
+  assert.deepEqual(looks.get('Espaces/Achats'), { color: 'green', glyph: 'house' });
+  assert.deepEqual([log.refreshes.length, log.writes, log.notices], [1, 0, []], 'rien n\'est écrit dans le rangement de la personne');
+});
+
+test('changer un espace : une colonne absente est ajoutée avec l\'accord de la personne, avant l\'écriture ; un refus ne change rien et le dit', async () => {
+  const yes = harness({ owner: true, styled: false, answers: [{ look: { emoji: '🧾' } }] });
+  assert.equal(await yes.gestures.change('Espaces/Ventes'), true);
+  assert.equal(yes.log.consents, 1);
+  assert.deepEqual(yes.log.actions, [['AddColumn', 'GFS_Spaces', 'Style', { type: 'Text' }], ['UpdateRecord', 'GFS_Spaces', 2, { Style: look({ emoji: '🧾' }) }]],
+    'la colonne d\'abord (une colonne absente annulerait le lot), puis la valeur');
+  const no = harness({ owner: true, styled: false, accept: false, answers: [{ look: { color: 'red' } }] });
+  assert.equal(await no.gestures.change('Espaces/Ventes'), false);
+  assert.deepEqual([no.log.actions, no.log.notices, no.log.refreshes.length], [[], [t('lk.col.declined')], 0]);
+  const reset = harness({ owner: true, styled: false, answers: [{ look: null }] });
+  assert.equal(await reset.gestures.change('Espaces/Ventes'), false, 'rétablir un espace qui n\'a rien : rien à écrire, aucune question');
+  assert.deepEqual([reset.log.actions, reset.log.consents], [[], 0]);
+});
+
+test('changer un espace : un membre est refusé avec sa phrase, sans fenêtre ni écriture, même quand la sonde n\'était pas revenue ; un espace disparu le dit', async () => {
+  const member = harness({ owner: false, answers: [{ look: { color: 'red' } }] });
+  assert.equal(await member.gestures.change('Espaces/Achats'), false);
+  assert.deepEqual([member.log.windows.length, member.log.actions, member.log.notices], [0, [], [t('lk.why.owners')]]);
+  const gone = harness({ owner: true, answers: [{ look: { color: 'red' } }] });
+  assert.equal(await gone.gestures.change('Espaces/Inconnu'), false);
+  assert.deepEqual([gone.log.windows.length, gone.log.actions, gone.log.notices], [0, [], [t('lk.why.spaceUnknown')]]);
+  const failing = harness({ owner: true, fails: true, answers: [{ look: { color: 'red' } }] });
+  const warned = [];
+  const original = console.warn;
+  console.warn = (...args) => warned.push(args);
+  try { assert.equal(await failing.gestures.change('Espaces/Achats'), false); } finally { console.warn = original; }
+  assert.deepEqual([failing.log.notices, warned.length], [[t('lk.failed', { reason: 'Grist a refusé' })], 1], 'Grist qui refuse le lot : la phrase le dit, rien ne reste affiché');
+});
+
+test('Ctrl+Z et Ctrl+Y d\'un espace : l\'apparence d\'avant revient, la phrase parle de l\'espace ; un espace qui n\'existe plus n\'est pas ressuscité', async () => {
+  const { gestures, log, looks, undoStack, folders } = harness({ owner: true, spaceStyle: [look({ color: 'blue' }), ''], answers: [{ look: { color: 'orange' } }] });
+  assert.deepEqual(looks.get('Espaces/Achats') || null, null, 'la lecture initiale n\'a pas encore eu lieu dans la doublure');
+  looks.set('Espaces/Achats', { color: 'blue' });
+  assert.equal(await gestures.change('Espaces/Achats'), true);
+  assert.deepEqual(looks.get('Espaces/Achats'), { color: 'orange' });
+  await undoStack.undo();
+  assert.deepEqual(looks.get('Espaces/Achats'), { color: 'blue' });
+  assert.equal(log.notices.at(-1), t('undo.lookSpace', { name: 'Achats' }));
+  await undoStack.redo();
+  assert.deepEqual(looks.get('Espaces/Achats'), { color: 'orange' });
+  assert.equal(log.notices.at(-1), t('redo.lookSpace', { name: 'Achats' }));
+  assert.equal(styleWrites(log).length, 3);
+  await undoStack.undo();
+  folders.delete('Espaces/Achats');
+  await undoStack.redo();
+  assert.equal(styleWrites(log).length, 4, 'l\'espace n\'est plus dans la liste : le rétablissement n\'écrit rien de plus');
 });

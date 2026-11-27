@@ -1,11 +1,11 @@
-// L'apparence des dossiers de « Moi » sous Firefox (js/explorer/look-window.js ; demande du porteur du 27/11, règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs).
+// L'apparence des dossiers de « Moi » et des espaces sous Firefox (js/explorer/look-window.js ; demande du porteur du 27/11, règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs).
 // Les gestes se font à la vraie souris et au vrai clavier de Firefox, sur la page d'essai (test/pages/explorateur.js : le vrai explorateur, la vraie fenêtre, le vrai `LookGestures` sur un rangement de
 // doublure qui tient les lignes d'état), à 700 px : l'article « Apparence… » du menu d'un dossier (juste après « Renommer », dégrisé ; absent sans les gestes), la fenêtre (elle tient dans la page, le
 // clavier arrive sur la pastille « par défaut », les flèches changent de pastille, Échap n'écrit rien), la couleur et le repère choisis à la souris (la ligne, le volet et l'aperçu les montrent), l'émoji
 // tapé au clavier (il remplace l'icône ; « abc » est refusé avec sa phrase), Ctrl+Z, « Rétablir ». La couleur peinte est celle du jeton de la charte. Ce que chaque geste écrit est dans
 // test/folder-looks.test.mjs, ce que Grist en retient dans labo/run-apparence.mjs.
 import { createI18n } from '../js/i18n/i18n.js';
-import { Run, centerOfName, delay } from './corbeille-firefox.mjs';
+import { Run, centerOfName, delay, names } from './corbeille-firefox.mjs';
 import { centerOfMenuItem, menuFits } from './copier-firefox.mjs';
 
 // ---------- ce qui s'exécute dans la page (rien du module n'y est visible) ----------
@@ -24,7 +24,7 @@ function lookWindow() {
   const active = document.activeElement;
   const sizes = [...win.querySelectorAll('.lk-sw, .lk-gl')].map(node => node.getBoundingClientRect()).map(at => Math.min(at.width, at.height));
   const emoji = win.querySelector('.lk-prev .fe');
-  return { title: text(win.querySelector('h2')), name: text(win.querySelector('.lk-name')), swatches: win.querySelectorAll('.lk-sw').length, glyphs: win.querySelectorAll('.lk-gl').length,
+  return { title: text(win.querySelector('h2')), who: text(win.querySelector('.lk-sub')), name: text(win.querySelector('.lk-name')), swatches: win.querySelectorAll('.lk-sw').length, glyphs: win.querySelectorAll('.lk-gl').length,
     color: (win.querySelector('.lk-sw[aria-checked="true"]') || { dataset: {} }).dataset.fk || null, glyph: (win.querySelector('.lk-gl[aria-checked="true"]') || { dataset: {} }).dataset.fk || null,
     previewLook: win.querySelector('.lk-prev').getAttribute('data-look'), previewIcon: emoji ? `emoji:${emoji.textContent}` : (win.querySelector('.lk-prev use') || { getAttribute: () => null }).getAttribute('href'),
     focus: active && active.dataset ? active.dataset.fk || null : null, note: text(win.querySelector('.lk-note')), applyGrey: win.querySelector('[data-fk="look-ok"]').getAttribute('aria-disabled'),
@@ -226,12 +226,95 @@ async function keyboardOnly(run, t) {
   await run.expect('Échap', 'Échap devait fermer la fenêtre', now => now.modal === null);
 }
 
+// Un espace (lot 2) : l'apparence est à tous ses membres et un propriétaire seul la change. Un membre voit l'article grisé, un clic dit pourquoi ; un propriétaire ouvre la fenêtre « espace »,
+// la colonne `Style` est demandée avant d'être ajoutée (refusée : rien n'est écrit), la couleur et le repère choisis s'affichent dans la liste et le volet, Ctrl+Z les retire. Un dossier dans
+// l'espace garde son article grisé.
+async function inSpaces(run, owner) {
+  await run.reset();
+  await run.page.run(isOwner => { window.__looksOn = true; window.__owner = isOwner; window.__spaces(); return window.__warm(); }, owner);
+  await run.clickSelector('.tr-row[data-path="Espaces"]');
+  await run.expect('« Espaces »', 'la racine devait lister l\'espace Achats', state => names(state).includes('Achats'));
+}
+
+async function spaceMember(run, t) {
+  await inSpaces(run, false);
+  const state = await menuOf(run, 'Achats');
+  const item = state.menu.find(each => each.label === t('lk.menu'));
+  if (!item || !item.greyed) run.note('espace', `pour un membre, « ${t('lk.menu')} » devait être là, grisé (${JSON.stringify(item)})`);
+  const at = await run.page.run(centerOfMenuItem, t('lk.menu'));
+  if (at) await run.page.click(...at);
+  await delay(150);
+  const said = await run.page.run(() => window.__notices.at(-1) || null);
+  if (said !== t('lk.why.owners')) run.note('espace', `le clic sur l'article grisé devait dire « ${t('lk.why.owners')} » (${said})`);
+  if (await run.page.run(lookWindow)) run.note('espace', 'un membre ne devait voir aucune fenêtre d\'apparence');
+  const actions = await run.page.run(() => window.__spaceActions.length);
+  if (actions !== 0) run.note('espace', `un membre n'écrit rien (${actions} action(s))`);
+}
+
+async function spaceOwner(run, t) {
+  await inSpaces(run, true);
+  const menu = await menuOf(run, 'Achats');
+  const item = menu.menu.find(each => each.label === t('lk.menu'));
+  if (!item || item.greyed) run.note('espace', `pour un propriétaire, « ${t('lk.menu')} » devait être là, dégrisé (${JSON.stringify(item)})`);
+  await run.page.press('Escape');
+  const found = await openLook(run, t, 'Achats');
+  if (!found) return;
+  if (found.title !== t('lk.title.space') || found.who !== t('lk.who.space') || found.name !== 'Achats') run.note('espace', `la fenêtre devait dire « espace » (${found.title} ; ${found.who} ; ${found.name})`);
+  if (!found.inPage || found.outside.length) run.note('espace', `la fenêtre devait tenir dans la page (${found.inPage} ; ${found.outside.join(', ')})`);
+  await run.clickSelector('[data-fk="look-color-red"]');
+  await run.clickSelector('[data-fk="look-glyph-house"]');
+  await run.clickSelector('[data-fk="look-ok"]');
+  const asked = await run.expect('la colonne', 'la colonne « Style » devait être demandée avant d\'être ajoutée', state => state.modal !== null);
+  if (!asked.modal) return;
+  const text = await run.page.run(() => (document.querySelector('.mod.ask') || { textContent: '' }).textContent.replace(/\s+/g, ' '));
+  if (!text.includes(t('lk.col.title')) || !text.includes(t('lk.col.ok'))) run.note('espace', `la question devait dire ce que GFS ajoute et proposer « ${t('lk.col.ok')} » (${text.slice(0, 160)})`);
+  await run.clickSelector('[data-fk="ask-yes"]');
+  await run.expect('Appliquer', 'la fenêtre devait se fermer une fois la colonne ajoutée et la couleur écrite', state => state.modal === null);
+  await delay(150);
+  const written = await run.page.run(() => ({ actions: window.__spaceActions.map(action => action.slice(0, 3).join(':')), style: window.__spaceStyle(), consents: window.__consents }));
+  if (written.actions.join() !== 'AddColumn:GFS_Spaces:Style,UpdateRecord:GFS_Spaces:1' || written.consents !== 1) run.note('espace', `la colonne d'abord, puis la valeur, après un seul accord (${JSON.stringify(written)})`);
+  if (!written.style || JSON.parse(written.style[0]).look.color !== 'red') run.note('espace', `la colonne Style devait dire le rouge (${JSON.stringify(written.style)})`);
+  const facts = await run.page.run(folderFacts, 'Achats', '--t-pdf');
+  if (!facts || facts.look !== 'red' || facts.icon !== '#i-fl-house' || facts.treeLook !== 'red') run.note('espace', `la ligne et le volet devaient montrer le rouge et la maison (${JSON.stringify(facts)})`);
+  if (facts && facts.stroke !== facts.wanted) run.note('espace', `le trait devait avoir la couleur du jeton --t-pdf (${facts.stroke} ; ${facts.wanted})`);
+  await run.page.chord('Control', 'z');
+  await delay(200);
+  const back = await run.page.run(folderFacts, 'Achats');
+  if (!back || back.look !== null || back.icon !== '#i-folder') run.note('espace', `Ctrl+Z devait rendre l'espace à son aspect d'origine (${JSON.stringify(back)})`);
+}
+
+async function spaceDeclined(run, t) {
+  await inSpaces(run, true);
+  if (!(await openLook(run, t, 'Achats'))) return;
+  await run.clickSelector('[data-fk="look-color-blue"]');
+  await run.clickSelector('[data-fk="look-ok"]');
+  await run.expect('la colonne', 'la colonne « Style » devait être demandée', state => state.modal !== null);
+  await run.clickSelector('[data-fk="ask-no"]');
+  await run.expect('refus', 'le refus devait fermer les fenêtres', state => state.modal === null);
+  await delay(100);
+  const now = await run.page.run(() => ({ actions: window.__spaceActions.length, notice: window.__notices.at(-1) || null, style: window.__spaceStyle() }));
+  if (now.actions !== 0 || now.style !== null || now.notice !== t('lk.col.declined')) run.note('espace', `refuser la colonne ne devait rien écrire et le dire (${JSON.stringify(now)})`);
+  const facts = await run.page.run(folderFacts, 'Achats');
+  if (!facts || facts.look !== null) run.note('espace', `l'espace devait garder son aspect d'origine (${JSON.stringify(facts)})`);
+}
+
+async function spaceFolder(run, t) {
+  await inSpaces(run, true);
+  await run.click('Achats');
+  await run.page.press('Enter');
+  await run.expect('l\'espace', 'l\'espace devait montrer son dossier Contrats', state => names(state).includes('Contrats'));
+  const state = await menuOf(run, 'Contrats');
+  const item = state.menu.find(each => each.label === t('lk.menu'));
+  if (!item || !item.greyed) run.note('espace', `un dossier dans l'espace devait garder « ${t('lk.menu')} » grisé (${JSON.stringify(item)})`);
+  await run.page.press('Escape');
+}
+
 // Les mesures de l'apparence des dossiers, dans la langue de la page ; rend les écarts { kind, text }.
 export async function apparenceProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
   const run = new Run(page, tag, found, 'apparence des dossiers');
-  for (const step of [menuItem, windowShape, colorAndGlyph, emoji, undoAndReset, keyboardOnly]) {
+  for (const step of [menuItem, windowShape, colorAndGlyph, emoji, undoAndReset, keyboardOnly, spaceMember, spaceOwner, spaceDeclined, spaceFolder]) {
     try {
       await step(run, t);
     } catch (error) {

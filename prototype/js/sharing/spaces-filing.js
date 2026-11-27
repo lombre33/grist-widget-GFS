@@ -9,10 +9,14 @@ import { SPACES_ROOT, fileKey, folderName, normalizePath } from '../explorer/exp
 import { normalize } from '../ui/search.js';
 import { PLACE_TABLE, SPACES_TABLE } from './sharing-model.js';
 import { linkWithin } from './space-links.js';
+import { lookOfValue } from '../files/folder-looks.js';
 
 export { SPACES_ROOT };
 const text = value => (typeof value === 'string' ? value : '');
 const cell = (data, column, i) => (data && Array.isArray(data[column]) ? data[column][i] : undefined);
+// La colonne de `GFS_Spaces` qui porte l'apparence de l'espace (js/sharing/space-looks.js) : { "look": { color, glyph, emoji } } en JSON, comme la cellule
+// `Value` d'un dossier de « Moi ». Elle n'est pas dans une table d'avant : l'absence se lit comme « aucune apparence ».
+export const STYLE = 'Style';
 const rowCount = data => (data && Array.isArray(data.id) ? data.id.length : 0);
 
 // Ce chemin est-il sous « Espaces » (la racine comprise) ? Un espace est « Espaces/<nom> » ; ses dossiers sont dessous.
@@ -26,10 +30,12 @@ export const isInsideSpace = path => isSpacePath(path) && path.split('/').length
 export const folderLabel = (t, path, name = path.split('/').pop()) => (path === SPACES_ROOT ? t('ex.spaces') : name);
 
 // Ce que disent `GFS_Spaces` et `GFS_Placement` (tables telles que `fetchTable` les rend, ou null) : { spaces: [{ key, name, path }], placed: Map(cible -> {
-// space, folder }), folders: [chemins montrés même sans fichier], links: [{ id, source, space, folder, groups, path }] (les liens, contrats 11.7, point 13.o)
-// }. Un espace que la personne ne lit pas n'est pas dans sa table : ses fichiers restent là où le rangement de la personne les met.
+// space, folder }), folders: [chemins montrés même sans fichier], links: [{ id, source, space, folder, groups, path }] (les liens, contrats 11.7, point 13.o),
+// looks: Map(chemin d'un espace -> apparence, js/files/folder-looks.js ; la colonne `Style` de `GFS_Spaces`, que tous les membres lisent) }. Un espace que la
+// personne ne lit pas n'est pas dans sa table : ses fichiers restent là où le rangement de la personne les met.
 export function readSpaces(spacesData, placeData) {
   const spaces = [];
+  const looks = new Map();
   const taken = new Set();
   for (let i = 0; i < rowCount(spacesData); i++) {
     const key = text(cell(spacesData, 'Key', i));
@@ -38,6 +44,8 @@ export function readSpaces(spacesData, placeData) {
     if (taken.has(name.toLowerCase())) name = `${name} (${key})`;
     taken.add(name.toLowerCase());
     spaces.push({ key, name, path: `${SPACES_ROOT}/${name}` });
+    const look = lookOfValue(cell(spacesData, STYLE, i));
+    if (look) looks.set(`${SPACES_ROOT}/${name}`, look);
   }
   const byKey = new Map(spaces.map(space => [space.key, space]));
   const placed = new Map();
@@ -53,7 +61,7 @@ export function readSpaces(spacesData, placeData) {
       path: folder ? `${space.path}/${folder}` : space.path });
     if (target) { if (!placed.has(target)) placed.set(target, { space, folder }); } else if (folder) folders.add(`${space.path}/${folder}`);
   }
-  return { spaces, placed, folders: [...folders], links };
+  return { spaces, placed, folders: [...folders], links, looks };
 }
 
 // Pose le dossier d'espace sur les fichiers placés (le dossier de la personne, lui, est gardé dans `ownFolder` : il revient si le fichier quitte l'espace) et

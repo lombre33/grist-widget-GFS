@@ -11,7 +11,6 @@ import { LookGestures } from './look-gestures.js';
 import { askLook } from './look-window.js';
 import { askName, chooseFolder } from './filing-window.js';
 import { folderPaths } from './explorer-model.js';
-import { isSpacePath } from '../sharing/spaces-filing.js';
 import { FolderShares } from '../sharing/folder-shares.js';
 import { FILES_APP, cleanName } from '../files/gfs-files.js';
 import { isTable } from '../apps/doc-names.js';
@@ -23,6 +22,9 @@ import { settingsItems } from '../shell/settings-menu.js';
 import { openAbout } from '../shell/about.js';
 import { openAnnuaire } from '../shell/annuaire-entry.js';
 
+// Le propriétaire du document ? (la sonde du courtier : `GET /webhooks`, js/broker/transfer.js ; ce qu'elle ne sait pas dire compte comme « non ».)
+const ownerOf = c => async () => (await c.transfer.isOwner()) === true;
+
 // Épingler, renommer, déplacer depuis l'explorateur (js/explorer/filing.js) : les fenêtres du widget par-dessus l'explorateur, et la liste relue après chaque
 // geste.
 export function buildFiling(c) {
@@ -30,9 +32,8 @@ export function buildFiling(c) {
   return new Filing({
     port: c.port, rangement: c.rangement, t: c.t, locale: () => c.locale, files: () => (c.explorer ? c.explorer.files : []),
       folders: () => c.explorer.folders, looks: () => c.explorer.looks, appName: c.appName,
-    spaces: { info: () => c.spaces, owner: async () => (await c.transfer.isOwner()) === true },
-    folderShares: new FolderShares({ port: c.port, rangement: c.rangement, identity: () => c.identity,
-      owner: async () => (await c.transfer.isOwner()) === true }),
+    spaces: { info: () => c.spaces, owner: ownerOf(c) },
+    folderShares: new FolderShares({ port: c.port, rangement: c.rangement, identity: () => c.identity, owner: ownerOf(c) }),
     here: () => (c.explorer.state.view === 'folder' ? c.explorer.state.path : ''), writeBlock: () => c.writeBlock(), notice: text => c.notice(text),
     specOf: file => ((c.manifestOf(file.app) || {}).fichiers || []).find(spec => isTable(spec, file.table)) || null,
     cleanName: file => (file.app === FILES_APP ? cleanName : undefined),
@@ -55,13 +56,15 @@ function buildShortcuts(c, filing) {
   });
 }
 
-// L'apparence des dossiers de « Moi » (js/explorer/look-gestures.js) : la fenêtre « Apparence du dossier » par-dessus l'explorateur, l'écriture dans la file du
-// rangement et la pile d'annulation du rangement.
+// L'apparence des dossiers de « Moi » et des espaces (js/explorer/look-gestures.js) : la fenêtre « Apparence du dossier » par-dessus l'explorateur, l'écriture
+// dans la file du rangement et la pile d'annulation du rangement.
 function buildLooks(c, filing) {
   const layer = layerOf(c);
   return new LookGestures({
     rangement: c.rangement, t: c.t, notice: text => c.notice(text), writeBlock: () => c.writeBlock(), looks: () => (c.explorer ? c.explorer.looks : new Map()),
-    exists: path => folderPaths(c.explorer ? c.explorer.files : [], c.locale, c.explorer ? c.explorer.folders : []).includes(path), isSpace: isSpacePath,
+    exists: path => folderPaths(c.explorer ? c.explorer.files : [], c.locale, c.explorer ? c.explorer.folders : []).includes(path),
+    spaces: { info: () => c.spaces, owner: ownerOf(c) }, port: c.port, consent: () => c.ask({ title: c.t('lk.col.title'), message: c.t('lk.col.text'),
+      confirmLabel: c.t('lk.col.ok'), cancelLabel: c.t('table.cancel') }),
     windows: { look: opts => askLook(layer(opts)) }, queue: task => filing.queued(task), undoStack: filing.undoStack, pending: c.pending,
       refresh: opts => c.refreshFiles(opts),
   });

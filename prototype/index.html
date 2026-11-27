@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-Zsdo0NISMpLY2raP9hbCvhvKOnRle+q4FZWtw+1HSTA='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-fvJZySL0iqGXoSPLPaETMNY7JKv/OyHdYlUjimZBz4o='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6ad7dc03e9">
 <link rel="stylesheet" href="css/explorer.css?v=21d07db54c">
 <link rel="stylesheet" href="css/modules.css?v=dcbf3e09ce">
@@ -222,7 +222,7 @@
     "./js/files/copying.js": "./js/files/copying.js?v=a806ab3271",
     "./js/files/doc-tools.js": "./js/files/doc-tools.js?v=939ca98801",
     "./js/files/file-managers.js": "./js/files/file-managers.js?v=846233fe95",
-    "./js/files/file-specs.js": "./js/files/file-specs.js?v=ca1a3bd09b",
+    "./js/files/file-specs.js": "./js/files/file-specs.js?v=cddaf0ecc9",
     "./js/files/files-store.js": "./js/files/files-store.js?v=e6411f22f3",
     "./js/files/folder-looks.js": "./js/files/folder-looks.js?v=f1694513ba",
     "./js/files/gfs-copy.js": "./js/files/gfs-copy.js?v=a43281652a",
@@ -487,7 +487,7 @@
 <link rel="modulepreload" href="./js/broker/own-section.js?v=b4451c0cb2">
 <link rel="modulepreload" href="./js/broker/view-link.js?v=1853f29883">
 <link rel="modulepreload" href="./js/files/page-tree.js?v=70269f6676">
-<link rel="modulepreload" href="./js/files/file-specs.js?v=ca1a3bd09b">
+<link rel="modulepreload" href="./js/files/file-specs.js?v=cddaf0ecc9">
 <link rel="modulepreload" href="./js/explorer/index-model.js?v=a54ba16326">
 <link rel="modulepreload" href="./js/files/own-table.js?v=1357439c4a">
 <link rel="modulepreload" href="./js/broker/session.js?v=7a615e2d56">

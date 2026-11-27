@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-+jCZTk+3mAgPSb6CqX7uWGG4HZO8Jo4VBYDbSXv4fp4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-GbUecxhBe66W0Jepzokhm446EICs73hB3LanUyda2Mk='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=221e572630">
 <link rel="stylesheet" href="css/explorer.css?v=c8ff42b04b">
 <link rel="stylesheet" href="css/modules.css?v=dcbf3e09ce">
@@ -158,8 +158,9 @@
     "./js/broker/publication-window.js": "./js/broker/publication-window.js?v=387f9b97c4",
     "./js/broker/publication.js": "./js/broker/publication.js?v=fc697bbcec",
     "./js/broker/reading.js": "./js/broker/reading.js?v=750a14c1da",
+    "./js/broker/resume-early.js": "./js/broker/resume-early.js?v=e5f3222eab",
     "./js/broker/resume-place.js": "./js/broker/resume-place.js?v=33f4feb77b",
-    "./js/broker/resume.js": "./js/broker/resume.js?v=7787a8455e",
+    "./js/broker/resume.js": "./js/broker/resume.js?v=d6383b7d3d",
     "./js/broker/rpc.js": "./js/broker/rpc.js?v=d54b5c5f33",
     "./js/broker/security-relay.js": "./js/broker/security-relay.js?v=2e0d2107de",
     "./js/broker/session.js": "./js/broker/session.js?v=7a615e2d56",
@@ -508,7 +509,7 @@
 <link rel="modulepreload" href="./js/ui/ask-window.js?v=bc29f4db59">
 <link rel="modulepreload" href="./js/broker/entries.js?v=e6788e056c">
 <link rel="modulepreload" href="./js/broker/openings.js?v=900f1ab12c">
-<link rel="modulepreload" href="./js/broker/resume.js?v=7787a8455e">
+<link rel="modulepreload" href="./js/broker/resume.js?v=d6383b7d3d">
 <link rel="modulepreload" href="./js/explorer/opened-files.js?v=975feeb422">
 <link rel="modulepreload" href="./js/explorer/files-reading.js?v=d40c24032c">
 <link rel="modulepreload" href="./js/explorer/heavy-hint.js?v=b10999c56c">
@@ -608,6 +609,7 @@
 <link rel="modulepreload" href="./js/broker/leave.js?v=5437d0c5dc">
 <link rel="modulepreload" href="./js/explorer/explorer-place.js?v=c6782f27c5">
 <link rel="modulepreload" href="./js/broker/resume-place.js?v=33f4feb77b">
+<link rel="modulepreload" href="./js/broker/resume-early.js?v=e5f3222eab">
 <link rel="modulepreload" href="./js/explorer/file-refresh.js?v=14ee4e203f">
 <link rel="modulepreload" href="./js/explorer/list-signature.js?v=8ba09c5d85">
 <link rel="modulepreload" href="./js/sharing/notice-model.js?v=81b38a2d61">

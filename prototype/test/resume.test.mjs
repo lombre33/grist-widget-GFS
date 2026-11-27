@@ -9,7 +9,7 @@ import { RESUME_KEY } from '../js/rights/rights-writer.js';
 
 const WHO = 'essai@example.com';
 const SLOT = `${MEMORY_PREFIX}doc1.Clients`;
-const file = (key, name, folder = '') => ({ key, app: key.split(':')[0], id: key.split(':')[1], name, folder });
+const file = (key, name, folder = '') => ({ key, app: key.split(':')[0], id: key.split(':')[1], name, folder, type: 'document' });
 const FILES = [file('publipostage:16', 'Contrat de prestation'), file('publipostage:17', 'Quittance de loyer', 'Formation/Archives 2025')];
 
 // Un navigateur : `localStorage` (le choix de la personne) et `sessionStorage` (le souvenir de l'onglet), l'un et l'autre qui peuvent refuser.
@@ -59,11 +59,11 @@ test('rien ne se retient avant la fin de l\'arrivée : un souvenir ne s\'écrase
   assert.equal(win.session[SLOT], before, 'avant `begin`, sync n\'écrit rien');
 });
 
-test('l\'app montre un fichier que GFS a fait ouvrir : le souvenir dit le fichier (clé, nom) et la personne', async () => {
+test('l\'app montre un fichier que GFS a fait ouvrir : le souvenir dit le fichier (clé, nom, app, numéro, type) et la personne', async () => {
   const win = fakeWindow();
   const c = fakeController({ session: { id: 'publipostage' }, shown: 'publipostage:16' });
   await started(c, win);
-  assert.deepEqual(remembered(win), { v: 1, who: WHO, lieu: 'fichier', key: 'publipostage:16', name: 'Contrat de prestation' });
+  assert.deepEqual(remembered(win), { v: 1, who: WHO, lieu: 'fichier', key: 'publipostage:16', name: 'Contrat de prestation', app: 'publipostage', id: '16', type: 'document' });
 });
 
 test('l\'explorateur est devant : le souvenir dit la vue et le dossier ; « Ouverts » se retient comme la racine', async () => {

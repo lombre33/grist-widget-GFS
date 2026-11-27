@@ -1164,6 +1164,14 @@ mesurés, pas une promesse (cahier 1.3, 8).
    il est dans la page de GFS, pas dans le sous-cadre d'une app. GFS le retire quand il est prêt, hors de Grist, quand son démarrage échoue et quand la garde de démarrage (1.5)
    parle. [M] première image 344 ms avant celle de l'explorateur (40 ms d'aller-retour, vrai Grist), même place au pixel que l'explorateur (0 px d'écart à 700 × 400), Firefox 161 à 700,
    520 et 380 px, clair et sombre. Faits vérifiés 198.
+7. [T] **Après un rechargement, l'app du fichier retenu démarre pendant que la liste vérifie** (27/11, `prototype/js/broker/resume-early.js`, `resume.js`) : le souvenir d'un fichier d'app
+   (5.2, point 3) dit aussi l'app, le numéro et le type du fichier (`app`, `id`, `type`) ; au rechargement, GFS ouvre l'app sur ce fichier **sans attendre** la lecture de la liste, comme à un
+   double-clic, puis la liste dit si le fichier existe encore, si la personne peut l'ouvrir et si le souvenir est bien le sien. Le même fichier : rien d'autre, l'app est déjà là. Sinon
+   (fichier supprimé, caché, grisé, type changé, souvenir d'une autre personne, liste vide) : l'app est refermée, « Ouverts » oublie le fichier, et la reprise suit son chemin d'avant (la phrase
+   ou l'explorateur). L'app lit le document avec les droits de la personne, comme à toute ouverture : même le temps de la vérification elle ne montre que ce que Grist lui laisse lire. Un
+   souvenir d'avant le lot (sans `app`, `id` ni `type`), un fichier que GFS garde lui-même et un annuaire n'ouvrent rien tôt. [M] vrai Grist 1.7.19 (Docker), Chromium, la vraie
+   Publipostage+ (`labo/run-reprise-tot.mjs`, 18 vérifications ; `labo/run-reprise.mjs`, 47) : modèle montré 101 ms plus tôt à 40 ms d'aller-retour, 293 ms plus tôt à 120 ms (médianes
+   de 9 et de 7 rechargements, contre la même GFS sans le lot). Faits vérifiés 199.
 
 ### 4.2 Le sous-cadre, de la création au `ready`
 

@@ -14,6 +14,10 @@ import { ROOT } from './helpers.mjs';
 const LISTENED_ELSEWHERE = {
   'sharing/share-window.js:manage': 'le bouton « Gérer les partages… » est donné à `wireManage`, qui l\'écoute (plus bas dans le même fichier)',
   'ui/pick-window.js:main': 'le bouton d\'une ligne de la liste : le clic est écouté une fois sur la liste (`list.addEventListener(\'click\')`, délégation)',
+  'annuaire/annuaire-trace-window.js:cancel': 'la fenêtre de tracé écoute tous ses boutons par délégation (`section.addEventListener(\'click\')` -> `#click`, d\'après `data-fk`) ; essayé à la vraie souris dans le vrai Grist (labo/run-annuaire-plan.mjs, section 9)',
+  'annuaire/annuaire-trace-window.js:save': 'idem : « Enregistrer le tracé » passe par `#click` (`trace-save`), mesuré dans le vrai Grist : une seule écriture',
+  'annuaire/annuaire-trace-window.js:fresh': 'idem : « Nouveau local… » passe par `#click` (`trace-new`), mesuré dans le vrai Grist',
+  'annuaire/annuaire-trace-window.js:main': 'le bouton d\'une ligne de la liste des locaux : le clic est écouté une fois sur la fenêtre (`#click`, `data-key`), délégation',
 };
 
 function scripts(dir) {

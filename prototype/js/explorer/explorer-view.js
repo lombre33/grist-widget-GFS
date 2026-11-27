@@ -194,14 +194,15 @@ function nameCell(ctx, file, flat) {
     lock ? h('span', { class: 'sr-only' }, `, ${lock.text}`) : null);
 }
 
+// L'épingle d'une ligne (un fichier, ou un dossier de « Moi ») : allumée quand la ligne est en favori ; un clic l'allume ou l'éteint.
+const pinButton = (t, key, pinned) => h('button', { type: 'button', class: `rb pin${pinned ? ' on' : ''}`, dataset: { pin: key },
+  title: pinned ? t('ex.unpin') : t('ex.pin'), 'aria-label': pinned ? t('ex.unpin') : t('ex.pin'), 'aria-pressed': String(pinned) }, icon('pin'));
+
 // Les boutons de la ligne : « Restaurer » à la corbeille, l'étoile d'un fichier qu'on épingle (rien dans « Partagés avec moi »), et « Plus d'actions ».
 function actionsCell(ctx, file) {
   const { t } = ctx;
-  const pinTitle = file.pinned ? t('ex.unpin') : t('ex.pin');
   return h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
-    : (ctx.state.view === 'shared' ? null : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key },
-      title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin'))),
-    moreButton(t, file.key));
+    : (ctx.state.view === 'shared' ? null : pinButton(t, file.key, file.pinned)), moreButton(t, file.key));
 }
 
 // « Restaurer » d'une ligne de la corbeille : il prend la place de l'étoile (un fichier à la corbeille ne s'épingle pas).
@@ -224,18 +225,25 @@ export function fileRow(ctx, file, flat) {
 // accepter » avec leur nombre (le mot et la couleur vont ensemble).
 const folderCaption = (t, folder) => (folder.pending ? t('rx.folder.pending', { n: folder.pending }) : t('ex.fileCount', { n: folder.count }));
 
+// Un dossier de « Moi » s'épingle ; un dossier reçu d'un autre document et ceux des espaces, pas encore (l'article du menu reste grisé et le dit).
+const pinnable = folder => !folder.shared && !isSpacePath(folder.path);
+
+// Dans « Favoris », le dossier du dessus, à côté du nom (rien à la racine) ; son chemin entier au survol.
+const whereHint = (ctx, folder) => (ctx.state.view === 'fav' && folder.parent ? h('span', { class: 'hint', title: folder.parent },
+  folder.parent.split('/').pop()) : null);
+
 export function folderRow(ctx, folder) {
   const { t } = ctx;
   const key = rowKey(folder);
   return h('div', { class: `ls-row folder${folder.pending ? ' lk' : ''}`, role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key },
     'aria-selected': String(ctx.state.sel === key) },
     h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't', title: folderLabel(t, folder.path, folder.name) },
-      folderLabel(t, folder.path, folder.name))),
+      folderLabel(t, folder.path, folder.name)), whereHint(ctx, folder)),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, folderCaption(t, folder))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, folder.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(folder.ts, ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }),
-    h('div', { class: 'acts', role: 'gridcell' }, moreButton(t, key)));
+    h('div', { class: 'acts', role: 'gridcell' }, pinnable(folder) ? pinButton(t, key, Boolean(folder.pinned)) : null, moreButton(t, key)));
 }
 
 // Ce qu'une vignette montre : un dossier ou un fichier (grisé ou non).

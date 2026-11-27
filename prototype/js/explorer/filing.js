@@ -32,15 +32,18 @@ const lastPart = path => path.split('/').pop();
 const parentOf = path => path.split('/').slice(0, -1).join('/');
 const reasonOf = error => String((error && error.message) || error).slice(0, 120);
 // Un lot sans rien à écrire : ni fichier, ni dossier gardé à ajouter ou à retirer.
-const isEmptyWrite = (entries, folders) => !entries.length && !(folders.add || []).length && !(folders.drop || []).length && !(folders.moved || []).length &&
-  !(folders.merged || []).length;
+const isEmptyWrite = (entries, folders) => !entries.length && ['add', 'drop', 'moved', 'merged', 'pin', 'unpin'].every(kind => !(folders[kind] || []).length);
 
 // Ce qu'un lot de rangement change à la liste que la personne voit (js/explorer/pending.js) : le ★ et le dossier des fichiers, les dossiers gardés sans fichier
-// qui s'ajoutent, s'en vont ou changent de chemin.
+// qui s'ajoutent, s'en vont ou changent de chemin, les dossiers qui entrent dans les favoris ou en sortent (un dossier qui change de chemin garde son favori :
+// il le suit avant que son ancien chemin ne s'en aille).
 const showsOf = (entries, folders) => [
   ...entries.map(entry => ({ op: 'place', app: entry.app, id: entry.file, pinned: entry.pinned, folder: entry.folder })),
+  { op: 'followPins', pairs: [...(folders.moved || []), ...(folders.merged || [])] },
   { op: 'dropFolders', paths: [...(folders.drop || []), ...(folders.moved || []).map(([from]) => from), ...(folders.merged || []).map(([from]) => from)] },
   { op: 'addFolders', paths: [...(folders.add || []), ...(folders.moved || []).map(([, to]) => to)] },
+  { op: 'pinFolders', paths: folders.pin || [], on: true },
+  { op: 'pinFolders', paths: folders.unpin || [], on: false },
 ];
 
 // Les colonnes de la table `tableId` d'après les tables internes de Grist (deux petites tables : la table de fichiers peut peser des mégaoctets).
@@ -58,8 +61,9 @@ export class Filing {
   #writes = Promise.resolve(); // les écritures de rangement, une à la fois : celle qui part attend celles qui sont parties avant
   #inFlight = 0; // les écritures parties ou en route
 
-  // opts : { port, rangement, t, locale(), files() -> [fichier], folders?() -> les dossiers gardés sans fichier, here() -> le dossier ouvert, specOf(file) ->
-  //   son entrée `fichiers` du manifeste,
+  // opts : { port, rangement, t, locale(), files() -> [fichier], folders?() -> les dossiers gardés sans fichier, pinnedFolders?() -> ceux de ses dossiers que
+  //   la
+  //   personne a mis en favori, here() -> le dossier ouvert, specOf(file) -> son entrée `fichiers` du manifeste,
   //          spaces?: { info() -> ce que disent les espaces (js/sharing/spaces-filing.js), owner() -> Promise<vrai si la personne est propriétaire> },
   //          folderShares?: { relocation(de, vers, dossiers), removal(chemins) } (js/sharing/folder-shares.js) : ce que renommer, déplacer ou supprimer un
   //          dossier de « Moi » change à ses partages et à ses liens, dans le même lot,
@@ -82,6 +86,17 @@ export class Filing {
       const now = this.#now(file);
       return this.#write([{ app: now.app, file: now.id, pinned: !now.pinned, folder: now.folder }], {},
         said(now.pinned ? 'undo.pinned' : 'undo.unpinned', now.pinned ? 'redo.unpinned' : 'redo.pinned', { name: this.#title(now) }));
+    });
+  }
+
+  // Un dossier de « Moi » en favori, ou plus : la colonne « Favori » de sa ligne d'état (6.4, point 11). Les dossiers d'un espace ne s'épinglent pas encore.
+  togglePinFolder(path) {
+    return this.#gesture(() => {
+      const { t, notice } = this.#opts;
+      if (isSpacePath(path)) { notice(t('ex.favFolderSpace')); return false; }
+      const now = this.#pinned().includes(path);
+      return this.#write([], now ? { unpin: [path] } : { pin: [path] }, said(now ? 'undo.pinned' : 'undo.unpinned', now ? 'redo.unpinned' : 'redo.pinned',
+        { name: lastPart(path) }));
     });
   }
 
@@ -340,6 +355,9 @@ export class Filing {
   // Les dossiers que la personne garde sans fichier (la ligne d'état de `GFS_Filing`).
   #spare() { return (this.#opts.folders && this.#opts.folders()) || []; }
 
+  // Ceux de ses dossiers qu'elle a mis en favori, tels que la liste les montre.
+  #pinned() { return (this.#opts.pinnedFolders && this.#opts.pinnedFolders()) || []; }
+
   #folders() { return folderPaths(this.#opts.files(), this.#opts.locale(), this.#spare()); }
 
   async #chooseFolder(opts) {
@@ -476,7 +494,7 @@ export class Filing {
   }
 
   // L'état d'avant un lot de rangement : ce que chaque fichier touché avait (favori, dossier), les dossiers gardés que le lot retire (à remettre) et ceux qu'il
-  // crée (à retirer).
+  // crée (à retirer), et les dossiers en favori que le lot retire des favoris ou fait entrer (à remettre ou à sortir).
   #before(entries, folders) {
     const live = this.#opts.files();
     const spare = this.#spare();
@@ -493,15 +511,26 @@ export class Filing {
       add: [...dropped.filter(path => spare.includes(path)), ...fused],
       drop: (folders.add || []).filter(path => !spare.includes(path) && !dropped.includes(path)),
       moved,
+      ...this.#pinsBefore(folders, [...dropped, ...fused], (folders.merged || []).filter(([from]) => spare.includes(from))),
     };
+  }
+
+  // Les favoris d'avant un lot : un dossier retiré (`gone`, supprimé ou fondu dans un autre) ou sorti des favoris y revient ; un dossier entré dans les favoris
+  // en sort ; un dossier fondu dans un autre qui ne l'était pas (`merged`, [[de, vers]]) cesse de l'être quand le favori de l'autre l'avait rendu tel.
+  #pinsBefore(folders, gone, merged) {
+    const was = this.#pinned();
+    const lit = merged.filter(([from, to]) => was.includes(from) && !was.includes(to)).map(([, to]) => to);
+    const pin = [...(folders.unpin || []).filter(path => was.includes(path)), ...gone.filter(path => was.includes(path))];
+    const unpin = [...(folders.pin || []).filter(path => !was.includes(path)), ...lit];
+    return { ...(pin.length ? { pin } : {}), ...(unpin.length ? { unpin } : {}) };
   }
 
   // Défait un lot (Ctrl+Z) ou le refait (Ctrl+Y) : le rangement d'avant est réécrit, au rang des autres gestes (lecture seule : refusé et dit), et dépose à son
   // tour le geste inverse, avec les deux phrases échangées. Rend la phrase de ce qui vient de se faire (`phrases.undo` : l'entrée porte celle qu'elle dit quand
   // on la joue).
   #replayWrite(before, phrases) {
-    return this.#gesture(async () => ((await this.#write(before.entries, { add: before.add, drop: before.drop, moved: before.moved },
-      { undo: phrases.redo, redo: phrases.undo })) ?
+    const { entries, ...folders } = before;
+    return this.#gesture(async () => ((await this.#write(entries, folders, { undo: phrases.redo, redo: phrases.undo })) ?
       this.#opts.t(phrases.undo.key, phrases.undo.params) : null));
   }
 }

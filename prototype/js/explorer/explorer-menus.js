@@ -9,6 +9,7 @@
 //       act: { activate(key), deleteFolder(key), restore(key), purge(key), trashKey(key), duplicate(file), dropOpened(key) } }
 
 import { rowKey } from './explorer-model.js';
+import { isSpacePath } from '../sharing/spaces-filing.js';
 
 const item = (label, glyph, run, hint) => ({ label, icon: glyph, run, hint });
 
@@ -21,7 +22,8 @@ export function rowItems(x, key) {
     const { filing } = opts;
     const link = opts.links ? opts.links.linkAt(path) : null;
     if (link) return linkFolderItems(x, key, link);
-    return [item(t('ex.openFolder'), 'open', () => act.activate(key), t('key.enter')), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'),
+    return [item(t('ex.openFolder'), 'open', () => act.activate(key), t('key.enter')), pinFolderItem(x, key), item(t('ex.rename'), 'edit',
+      () => void filing.renameFolder(path), 'F2'),
       item(t('ex.move'), 'move', () => void filing.moveFolder(path), choice ? undefined : 'Ctrl+X, V'), shareFolderItem(x, path), ...linkFolderItem(x, path),
         '-',
         deleteFolderItem(x, key)];
@@ -39,6 +41,16 @@ function groupItems(x, key) {
   if (!row) return null;
   return [item(t('ex.openFolder'), 'open', () => x.act.activate(key), t('key.enter')),
     ...(row.pending ? [item(t('rx.folder.answer'), 'check', () => void x.shared.askFolder(row))] : [])];
+}
+
+// « Épingler en favori » d'un dossier de « Moi » (ou « Retirer des favoris », quand il l'est) : juste après « Ouvrir le dossier », comme dans le menu d'un
+// fichier. Les espaces et leurs dossiers ne s'épinglent pas encore : l'article reste grisé et le clic dit pourquoi.
+function pinFolderItem(x, key) {
+  const { t, opts } = x;
+  const path = key.slice(4);
+  if (isSpacePath(path)) return { label: t('ex.pin'), icon: 'pin', greyed: true, run: () => opts.notice(t('ex.favFolderSpace')) };
+  const row = x.rows.find(entry => entry.kind === 'folder' && `dir:${entry.path}` === key);
+  return item(row && row.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void opts.filing.togglePinFolder(path));
 }
 
 // « Partager… » d'un dossier ou d'un espace (js/sharing/share-control.js) : les dossiers et les espaces se partagent (la ligne d'un espace ouvre le partage de

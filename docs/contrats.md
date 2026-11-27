@@ -2362,7 +2362,7 @@ rangée d'un fichier, selon ce qui vient d'abord.
 | `Utilisateur` | Text | Adresse e-mail de la personne ; vide si son identité n'est pas résolue (le rangement est alors partagé, comme `Utilisateur = ''` de Publipostage+) |
 | `App` | Text | `id` de l'app ; vide sur une ligne d'état de dossier |
 | `Fichier` | Text | Identifiant du fichier (2.4) ; vide sur une ligne d'état de dossier |
-| `Favori` | Bool | Épinglé par la personne |
+| `Favori` | Bool | Épinglé par la personne : un fichier, ou, sur une ligne d'état de dossier, le dossier (point 11) |
 | `Dossier` | Text | Chemin séparé par « / » (`Factures/Clients A`) ; vide = racine |
 | `Replie` | Bool | Lignes d'état de dossier seulement : dossier replié par défaut |
 | `Valeur` | Text | Lignes réservées de GFS seulement (point 6) : un texte JSON |
@@ -2481,6 +2481,22 @@ rangée d'un fichier, selon ce qui vient d'abord.
       vide le dossier d'abord. Un dossier que plus rien ne nomme (une autre personne l'a supprimé entre-temps) reçoit la phrase « Ce dossier n'existe plus ».
     - **Par personne.** Chacun voit ses dossiers sans fichier, jamais ceux d'un autre ; en supprimer un ne touche pas ceux d'un autre. Le
       rangement propre de l'app (point 5) n'est jamais écrit.
+    - **Mettre un dossier en favori** (demande du porteur, 27/11 ; choix : « Dans Favoris, avant les fichiers » ; lot 1, les dossiers de « Moi »). La colonne `Favori`
+      d'une **ligne d'état** dit que la personne a épinglé ce dossier (elle valait toujours faux jusque-là : une ancienne version de GFS la lit sans en tenir compte,
+      seul le chemin compte). Aucune table ni colonne de plus. `setFiling` reçoit `pin` et `unpin` (des chemins) à côté de `add`, `drop`, `moved` et `merged`. **Épingler**
+      un dossier qui a déjà sa ligne d'état allume `Favori` sur cette ligne (le même numéro) ; un dossier que ses fichiers seuls font exister reçoit **une ligne
+      d'état**, épinglée, dans le même lot ; **retirer** éteint la ligne, sans l'effacer (le dossier reste ce qu'il était). **Renommer ou déplacer** le dossier
+      garde sa ligne et son numéro : l'épingle suit (celle des sous-dossiers aussi). **Fusionner** un dossier épinglé dans un dossier qui existe : l'épingle passe au
+      dossier d'arrivée. **Supprimer** un dossier épinglé retire sa ligne, et l'épingle avec elle ; Ctrl+Z remet la ligne **et** l'épingle (l'inverse de chaque geste est
+      calculé avant l'écriture, comme pour le reste), Ctrl+Y la retire de nouveau. L'épingle s'affiche **avant** d'être écrite, comme les autres gestes de rangement
+      (js/explorer/pending.js : `pinFolders`, `followPins`), et se défait si Grist refuse. **Favoris** montre les dossiers épinglés **avant** les fichiers épinglés,
+      par nom, chacun avec son dossier du dessus à côté du nom ; la recherche les filtre comme les fichiers, un filtre de type les cache ; Entrée et le double clic
+      ouvrent le dossier ; le compte du volet les ajoute aux fichiers. Un dossier épinglé qui n'existe plus (aucun fichier, aucune ligne : une autre personne l'a
+      supprimé) n'est pas listé, et n'est pas compté. L'épingle d'un dossier d'espace (`Espaces/…`) et celle d'un dossier reçu d'un autre document **ne sont pas encore
+      posées** : le bouton n'est pas sur leur ligne, l'article du menu est grisé et un clic dit pourquoi (lots 2 et 3 de l'étude) ; la ligne d'un espace n'entre jamais
+      dans le rangement de la personne. Le rangement propre d'une app (point 5) laisse la ligne d'état de GFS, et son épingle, en place.
+    [M] Mesuré le 27/11 dans un vrai serveur Grist 1.7.19 (`labo/run-favoris-dossiers.mjs`, 21 vérifications dans chacune des quatre combinaisons, aucune en échec) et dans
+    un vrai Firefox (`test/favoris-dossiers-firefox.mjs`) : faits vérifiés, section 190.
     [M] Mesuré le 04/11 dans un vrai serveur Grist 1.7.19 avec les modèles de Publipostage+ (`labo/run-dossiers.mjs`, 44 vérifications dans
     chacune des quatre combinaisons, aucune en échec) et dans un vrai Firefox 159 (`test/dossiers-firefox.mjs`) : faits vérifiés, section 31.
 12. [T] **Glisser-déposer un fichier ou un dossier sur un dossier** (demande du porteur, 04/11 : « drag & drop des fichiers dans des dossiers,

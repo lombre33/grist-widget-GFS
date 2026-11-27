@@ -15,7 +15,7 @@ function context(extra = {}) {
     t, calls, notices, view: 'folder', choice: false, rows: [], shown: [file()],
     opts: {
       notice: text => notices.push(text), appName: id => `App ${id}`,
-      filing: { togglePin: note('togglePin'), rename: note('rename'), moveFile: note('moveFile'), renameFolder: note('renameFolder'), moveFolder: note('moveFolder') },
+      filing: { togglePin: note('togglePin'), togglePinFolder: note('togglePinFolder'), rename: note('rename'), moveFile: note('moveFile'), renameFolder: note('renameFolder'), moveFolder: note('moveFolder') },
       sharing: { whyNot: () => null, whyNotFolder: () => null, open: note('share'), folderFile: path => ({ folder: path }) },
     },
     kept: { has: () => false, extras: () => [{ label: 'Télécharger' }] }, bin: { handles: () => true }, copying: { handles: () => true }, shared: { menu: () => null },
@@ -27,13 +27,31 @@ function context(extra = {}) {
 }
 const labels = items => items.map(entry => (entry === '-' ? '-' : entry.label));
 
-test('un dossier : ouvrir, renommer, déplacer, partager, un trait, supprimer ; chaque clic appelle le bon geste avec le chemin', () => {
+test('un dossier : ouvrir, épingler, renommer, déplacer, partager, un trait, supprimer ; chaque clic appelle le bon geste avec le chemin', () => {
   const x = context();
   const items = rowItems(x, 'dir:Contrats/2026');
-  assert.deepEqual(labels(items), [t('ex.openFolder'), t('ex.rename'), t('ex.move'), t('share.menu'), '-', t('ex.deleteFolder')]);
-  assert.deepEqual(items.filter(entry => entry !== '-').map(entry => entry.hint), [t('key.enter'), 'F2', 'Ctrl+X, V', undefined, t('key.delete')]);
-  for (const at of [0, 1, 2, 3, 5]) items[at].run();
-  assert.deepEqual(x.calls, [['activate', 'dir:Contrats/2026'], ['renameFolder', 'Contrats/2026'], ['moveFolder', 'Contrats/2026'], ['share', { folder: 'Contrats/2026' }], ['deleteFolder', 'dir:Contrats/2026']]);
+  assert.deepEqual(labels(items), [t('ex.openFolder'), t('ex.pin'), t('ex.rename'), t('ex.move'), t('share.menu'), '-', t('ex.deleteFolder')]);
+  assert.deepEqual(items.filter(entry => entry !== '-').map(entry => entry.hint), [t('key.enter'), undefined, 'F2', 'Ctrl+X, V', undefined, t('key.delete')]);
+  for (const at of [0, 1, 2, 3, 4, 6]) items[at].run();
+  assert.deepEqual(x.calls, [['activate', 'dir:Contrats/2026'], ['togglePinFolder', 'Contrats/2026'], ['renameFolder', 'Contrats/2026'], ['moveFolder', 'Contrats/2026'],
+    ['share', { folder: 'Contrats/2026' }], ['deleteFolder', 'dir:Contrats/2026']]);
+});
+
+test('un dossier en favori : l\'article dit « Retirer des favoris » ; un dossier d\'espace garde l\'article grisé et le clic dit pourquoi ; un dossier reçu n\'en a pas', () => {
+  const rows = [{ kind: 'folder', path: 'Contrats', count: 0, pinned: true }, { kind: 'folder', path: 'Autres', count: 0, pinned: false }];
+  const pinned = rowItems(context({ rows }), 'dir:Contrats')[1];
+  assert.deepEqual([pinned.label, pinned.greyed], [t('ex.unpin'), undefined]);
+  assert.equal(rowItems(context({ rows }), 'dir:Autres')[1].label, t('ex.pin'));
+  assert.equal(rowItems(context({ rows: [] }), 'dir:Inconnu')[1].label, t('ex.pin'), 'une ligne que la liste ne connaît pas : « Épingler »');
+  for (const path of ['Espaces', 'Espaces/Achats', 'Espaces/Achats/Contrats']) {
+    const space = context();
+    const item = rowItems(space, `dir:${path}`)[1];
+    assert.deepEqual([item.label, item.greyed], [t('ex.pin'), true]);
+    item.run();
+    assert.deepEqual([space.notices, space.calls], [[t('ex.favFolderSpace')], []]);
+  }
+  const received = context({ rows: [{ kind: 'folder', shared: true, path: 'Compta:Q3', count: 2 }] });
+  assert.equal(labels(rowItems(received, 'grp:Compta:Q3')).includes(t('ex.pin')), false, 'comme un fichier reçu : pas d\'épingle');
 });
 
 test('un dossier : supprimer est grisé tant que des fichiers y sont, et pendant un choix ; le clic dit pourquoi ; « Déplacer » ne rappelle plus Ctrl+X pendant un choix', () => {
@@ -54,7 +72,7 @@ test('un dossier : supprimer est grisé tant que des fichiers y sont, et pendant
   assert.equal(items.at(-1).greyed, true);
   items.at(-1).run();
   assert.deepEqual(choosing.notices, [t('ex.choose.newOff')]);
-  assert.equal(items[2].hint, undefined);
+  assert.equal(items[3].hint, undefined);
 });
 
 test('« Partager… » sur la ligne d\'un espace entier ouvre le partage de l\'espace (25/11) ; « Lier dans un espace… » reste grisé pour lui', () => {
@@ -81,24 +99,24 @@ test('« Partager… » sur la ligne d\'un espace entier ouvre le partage de l\'
 
 test('un dossier : « Partager… » ouvre la fenêtre du dossier d\'un espace ; sinon il est grisé avec la phrase de GFS, sans partage connu avec « pas encore », pendant un choix avec la phrase du choix', () => {
   const open = context();
-  const ok = rowItems(open, 'dir:Espaces/Achats/Contrats')[3];
+  const ok = rowItems(open, 'dir:Espaces/Achats/Contrats')[4];
   assert.equal(ok.greyed, false);
   ok.run();
   assert.deepEqual(open.calls, [['share', { folder: 'Espaces/Achats/Contrats' }]]);
   const no = context(); no.opts.sharing.whyNotFolder = () => 'pas un espace';
-  const grey = rowItems(no, 'dir:Perso')[3];
+  const grey = rowItems(no, 'dir:Perso')[4];
   assert.equal(grey.greyed, true);
   grey.run();
   assert.deepEqual([no.notices, no.calls], [['pas un espace'], []]);
   const bare = context(); bare.opts.sharing = null;
-  const unsupported = rowItems(bare, 'dir:Perso')[3];
+  const unsupported = rowItems(bare, 'dir:Perso')[4];
   assert.equal(unsupported.greyed, true);
   unsupported.run();
   assert.deepEqual(bare.notices, [t('share.unsupported')]);
   const noMethod = context(); noMethod.opts.sharing = { open() {} };
-  assert.equal(rowItems(noMethod, 'dir:Perso')[3].greyed, true, 'un partage qui ne sait pas dire pour un dossier : pas encore');
+  assert.equal(rowItems(noMethod, 'dir:Perso')[4].greyed, true, 'un partage qui ne sait pas dire pour un dossier : pas encore');
   const choosing = context({ choice: true });
-  rowItems(choosing, 'dir:Perso')[3].run();
+  rowItems(choosing, 'dir:Perso')[4].run();
   assert.deepEqual(choosing.notices, [t('ex.choose.newOff')]);
 });
 

@@ -79,8 +79,21 @@ const SWEEP_DELAY = 8000;
 // La ligne d'état d'un dossier que la personne garde sans fichier : ni app ni fichier (6.4, point 11).
 const folderKey = (identity, path) => ({ User: identity, App: '', File: '', Folder: path });
 
-// Les dossiers gardés qui changent de chemin (`moved` : [[de, vers]]) : leur ligne d'état change de chemin, sur place ; sans ligne, le chemin d'arrivée est
-// gardé comme avant ; si le chemin d'arrivée a déjà sa ligne, celle du dossier qui arrive est retirée (le dossier d'arrivée garde ses partages).
+// La ligne `rowId` de `data` est-elle en favori ?
+const isFavorite = (data, rowId) => Array.isArray(data.Favorite) && data.Favorite[data.id.indexOf(rowId)] === true;
+
+// Le favori d'un dossier qui se fond dans un dossier qui existe déjà : celui d'arrivée l'est aussi, si l'autre l'était (une ligne d'état d'arrivée est ajoutée
+// quand le dossier n'en a pas : il n'existait que par ses fichiers). Rien quand le dossier qui arrive n'était pas en favori.
+function followedPin(tableId, data, identity, from, to) {
+  if (!rowsOf(data, { ...folderKey(identity, from), Favorite: true }).length) return [];
+  const arrival = rowsOf(data, folderKey(identity, to));
+  if (!arrival.length) return [['AddRecord', tableId, null, { ...folderKey(identity, to), Favorite: true }]];
+  return arrival.filter(rowId => !isFavorite(data, rowId)).map(rowId => ['UpdateRecord', tableId, rowId, { Favorite: true }]);
+}
+
+// Les dossiers gardés qui changent de chemin (`moved` : [[de, vers]]) : leur ligne d'état change de chemin, sur place (le favori la suit) ; sans ligne, le
+// chemin d'arrivée est gardé comme avant ; si le chemin d'arrivée a déjà sa ligne, celle du dossier qui arrive est retirée (le dossier d'arrivée garde ses
+// partages, et devient favori si l'autre l'était).
 function movedActions(tableId, data, identity, moved) {
   const actions = [];
   for (const [from, to] of moved) {
@@ -88,19 +101,37 @@ function movedActions(tableId, data, identity, moved) {
     const taken = findRow(data, folderKey(identity, to)) >= 0;
     if (!rows.length) { if (!taken) actions.push(['AddRecord', tableId, null, { ...folderKey(identity, to), Favorite: false }]); continue; }
     actions.push(...rows.map(rowId => (taken ? ['RemoveRecord', tableId, rowId] : ['UpdateRecord', tableId, rowId, { Folder: to }])));
+    if (taken) actions.push(...followedPin(tableId, data, identity, from, to));
   }
   return actions;
 }
 
-// Les actions sur les lignes d'état des dossiers gardés (`add`, `drop`, `moved`, `merged` : voir `setFiling`) : celles qu'on retire, celles qu'on ajoute (si le
-// chemin n'a pas déjà sa ligne), celles qui changent de chemin sur place, celles qui se fondent dans un dossier qui existe déjà.
-function folderActions(tableId, data, identity, { add, drop, moved, merged }) {
+// Les dossiers qui entrent dans les favoris (`pin`) ou en sortent (`unpin`) : la colonne « Favori » de leur ligne d'état, toutes leurs lignes ; un dossier qui
+// n'en a pas (il n'existe que par ses fichiers) reçoit la sienne, dans `created`.
+function pinActions(tableId, data, identity, { pin, unpin, created }) {
+  const change = (paths, on) => paths.flatMap(path => rowsOf(data, folderKey(identity, path)).filter(rowId => isFavorite(data, rowId) !== on)
+    .map(rowId => ['UpdateRecord', tableId, rowId, { Favorite: on }]));
+  return [...change(pin, true), ...change(unpin, false), ...pin.filter(path => created.has(path)).map(path => ['AddRecord', tableId, null,
+    { ...folderKey(identity, path), Favorite: true }])];
+}
+
+// Les actions sur les lignes d'état des dossiers gardés (`add`, `drop`, `moved`, `merged`, `pin`, `unpin` : voir `setFiling`) : celles qu'on retire (le favori
+// part avec la ligne), celles qu'on ajoute (si le chemin n'a pas déjà sa ligne : en favori quand `pin` le nomme aussi), celles qui changent de chemin sur
+// place, celles qui se fondent dans un dossier qui existe déjà, puis les favoris qui s'allument ou s'éteignent.
+function folderActions(tableId, data, identity, { add, drop, moved, merged, pin, unpin }) {
   const removal = rowId => ['RemoveRecord', tableId, rowId];
+  const fresh = [...new Set([...add, ...pin])].filter(path => !drop.includes(path) && findRow(data, folderKey(identity, path)) < 0);
   return [...drop.flatMap(path => rowsOf(data, folderKey(identity, path)).map(removal)),
-    ...add.filter(path => !drop.includes(path) && findRow(data, folderKey(identity, path)) < 0).map(path => (
-      ['AddRecord', tableId, null, { ...folderKey(identity, path), Favorite: false }])),
+    ...fresh.filter(path => !pin.includes(path)).map(path => ['AddRecord', tableId, null, { ...folderKey(identity, path), Favorite: false }]),
     ...movedActions(tableId, data, identity, moved),
-    ...merged.flatMap(([from]) => rowsOf(data, folderKey(identity, from)).map(removal))];
+    ...merged.flatMap(([from, to]) => [...followedPin(tableId, data, identity, from, to), ...rowsOf(data, folderKey(identity, from)).map(removal)]),
+    ...pinActions(tableId, data, identity, { pin, unpin, created: new Set(fresh) })];
+}
+
+// Les listes d'un lot de dossiers (`setFiling`) : chacune vide quand le lot n'en dit rien ; `add`, `drop`, `pin` et `unpin` sans doublon.
+function lotOf(folders) {
+  const once = kind => [...new Set(folders[kind] || [])];
+  return { add: once('add'), drop: once('drop'), moved: folders.moved || [], merged: folders.merged || [], pin: once('pin'), unpin: once('unpin') };
 }
 
 export class Rangement {
@@ -356,29 +387,27 @@ export class Rangement {
   // point 4) : la ligne de chaque (personne, app, fichier) est mise à jour si elle existe, ajoutée sinon. `entries` : [{ app, file, pinned, folder }], le
   // dossier en chemin normalisé. **Les fichiers d'une app qui tient son rangement et le laisse écrire (6.4, point 8) sont rangés dans la table de l'app**, pas
   // ici ; ce que `GFS_Filing` disait déjà d'elle passe alors chez elle, dans le même lot.
-  // `folders` : { add, drop, moved, merged, extra, quiet }, les dossiers que la personne garde sans fichier (6.4, point 11) :
+  // `folders` : { add, drop, moved, merged, pin, unpin, extra, quiet }, les dossiers que la personne garde sans fichier (6.4, point 11) :
   // - `add` : les chemins à garder (une ligne chacun, s'il n'y en a pas déjà, ici et chez chaque app qui a une ligne d'état de dossier) ;
   // - `drop` : ceux à ne plus garder (toutes leurs lignes) ;
   // - `moved` : [[de, vers]], un dossier gardé qui change de chemin : sa ligne d'état est **changée sur place** ici (son numéro, que les partages portent, ne
   //   change pas ; js/sharing/folder-identity.js), et retirée puis ajoutée chez l'app ;
   // - `merged` : [[de, vers]], un dossier gardé qui se fond dans un dossier qui existe déjà : sa ligne est retirée (le dossier d'arrivée garde ses partages,
-  //   ceux du dossier qui arrive ne le suivent pas) ;
+  //   ceux du dossier qui arrive ne le suivent pas ; son favori, lui, passe au dossier d'arrivée) ;
+// - `pin`, `unpin` : les dossiers qui entrent dans les favoris ou en sortent (la colonne « Favori » de leur ligne d'état, créée au besoin) ;
   // - `extra` : des actions de plus (les partages et les liens de ces dossiers) pour le même lot ;
   // - `quiet` : sans la table, rien n'est écrit et rien n'est demandé.
   // Relit d'abord ; fichiers et dossiers partent dans un seul lot, que Grist rejoue en entier ou pas du tout : un dossier déplacé n'est jamais rangé à moitié.
   // Rend true quand le lot est parti.
   async setFiling(entries, folders = {}) {
-    const moved = folders.moved || [];
-    const merged = folders.merged || [];
-    const add = [...new Set(folders.add || [])];
-    const drop = [...new Set(folders.drop || [])];
-    if (!entries.length && !add.length && !drop.length && !moved.length && !merged.length) return false;
+    const lot = lotOf(folders);
+    if (!entries.length && Object.values(lot).every(list => !list.length)) return false;
     // La table du rangement et celles des apps se lisent en même temps. Quand la table du rangement vient de naître (la personne a été interrogée entre-temps),
     // ce que les apps ont rendu peut avoir vieilli : leurs tables se relisent.
     const [state, firstTargets] = await Promise.all([folders.quiet === true ? this.#loaded() : this.#ready(FILING), this.#appTargets()]);
     if (!state) return false;
     const targets = state.created ? await this.#appTargets() : firstTargets;
-    const actions = this.#actionsOf(state.data, targets, entries, { add, drop, moved, merged, extra: folders.extra || [] });
+    const actions = this.#actionsOf(state.data, targets, entries, { ...lot, extra: folders.extra || [] });
     if (!actions.length) return false;
     await this.#port.doc.applyUserActions(actions);
     await this.#stamp(state.data);
@@ -387,7 +416,7 @@ export class Rangement {
 
   // Les actions d'un lot de rangement : les lignes des fichiers dans `GFS_Filing` (ceux des apps qui tiennent leur rangement vont chez elles), les lignes
   // d'état des dossiers, ce que les apps tiennent, puis les actions de plus (`extra`).
-  #actionsOf(data, targets, entries, { add, drop, moved, merged, extra }) {
+  #actionsOf(data, targets, entries, { add, drop, moved, merged, pin, unpin, extra }) {
     const identity = this.identity;
     const tableId = this.#table.id;
     const actions = entries.filter(({ app }) => !targets.has(app)).map(({ app, file, pinned, folder }) => {
@@ -396,7 +425,7 @@ export class Rangement {
       const record = { Favorite: pinned === true, Folder: folder || '' };
       return at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] : ['AddRecord', tableId, null, { ...key, ...record }];
     });
-    actions.push(...folderActions(tableId, data, identity, { add, drop, moved, merged }));
+    actions.push(...folderActions(tableId, data, identity, { add, drop, moved, merged, pin, unpin }));
     // Chez une app, un dossier déplacé est une ligne d'état retirée puis ajoutée : son numéro ne désigne rien dans les partages.
     const batch = { entries, add: [...add, ...moved.map(([, to]) => to)], drop: [...drop, ...moved.map(([from]) => from), ...merged.map(([from]) => from)] };
     for (const [app, target] of targets) actions.push(...this.#appBatch(app, target, batch, { tableId, data }, identity));

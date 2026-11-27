@@ -15,6 +15,7 @@ import { createFileRefresh } from './file-refresh.js';
 import { listSignature } from './list-signature.js';
 import { filesEntry } from '../files/gfs-files.js';
 import { ANNUAIRES_ENTRY } from '../files/annuaire-files.js';
+import { GUIDES_ENTRY } from '../files/guide-files.js';
 
 export class FilesReading {
   #x;
@@ -36,7 +37,7 @@ export class FilesReading {
         this.#waited = typeof learning !== 'string';
         if (x.prepare) await x.prepare();
         if (x.hint) await x.hint.prime(x.reader); // un document vu lourd à la visite précédente se lit d'emblée en lecture légère
-        return { ...(await loadFiles(x.port, [...x.apps(), filesEntry(), ANNUAIRES_ENTRY], learning, x.reader, x.guard || null)), stamp };
+        return { ...(await loadFiles(x.port, [...x.apps(), filesEntry(), ANNUAIRES_ENTRY, GUIDES_ENTRY], learning, x.reader, x.guard || null)), stamp };
       },
       onRestricted: () => {
         x.explorer().setFiles([]);

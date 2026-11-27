@@ -5,11 +5,12 @@
 // une ligne, peut demander à la personne de créer la table. Les gestes s'enchaînent l'un après l'autre.
 
 import { OwnTable, TableDeclined } from '../files/own-table.js';
-import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, PEOPLE_COLUMNS, annuairesOf, newRecord, addAction, updateAction, addColumnAction, addTableAction, displayAction,
-  writeConfig, readConfig, effectiveConfig } from './annuaire-config.js';
+import { DocTools } from '../files/doc-tools.js';
+import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, PEOPLE_COLUMNS, annuairesOf, newRecord, addAction, updateAction, writeConfig, readConfig,
+  effectiveConfig } from './annuaire-config.js';
 import { SHARES_TABLE, PLACE_TABLE } from '../sharing/sharing-model.js';
 import { TABLE as FILING_TABLE } from '../files/rangement.js';
-import { schemaOf, tablesNeeded, targetOf } from './annuaire-schema.js';
+import { tablesNeeded } from './annuaire-schema.js';
 import { aliased } from '../sharing/helper-names.js';
 import { buildPeople, buildTree } from './annuaire-model.js';
 import { isSub, unpackFiches, subRecord, refreshRecord } from './annuaire-sub.js';
@@ -35,19 +36,18 @@ const sameName = (a, b) => String(a).trim().toLowerCase() === String(b).trim().t
 export class AnnuaireStore {
   #port;
   #own;
+  #tools;
   #queue = Promise.resolve();
 
   // opts : { port ({ doc }), consent() -> Promise<boolean> (créer `GFS_Directories` ?) }
   constructor({ port, consent }) {
     this.#port = port;
+    this.#tools = new DocTools(port);
     this.#own = new OwnTable({ port, name: ANNUAIRES_TABLE, columns: ANNUAIRES_COLUMNS, consent });
   }
 
   // Les tables et les colonnes du document, lues dans les tables internes de Grist (il faut l'accès complet : sans lui, Grist refuse cette lecture).
-  async schema() {
-    const [tables, columns] = await Promise.all([this.#port.doc.fetchTable('_grist_Tables'), this.#port.doc.fetchTable('_grist_Tables_column')]);
-    return schemaOf(tables, columns);
-  }
+  schema() { return this.#tools.schema(); }
 
   // Les annuaires du document : [] quand `GFS_Directories` n'existe pas (lire ne la crée jamais).
   async list() {
@@ -92,48 +92,13 @@ export class AnnuaireStore {
   // Une table du document, en tableaux de colonnes (pour les exemples du réglage).
   table(name) { return this.#port.doc.fetchTable(name).then(aliased); }
 
-  // Ajoute la colonne `name` (vide, du type `type` : « Text », « Ref:Personnes »…) à `table` : { id }. Grist choisit l'identifiant (il peut différer du nom) :
-  // on le relit dans sa réponse. Le geste vient d'une fenêtre qui a dit ce qui s'écrit (js/annuaire/annuaire-setup-path.js).
-  // Une référence montre la colonne `show` de sa table (le nom de la personne, pas son numéro : sans cela, la table montrerait des chiffres dans Grist) ; si ce
-  // réglage échoue, la colonne reste créée, avec ses numéros.
-  addColumn(table, name, type, show = '') {
-    return this.#then(async () => {
-      const target = targetOf(type);
-      const shown = target && show ? await this.#columnRef(target, show) : 0;
-      const result = await this.#port.doc.applyUserActions([addColumnAction(table, name, type, shown)]);
-      const made = result && Array.isArray(result.retValues) ? result.retValues[0] : null;
-      const id = made && typeof made.colId === 'string' && made.colId ? made.colId : String(name).trim();
-      if (shown && made && made.colRef) {
-        try { await this.#port.doc.applyUserActions([displayAction(table, made.colRef, id, show)]); }
-          catch (error) { console.warn('GFS : la colonne créée montre des numéros', error); }
-      }
-      return { id };
-    });
-  }
+  // Ajoute la colonne `name` (vide, du type `type` : « Text », « Ref:Personnes »…) à `table` : { id } (js/files/doc-tools.js). Le geste vient d'une fenêtre qui
+  // a dit ce qui s'écrit (js/annuaire/annuaire-setup-path.js). Une référence montre la colonne `show` de sa table (le nom de la personne, pas son numéro).
+  addColumn(table, name, type, show = '') { return this.#then(() => this.#tools.addColumn(table, name, type, show)); }
 
-  // Crée la table des personnes `name` avec son nom et son adresse e-mail : { id, columns: [{ id, type }] }. Grist choisit les identifiants (ils peuvent
-  // différer de ce qu'on demande) : on les relit dans sa réponse. Le geste vient d'une fenêtre qui a dit ce qui s'écrit (js/annuaire/annuaire-setup-table.js).
-  addTable(name) {
-    return this.#then(async () => {
-      const result = await this.#port.doc.applyUserActions([addTableAction(name, PEOPLE_COLUMNS)]);
-      const made = result && Array.isArray(result.retValues) ? result.retValues[0] : null;
-      const id = made && typeof made.table_id === 'string' && made.table_id ? made.table_id : String(name).trim();
-      const ids = made && Array.isArray(made.columns) && made.columns.length === PEOPLE_COLUMNS.length ? made.columns.map(String) :
-        PEOPLE_COLUMNS.map(col => col.id);
-      return { id, columns: PEOPLE_COLUMNS.map((col, at) => ({ id: ids[at], type: col.type })) };
-    });
-  }
-
-  // Le numéro (interne à Grist) d'une colonne d'une table : 0 quand on ne le trouve pas ou que la lecture est refusée.
-  async #columnRef(table, column) {
-    try {
-      const [tables, columns] = await Promise.all([this.#port.doc.fetchTable('_grist_Tables'), this.#port.doc.fetchTable('_grist_Tables_column')]);
-      const parent = tables.id[tables.tableId.indexOf(table)];
-      return columns.id.find((ref, i) => columns.parentId[i] === parent && columns.colId[i] === column) || 0;
-    } catch (error) {
-      return 0;
-    }
-  }
+  // Crée la table des personnes `name` avec son nom et son adresse e-mail : { id, columns: [{ id, type }] }. Le geste vient d'une fenêtre qui a dit ce qui
+  // s'écrit (js/annuaire/annuaire-setup-table.js).
+  addTable(name) { return this.#then(() => this.#tools.addTable(name, PEOPLE_COLUMNS)); }
 
   #then(task) {
     const run = this.#queue.then(task);

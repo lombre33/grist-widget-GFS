@@ -49,8 +49,8 @@ test('readFiles : la ligne réservée est exclue, le type vide devient le type p
 });
 
 test('familyOf : le champ `couleur` du manifeste dit la famille de la charte (cahier 6.5) ; tout autre mot, et jamais un mot de la chaîne de prototypes, est neutre', () => {
-  assert.deepEqual(['document', 'grille', 'presentation', 'pdf', 'email', 'macro', 'annuaire'].map(familyOf), ['doc', 'grid', 'slides', 'pdf', 'email', 'macro', 'annuaire']);
-  assert.deepEqual(FAMILY_NAMES, ['doc', 'grid', 'slides', 'pdf', 'email', 'macro', 'annuaire']);
+  assert.deepEqual(['document', 'grille', 'presentation', 'pdf', 'email', 'macro', 'annuaire', 'guide'].map(familyOf), ['doc', 'grid', 'slides', 'pdf', 'email', 'macro', 'annuaire', 'guide']);
+  assert.deepEqual(FAMILY_NAMES, ['doc', 'grid', 'slides', 'pdf', 'email', 'macro', 'annuaire', 'guide']);
   for (const odd of ['neutre', '', 'rouge', 'DOCUMENT', undefined, null, 3, 'constructor', 'toString', '__proto__', 'hasOwnProperty']) assert.equal(familyOf(odd), '', String(odd));
 });
 

@@ -129,7 +129,7 @@ test('couleurs de type : le texte tient 4,5:1 et l\'icône 3:1 sur les fonds de 
 test('couleurs de type : l\'ambiance d\'origine dit ce que css/gfs.css dit (le PDF, l\'e-mail et l\'annuaire compris), clair et sombre', () => {
   for (const mode of MODES) {
     const tokens = typeTokens('defaut', mode);
-    assert.equal(Object.keys(tokens).length, 24, mode);
+    assert.equal(Object.keys(tokens).length, 28, mode);
     for (const [name, value] of Object.entries(tokens)) assert.equal(charter[mode][name], value, `${mode} ${name}`);
   }
 });

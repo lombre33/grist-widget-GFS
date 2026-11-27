@@ -10,6 +10,8 @@ import { leaveApp, leaveQuestion } from './leave.js';
 import { FILES_APP } from '../files/gfs-files.js';
 import { ANNUAIRES_APP } from '../files/annuaire-files.js';
 import { openAnnuaire, newAnnuaire } from '../shell/annuaire-entry.js';
+import { GUIDES_APP } from '../files/guide-files.js';
+import { openGuide, newGuide } from '../shell/guide-entry.js';
 import { fileKey } from '../explorer/explorer-model.js';
 import { ERR } from './filter.js';
 
@@ -40,6 +42,7 @@ export class Openings {
     const lock = c.lockOf(file);
     if (lock) { void c.unlock(lock); return Promise.resolve(false); }
     if (c.kept.has(file)) return this.#openKept(file);
+    if (file.app === GUIDES_APP) return this.#openGuide(file); // un guide : le module de GFS le montre, aucune app n'est ouverte
     if (file.app === ANNUAIRES_APP) return this.#openAnnuaire(file); // un annuaire : le module de GFS le montre, aucune app n'est ouverte
     if (!c.appById(file.app)) { c.notice(c.t('ex.notice.noApp')); return Promise.resolve(false); }
     return this.openIn(file.app, { fichier: { id: file.id, type: file.type }, type: file.type, dossier: c.explorer.state.path, raison: 'explorateur' },
@@ -49,6 +52,7 @@ export class Openings {
   openNew(entry) {
     const { c } = this;
     if (entry.greyed) { void c.unlock({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
+    if (entry.kind === 'guide') { void newGuide(c); return; } // le guide : le module de GFS, aucune app n'est ouverte
     if (entry.kind === 'annuaire') { void newAnnuaire(c); return; } // l'annuaire : le module de GFS, aucune app n'est ouverte
     void this.openIn(entry.app, { fichier: null, type: entry.type, dossier: this.#here(), raison: 'nouveau' }, 'ex.notice.new');
   }
@@ -135,6 +139,12 @@ export class Openings {
   // Un annuaire du document (js/annuaire/) : sa fenêtre s'ouvre sur lui, par-dessus l'explorateur ; elle ne change pas l'app active.
   async #openAnnuaire(file) {
     await openAnnuaire(this.c, Number(file.id));
+    return true;
+  }
+
+  // Un guide du document (js/guide/) : sa fenêtre s'ouvre sur lui, par-dessus l'explorateur ; elle ne change pas l'app active.
+  async #openGuide(file) {
+    await openGuide(this.c, Number(file.id));
     return true;
   }
 

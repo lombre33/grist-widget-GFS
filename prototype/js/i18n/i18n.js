@@ -19,6 +19,7 @@ import { TEMPLATE_STRINGS } from './i18n-templates.js';
 import { DEPENDENCIES_STRINGS } from './i18n-dependencies.js';
 import { SECURITY_STRINGS } from './i18n-security.js';
 import { ANNUAIRE_STRINGS } from './i18n-annuaire.js';
+import { GUIDE_STRINGS } from './i18n-guide.js';
 
 const STRINGS = {
   fr: {
@@ -31,6 +32,7 @@ const STRINGS = {
     ...DEPENDENCIES_STRINGS.fr,
     ...SECURITY_STRINGS.fr,
     ...ANNUAIRE_STRINGS.fr,
+    ...GUIDE_STRINGS.fr,
     ...RIGHTS_STRINGS.fr,
     ...SHARE_STRINGS.fr,
     ...SHARE_OTHER_STRINGS.fr,
@@ -227,6 +229,7 @@ const STRINGS = {
     ...DEPENDENCIES_STRINGS.en,
     ...SECURITY_STRINGS.en,
     ...ANNUAIRE_STRINGS.en,
+    ...GUIDE_STRINGS.en,
     ...RIGHTS_STRINGS.en,
     ...SHARE_STRINGS.en,
     ...SHARE_OTHER_STRINGS.en,

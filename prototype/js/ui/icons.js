@@ -99,6 +99,12 @@ const ICONS = {
   fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   org: '<rect x="8.5" y="3" width="7" height="5" rx="1"/><rect x="2.5" y="16" width="7" height="5" rx="1"/><rect x="14.5" y="16" width="7" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/>',
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1.5 1.5 0 0 1-1.5 1.5A15.5 15.5 0 0 1 3.5 5.5 1.5 1.5 0 0 1 5 4Z"/>',
+  // Le module Guide (la barre de GFS, l'explorateur, l'en-tête) : un poteau et ses deux panneaux de direction ; ce que désigne un rôle d'une démarche : un
+  // service (un bâtiment) ou un poste (une mallette) ; et la flèche « hérité de la démarche mère » (un retour en équerre).
+  guide: '<path d="M12 3v18M9 21h6"/><path d="M6 5h10l3 2.5-3 2.5H6z"/><path d="M18 12H8l-3 2.5L8 17h10z"/>',
+  building: '<path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M14 10h5a1 1 0 0 1 1 1v10"/><path d="M8 8h2M8 12h2M8 16h2M2.5 21h19"/>',
+  briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/>',
+  corner: '<path d="M5 4v9a3 3 0 0 0 3 3h11"/><path d="M15 12l4 4-4 4"/>',
 };
 
 export const iconNames = () => Object.keys(ICONS);

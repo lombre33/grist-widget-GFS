@@ -24,6 +24,7 @@ export function buildShell(i18n) {
         h('div', { class: 'tb-bar' },
           keep('appsBtn', h('button', { type: 'button', class: 'tb tb-lbl', 'aria-haspopup': 'dialog' })),
           keep('annuaireBtn', h('button', { type: 'button', class: 'tb tb-lbl', 'aria-haspopup': 'dialog' })),
+          keep('guideBtn', h('button', { type: 'button', class: 'tb tb-lbl', 'aria-haspopup': 'dialog' })),
           keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles'))),
           keep('bellBtn', h('button', { type: 'button', class: 'tb tb-bell', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('bell'),
             keep('bellCount', h('span', { class: 'tb-badge', hidden: true })))),
@@ -60,6 +61,7 @@ export function relabel(refs, i18n) {
   const labelled = (node, glyph, label, tip) => { node.title = tip; node.replaceChildren(icon(glyph), h('span', { class: 'tb-lbl-t' }, label)); };
   labelled(refs.appsBtn, 'modules', t('gfs.apps'), t('gfs.appsTip'));
   labelled(refs.annuaireBtn, 'annuaire', t('an.tip'), t('an.tipLong'));
+  labelled(refs.guideBtn, 'guide', t('gd.tip'), t('gd.tipLong'));
   describe(refs.settingsBtn, t('set.tip'));
   describe(refs.bellBtn, t('nt.tip'));
   refs.display.setAttribute('aria-label', t('ex.display'));

@@ -95,7 +95,7 @@ export class Explorer {
   });
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry),
-  //   onImport(entry), onTemplates(), onClose(), onApps(), onAnnuaire(), canClose(), notice(text),
+  //   onImport(entry), onTemplates(), onClose(), onApps(), onAnnuaire(), onGuide(), canClose(), notice(text),
   //          settings() → les articles du menu « Réglages » (js/shell/settings-menu.js : langue, thème, position de la barre, « À propos »),
   //          alerts({ detail }) → [élément] (le bandeau d'erreur du poids du document, rien sous la limite ; `detail()` ouvre le poids exact),
   //          onWeight({ list, pj }) (le total du pied ouvre la fenêtre « Poids du document » : la liste en octets et, case cochée et lue, les pièces jointes),
@@ -485,6 +485,7 @@ export class Explorer {
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
     this.#refs.annuaireBtn.addEventListener('click', () => this.#opts.onAnnuaire());
+    this.#refs.guideBtn.addEventListener('click', () => this.#opts.onGuide());
     settingsBtn.addEventListener('click', () => this.#settingsMenu());
     this.#refs.bellBtn.addEventListener('click', () => this.#bellMenu());
     this.#refs.total.addEventListener('click', () => this.#openWeight());

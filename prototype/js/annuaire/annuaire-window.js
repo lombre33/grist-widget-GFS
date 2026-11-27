@@ -5,7 +5,7 @@
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { mountWindow, giveBackFocus, tabStops, LIST_SHOWN } from '../ui/modal.js';
+import { mountWindow, giveBackFocus, trapTab, LIST_SHOWN } from '../ui/modal.js';
 import { keyStore } from '../shell/stored-choice.js';
 import { findNode, peopleIn, filterPeople, filterOptions, fieldGenres } from './annuaire-model.js';
 import { pathIds, levelLabel, listColumns } from './annuaire-items.js';
@@ -26,7 +26,6 @@ import { addressesOf } from './annuaire-mail.js';
 import { presenceState } from './annuaire-presence.js';
 import { editBlock } from './annuaire-edit-rights.js';
 
-const FOCUSABLE = 'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), [tabindex="0"], a[href]';
 const VIEWS = Object.freeze([['list', 'list', 'an.view.list'], ['cards', 'tiles', 'an.view.cards'], ['org', 'org', 'an.view.org']]);
 const PEOPLE_KEY = 'gfs.annuaire.orgPeople'; // le choix « Personnes » de l'organigramme, retenu sur le navigateur (js/shell/stored-choice.js)
 
@@ -679,7 +678,7 @@ export class AnnuaireWindow {
     const doc = this.#root.ownerDocument;
     if (doc.activeElement && doc.activeElement.closest('[data-popover], .menu')) return; // un panneau (filtres) ou un menu garde Échap et Tab
     if (event.key === 'Escape') { this.#escape(event); return; }
-    if (event.key === 'Tab') { this.#tab(event, doc); return; }
+    if (event.key === 'Tab') { this.#tab(event); return; }
     const active = doc.activeElement;
     if (!active || !active.closest) return;
     if (active.closest('.an-tn')) treeKeys(event, active, { tree: this.#refs.tree, root: this.#show.data.tree, open: this.#open,
@@ -701,13 +700,7 @@ export class AnnuaireWindow {
     this.#focus('filters', 'search');
   }
 
-  #tab(event, doc) {
-    event.preventDefault();
-    // ce qui est caché (`hidden` ou un volet que la fiche recouvre) n'est pas un arrêt
-    const nodes = tabStops([...this.#root.querySelectorAll(FOCUSABLE)].filter(node => node.getClientRects().length > 0));
-    const at = nodes.indexOf(doc.activeElement);
-    (at < 0 ? this.#refs.search : nodes[(at + (event.shiftKey ? -1 : 1) + nodes.length) % nodes.length]).focus();
-  }
+  #tab(event) { trapTab(event, this.#root, this.#refs.search); }
 }
 
 // Ce que fait chaque `data-act` de la fenêtre (hors de l'organigramme, qui lit les siens).

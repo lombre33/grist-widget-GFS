@@ -8,6 +8,7 @@ import { Correcteurs } from './correcteurs.js';
 import { WorkControl } from '../apps/work-control.js';
 import { OpenedBar } from '../explorer/opened-bar.js';
 import { openAnnuaire } from './annuaire-entry.js';
+import { openGuide } from './guide-entry.js';
 
 // Le bouton « LanguageTool » (contrats 5.2, point 13) : le bouton de la barre coupe ou rallume ; la ligne du menu « Réglages » le met dans la barre ou l'en
 // retire. Un navigateur qui refuse de retenir le choix le garde pour la page, et GFS le dit. Quand ce que les apps doivent faire change, l'app ouverte le sait
@@ -44,7 +45,8 @@ export function buildDock(c) {
   c.correcteurs = new Correcteurs({ win: window }); // deux choix retenus sur ce navigateur, dits aux apps (js/shell/correcteurs.js, contrats 5.2, point 13)
   c.dock = new Dock({
     root: c.$('floaters'), stage: c.$('stage'), onFiles: () => c.showExplorer(), onOpened: () => c.openedBar.show(),
-      onApps: () => void c.openModules(), onWork: () => void c.workControl.open(), onAnnuaire: () => void openAnnuaire(c), onLt: () => c.langtool.toggle(),
+      onApps: () => void c.openModules(), onWork: () => void c.workControl.open(), onAnnuaire: () => void openAnnuaire(c), onGuide: () => void openGuide(c),
+        onLt: () => c.langtool.toggle(),
     onNotKept: () => c.notice(c.t('lang.notKept')),
   });
   c.langtool = new LangtoolBar({ correcteurs: c.correcteurs, dock: c.dock, session: () => c.session, notice: text => c.notice(text), t: c.t });

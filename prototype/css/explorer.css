@@ -160,6 +160,7 @@ button { cursor: pointer; }
 [data-fam="pdf"] { --tc: var(--t-pdf); --tc-ink: var(--t-pdf-ink); --tc-soft: var(--t-pdf-soft); --tc-line: var(--t-pdf-line); }
 [data-fam="email"] { --tc: var(--t-email); --tc-ink: var(--t-email-ink); --tc-soft: var(--t-email-soft); --tc-line: var(--t-email-line); }
 [data-fam="annuaire"] { --tc: var(--t-annuaire); --tc-ink: var(--t-annuaire-ink); --tc-soft: var(--t-annuaire-soft); --tc-line: var(--t-annuaire-line); }
+[data-fam="guide"] { --tc: var(--t-guide); --tc-ink: var(--t-guide-ink); --tc-soft: var(--t-guide-soft); --tc-line: var(--t-guide-line); }
 /* Le macro-modèle n'a pas de couleur à lui (décision du 24/11) : la pastille et le texte restent neutres, comme ceux d'un type sans famille, et l'icône peint ses trois feuilles (js/ui/icons.js) du bleu du
    document, du vert de la grille et de l'orange de la présentation de l'ambiance. Les variables passent au `<use>` par héritage ; une ligne grisée n'a pas `data-fam`, donc pas de variables : trait d'une seule couleur. */
 [data-fam="macro"] { --tc: var(--text-muted); --tc-ink: var(--text-muted); --tc-soft: var(--surface); --tc-line: var(--border-strong); --mc-1: var(--t-doc); --mc-2: var(--t-grid); --mc-3: var(--t-slides); }

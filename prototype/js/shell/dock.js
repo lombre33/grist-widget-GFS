@@ -26,6 +26,7 @@ export class Dock {
   #apps;
   #work;
   #annuaire;
+  #guide;
   #workTip = null;
   #lt;
   #ltState = { shown: false, coupes: false };
@@ -38,7 +39,7 @@ export class Dock {
   //   et onLt : les
   //   boutons qui font quelque chose (le menu de position est celui de la barre) ; onNotKept : le navigateur refuse de retenir le bord choisi (il vaut alors
   //   pour la page).
-  constructor({ root, stage, onFiles, onOpened, onApps, onWork, onAnnuaire, onLt, onNotKept, win = window }) {
+  constructor({ root, stage, onFiles, onOpened, onApps, onWork, onAnnuaire, onGuide, onLt, onNotKept, win = window }) {
     this.#root = root;
     this.#stage = stage;
     this.#files = root.querySelector('#floater-files');
@@ -46,6 +47,7 @@ export class Dock {
     this.#apps = root.querySelector('#floater-apps');
     this.#work = root.querySelector('#floater-work');
     this.#annuaire = root.querySelector('#floater-annuaire');
+    this.#guide = root.querySelector('#floater-guide');
     this.#lt = root.querySelector('#floater-lt');
     this.#place = root.querySelector('#floater-place');
     this.#onNotKept = onNotKept;
@@ -56,6 +58,7 @@ export class Dock {
     this.#apps.addEventListener('click', onApps);
     this.#work.addEventListener('click', onWork);
     this.#annuaire.addEventListener('click', onAnnuaire);
+    this.#guide.addEventListener('click', onGuide);
     this.#lt.addEventListener('click', onLt);
     this.#place.addEventListener('click', () => this.#openPlaceMenu());
     watchKey(setting, STORAGE_KEY, win);
@@ -85,6 +88,7 @@ export class Dock {
     this.#name(this.#apps, 'modules', t('gfs.appsTip'));
     this.#name(this.#work, 'work-row', this.#workTip || t('work.title'));
     this.#name(this.#annuaire, 'annuaire', t('an.tip'));
+    this.#name(this.#guide, 'guide', t('gd.tip'));
     this.#paintLt();
     this.#name(this.#place, EDGE_ICONS[this.edge], t('dock.place'));
     this.#place.dataset.edge = this.edge;

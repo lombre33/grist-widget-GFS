@@ -9,6 +9,7 @@ import { h } from './dom.js';
 import { Layers } from './layers.js';
 
 const FOCUSABLE = 'input:not([disabled]), button:not([disabled]), [tabindex="0"]';
+const FOCUSABLE_IN_WINDOW = 'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), [tabindex="0"], a[href]';
 const stack = []; // les fenêtres ouvertes, la dernière est au-dessus
 
 // Les arrêts de Tab d'une fenêtre, d'après ses éléments au clavier : un groupe de boutons radio n'en a qu'un, le coché (sinon le premier), comme dans le
@@ -37,6 +38,16 @@ export function listKeys(event, { search, items }) {
   }
   if (event.key === 'Enter' && active === search && items.length === 1) { event.preventDefault(); items[0].click(); return true; }
   return false;
+}
+
+// Tab et Maj+Tab tournent dans une fenêtre à classe (« Annuaire », « Guide ») : ce qui est caché (`hidden`, un volet que la fiche recouvre) n'est pas un
+// arrêt ; un clavier tombé hors des arrêts revient sur `fallback`. À appeler depuis le gestionnaire de clavier de la fenêtre (`mountWindow`), sur la touche
+// Tab.
+export function trapTab(event, root, fallback) {
+  event.preventDefault();
+  const nodes = tabStops([...root.querySelectorAll(FOCUSABLE_IN_WINDOW)].filter(node => node.getClientRects().length > 0));
+  const at = nodes.indexOf(root.ownerDocument.activeElement);
+  (at < 0 ? fallback : nodes[(at + (event.shiftKey ? -1 : 1) + nodes.length) % nodes.length]).focus();
 }
 
 // Rend le fond inerte (ni clic ni clavier) et rend la fonction qui, à la fermeture, redonne à chaque élément l'état où il était (l'explorateur en tenait déjà

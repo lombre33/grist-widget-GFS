@@ -11,13 +11,13 @@ import { iconNames } from '../js/ui/icons.js';
 const MODES = ['clair', 'sombre'];
 const read = name => readFileSync(new URL(`../css/${name}`, import.meta.url), 'utf8');
 
-test('six types, quatre jetons chacun : le document, la grille, la présentation, le PDF, l\'e-mail et l\'annuaire', () => {
-  assert.deepEqual(TYPES, ['doc', 'grid', 'slides', 'pdf', 'email', 'annuaire']);
-  assert.equal(TYPE_TOKENS.length, 24);
+test('sept types, quatre jetons chacun : le document, la grille, la présentation, le PDF, l\'e-mail, l\'annuaire et le guide', () => {
+  assert.deepEqual(TYPES, ['doc', 'grid', 'slides', 'pdf', 'email', 'annuaire', 'guide']);
+  assert.equal(TYPE_TOKENS.length, 28);
   for (const type of TYPES) for (const part of ['', '-ink', '-soft', '-line']) assert.ok(TYPE_TOKENS.includes(`--t-${type}${part}`), `--t-${type}${part}`);
 });
 
-test('typeTokens : les vingt-quatre jetons en `#rrggbb` pour chaque ambiance et chaque mode ; une ambiance ou un mode inconnu ne pose rien', () => {
+test('typeTokens : les vingt-huit jetons en `#rrggbb` pour chaque ambiance et chaque mode ; une ambiance ou un mode inconnu ne pose rien', () => {
   for (const id of AMBIANCES) for (const mode of MODES) {
     const tokens = typeTokens(id, mode);
     assert.deepEqual(Object.keys(tokens).sort(), [...TYPE_TOKENS].sort(), `${id} ${mode}`);
@@ -34,10 +34,10 @@ test('typeTokens rend des objets neufs : on ne change pas les couleurs d\'une am
 });
 
 // Les six familles gardent leur teinte d'une ambiance à l'autre (OKLCH, en degrés) : le bleu, le vert, l'orange, le rouge, le violet et le turquoise se reconnaissent partout, seule leur nuance suit l'ambiance.
-const HUES = { doc: [235, 285], grid: [135, 175], slides: [35, 95], email: [290, 335], annuaire: [185, 215] };
+const HUES = { doc: [235, 285], grid: [135, 175], slides: [35, 95], email: [290, 335], annuaire: [185, 215], guide: [320, 350] };
 const inHues = (type, hue) => (type === 'pdf' ? hue >= 340 || hue <= 45 : hue >= HUES[type][0] && hue <= HUES[type][1]);
 
-test('les six familles gardent leur teinte dans chaque ambiance : bleu, vert, orange, rouge, violet, turquoise', () => {
+test('les sept familles gardent leur teinte dans chaque ambiance : bleu, vert, orange, rouge, violet, turquoise, magenta', () => {
   const off = [];
   for (const id of AMBIANCES) for (const mode of MODES) {
     const tokens = typeTokens(id, mode);
@@ -53,7 +53,7 @@ test('les six familles gardent leur teinte dans chaque ambiance : bleu, vert, or
 const lab = hex => { const { L, C, h } = hexToOklch(hex); return [L, C * Math.cos(h * Math.PI / 180), C * Math.sin(h * Math.PI / 180)]; };
 const gap = (a, b) => Math.hypot(...lab(a).map((value, i) => value - lab(b)[i]));
 
-test('les six types se distinguent l\'un de l\'autre dans chaque ambiance et chaque mode', () => {
+test('les sept types se distinguent l\'un de l\'autre dans chaque ambiance et chaque mode', () => {
   const close = [];
   for (const id of AMBIANCES) for (const mode of MODES) {
     const tokens = typeTokens(id, mode);
@@ -87,7 +87,7 @@ test('explorer.css lit une famille par type : la règle `[data-fam]` qui pose le
   }
 });
 
-test('gfs.css dit les vingt-quatre jetons de type dans ses trois blocs (clair, sombre de Grist, sombre du système)', () => {
+test('gfs.css dit les vingt-huit jetons de type dans ses trois blocs (clair, sombre de Grist, sombre du système)', () => {
   const css = read('gfs.css');
   const blocks = [css.indexOf(':root {'), css.indexOf(':root:not([data-grist-appearance="light"]) {'), css.indexOf(':root[data-grist-appearance="dark"] {')];
   assert.ok(blocks.every(at => at >= 0), 'les trois blocs sont là');

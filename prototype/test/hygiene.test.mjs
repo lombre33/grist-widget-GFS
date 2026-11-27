@@ -148,10 +148,10 @@ test('ni console.log ni onmessage = dans le code publié', () => {
 });
 
 // Le rangement de js/ (11/11) : un dossier par sujet, sans sous-dossier, et seuls l'entrée et le contrôleur à la racine. Un module nouveau va dans le dossier de son sujet ; un dossier nouveau se décide (CLAUDE.md, « Architecture en une minute »).
-const JS_FOLDERS = ['annuaire', 'apps', 'broker', 'explorer', 'files', 'i18n', 'rights', 'sharing', 'shell', 'theme', 'ui', 'weight'];
+const JS_FOLDERS = ['annuaire', 'apps', 'broker', 'explorer', 'files', 'guide', 'i18n', 'rights', 'sharing', 'shell', 'theme', 'ui', 'weight'];
 const JS_ROOT = ['controller.js', 'gfs.js'];
 
-test('js/ est rangé par sujet : douze dossiers sans sous-dossier, et à la racine seulement gfs.js et controller.js', () => {
+test('js/ est rangé par sujet : treize dossiers sans sous-dossier, et à la racine seulement gfs.js et controller.js', () => {
   const entries = readdirSync(join(ROOT, 'js'), { withFileTypes: true });
   assert.deepEqual(entries.filter(entry => entry.isFile()).map(entry => entry.name).sort(), JS_ROOT, `à la racine de js/ : ${JS_ROOT.join(' et ')} seulement ; rangez le module nouveau dans le dossier de son sujet (${JS_FOLDERS.join(', ')})`);
   assert.deepEqual(entries.filter(entry => entry.isDirectory()).map(entry => entry.name).sort(), JS_FOLDERS, 'les dossiers de js/ sont ceux de la liste (hygiene.test.mjs) ; un dossier nouveau se décide');

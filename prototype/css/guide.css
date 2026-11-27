@@ -1,0 +1,171 @@
+/* Le module Guide (demande du porteur du 27/11 ; maquette « guide des démarches », scènes 2 à 5) : le même langage que l'annuaire (css/annuaire.css) : des cartes blanches aux
+   coins arrondis sur un fond gris clair, un seul bleu d'accent, des avatars à initiales, des pastilles grises. Tout par les jetons de gfs.css (clair, sombre et ambiances),
+   jamais une couleur en dur, aucun attribut `style`. Une seule base de fenêtre (modules.css) : le titre, la recherche et le pied restent en place, seuls les volets défilent.
+   Les classes de ce module portent toutes `gd-` : aucune ne rejoint celles de l'explorateur ni de l'annuaire. La couleur du type « Guide » (magenta) ne vit que dans
+   l'explorateur (cahier 6.5) : la fenêtre garde l'accent bleu. */
+
+.mod-scrim.gd-scrim { padding: 6px; }
+.mod.gd { width: min(var(--win-xl), 100%); height: 100%; container: gd / inline-size; }
+
+/* L'en-tête : le logo, le titre, le guide montré, la recherche, l'affichage, les réglages. */
+.gd-head { padding: 8px 12px; }
+.gd-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.gd-top h2 { margin-right: 2px; }
+.gd-logo { flex: none; width: 18px; height: 18px; color: var(--accent); }
+.gd-grow { flex: 1 1 0; min-width: 0; }
+.inp-search.gd-search { flex: 1 1 130px; width: auto; min-width: 110px; max-width: 230px; }
+.gd-name { display: inline-flex; align-items: center; gap: 6px; max-width: 170px; height: 28px; padding: 0 8px 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill);
+  background: var(--surface); color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); font-weight: 600; cursor: pointer; }
+.gd-name:hover { background: var(--surface-sunken); }
+.gd-name-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-name .ic { flex: none; width: 13px; height: 13px; color: var(--text-muted); }
+.gd-ibtn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid transparent; border-radius: var(--radius-btn);
+  background: transparent; color: var(--text); cursor: pointer; }
+.gd-ibtn:hover { background: var(--surface-sunken); }
+.gd-ibtn .ic { width: 15px; height: 15px; }
+.gd-seg { display: inline-flex; flex: none; border: 1px solid var(--border-strong); border-radius: var(--radius-btn); background: var(--surface); overflow: hidden; }
+.gd-seg-b { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border: 0; background: transparent; color: var(--text); font: inherit;
+  font-size: max(12.5px, var(--fs-min)); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.gd-seg-b + .gd-seg-b { border-left: 1px solid var(--border); }
+.gd-seg-b:hover { background: var(--surface-sunken); }
+.gd-seg-b .ic { width: 14px; height: 14px; }
+.gd-seg-b:not([aria-pressed="true"]) .gd-seg-t { display: none; }
+.gd-seg-b[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); }
+.gd-name:focus-visible, .gd-ibtn:focus-visible, .gd-seg-b:focus-visible, .gd-tile:focus-visible, .gd-row:focus-visible, .gd-tn-b:focus-visible, .gd-tn-tg:focus-visible,
+.gd-crumb:focus-visible, .gd-kid:focus-visible, .gd-ib:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Le corps : le fond gris clair, les volets sont des cartes. */
+.mod-body.gd-body { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 10px; padding: 10px; overflow: hidden; background: var(--bg); }
+.gd-body[data-mode="list"] { grid-template-columns: minmax(150px, 210px) minmax(0, 1fr); }
+.gd-body[data-mode="fiche"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
+.gd-card { min-width: 0; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: calc(var(--radius-lg) * 1.5); background: var(--surface); box-shadow: var(--shadow-card); }
+.gd-state { grid-column: 1 / -1; grid-row: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; text-align: center; }
+.gd-state-ic { width: 28px; height: 28px; color: var(--text-muted); }
+.gd-state-title { margin: 0; font-weight: 700; }
+.gd-state .gd-note { max-width: 46ch; }
+.gd-note { margin: 0; padding: 10px 14px; font-size: max(12.5px, var(--fs-min)); color: var(--text-muted); }
+.gd-state .gd-note { padding: 0; }
+.gd-hint { margin: 0; padding: 10px 14px 4px; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
+.gd-foot { min-height: 1.4em; }
+.gd-pill { display: inline-block; flex: 0 1 auto; min-width: 0; height: 20px; padding: 0 8px; border-radius: 999px; background: var(--surface-sunken); color: var(--text-muted);
+  font-size: max(11.5px, var(--fs-min)); font-weight: 600; line-height: 20px; white-space: nowrap; }
+.gd-av { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink);
+  font-size: max(11.5px, var(--fs-min)); font-weight: 700; letter-spacing: .02em; }
+.gd-av.is-lg { width: 40px; height: 40px; font-size: max(14px, var(--fs-min)); }
+
+/* Les thèmes : des tuiles, une par démarche sans mère. */
+.gd-home { padding: 14px; }
+.gd-home-t { margin: 0 0 10px; font-size: var(--fs-head); }
+.gd-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.gd-tile { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: calc(var(--radius-lg) * 1.25); background: var(--surface);
+  color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.gd-tile:hover { background: var(--surface-sunken); border-color: var(--border-strong); }
+.gd-tile-ic { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-ink); }
+.gd-tile-ic .ic { width: 17px; height: 17px; }
+.gd-tile-t { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.gd-tile-name { font-weight: 700; overflow-wrap: anywhere; }
+.gd-tile-sub, .gd-tile-lead { color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+.gd-tile-lead { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.gd-tile-lead .ic { flex: none; width: 13px; height: 13px; }
+.gd-tile-lead span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* La liste : l'arbre à gauche, les démarches du nœud à droite. */
+.gd-treecard { padding: 8px 6px; }
+.gd-tree, .gd-tree ul { margin: 0; padding: 0; list-style: none; }
+.gd-tn { display: flex; align-items: center; padding-left: calc(var(--d, 0) * 12px); }
+.gd-tn-tg, .gd-tn-sp { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 28px; padding: 0; border: 0; background: transparent; color: var(--text-muted); }
+.gd-tn-tg { cursor: pointer; }
+.gd-tn-tg .ic { width: 13px; height: 13px; }
+.gd-tn-b { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 28px; padding: 0 6px 0 8px; border: 0;
+  border-radius: calc(var(--radius-lg) * 1.25); background: transparent; color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); text-align: left; cursor: pointer; }
+.gd-tn.is-top .gd-tn-b { font-weight: 700; }
+.gd-tn-b:hover { background: var(--surface-sunken); }
+.gd-tn-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-tn-n { flex: none; min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--surface-sunken); color: var(--text-muted); font-size: max(11.5px, var(--fs-min)); line-height: 20px; text-align: center; }
+.gd-tn.is-sel .gd-tn-b { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.gd-tn.is-sel .gd-tn-n { background: var(--surface); color: var(--accent-ink); }
+.gd-main { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.gd-list-h { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 14px 6px; }
+.gd-list-h h3 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-head); }
+.gd-list { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.gd-results .gd-list { overflow: visible; }
+
+/* Une démarche dans une liste : son titre, son chemin, et qui contacter à droite. */
+.gd-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 48px; padding: 7px 14px; border: 0; border-top: 1px solid var(--border);
+  background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.gd-row:hover { background: var(--surface-sunken); }
+.gd-row-main { min-width: 0; display: flex; flex-direction: column; }
+.gd-row-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-row-path { color: var(--text-muted); font-size: max(12px, var(--fs-min)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-who { flex: 0 1 45%; min-width: 0; display: flex; align-items: center; gap: 7px; }
+.gd-who .gd-inh { flex: none; width: 13px; height: 13px; color: var(--text-muted); }
+.gd-who-t { min-width: 0; display: flex; flex-direction: column; }
+.gd-who-a { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-who-b { color: var(--text-muted); font-size: max(12px, var(--fs-min)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* La fiche : à gauche la démarche (chemin, titre, étapes), à droite « Qui contacter ». */
+.gd-back { margin: 10px 14px 0; }
+.gd-info { padding: 8px 14px 14px; }
+.gd-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 0 0 4px; }
+.gd-crumb { padding: 0 2px; border: 0; background: transparent; color: var(--text-muted); font: inherit; font-size: max(12.5px, var(--fs-min)); cursor: pointer; }
+.gd-crumb:hover { color: var(--accent-ink); text-decoration: underline; }
+.gd-sep { width: 12px; height: 12px; color: var(--text-muted); }
+.gd-title { margin: 0 0 6px; font-size: var(--fs-head); overflow-wrap: anywhere; }
+.gd-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.gd-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; height: 22px; padding: 0 9px; border-radius: 999px; background: var(--surface-sunken); color: var(--text);
+  font-size: max(12px, var(--fs-min)); font-weight: 600; }
+.gd-chip .ic { flex: none; width: 13px; height: 13px; }
+.gd-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-chip.is-inh { background: var(--accent-soft); color: var(--accent-ink); }
+.gd-chip.is-warn { background: var(--warn-soft, var(--surface-sunken)); color: var(--warn-ink); }
+.gd-warn { display: flex; align-items: flex-start; gap: 6px; margin: 0 0 8px; color: var(--warn-ink); font-size: max(12.5px, var(--fs-min)); }
+.gd-warn .ic { flex: none; width: 15px; height: 15px; margin-top: 2px; }
+.gd-details { margin: 0 0 10px; white-space: pre-line; overflow-wrap: anywhere; }
+.gd-block { margin: 12px 0 0; padding-top: 8px; border-top: 1px solid var(--border); }
+.gd-sec { margin: 0 0 6px; color: var(--text-muted); font-size: max(11.5px, var(--fs-min)); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.gd-steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.gd-steps li { display: flex; align-items: flex-start; gap: 10px; }
+.gd-step-n { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; background: var(--surface-sunken); color: var(--text-muted);
+  font-size: max(12px, var(--fs-min)); font-weight: 700; }
+.gd-kids { margin: 0; padding: 0; list-style: none; }
+.gd-kid { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 30px; padding: 0 4px; border: 0; background: transparent; color: var(--text);
+  font: inherit; text-align: left; cursor: pointer; }
+.gd-kid:hover { color: var(--accent-ink); }
+.gd-kid .ic { flex: none; width: 13px; height: 13px; color: var(--text-muted); }
+.gd-fiche-who { padding: 10px 12px 12px; }
+.gd-contacts { display: flex; flex-direction: column; gap: 8px; }
+.gd-contacts .gd-sec { margin: 2px 2px 0; }
+.gd-role { padding: 9px 11px; border: 1px solid var(--border); border-radius: calc(var(--radius-lg) * 1.25); background: var(--surface); }
+.gd-role.is-empty { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--surface-sunken); color: var(--text-muted); }
+.gd-role-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 6px; }
+.gd-role-n { color: var(--text-muted); font-size: max(11.5px, var(--fs-min)); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.gd-role-none { font-size: max(12px, var(--fs-min)); }
+.gd-entry + .gd-entry { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.gd-entry > .gd-chip { margin: 0 0 6px; }
+.gd-lost { margin: 0 0 6px; color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+.gd-person { display: flex; align-items: center; gap: 10px; }
+.gd-person + .gd-person { margin-top: 8px; }
+.gd-person-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.gd-person-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-person-sub { color: var(--text-muted); font-size: max(12px, var(--fs-min)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-acts { flex: none; display: inline-flex; gap: 2px; }
+.gd-ib { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-btn); background: transparent; color: var(--text);
+  cursor: pointer; }
+.gd-ib:hover { background: var(--surface-sunken); }
+.gd-ib .ic { width: 16px; height: 16px; }
+
+/* Le réglage : une page, une ligne par choix ; les rôles en dessous. */
+.gd-set-body { gap: 10px; }
+.gd-set-h { margin: 8px 0 0; font-size: var(--fs-head); }
+.gd-set-role { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto; align-items: center; gap: 6px; }
+.gd-preset { white-space: nowrap; }
+.gd-set-add { align-self: flex-start; }
+.gd-set-add[aria-disabled="true"] { opacity: .6; cursor: not-allowed; }
+
+/* Étroit : les colonnes de la fiche s'empilent, la liste prend toute la largeur au-dessus de l'arbre. */
+@container gd (max-width: 560px) {
+  .gd-body[data-mode="fiche"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; overflow: auto; }
+  .gd-body[data-mode="fiche"] .gd-card { overflow: visible; }
+  .gd-body[data-mode="list"] { grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); }
+  .gd-who { flex-basis: 40%; }
+}

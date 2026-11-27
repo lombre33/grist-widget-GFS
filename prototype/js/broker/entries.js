@@ -9,6 +9,7 @@ import { activeExtensionIds, extensionsOf } from '../apps/extensions.js';
 import { rowKey } from '../apps/modules-window.js';
 import { FILES_APP } from '../files/gfs-files.js';
 import { ANNUAIRES_APP, ANNUAIRES_MANIFEST } from '../files/annuaire-files.js';
+import { GUIDES_APP, GUIDES_MANIFEST } from '../files/guide-files.js';
 import { RECEIVED_APP } from '../sharing/received-files.js';
 import { importFormats, acceptsOpening } from '../files/import-file.js';
 import { readersOf, chooseReader } from './reading.js';
@@ -29,8 +30,8 @@ export class Entries {
     if (!c.fullAccess) return { text: c.t('gfs.needsFullAccess'), hint: c.t('gfs.needsFullAccessHint') };
     // un fichier que GFS garde, ou reçu d'un autre document et accepté : aucune app à installer (une arrivée en attente est grisée par
     // js/sharing/received-control.js)
-    // un annuaire : le module de GFS qui le lit (js/annuaire/), aucune app à installer
-    if (file.app === FILES_APP || file.app === RECEIVED_APP || file.app === ANNUAIRES_APP) return null;
+    // un annuaire ou un guide : le module de GFS qui le lit (js/annuaire/, js/guide/), aucune app à installer
+    if (file.app === FILES_APP || file.app === RECEIVED_APP || file.app === ANNUAIRES_APP || file.app === GUIDES_APP) return null;
     if (!c.registry.has(file.app)) return { text: c.t('ex.lockedApp', { app: c.appName(file.app) }), focus: rowKey(file.app) };
     if (!file.known) return { text: c.t('ex.lockedType', { app: c.appName(file.app) }) };
     const extension = file.typeInfo.extension;
@@ -70,7 +71,7 @@ export class Entries {
         }
       }
     }
-    entries.push(this.#annuaireEntry());
+    entries.push(this.#annuaireEntry(), this.#guideEntry());
     return entries;
   };
 
@@ -83,6 +84,16 @@ export class Entries {
     const lock = this.lockOf({ app: ANNUAIRES_APP, known: true, typeInfo: type });
     return { ...this.#entry(ANNUAIRES_MANIFEST, type, lock), kind: 'annuaire', label: label(type.nom, c.lang),
       hint: lock ? (lock.hint || lock.text) : c.t('an.newMenuHint') };
+  }
+
+  // L'article « Guide » de « Nouveau » (demande du porteur du 27/11) : le module de GFS, aucune app ; le réglage d'un nouveau guide (`kind` :
+  // js/broker/openings.js).
+  #guideEntry() {
+    const { c } = this;
+    const type = GUIDES_MANIFEST.fichiers[0].types[0];
+    const lock = this.lockOf({ app: GUIDES_APP, known: true, typeInfo: type });
+    return { ...this.#entry(GUIDES_MANIFEST, type, lock), kind: 'guide', label: label(type.nom, c.lang),
+      hint: lock ? (lock.hint || lock.text) : c.t('gd.newMenuHint') };
   }
 
   // Le sous-menu « Importer » : un article par format que le manifeste d'une app déclare (`actions.importer`, contrats 2.7, point 4), au nom du format ; le

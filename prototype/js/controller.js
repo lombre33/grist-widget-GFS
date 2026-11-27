@@ -46,6 +46,7 @@ import { whenReceived } from './sharing/sync-service.js';
 import { WeightControl } from './weight/weight-control.js';
 import { FILES_APP, filesManifest, filesNamesOfTables, useFilesNames } from './files/gfs-files.js';
 import { ANNUAIRES_APP, ANNUAIRES_MANIFEST } from './files/annuaire-files.js';
+import { GUIDES_APP, GUIDES_MANIFEST } from './files/guide-files.js';
 import { Transfer, buildTransferFrame } from './broker/transfer.js';
 import { Attach } from './broker/attach.js';
 import { Player } from './broker/player.js';
@@ -262,7 +263,8 @@ export class GfsController {
 
   appById(id) { return this.names.adaptItem(this.apps.find(item => item.app.id === id && item.ok) || null); }
   // Le manifeste d'une app installable, ou celui des fichiers que GFS garde lui-même (js/files/gfs-files.js) : null quand l'id n'est ni l'un ni l'autre.
-  manifestOf = id => (id === FILES_APP ? filesManifest() : id === ANNUAIRES_APP ? ANNUAIRES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
+  manifestOf = id => (id === FILES_APP ? filesManifest() : id === ANNUAIRES_APP ? ANNUAIRES_MANIFEST : id === GUIDES_APP ? GUIDES_MANIFEST :
+    (this.appById(id) || { manifest: null }).manifest);
   appName = id => { const manifest = this.manifestOf(id); return manifest ? label(manifest.nom, this.lang) : id; };
   validApps() { return this.apps.filter(item => item.ok).map(item => this.names.adaptItem(item)); }
   typeLabel = file => (file.typeInfo ? label(file.typeInfo.nom, this.lang) : (file.type || '—'));
@@ -424,6 +426,7 @@ export class GfsController {
     if (this.themeWindow) this.themeWindow.relocalize(live);
     this.templates.relocalize(live);
     if (this.annuaire) this.annuaire.relocalize();
+    if (this.guide) this.guide.relocalize();
     this.dock.relabel(this.t);
     this.workControl.relabel();
     this.#reading.show();

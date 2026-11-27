@@ -10,10 +10,11 @@ import { receivedFolders } from '../sharing/received-folders.js';
 import { rowWeigher, piecesOf, linkedOf, newSum, addWeight } from '../weight/weight.js';
 
 // Le champ `couleur` du manifeste -> la famille de couleur de la charte (cahier 6.5) ; tout autre mot : neutre. Le rouge du PDF est la quatrième famille
-// (décision du porteur, 04/11), le violet de l'e-mail la cinquième, le turquoise de l'annuaire la sixième (25/11, scène 11 de la maquette) ; le macro-modèle
-// n'a pas de couleur à lui : son icône porte les trois feuilles du document, de la grille et de la présentation (décision du porteur, 24/11), et sa pastille
-// reste neutre.
-const FAMILIES = Object.freeze({ document: 'doc', grille: 'grid', presentation: 'slides', pdf: 'pdf', email: 'email', macro: 'macro', annuaire: 'annuaire' });
+// (décision du porteur, 04/11), le violet de l'e-mail la cinquième, le turquoise de l'annuaire la sixième (25/11, scène 11 de la maquette), le magenta du guide
+// la septième (27/11) ; le macro-modèle n'a pas de couleur à lui : son icône porte les trois feuilles du document, de la grille et de la présentation (décision
+// du porteur, 24/11), et sa pastille reste neutre.
+const FAMILIES = Object.freeze({ document: 'doc', grille: 'grid', presentation: 'slides', pdf: 'pdf', email: 'email', macro: 'macro', annuaire: 'annuaire',
+  guide: 'guide' });
 // Les familles que l'explorateur colore (attribut `data-fam`, jetons `--t-*` de css/gfs.css) ; `familyOf` : la famille d'un mot du manifeste, ou '' (neutre :
 // jamais un mot de la chaîne de prototypes).
 export const FAMILY_NAMES = Object.freeze(Object.values(FAMILIES));

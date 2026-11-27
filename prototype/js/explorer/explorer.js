@@ -7,7 +7,7 @@
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { listItems, treeRows, typeChoices, rowKey } from './explorer-model.js';
+import { listItems, treeRows, typeChoices, rowKey, existingPinned } from './explorer-model.js';
 import { shownReceived, pendingOf, NO_RECEIVED } from '../sharing/received-files.js';
 import { receivedFolders } from '../sharing/received-folders.js';
 import { directFiles } from '../sharing/direct-shares.js';
@@ -50,13 +50,14 @@ export class Explorer {
   #win; // la liste fenêtrée quand elle est longue (js/explorer/explorer-window.js)
   #refs;
   #files = [];
-  // les fichiers et les dossiers tels que la lecture les a rendus : `#files` et `#folders` y ajoutent les changements en attente
-  #raw = { files: [], folders: [], looks: new Map() };
+  // les fichiers et les dossiers tels que la lecture les a rendus : `#files`, `#folders`, `#pinned` et `#looks` y ajoutent les changements en attente
+  #raw = { files: [], folders: [], pinned: [], looks: new Map() };
   #received = []; // les arrivées d'un autre document, telles que la lecture les a rendues
   #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
   #notices = { items: [], unread: 0 }; // ce qu'on a donné à la personne dans le document (js/sharing/notice-store.js), pour la cloche
   #arrivals = []; // les fichiers reçus d'un autre document, refusés exceptés (la vue « Partagés avec moi », js/sharing/received-files.js)
   #folders = []; // les dossiers que la personne garde sans fichier (js/explorer/explorer-data.js)
+  #pinned = []; // ceux de ses dossiers qu'elle a mis en favori (la colonne « Favori » de leur ligne d'état)
   #looks = new Map(); // l'apparence des dossiers : chemin -> { color, glyph, emoji } (js/files/folder-looks.js)
   #rows = [];
   // la clé de chaque ligne de la liste, dans l'ordre : le clavier et la sélection lisent ceci, non le DOM (une liste longue n'en construit qu'une part)
@@ -103,8 +104,8 @@ export class Explorer {
   //          alerts({ detail }) → [élément] (le bandeau d'erreur du poids du document, rien sous la limite ; `detail()` ouvre le poids exact),
   //          onWeight({ list, pj }) (le total du pied ouvre la fenêtre « Poids du document » : la liste en octets et, case cochée et lue, les pièces jointes),
   //          personal() → le rangement est-il à la personne seule ?,
-  //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path,
-  //          dossier) },
+  //          filing: { togglePin(file), togglePinFolder(path), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier),
+  //          moveFolderTo(path, dossier) },
   //          shortcuts?: les raccourcis de fichiers (js/explorer/shortcut-gestures.js) : { whyNot(file), create(file), rename(file), remove(file) },
   //          lookGestures?: l'apparence des dossiers (js/explorer/look-gestures.js) : { whyNot(path) -> phrase | null, change(path) },
   //          kept?: les fichiers que GFS garde lui-même (js/files/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file),
@@ -166,6 +167,8 @@ export class Explorer {
 
   get folders() { return this.#folders; }
 
+  get pinnedFolders() { return this.#pinned; }
+
   // L'apparence des dossiers telle que la vue la montre (chemin -> { color, glyph, emoji }) : celle que la lecture a rendue, avec les gestes en attente.
   get looks() { return this.#looks; }
 
@@ -194,9 +197,10 @@ export class Explorer {
   }
 
   // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier ; `received` : les arrivées d'un
-  //   autre document, tous états (js/explorer/explorer-data.js) ; `looks` : l'apparence des dossiers (celle d'avant quand la lecture n'en dit rien).
-  setFiles(files, trashed = [], folders = [], received = [], looks = this.#raw.looks) {
-    this.#show(files, trashed, folders, received, looks);
+  //   autre document, tous états (js/explorer/explorer-data.js) ; `looks` : l'apparence des dossiers, `pinned` : les dossiers en favori (ceux d'avant quand la
+  //   lecture n'en dit rien).
+  setFiles(files, trashed = [], folders = [], received = [], looks = this.#raw.looks, pinned = this.#raw.pinned) {
+    this.#show(files, trashed, folders, received, looks, pinned);
     this.#pieces.filesChanged();
     if (this.isOpen) {
       this.render();
@@ -206,13 +210,14 @@ export class Explorer {
 
   // Les listes que la vue montre : celles que la lecture a rendues, avec par-dessus les gestes de rangement qui s'affichent avant d'être écrits
   // (js/explorer/pending.js).
-  #show(files, trashed, folders, received, looks = new Map()) {
-    this.#raw = { files, folders, looks };
+  #show(files, trashed, folders, received, looks = new Map(), pinned = []) {
+    this.#raw = { files, folders, looks, pinned };
     this.#received = received;
     const shown = this.#opts.pending ? this.#opts.pending.apply(this.#raw) : this.#raw;
     this.#files = shown.files;
     this.#trashed = trashed;
     this.#folders = shown.folders;
+    this.#pinned = shown.pinned || [];
     this.#looks = shown.looks;
     this.#arrivals = shownReceived(received);
     const keys = new Set([...shown.files, ...trashed, ...this.#arrivals].map(file => file.key));
@@ -223,7 +228,7 @@ export class Explorer {
 
   // Les arrivées d'un autre document ont changé pendant que l'explorateur est ouvert (js/sharing/sync-service.js, `whenReceived`) : seule leur liste se
   // remplace, le reste ne bouge pas.
-  setReceived(received) { this.setFiles(this.#raw.files, this.#trashed, this.#raw.folders, received, this.#raw.looks); }
+  setReceived(received) { this.setFiles(this.#raw.files, this.#trashed, this.#raw.folders, received, this.#raw.looks, this.#raw.pinned); }
 
   // Ce qu'on a donné à la personne a changé (js/sharing/notice-store.js) : la pastille de la cloche suit, rien d'autre ne bouge.
   setNotices(state) {
@@ -235,7 +240,7 @@ export class Explorer {
 
   // Un changement de rangement s'affiche ou s'en va avant qu'une lecture n'arrive (js/explorer/pending.js) : la liste se redessine d'après la dernière lecture.
   repaint() {
-    this.#show(this.#raw.files, this.#trashed, this.#raw.folders, this.#received, this.#raw.looks);
+    this.#show(this.#raw.files, this.#trashed, this.#raw.folders, this.#received, this.#raw.looks, this.#raw.pinned);
     if (this.isOpen) this.render();
   }
 
@@ -328,7 +333,8 @@ export class Explorer {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
       lockOf: this.#opts.lockOf, lookOf: path => this.#looks.get(path) || null, opensIn: file => this.#opensIn(file), sort: this.#sort(),
         filtering: this.#filtering,
-        favCount: this.#pool.filter(file => file.pinned && !file.shortcut).length, totalFiles: this.#pool.filter(file => !file.shortcut).length,
+        favCount: this.#pool.filter(file => file.pinned && !file.shortcut).length + existingPinned(this.#pool, this.#pinned, this.#spare).length,
+        totalFiles: this.#pool.filter(file => !file.shortcut).length,
       openedCount: this.#opened.length, shownKey: this.#openedSource.shown(), trashCount: this.#trashed.length, sharedPending: pendingOf(this.#arrivals).length,
         selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pieces.facts(), ...extra,
     };
@@ -375,7 +381,7 @@ export class Explorer {
     const top = scroll.scrollTop;
     const focused = this.#focusedKey();
     const result = listItems(this.#shown, { ...this.state, sort: this.#sort() },
-      { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel, spare: this.#spare });
+      { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel, spare: this.#spare, pinned: this.#pinned });
     this.#rows = result.rows;
     this.#total = sumWeights(result.covered);
     this.#keys = this.#rows.map(rowKey);
@@ -679,7 +685,9 @@ export class Explorer {
     this.#reveal(target.key);
   }
 
+  // L'épingle d'une ligne : un fichier, ou un dossier de « Moi » (la clé « dir:<chemin> »).
   #togglePin(key) {
+    if (key.startsWith('dir:')) { void this.#opts.filing.togglePinFolder(key.slice(4)); return; }
     const file = this.#files.find(item => item.key === key);
     if (file) void this.#opts.filing.togglePin(file);
   }

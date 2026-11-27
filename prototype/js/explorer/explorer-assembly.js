@@ -31,7 +31,7 @@ export function buildFiling(c) {
   const layer = opts => ({ ...opts, t: c.t, container: c.$('stage'), inertTargets: c.inertTargets });
   return new Filing({
     port: c.port, rangement: c.rangement, t: c.t, locale: () => c.locale, files: () => (c.explorer ? c.explorer.files : []),
-      folders: () => c.explorer.folders, looks: () => c.explorer.looks, appName: c.appName,
+      folders: () => c.explorer.folders, looks: () => c.explorer.looks, pinnedFolders: () => c.explorer.pinnedFolders, appName: c.appName,
     spaces: { info: () => c.spaces, owner: ownerOf(c) },
     folderShares: new FolderShares({ port: c.port, rangement: c.rangement, identity: () => c.identity, owner: ownerOf(c) }),
     here: () => (c.explorer.state.view === 'folder' ? c.explorer.state.path : ''), writeBlock: () => c.writeBlock(), notice: text => c.notice(text),

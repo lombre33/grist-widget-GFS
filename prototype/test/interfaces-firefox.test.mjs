@@ -45,6 +45,7 @@ import { securiteProblems } from './dependances-securite-firefox.mjs';
 import { importerProblems } from './importer-firefox.mjs';
 import { iconProblems } from './icones-firefox.mjs';
 import { dossiersProblems } from './dossiers-firefox.mjs';
+import { favorisDossiersProblems } from './favoris-dossiers-firefox.mjs';
 import { compositeProblems } from './composite-firefox.mjs';
 import { glisserProblems } from './glisser-firefox.mjs';
 import { fenetrageProblems } from './fenetrage-firefox.mjs';
@@ -687,6 +688,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await securiteProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await importerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await dossiersProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await favorisDossiersProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await compositeProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await annulerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await voileProblems(page, caption(language, 700, 1, mode)));

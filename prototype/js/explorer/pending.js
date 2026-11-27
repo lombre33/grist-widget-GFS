@@ -12,9 +12,9 @@ import { normalize } from '../ui/search.js';
 
 const searchOf = file => normalize(`${file.name} ${file.folder}`);
 
-// Ce que chaque sorte de changement fait à { files, folders, looks } (`folders` : les dossiers gardés sans fichier ; `looks` : l'apparence des dossiers, chemin
-// -> apparence). Les fichiers touchés sont recopiés, les autres gardent leur objet. Un fichier se désigne comme le rangement l'écrit : par son app et son
-// numéro.
+// Ce que chaque sorte de changement fait à { files, folders, pinned, looks } (`folders` : les dossiers gardés sans fichier ; `pinned` : les dossiers en favori,
+// absents d'une liste qui n'en porte pas ; `looks` : l'apparence des dossiers, chemin -> apparence). Les fichiers touchés sont recopiés, les autres gardent
+// leur objet. Un fichier se désigne comme le rangement l'écrit : par son app et son numéro.
 const SHOW = {
   // le ★ et le dossier d'un fichier (épingler, ranger, déplacer : une ligne de rangement)
   place: ({ files, ...rest }, { app, id, pinned, folder }) => ({ ...rest,
@@ -26,8 +26,15 @@ const SHOW = {
   leave: ({ files, ...rest }, { app, id }) => ({ ...rest, files: files.filter(file => !(file.app === app && file.id === String(id))) }),
   // des dossiers gardés sans fichier qui s'ajoutent (un dossier neuf, ou celui qu'un déplacement a vidé), une fois chacun
   addFolders: ({ folders, ...rest }, { paths }) => ({ ...rest, folders: [...folders, ...paths.filter(path => !folders.includes(path))] }),
-  // des dossiers gardés sans fichier qui s'en vont
-  dropFolders: ({ folders, ...rest }, { paths }) => ({ ...rest, folders: folders.filter(path => !paths.includes(path)) }),
+  // des dossiers gardés sans fichier qui s'en vont, et leur favori avec eux (la ligne d'état qui le porte s'en va)
+  dropFolders: ({ folders, pinned, ...rest }, { paths }) => ({ ...rest, folders: folders.filter(path => !paths.includes(path)),
+    ...(pinned ? { pinned: pinned.filter(path => !paths.includes(path)) } : {}) }),
+  // des dossiers qui entrent dans les favoris (`on`) ou en sortent
+  pinFolders: ({ pinned = [], ...rest }, { paths, on }) => ({ ...rest,
+    pinned: on ? [...new Set([...pinned, ...paths])] : pinned.filter(path => !paths.includes(path)) }),
+  // des dossiers en favori qui changent de chemin (renommés, déplacés, fondus dans un dossier qui existe déjà : `pairs`, [[de, vers]]) : leur favori les suit
+  followPins: ({ pinned = [], ...rest }, { pairs }) => ({ ...rest,
+    pinned: [...new Set(pinned.map(path => (pairs.find(([from]) => from === path) || [0, path])[1]))] }),
   // l'apparence d'un dossier (js/files/folder-looks.js) : posée, ou retirée quand `look` est null
   look: ({ looks = new Map(), ...rest }, { path, look }) => ({ ...rest, looks: new Map(
     [...looks].filter(([key]) => key !== path).concat(look ? [[path, look]] : [])) }),

@@ -10,6 +10,7 @@
 // ajoute une copie à la liste (premier nom libre), et un rangement de doublure qui déplace vraiment les fichiers et les dossiers ; `window.__copies` note [identifiant, dossier] de chaque copie rangée.
 // Les icônes des types (test/icones-firefox.mjs) : l'ambiance se pose comme dans GFS, par le vrai `ThemeSetting` et le vrai `ThemeHost` (`window.__ambiance(id)`, le mode vient de `data-grist-appearance`), et
 // `window.__withPdf()` ajoute à la liste un PDF gardé par GFS, lu par le vrai modèle avec le vrai manifeste de GFS (la famille « pdf », rouge) ; `window.__reset()` le retire et rend l'ambiance d'origine.
+// Les dossiers en favori (test/favoris-dossiers-firefox.mjs) : `window.__pin(...chemins)` en pose, le rangement de doublure note « pin:chemin » et « unpin:chemin » dans `window.__filing`.
 // Les dossiers sans fichier (test/dossiers-firefox.mjs) : le vrai `Filing` (js/explorer/filing.js) et les vraies fenêtres du rangement (js/explorer/filing-window.js) sur un rangement de doublure qui tient les dossiers gardés
 // (`window.__keep(...chemins)` en pose, `window.__filing` note chaque lot « setFiling:+gardé:-retiré »), et la corbeille y garde le dossier du dernier fichier qui part, comme le contrôleur.
 // Un fichier que seule l'app ouverte sait fermer ou copier (test/composite-firefox.mjs) : la « Grille de suivi » en fait office ; `window.__appOpen = false` : l'app n'est pas ouverte, le geste est grisé et dit
@@ -132,6 +133,7 @@ async function mount() {
   let live = [...files];
   let trashed = [];
   let kept = []; // les dossiers que la personne garde sans fichier
+  let pinned = []; // ceux de ses dossiers qu'elle a mis en favori (test/favoris-dossiers-firefox.mjs)
   let arrivals = []; // les fichiers reçus d'un autre document (« Partagés avec moi », `window.__shared`)
   // Les raccourcis (test/raccourcis-firefox.mjs) : les lignes `gfs-shortcut` d'un rangement de doublure (la table telle que `fetchTable` la rend), lues par le vrai modèle ; `window.__shortcutsOn` allume le bouton.
   let shortcutRows = [];
@@ -143,7 +145,7 @@ async function mount() {
   const spaceTable = { id: [1], Key: ['achats'], Name: ['Achats'] };
   const spaceInfo = () => readSpaces(spaceTable, { id: [] });
   const show = () => explorer.setFiles([...live, ...shortcutFiles(readShortcuts(shortcutData(), 'essai@example.com'), live, arrivals)], trashed, kept, arrivals,
-    new Map([...readFolderLooks(lookData(), 'essai@example.com'), ...(window.__spacesOn ? spaceInfo().looks : [])]));
+    new Map([...readFolderLooks(lookData(), 'essai@example.com'), ...(window.__spacesOn ? spaceInfo().looks : [])]), pinned);
   const folders = new Map(files.map(file => [file.key, file.folder])); // où chaque fichier est au départ : couper puis coller en déplace, `__reset` les remet
   const pick = (list, wanted) => list.findIndex(file => file.key === wanted.key);
   const move = (from, to, wanted) => { const at = pick(from, wanted); if (at < 0) return null; const [file] = from.splice(at, 1); to.push(file); return file; };
@@ -222,13 +224,16 @@ async function mount() {
     setFiling: async (entries, folders = {}) => {
       const add = folders.add || [];
       const drop = folders.drop || [];
-      window.__filing.push(['setFiling', ...add.map(path => `+${path}`), ...drop.map(path => `-${path}`)]);
+      const pin = folders.pin || [];
+      const unpin = folders.unpin || [];
+      window.__filing.push(['setFiling', ...add.map(path => `+${path}`), ...drop.map(path => `-${path}`), ...pin.map(path => `pin:${path}`), ...unpin.map(path => `unpin:${path}`)]);
       for (const entry of entries) { const file = live.find(item => item.id === entry.file); if (file) file.folder = entry.folder; }
-      kept = [...kept.filter(path => !drop.includes(path)), ...add.filter(path => !kept.includes(path))];
+      kept = [...kept.filter(path => !drop.includes(path)), ...[...add, ...pin].filter((path, at, all) => !kept.includes(path) && all.indexOf(path) === at)];
+      pinned = [...pinned.filter(path => !drop.includes(path) && !unpin.includes(path)), ...pin.filter(path => !pinned.includes(path))];
     },
   };
   const filing = new Filing({
-    port: null, rangement, t: i18n.t, locale: () => locale, files: () => live, folders: () => kept, appName: () => 'Publipostage+', here: () => (explorer.state.view === 'folder' ? explorer.state.path : ''),
+    port: null, rangement, t: i18n.t, locale: () => locale, files: () => live, folders: () => kept, pinnedFolders: () => pinned, appName: () => 'Publipostage+', here: () => (explorer.state.view === 'folder' ? explorer.state.path : ''),
     writeBlock: () => null, notice: text => window.__notices.push(text), specOf: () => null, refresh: async () => show(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
   });
   let shortcutSeq = 0;
@@ -327,6 +332,9 @@ async function mount() {
   // Un fichier que quelqu'un a donné à la personne par son adresse (« Partagés avec moi », lot 4c) : le premier modèle, à la racine, jamais rangé par elle.
   window.__direct = () => { live[0].folder = ''; live[0].direct = { by: 'marc@example.com' }; show(); };
   window.__keep = (...paths) => { kept = [...new Set([...kept, ...paths])]; show(); };
+  // Des dossiers déjà en favori (leur ligne d'état est gardée aussi) : `window.__pin(...chemins)`.
+  window.__pinFile = (...names) => { for (const file of live) if (names.includes(file.name)) file.pinned = true; show(); };
+  window.__pin = (...paths) => { kept = [...new Set([...kept, ...paths])]; pinned = [...new Set([...pinned, ...paths])]; show(); };
   // Le menu « Réglages » : la langue et le bord de la barre que la personne a choisis en dernier (la ligne de la barre est une doublure : le vrai Dock se mesure dans le labo), et la vraie fenêtre « À propos ».
   const EDGES = [['gauche', 'dock-left'], ['haut', 'dock-top'], ['droite', 'dock-right'], ['bas', 'dock-bottom']];
   window.__resetSettings = () => { window.__language = language; window.__place = 'gauche'; window.__langtool = false; window.__reopen = true; };
@@ -490,7 +498,7 @@ async function mount() {
       shareFolderFile(path) { return /^Espaces\/[^/]+$/.test(path) ? { key: `espace:${path.split('/')[1].toLowerCase()}`, name: path.split('/')[1], space: { name: path.split('/')[1] }, wholeSpace: true } : this.folderFile(path); } }, onWeight: estimate => window.__weight(estimate), alerts: ({ detail }) => (window.__alertBytes ? [alertBar({ bytes: window.__alertBytes, locale, t: i18n.t, detail })] : []), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: file => filing.moveFile(file), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: path => filing.moveFolder(path), ...moving,
-      newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
+      newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), togglePinFolder: path => filing.togglePinFolder(path), undoStack: filing.undoStack },
   });
   window.__explorer = explorer;
   // Ce qu'on a donné à la personne dans le document (la cloche, test/notifications-firefox.mjs) : `window.__given(items)` pose la liste que le magasin rendrait (js/sharing/notice-store.js) et un faux magasin
@@ -505,9 +513,10 @@ async function mount() {
     explorer.close(); // la fermeture vide le presse-papiers : chaque mesure part de rien
     filing.undoStack.clear(); // et la pile de Ctrl+Z
     live = [...files];
-    for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); delete file.space; delete file.ownFolder; delete file.direct; }
+    for (const file of live) { file.trashed = null; file.pinned = false; file.folder = folders.get(file.key); delete file.space; delete file.ownFolder; delete file.direct; }
     trashed = [];
     kept = [];
+    pinned = [];
     arrivals = [];
     window.__sharedBlocked = '';
     window.__linkProxy = undefined; // plus de liens entre espaces : les menus redeviennent ceux d'avant

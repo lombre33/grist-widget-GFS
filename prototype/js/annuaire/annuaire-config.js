@@ -202,7 +202,7 @@ export const displayAction = (tableId, colRef, colId, shown) => ['SetDisplayForm
 // js/annuaire/annuaire-plan.js).
 // `Plan` : le plan du lieu (une image, en pièce jointe) ; `Shape` : le tracé du lieu sur le plan de son parent (un texte JSON) ; `Lat`, `Lng`, `Address` :
 // facultatifs (le lien « Voir sur une carte en ligne », jamais un géocodage).
-export const PLAN_TABLE = Object.freeze({ id: 'Directory_Places', name: 'Name', parent: 'Parent', image: 'Plan' });
+export const PLAN_TABLE = Object.freeze({ id: 'Directory_Places', name: 'Name', parent: 'Parent', image: 'Plan', shape: 'Shape' });
 const choices = list => JSON.stringify({ choices: list });
 export const PLAN_COLUMNS = Object.freeze([{ id: 'Name', type: 'Text' }, { id: 'Kind', type: 'Choice',
   widgetOptions: choices(['Site', 'Building', 'Floor', 'Room']) },

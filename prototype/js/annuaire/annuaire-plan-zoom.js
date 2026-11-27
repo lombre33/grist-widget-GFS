@@ -22,6 +22,13 @@ export function zoomAt(view, factor, px, py, vw, vh) {
   return clampView({ k, x: px - (px - view.x) * ratio, y: py - (py - view.y) * ratio }, vw, vh);
 }
 
+// La vue qui cadre le rectangle `box` ({ x, y, w, h }, en pixels du cadre, l'image étant à l'agrandissement 1) avec un peu de marge autour : le local qu'on
+// ouvre, vu de près. Jamais moins que l'image entière, jamais plus que MAX_ZOOM.
+export function focusView(box, vw, vh, margin = 0.25) {
+  const k = clamp(Math.min(vw / (box.w * (1 + margin * 2)), vh / (box.h * (1 + margin * 2))), MIN_ZOOM, MAX_ZOOM);
+  return clampView({ k, x: vw / 2 - (box.x + box.w / 2) * k, y: vh / 2 - (box.y + box.h / 2) * k }, vw, vh);
+}
+
 // Déplace l'image de (`dx`, `dy`) pixels.
 export const panBy = (view, dx, dy, vw, vh) => clampView({ k: view.k, x: view.x + dx, y: view.y + dy }, vw, vh);
 

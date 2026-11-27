@@ -42,22 +42,24 @@
   .an-main[data-view="plan"] { overflow: hidden; }
 }
 
-/* L'image du plan d'un lieu (lot 2 ; js/annuaire/annuaire-plan-map.js) : un cadre qu'on agrandit et qu'on déplace, sur fond creusé, les trois boutons de zoom en haut à
-   droite. L'image s'ajuste dans le cadre (`object-fit`), puis la vue la déplace par `transform` (posé par le code, jamais un attribut `style`). Large (plus de 640 px) et
-   sans la fiche ouverte : le cadre à gauche, les lieux et les occupants à droite ; sinon l'un sous l'autre. */
+/* L'image du plan d'un lieu (lot 2 ; js/annuaire/annuaire-plan-map.js) : un cadre qu'on agrandit et qu'on déplace, sur fond creusé ; les trois boutons de zoom
+   sont dans une colonne à droite du cadre, jamais sur l'image (un tracé en haut à droite du plan resterait cliquable). L'image s'ajuste dans le cadre
+   (`object-fit`), puis la vue déplace l'ensemble, l'image et ses tracés, par `transform` (posé par le code, jamais un attribut `style`). Large (plus de 640 px)
+   et sans la fiche ouverte : le cadre à gauche, les lieux et les occupants à droite ; sinon l'un sous l'autre. */
 .an-pl-imgacts { flex: none; display: flex; flex-wrap: wrap; gap: 6px; margin-left: 4px; }
 .an-pl-imgacts:empty { display: none; }
 .an-pl-img-b[aria-disabled="true"] { color: var(--text-muted); cursor: default; }
 .an-pl-side { flex: none; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.an-pl-map { flex: none; margin: 0; }
-.an-pl-vp { position: relative; height: clamp(140px, 40vh, 300px); overflow: hidden; border: 1px solid var(--border); border-radius: calc(var(--radius-lg) * 1.25); background: var(--surface-sunken);
+.an-pl-map { flex: none; display: flex; align-items: flex-start; gap: 6px; margin: 0; }
+.an-pl-vp { position: relative; flex: 1 1 auto; min-width: 0; height: clamp(150px, 44vh, 340px); overflow: hidden; border: 1px solid var(--border); border-radius: calc(var(--radius-lg) * 1.25); background: var(--surface-sunken);
   touch-action: none; outline-offset: 2px; }
 .an-pl-vp.is-zoomed { cursor: grab; }
 .an-pl-vp.is-drag { cursor: grabbing; }
-.an-pl-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform-origin: 0 0; user-select: none; -webkit-user-drag: none; }
+.an-pl-stage { position: absolute; inset: 0; transform-origin: 0 0; }
+.an-pl-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
 .an-pl-mapnote { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: 12px; text-align: center; }
 .an-pl-mapnote[hidden] { display: none; }
-.an-pl-zoom { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
+.an-pl-zoom { flex: none; display: flex; flex-direction: column; gap: 4px; }
 .an-pl-zb { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-btn);
   background: var(--surface); color: var(--text); cursor: pointer; }
 .an-pl-zb:hover { border-color: var(--border-strong); }
@@ -69,3 +71,26 @@
   .an-body[data-view="plan"][data-side="false"] .an-pl-body.has-map > .an-pl-map { grid-column: 1; grid-row: 2; }
   .an-body[data-view="plan"][data-side="false"] .an-pl-body.has-map > .an-pl-side { grid-column: 2; grid-row: 2; }
 }
+
+/* Les tracés posés sur l'image (lot 3 ; js/annuaire/annuaire-plan-shapes.js) : un SVG qui recouvre l'image, en unités du plan (la largeur de l'image en vaut 1000).
+   `--px` (posée par le code) dit combien d'unités vaut un pixel de l'écran : les traits, les pointillés et les textes gardent ainsi leur taille d'écran quand on
+   agrandit. Un tracé qui se clique est cerclé de l'accent, un lieu sans poste (couloir, escalier, sanitaires) est creusé et en pointillés, le bureau à repérer est
+   plein, les autres lieux s'estompent quand un local est cadré. Le nom pose un liseré de la couleur du fond : il se lit sur n'importe quelle image. */
+.an-pl-shapes { position: absolute; inset: 0; width: 100%; height: 100%; --px: 1; }
+.an-pl-shape { cursor: pointer; }
+.an-pl-shape path { fill: var(--accent-soft); fill-opacity: 0.55; stroke: var(--accent); stroke-width: calc(var(--px) * 1.5px); stroke-linejoin: round; }
+.an-pl-shape:hover path { fill-opacity: 0.85; }
+.an-pl-shape.is-grey { cursor: default; }
+.an-pl-shape.is-grey path { fill: var(--surface-sunken); fill-opacity: 0.7; stroke: var(--border-strong); stroke-dasharray: calc(var(--px) * 5px) calc(var(--px) * 3px); }
+.an-pl-shape.is-here path { fill: var(--accent); fill-opacity: 0.35; stroke-width: calc(var(--px) * 3px); }
+.an-pl-shape.is-dim path { fill-opacity: 0.1; stroke-opacity: 0.5; }
+.an-pl-shape.is-current { cursor: default; }
+.an-pl-shape.is-current path { fill: none; stroke-width: calc(var(--px) * 3px); }
+.an-pl-label { fill: var(--text); stroke: var(--surface); stroke-width: calc(var(--px) * 3px); stroke-linejoin: round; paint-order: stroke; font-size: calc(var(--px) * 12px);
+  font-weight: 700; pointer-events: none; }
+.an-pl-label.is-count { font-weight: 600; }
+.an-pl-seat { stroke-width: calc(var(--px) * 1.5px); }
+.an-pl-seat.is-taken { fill: var(--accent-solid); stroke: var(--surface); cursor: pointer; }
+.an-pl-seat.is-taken:hover { stroke: var(--text); }
+.an-pl-seat.is-taken.is-selected { stroke: var(--text); stroke-width: calc(var(--px) * 2.5px); }
+.an-pl-seat.is-free { fill: var(--surface); fill-opacity: 0.85; stroke: var(--accent); }

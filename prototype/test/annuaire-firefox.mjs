@@ -25,6 +25,7 @@ import { filtresProblems } from './annuaire-filtres-firefox.mjs';
 import { nouveauProblems } from './annuaire-nouveau-firefox.mjs';
 import { droitsProblems } from './annuaire-droits-firefox.mjs';
 import { verrouProblems } from './annuaire-verrou-firefox.mjs';
+import { ajoutProblems } from './annuaire-ajout-firefox.mjs';
 import { PROBES } from './annuaire-probes.mjs';
 import { ficheSectionsProblems } from './annuaire-fiche-firefox.mjs';
 import { listColumnsProblems, sortProblems, orgFiltersProblems } from './annuaire-columns-firefox.mjs';
@@ -222,6 +223,7 @@ export async function annuaireProblems(page, language, tag, { width, mode }) {
     await linksProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?links=1&sub=1`) et ne fait que lire
     await ambiancesProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?links=1&sub=1`), pose chaque ambiance de GFS et ne fait que lire
     await verrouProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?rights=…&lock=…`) et n'écrit que dans le faux Grist
+    await ajoutProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?admin=0`, `?sub=1&home=merged`) et écrit dans le faux Grist
     await toolsProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?tools=1`) : tout dernier
     const said = await page.run(() => window.__annuaireNotices);
     if (said.length) note('phrase inattendue', `l'annuaire a dit : ${said.join(' | ')}`);

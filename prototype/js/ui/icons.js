@@ -31,6 +31,8 @@ const ICONS = {
   more: '<circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
   user: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/>',
   users: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c0-3.2 2.7-5.2 6-5.2s6 2 6 5.2"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8"/><path d="M17 14.6c2.4.5 4 2.3 4 4.9"/>',
+  // Ajouter une personne (le bouton « Ajouter » de l'annuaire) : la personne, et un « + » à sa droite.
+  'user-plus': '<circle cx="9.5" cy="8" r="3.6"/><path d="M3 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M19 6.5v6M16 9.5h6"/>',
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   // Les fichiers ouverts (la vue « Ouverts ») : trois feuilles en pile.
   stack: '<path d="M12 3.5l8.5 4.2L12 12 3.5 7.7z"/><path d="M3.5 12L12 16.2 20.5 12"/><path d="M3.5 16.3L12 20.5l8.5-4.2"/>',

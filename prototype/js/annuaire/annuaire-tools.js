@@ -20,6 +20,15 @@ export function checkButton(state, t) {
     dataset: { act: 'check', fk: 'check' } }, icon('warning'), flagged ? h('b', { class: 'an-chk-n', 'aria-hidden': 'true' }, String(total)) : null);
 }
 
+// Le bouton « Ajouter » de la barre de la liste et de l'organigramme : ajouter des personnes à cet annuaire (la fenêtre « Modifier », à vide). Grisé, avec sa
+// raison au survol, quand la personne qui lit ne peut pas ajouter (administrateurs seuls, copie, liste fusionnée, document en lecture) : un clic la redit dans
+// le pied.
+export function addButton(blocked, t) {
+  const label = blocked || t('an.add.tip');
+  return h('button', { type: 'button', class: 'btn sm an-tbtn an-addbtn', title: label, 'aria-label': label, 'aria-disabled': blocked ? 'true' : null,
+    dataset: { act: 'add', fk: 'add' } }, icon('user-plus'), h('span', { class: 'an-tb-t' }, t('an.add')));
+}
+
 // Le bouton « Écrire » de la barre de la liste et de l'organigramme : écrire aux personnes affichées. Grisé quand aucune n'a d'adresse (le survol dit
 // pourquoi).
 export function mailButton({ count, addresses }, t) {

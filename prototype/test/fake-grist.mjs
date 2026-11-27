@@ -46,6 +46,18 @@ export function fakeGrist(tables = {}, { renameTo = null, email = null, fail = {
       table.rows.push(made);
       return made.id;
     }
+    // Plusieurs lignes ajoutées d'un coup (a : les numéros voulus, null pour un numéro neuf ; b : par colonne, la liste des valeurs) : rend les numéros, comme Grist ; une
+    // colonne que b ne donne pas reste absente de la ligne (Grist y met sa valeur par défaut).
+    if (verb === 'BulkAddRecord') {
+      table.nextId = (table.nextId || Math.max(0, ...table.rows.map(row => row.id)) + 1);
+      return a.map((wanted, i) => {
+        if (wanted != null && table.rows.some(row => row.id === wanted)) throw new Error(`Invalid row id ${wanted}`);
+        const made = { id: wanted != null ? wanted : table.nextId, ...Object.fromEntries(known.map(column => [column, b[column][i]])) };
+        table.nextId = Math.max(table.nextId, made.id + 1);
+        table.rows.push(made);
+        return made.id;
+      });
+    }
     if (verb === 'UpdateRecord') { Object.assign(table.rows.find(row => row.id === a), b); return null; }
     // Plusieurs lignes d'un coup (a : les numéros, b : par colonne, la liste des valeurs) : comme Grist, un numéro absent fait échouer tout le lot.
     if (verb === 'BulkUpdateRecord') { a.forEach((id, i) => Object.assign(table.rows.find(row => row.id === id) || (() => { throw new Error(`Invalid row id ${id}`); })(), Object.fromEntries(known.map(column => [column, b[column][i]])))); return null; }

@@ -37,3 +37,22 @@
 .an-ed-change dd .ic { flex: none; width: 13px; height: 13px; color: var(--text-muted); }
 .an-ed-now { color: var(--text); }
 @container anset (max-width: 560px) { .an-ed-change { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+
+/* « Ajouter des personnes » (choix du porteur, 27/11 : plusieurs fiches à la suite, une relecture, un seul ajout) : la rangée des fiches préparées, collée en haut
+   du formulaire (on voit toujours laquelle est ouverte et le bouton qui en prépare une autre), puis la relecture des ajouts. Jetons seulement. */
+.an-ed-drafts { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 -14px; padding: 8px 14px; border-bottom: 1px solid var(--border);
+  background: var(--surface); }
+.an-ed-draft { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); }
+.an-ed-draft-b { min-width: 0; max-width: 200px; min-height: 24px; padding: 0 4px 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--text); font: inherit;
+  font-size: max(12.5px, var(--fs-min)); cursor: pointer; }
+.an-ed-draft-b > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-ed-draft:hover:not(.is-current) { background: var(--surface-sunken); }
+.an-ed-draft.is-current { border-color: var(--accent-soft-border); background: var(--accent-soft); }
+.an-ed-draft.is-current .an-ed-draft-b { color: var(--accent-ink); font-weight: 600; }
+.an-ed-draft .an-ib { width: 24px; height: 24px; margin-right: 1px; }
+.an-ed-draft .an-ib[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+
+.an-ed-new { margin-top: 8px; }
+.an-ed-new h3 { margin: 0 0 4px; overflow-wrap: anywhere; }
+.an-ed-warn { display: flex; align-items: flex-start; gap: 6px; margin: 6px 0 0; color: var(--warn-ink); font-size: max(12.5px, var(--fs-min)); }
+.an-ed-warn .ic { flex: none; width: 13px; height: 13px; margin-top: 2px; }

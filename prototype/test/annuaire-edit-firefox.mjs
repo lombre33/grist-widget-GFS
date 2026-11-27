@@ -88,7 +88,7 @@ async function readable(page, note, where) {
   for (const [what, value] of Object.entries(await page.run(contrasts, PROBES))) if (value < 4.5) note('contraste', `${where} : le texte « ${what} » est trop pâle (contraste ${value.toFixed(2)}, 4,5 attendu)`);
 }
 
-async function typeInto(page, click, fk, text) {
+export async function typeInto(page, click, fk, text) {
   await click(`[data-fk="${fk}"]`);
   await page.chord('Control', 'a');
   if (text) await page.press(...text.split('')); else await page.press('Backspace');
@@ -96,7 +96,7 @@ async function typeInto(page, click, fk, text) {
 }
 
 // Un choix dans la liste avec recherche que le bouton `fk` ouvre.
-async function pickFrom(page, click, note, fk, value, where) {
+export async function pickFrom(page, click, note, fk, value, where) {
   if (!await click(`[data-fk="${fk}"]`)) return false;
   await delay(150);
   const opened = await page.run(() => document.querySelector('.mod.pk') !== null);

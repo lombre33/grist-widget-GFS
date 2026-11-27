@@ -9,6 +9,8 @@ import { AnnuaireSetup } from './annuaire-setup.js';
 import { pickFrom } from '../ui/pick-window.js';
 import { shown } from './annuaire-panes.js';
 import { EditWindow } from './annuaire-edit-window.js';
+import { openAdd } from './annuaire-add-window.js';
+import { addBlock } from './annuaire-add.js';
 import { editableFields, personValues } from './annuaire-edit.js';
 import { CheckWindow } from './annuaire-check-window.js';
 import { MailWindow } from './annuaire-mail-window.js';
@@ -65,6 +67,7 @@ export class AnnuaireControl {
       notice: text => opts.notice(text), port: opts.port, rights: opts.rights, schema: () => this.#schema(), writeBlock: () => opts.writeBlock() });
     this.#window = new AnnuaireWindow({ container: opts.container, t: opts.t, locale: opts.locale, inertTargets: opts.inertTargets, writeBlock: opts.writeBlock,
       onSwitch: () => void this.#switch(), onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onEdit: row => this.#edit(row),
+        onAdd: () => this.#addPeople(),
       onCheck: () => this.#check(), onMail: people => this.#mail(people), onPresence: (row, on) => this.#setPresence(row, on),
         onSub: key => this.#subGesture(key), onMergePick: row => this.#mergePick(row), targets: () => (opts.targets ? opts.targets() : []),
       onInsert: (id, person) => this.#insert(id, person), onUnlock: target => (opts.unlock ? opts.unlock(target) : undefined),
@@ -251,6 +254,22 @@ export class AnnuaireControl {
     if (!saved) return false;
     await this.#read(true);
     this.#window.say(t('an.edit.saved', { name: person.name }));
+    return true;
+  }
+
+  // « Ajouter » : la fenêtre « Modifier » à vide, avec les fiches préparées l'une après l'autre ; une seule relecture, puis une seule écriture (les lignes
+  // s'ajoutent à la table des personnes, rien d'autre). La liste se relit, le pied dit combien de personnes sont ajoutées.
+  async #addPeople() {
+    const read = this.#data;
+    const { t } = this.#o;
+    if (!read) return false;
+    const blocked = addBlock(read, this.#o.writeBlock ? this.#o.writeBlock() : null, t);
+    if (blocked) { this.#window.say(blocked); return false; } // le bouton grisé redit sa raison dans le pied
+    const { saved, names } = await openAdd({ read, t, locale: this.#o.locale(), container: this.#o.container, inertTargets: this.#o.inertTargets,
+      save: action => this.#store.update(action) });
+    if (!saved) return false;
+    await this.#read(true);
+    this.#window.say(t('an.add.done', { n: names.length, names: names.length > 3 ? `${names.slice(0, 3).join(', ')}…` : names.join(', ') }));
     return true;
   }
 

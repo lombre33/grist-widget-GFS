@@ -199,3 +199,10 @@
 .an-lk .mod-foot { flex-wrap: wrap; justify-content: flex-end; gap: 6px 8px; }   /* quatre gestes : à 520 et 400 px ils passent sur deux lignes, jamais hors du pied */
 .an-lk .mod-foot .btn { flex: none; }
 .an-lk .mod-foot .btn[aria-disabled="true"] { opacity: 1; border-style: dashed; border-color: var(--border-strong); background: var(--surface); color: var(--text-muted); cursor: not-allowed; }
+
+/* Le bouton « Ajouter » de la barre (liste et organigramme), à côté de « Écrire » : grisé quand la personne ne peut pas ajouter (le survol dit pourquoi). */
+.an-addbtn[aria-disabled="true"] { opacity: 1; border-style: dashed; border-color: var(--border-strong); background: var(--surface); color: var(--text-muted); cursor: not-allowed; }
+@container anmain (max-width: 420px) {
+  .an-crumb .an-addbtn .an-tb-t { display: none; }
+  .an-crumb .an-addbtn { padding: 0 8px; }
+}

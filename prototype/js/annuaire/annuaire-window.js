@@ -18,7 +18,8 @@ import { FilterMenu, place } from './annuaire-filters.js';
 import { sortPeople, nextSort, sortKeys, sortButton } from './annuaire-sort.js';
 import { subButton, openSubMenu } from './annuaire-sub-menu.js';
 import { MergePanel } from './annuaire-merge-panel.js';
-import { checkButton, mailButton, footNodes } from './annuaire-tools.js';
+import { checkButton, mailButton, addButton, footNodes } from './annuaire-tools.js';
+import { addBlock } from './annuaire-add.js';
 import { openInsertMenu } from './annuaire-insert-menu.js';
 import { listKeys, treeKeys } from './annuaire-keys.js';
 import { addressesOf } from './annuaire-mail.js';
@@ -53,7 +54,8 @@ export class AnnuaireWindow {
 
   // opts : { container, t, locale() (la langue des dates), inertTargets(), writeBlock() (ce qui empêche d'écrire : le texte, ou rien), onSwitch(),
   //   onConfigure(), onMergePick(ligne) -> Promise<faux si c'était le dernier annuaire coché> (la vue fusionnée),
-  //   onNew(), onEdit(ligne) (la fenêtre « Modifier »), onCheck() (« À vérifier »), onMail(personnes) (« Écrire au groupe »), onPresence(ligne, apparaît) (« Ma
+  //   onNew(), onEdit(ligne) (la fenêtre « Modifier »), onAdd() (la fenêtre « Ajouter »), onCheck() (« À vérifier »), onMail(personnes) (« Écrire au groupe »),
+  //   onPresence(ligne, apparaît) (« Ma
   //   présence »), onFilterMore(colonne, option) -> Promise<valeur ou null>, onSortPick(clés, tri), onClose() }
   constructor(opts) {
     this.#o = opts;
@@ -287,7 +289,7 @@ export class AnnuaireWindow {
     const model = this.#filterModel(base);
     this.#refs.crumb.replaceChildren(...[h('h3', null, searching ? t('an.results') : node.name), level ? h('span', { class: 'an-pill' }, level) : null,
       h('span', { class: 'an-count' }, t('an.count', { n: found.length })), sortButton(this.#sort, sortKeys(data.config, t), t),
-      this.#menu.button(model, this.#filters), mailButton(this.#mailState(found), t)].filter(Boolean));
+      this.#menu.button(model, this.#filters), addButton(this.#addBlock(), t), mailButton(this.#mailState(found), t)].filter(Boolean));
     place(this.#refs.fbar, this.#menu.bar(model, this.#filters));
     const ctx = { t, locale: this.#o.locale() };
     const rows = sortPeople(found, this.#sort, this.#o.locale()).slice(0, LIST_SHOWN);
@@ -317,7 +319,8 @@ export class AnnuaireWindow {
     const people = mode !== 'structures' ? null : h('button', { type: 'button', class: 'btn sm an-tbtn an-ptoggle', 'aria-pressed': String(on),
       'aria-disabled': many ? 'true' : null, 'aria-label': t('an.org.people'), title: many ? t('an.org.peopleMany', { n: found }) : t('an.org.peopleTip'),
       dataset: { act: 'org-people', fk: 'org-people' } }, icon('users'), h('span', { class: 'an-tb-t' }, t('an.org.people')));
-    this.#org.tools.replaceChildren(...[this.#menu.button(model, this.#filters), people, mailButton(this.#mailState(this.#matching()), t)].filter(Boolean));
+    this.#org.tools.replaceChildren(...[this.#menu.button(model, this.#filters), people, addButton(this.#addBlock(), t),
+      mailButton(this.#mailState(this.#matching()), t)].filter(Boolean));
     place(this.#org.filters, this.#menu.bar(model, this.#filters));
   }
 
@@ -428,6 +431,9 @@ export class AnnuaireWindow {
     if (data && data.merged) return this.#o.t('an.merge.noEdit');
     return data && data.sub ? this.#o.t('an.sub.noEdit') : (this.#o.writeBlock ? this.#o.writeBlock() : null);
   }
+
+  // Ce qui empêche d'ajouter des personnes : le texte, ou rien (voir `addBlock`).
+  #addBlock() { return addBlock(this.#show.data, this.#o.writeBlock ? this.#o.writeBlock() : null, this.#o.t); }
 
   // Ce qui empêche de modifier cette fiche : le texte, ou rien (voir `editBlock`).
   #editBlock(person) { return editBlock(person, this.#show.data, this.#writeBlock(), this.#o.t, this.#o.locale()); }
@@ -731,6 +737,7 @@ const ACTIONS = Object.freeze({
   edit: (window_, data) => window_.editPerson(Number(data.row)),
   check: window_ => window_.checkTool(),
   sub: window_ => window_.subTool(),
+  add: window_ => window_.callout('onAdd'),
   mail: window_ => window_.mailTool(),
   presence: (window_, data) => window_.togglePresence(Number(data.row)),
   insert: (window_, data, button) => window_.insertTool(Number(data.row), button),

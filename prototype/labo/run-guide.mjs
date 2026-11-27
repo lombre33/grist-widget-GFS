@@ -12,7 +12,7 @@ const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
 const problems = [];
 page.on('console', m => { if ((m.type() === 'warning' || m.type() === 'error') && /^GFS|Refused|CSP|Content Security/.test(m.text())) problems.push(m.text()); });
-page.on('pageerror', error => problems.push(error.message));
+page.on('pageerror', error => { problems.push(error.message); console.log('PAGEERROR', error.message); });
 await lab.fitPanel(undefined, 700, 400);
 const frame = lab.frame;
 await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
@@ -252,6 +252,40 @@ check('la démarche qui hérite de son contact le dit', (await person.locator('.
 await lab.shotPanel(run, '20-demarches-personne');
 await win.locator('[data-fk="pv-all"]').click();
 check('« Tout le guide » ramène aux vues du guide', (await win.locator('.gd-person-card').count()) === 0, await win.innerText());
+// 7. « À vérifier » : sans colonne de relecture la vue le dit ; avec elle, les démarches jamais relues se marquent vérifiées (la seule écriture de la vue).
+await win.locator('[data-fk="v:check"]').click();
+await page.waitForTimeout(400);
+const checkText = await win.innerText();
+check('« À vérifier » signale « Poser un congé » sans contact et dit comment suivre la relecture', /Poser un congé/.test(checkText) && /Aucun contact|No contact/.test(checkText) &&
+  /Vérifiée le|Verified on/.test(checkText) && (await win.locator('.gd-ck-mark').count()) === 0, checkText);
+await lab.shotPanel(run, '21-a-verifier');
+await page.keyboard.press('Escape');
+await win.waitFor({ state: 'detached' });
+await frame.evaluate(async () => {
+  await grist.docApi.applyUserActions([['AddColumn', 'Guide_Procedures', 'Verified', { type: 'Date', isFormula: false }],
+    ['AddColumn', 'Guide_Procedures', 'Draft', { type: 'Bool', isFormula: false }]]);
+  const guides = await grist.docApi.fetchTable('GFS_Guides');
+  const config = JSON.parse(guides.Config[0]);
+  config.verified = 'Verified';
+  config.draft = 'Draft';
+  await grist.docApi.applyUserActions([['UpdateRecord', 'GFS_Guides', guides.id[0], { Config: JSON.stringify(config) }]]);
+});
+await page.waitForTimeout(800);
+await button.click();
+await win.waitFor({ state: 'visible' });
+await page.waitForTimeout(900);
+await win.locator('[data-fk="v:check"]').click();
+await page.waitForTimeout(400);
+const marks = await win.locator('.gd-ck-mark').count();
+check('avec la colonne de relecture, les démarches jamais relues ont « Marquer vérifiée »', marks >= 1, await win.innerText());
+check('« Jamais relue » est dit en pastille', /Jamais relue|Never reviewed/.test(await win.innerText()));
+const before = (await win.locator('.gd-ck').count());
+await win.locator('.gd-ck-mark').first().click();
+await page.waitForTimeout(1200);
+const verified = await frame.evaluate(() => grist.docApi.fetchTable('Guide_Procedures'));
+check('« Marquer vérifiée » écrit la date du jour dans la colonne, et rien d\u2019autre', verified.Verified.filter(Boolean).length === 1, verified.Verified);
+check('la démarche marquée sort de la liste', (await win.locator('.gd-ck').count()) <= before, await win.innerText());
+await lab.shotPanel(run, '22-verifiee');
 await page.keyboard.press('Escape');
 await win.waitFor({ state: 'detached' });
 const written = await lab.actions();

@@ -9,6 +9,7 @@ import { GuideWindow } from './guide-window.js';
 import { GuideSetup } from './guide-setup.js';
 import { GuideEdit } from './guide-edit-window.js';
 import { fieldsOf, recordOf } from './guide-write.js';
+import { verifiedValue } from './guide-checks.js';
 import { PROCEDURE_COLUMNS, PROCEDURE_TABLE } from './guide-config.js';
 import { rolesFor } from './guide-model.js';
 import { directoryOf, answerOf } from './guide-contacts.js';
@@ -43,7 +44,7 @@ export class GuideControl {
     this.#annuaires = new AnnuaireStore({ port: opts.port, consent: () => Promise.resolve(false) }); // le guide lit les annuaires, il n'en crée jamais
     this.#window = new GuideWindow({ container: opts.container, t: opts.t, inertTargets: opts.inertTargets, onSwitch: () => void this.#switch(),
       onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onNewProc: parent => void this.#editProc(null, parent),
-        onEditProc: row => void this.#editProc(row),
+        onEditProc: row => void this.#editProc(row), onMark: row => void this.#mark(row),
       writeBlock: () => opts.writeBlock(), onCopy: text => copyText(text, opts.container.ownerDocument),
         onClose: () => {} });
   }
@@ -63,7 +64,7 @@ export class GuideControl {
 
   // Le bouton « Démarches » de la fiche d'une personne dans l'annuaire : ouvre le premier guide qui s'appuie sur cet annuaire (la ligne `directory`), sur les
   // démarches de la personne (la ligne `personRow`). Rend vrai quand le guide s'est ouvert ; sinon la personne en est prévenue.
-  async openForPerson(directory, personRow) {
+  async openForPerson(directory, personRow, beforeOpen = null) {
     const { t } = this.#o;
     if (!this.#o.fullAccess()) { this.#o.notice(t('gd.needsAccess')); return false; }
     let list;
@@ -77,6 +78,7 @@ export class GuideControl {
     const found = list.find(each => each.config.directory === String(directory));
     if (!found) { this.#o.notice(t('gd.person.noGuide')); return false; }
     this.#focus = personRow;
+    if (beforeOpen) beforeOpen();
     if (this.#window.isOpen) { this.#row = found.row; await this.#load(); } else await this.open(found.row);
     return true;
   }
@@ -158,7 +160,8 @@ export class GuideControl {
       if (!cache.has(row)) cache.set(row, answerOf(rolesFor(read.index, read.config, row), colOf, directory));
       return cache.get(row);
     };
-    return { ...read, directory, answerFor };
+    const verified = read.config.verified ? colOf(read.config.verified) : null;
+    return { ...read, directory, answerFor, today: new Date().toISOString().slice(0, 10), verifiedGenre: verified ? verified.genre : '' };
   }
 
   async #schema() {
@@ -298,6 +301,26 @@ export class GuideControl {
       this.#window.say(t(proc ? 'gd.proc.saved' : 'gd.proc.created', { title: String(done.values.title).trim() }));
     } catch (error) {
       console.error('GFS : écriture de la démarche impossible', error);
+      this.#o.notice(t('gd.proc.saveFailed', { reason: String(error && error.message) }));
+    }
+  }
+
+  // « Marquer vérifiée » (vue « À vérifier ») : écrit la date du jour dans la colonne « Vérifiée le » de la démarche, rien d'autre.
+  async #mark(row) {
+    const { t } = this.#o;
+    const data = this.#data;
+    const current = this.#current;
+    const proc = data && data.index.byRow.get(row);
+    if (!proc || !current) return;
+    const blocked = this.#o.writeBlock();
+    const value = verifiedValue(data.verifiedGenre, data.today);
+    if (blocked || value === null || !data.config.verified) { this.#o.notice(blocked || t('gd.chk.noColumn')); return; }
+    try {
+      await this.#store.saveProcedure(current, row, { [data.config.verified]: value });
+      await this.#read();
+      this.#window.say(t('gd.chk.marked', { title: proc.title }));
+    } catch (error) {
+      console.error('GFS : écriture de la relecture impossible', error);
       this.#o.notice(t('gd.proc.saveFailed', { reason: String(error && error.message) }));
     }
   }

@@ -12,8 +12,8 @@ import { pickFrom } from '../ui/pick-window.js';
 import { normalize } from '../ui/search.js';
 import { pickColumn } from '../annuaire/annuaire-setup-path.js';
 import { chooser, formRow, iconButton } from '../annuaire/annuaire-setup-shared.js';
-import { isPeopleTable } from '../annuaire/annuaire-schema.js';
-import { readConfig, ROLE_PRESETS, MAX_ROLES } from './guide-config.js';
+import { isPeopleTable, genreOf } from '../annuaire/annuaire-schema.js';
+import { readConfig, ROLE_PRESETS, MAX_ROLES, MAX_REVIEW_MONTHS } from './guide-config.js';
 import { GuideTypes } from './guide-types-window.js';
 
 const SAMPLE = Object.freeze({ state: 'none', load() {}, text: () => '', whenLoaded() {} }); // le choix d'une colonne n'a pas de personne d'exemple
@@ -22,7 +22,9 @@ const OPTIONAL = Object.freeze([['keywords', 'gd.set.keywords', 'gd.set.keywords
   'gd.set.detailsHint']]);
 const GUESS = Object.freeze({ title: ['title', 'titre', 'name', 'nom'], parent: ['parent', 'mere', 'mother', 'demarchemere'],
   keywords: ['keywords', 'motscles', 'mots'],
-  steps: ['steps', 'etapes'], details: ['details', 'detail', 'description'] });
+  steps: ['steps', 'etapes'], details: ['details', 'detail', 'description'], draft: ['draft', 'brouillon'],
+  verified: ['verified', 'verifiee', 'reviewed', 'relue', 'lastverified'] });
+const STATUS = Object.freeze([['draft', 'gd.set.draft', 'gd.set.draftHint'], ['verified', 'gd.set.verified', 'gd.set.verifiedHint']]);
 
 export class GuideSetup {
   #o;
@@ -52,7 +54,7 @@ export class GuideSetup {
     const directory = this.#o.directories.find(each => each.table === target);
     const show = target === this.#draft.table ? this.#draft.config.title : (directory ? directory.show : '');
     const made = await this.#o.createColumn(table, name, type, show);
-    if (this.#o.schema[table]) this.#o.schema[table].columns.push({ id: made.id, type, genre: kind === 'Ref' ? 'ref' : 'text', ref: target || '',
+    if (this.#o.schema[table]) this.#o.schema[table].columns.push({ id: made.id, type, genre: genreOf(type), ref: target || '',
       visible: '' });
     return made;
   }
@@ -60,7 +62,8 @@ export class GuideSetup {
   // Les colonnes déjà prises par un usage (le titre, la mère, un rôle… : une colonne ne sert qu'à un seul), sauf `keep`.
   #used(keep = '') {
     const { config } = this.#draft;
-    return new Set([config.title, config.parent, config.keywords, config.steps, config.details, config.kind, ...config.fields.map(field => field.col),
+    return new Set([config.title, config.parent, config.keywords, config.steps, config.details, config.kind, config.draft, config.verified,
+      ...config.fields.map(field => field.col),
       ...config.roles.map(role => role.col)].filter(col => col && col !== keep));
   }
 
@@ -75,10 +78,14 @@ export class GuideSetup {
     const { t } = this.#o;
     const { table, config } = this.#draft;
     if (!table) return;
-    const own = { parent: { filter: col => col.genre === 'ref' && col.ref === table, types: [{ type: `Ref:${table}`, label: t('gd.set.parentType') }] },
+    const status = { draft: { filter: col => col.genre === 'bool' || col.genre === 'text', types: [{ type: 'Bool', label: t('gd.set.typeBool') }],
+      clear: true },
+      verified: { filter: col => col.genre === 'date' || col.genre === 'text', types: [{ type: 'Date', label: t('gd.set.typeDate') }], clear: true } }[key];
+    const own = status || { parent: { filter: col => col.genre === 'ref' && col.ref === table,
+      types: [{ type: `Ref:${table}`, label: t('gd.set.parentType') }] },
       title: { filter: col => col.genre === 'text', types: [{ type: 'Text', label: t('an.type.text') }] } }[key]
       || { filter: col => col.genre === 'text', types: [{ type: 'Text', label: t('an.type.text') }], clear: true };
-    const label = key === 'title' ? t('gd.set.title') : key === 'parent' ? t('gd.set.parent') : t(OPTIONAL.find(entry => entry[0] === key)[1]);
+    const label = key === 'title' ? t('gd.set.title') : key === 'parent' ? t('gd.set.parent') : t([...OPTIONAL, ...STATUS].find(entry => entry[0] === key)[1]);
     const col = await this.#pick(key, { title: label, current: config[key], clear: key !== 'title', ...own });
     if (col !== null) { config[key] = col; this.#paint(); }
   }
@@ -196,6 +203,10 @@ export class GuideSetup {
       this.#choice('title', `${t('gd.set.title')} *`, t('gd.set.titleHint'), 'set-title'),
         this.#choice('parent', t('gd.set.parent'), t('gd.set.parentHint'), 'set-parent'),
       ...OPTIONAL.map(([key, label, hint]) => this.#choice(key, t(label), t(hint), `set-${key}`)),
+      ...STATUS.map(([key, label, hint]) => this.#choice(key, t(label), t(hint), `set-${key}`)),
+      formRow(t('gd.set.review'), h('input', { type: 'number', class: 'an-set-input gd-num', min: '0', max: String(MAX_REVIEW_MONTHS),
+        value: String(config.reviewMonths),
+        'aria-label': t('gd.set.review'), dataset: { fk: 'set-review' } }), t('gd.set.reviewHint')),
       formRow(t('gd.set.directory'), chooser(t, 'set-directory', directory ? directory.name : '', { act: 'directory' }), t('gd.set.directoryHint')),
       formRow(t('gd.set.types'), h('button', { type: 'button', class: 'an-pickbtn', 'aria-disabled': table ? null : 'true',
         title: table ? null : t('gd.set.needTable'),
@@ -252,7 +263,8 @@ export class GuideSetup {
     refs.body.addEventListener('click', event => this.#click(event));
     refs.body.addEventListener('input', event => {
       const input = event.target;
-      if (input.dataset.fk === 'set-name') this.#draft.name = input.value;
+      if (input.dataset.fk === 'set-review') this.#draft.config.reviewMonths = Math.max(0, Math.min(MAX_REVIEW_MONTHS, Math.trunc(Number(input.value)) || 0));
+      else if (input.dataset.fk === 'set-name') this.#draft.name = input.value;
       else if (input.dataset.at !== undefined) this.#draft.config.roles[Number(input.dataset.at)].label = input.value;
       if (input.dataset.fk === 'set-name') this.#paintState();
     });

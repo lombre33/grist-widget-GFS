@@ -189,6 +189,8 @@ export function infoPane(model, proc, { t, config }) {
   const looped = model.index.loops.has(proc.row);
   const type = typeOf(config, proc);
   const chips = [type ? h('span', { class: 'gd-chip is-type' }, icon(type.glyph), h('span', null, typeLabel(type, t))) : null,
+    proc.draft ? h('span', { class: 'gd-chip is-warn' }, h('span', null, t('gd.status.draft'))) : null,
+    config.verified && proc.verified ? h('span', { class: 'gd-chip' }, icon('verify'), h('span', null, t('gd.fiche.verified', { date: proc.verified }))) : null,
     ...proc.keywords.map(word => h('span', { class: 'gd-chip' }, word))].filter(Boolean);
   return h('div', { class: 'gd-info' }, crumbs(model, proc, t), h('h3', { class: 'gd-title' }, proc.title),
     chips.length ? h('div', { class: 'gd-chips' }, ...chips) : null,

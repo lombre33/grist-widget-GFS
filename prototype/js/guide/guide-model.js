@@ -12,6 +12,16 @@ import { normalize, words, matchesWords } from '../ui/search.js';
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
 const lines = value => String(value ?? '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 const listOf = cell => (Array.isArray(cell) ? cell.slice(cell[0] === 'L' ? 1 : 0) : []);
+// Une démarche en brouillon : une case cochée, ou un texte qui le dit (« brouillon », « draft », « oui », « true »).
+const isDraft = cell => cell === true || (typeof cell === 'string' && /^(brouillon|draft|oui|yes|true|1)$/i.test(cell.trim()));
+
+// La date de relecture d'une cellule, en « aaaa-mm-jj » : une colonne de date (des secondes depuis 1970, minuit UTC) ou un texte qui commence ainsi ; '' sinon.
+function dateOf(cell) {
+  if (typeof cell === 'number' && Number.isFinite(cell) && cell > 0) return new Date(cell * 1000).toISOString().slice(0, 10);
+  const found = /^(\d{4}-\d{2}-\d{2})/.exec(String(cell ?? '').trim());
+  return found ? found[1] : '';
+}
+
 const rowId = cell => (Number.isInteger(cell) && cell > 0 ? cell : null);
 
 // Un rôle vide n'a ni numéro de ligne ni texte : c'est lui qui laisse la mère parler.
@@ -31,7 +41,8 @@ const keywordsOf = (cell, col, ctx) => (col && col.genre === 'choicelist' ? valu
   String(cell ?? '').split(/[,;\n]/).map(clean).filter(Boolean));
 
 // Les démarches de la table : [{ row, title, parent (la ligne de la mère, ou null), keywords, steps (une étape par ligne), details, roles: { colonne: { ids,
-// texts } }, kind (l'identifiant du type), extra: { champ: texte } }], triées par titre. Une ligne sans titre est ignorée (GFS ne saurait pas la nommer).
+// texts } }, kind (l'identifiant du type), extra: { champ: texte }, draft (vrai : brouillon), verified (« aaaa-mm-jj » ou '') }], triées par titre. Une ligne
+// sans titre est ignorée (GFS ne saurait pas la nommer).
 // `config` : js/guide/guide-config.js.
 export function buildProcedures(config, tableId, data, schema) {
   const table = data[tableId];
@@ -44,7 +55,8 @@ export function buildProcedures(config, tableId, data, schema) {
     return { row, title: valuesOf(cell(config.title, i), col('title'), ctx)[0] || clean(cell(config.title, i)), parent: mother,
       keywords: keywordsOf(cell(config.keywords, i), col('keywords'), ctx), steps: lines(cell(config.steps, i)),
       details: String(cell(config.details, i) ?? '').trim(),
-      kind: clean(cell(config.kind, i)), extra: Object.fromEntries(config.fields.map(field => [field.id, String(cell(field.col, i) ?? '').trim()])),
+      draft: isDraft(cell(config.draft, i)), verified: dateOf(cell(config.verified, i)), kind: clean(cell(config.kind, i)),
+        extra: Object.fromEntries(config.fields.map(field => [field.id, String(cell(field.col, i) ?? '').trim()])),
       roles: Object.fromEntries(config.roles.map(role => [role.col, roleCell(cell(role.col, i), columnOf(schema, tableId, role.col), ctx)])) };
   });
   return procs.filter(proc => proc.title).sort((a, b) => a.title.localeCompare(b.title, 'fr'));

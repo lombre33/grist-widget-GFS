@@ -105,6 +105,7 @@ const ICONS = {
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1.5 1.5 0 0 1-1.5 1.5A15.5 15.5 0 0 1 3.5 5.5 1.5 1.5 0 0 1 5 4Z"/>',
   // Le module Guide (la barre de GFS, l'explorateur, l'en-tête) : un poteau et ses deux panneaux de direction ; ce que désigne un rôle d'une démarche : un
   // service (un bâtiment) ou un poste (une mallette) ; et la flèche « hérité de la démarche mère » (un retour en équerre).
+  verify: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9z"/><path d="M9 14l2 2 4-4.5"/>',
   guide: '<path d="M12 3v18M9 21h6"/><path d="M6 5h10l3 2.5-3 2.5H6z"/><path d="M18 12H8l-3 2.5L8 17h10z"/>',
   building: '<path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M14 10h5a1 1 0 0 1 1 1v10"/><path d="M8 8h2M8 12h2M8 16h2M2.5 21h19"/>',
   briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/>',

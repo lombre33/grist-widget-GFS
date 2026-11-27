@@ -127,13 +127,14 @@ export class AnnuaireControl {
     return opened;
   }
 
-  // « Démarches » d'une fiche : le guide du document s'ouvre sur les démarches de la personne ; la fenêtre de l'annuaire se referme quand il est ouvert.
-  // Grisé, le bouton dit pourquoi (le document n'a pas de guide) ; un guide qui ne s'appuie pas sur cet annuaire le dit en s'ouvrant.
+  // « Démarches » d'une fiche : le guide du document s'ouvre sur les démarches de la personne ; la fenêtre de l'annuaire se referme juste avant qu'il s'ouvre
+  // (sinon la fenêtre qui se ferme rendrait la page cliquable sous celle qui s'ouvre). Grisé, le bouton dit pourquoi (le document n'a pas de guide) ; un guide
+  // qui ne s'appuie pas sur cet annuaire le dit en s'ouvrant.
   async #guide(row) {
     const blocked = guideBlock(this.#data, this.#o.t);
     if (blocked) { this.#o.notice(blocked); return; }
     const current = this.#current;
-    if (current && await this.#o.guide(current.parent || current.row, row)) this.#window.close();
+    if (current) await this.#o.guide(current.parent || current.row, row, () => this.#window.close());
   }
 
   // Les groupes de la fenêtre « Choisir une personne » : « Tous mes annuaires » (quand il y en a plusieurs : une adresse e-mail ne fait qu'une personne), puis
@@ -536,5 +537,5 @@ export function createAnnuaire(c) {
     images: { download: id => c.transfer.download(id), upload: (file, name) => c.transfer.upload(file, name) },
     identity: () => c.identity || '', rights: c.rights, targets: () => c.personTargets(), insert: (id, person) => c.openings.openPerson(id, person),
     unlock: target => c.unlock({ text: target.lock, focus: target.focus }), apps: () => c.openModules(),
-    guide: (directory, row) => openGuideForPerson(c, directory, row) });
+    guide: (directory, row, before) => openGuideForPerson(c, directory, row, before) });
 }

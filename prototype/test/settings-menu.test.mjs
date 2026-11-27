@@ -11,12 +11,12 @@ import { HOST } from '../js/broker/context.js';
 // La ligne « Position de la barre » est celle du vrai Dock (js/shell/dock.js) : ici, une doublure que le menu doit laisser telle quelle.
 const PLACE = Object.freeze({ label: 'Position de la barre', icon: 'dock-left', submenu: [] });
 
-function build(lang = 'fr', { choice = 'auto', grist = 'fr', shown = false, why = null, indexWhy = null } = {}) {
+function build(lang = 'fr', { choice = 'auto', grist = 'fr', shown = false, why = null, indexWhy = null, reopens = true } = {}) {
   const calls = [];
   const { t } = createI18n(lang);
   const items = settingsItems({
     t, language: () => ({ choice, grist }), onLanguage: value => calls.push(['langue', value]), onTheme: () => calls.push(['theme']),
-    langtool: () => ({ shown, toggle: () => calls.push(['langtool']) }), place: () => PLACE, onAbout: () => calls.push(['apropos']), onDependencies: () => calls.push(['dependances']),
+    langtool: () => ({ shown, toggle: () => calls.push(['langtool']) }), reopen: () => ({ on: reopens, toggle: () => calls.push(['reouvrir']) }), place: () => PLACE, onAbout: () => calls.push(['apropos']), onDependencies: () => calls.push(['dependances']),
     manage: () => ({ why, open: () => calls.push(['gerer']), notice: text => calls.push(['avis', text]) }),
     index: () => ({ why: indexWhy, open: () => calls.push(['index']), notice: text => calls.push(['avis-index', text]) }),
   });
@@ -55,25 +55,26 @@ test('la coche suit le choix : « Comme Grist », le français ou l\'anglais, ja
   }
 });
 
-test('« Bouton LanguageTool » n\'est pas au niveau des autres réglages (le porteur, 12/11) : il est dans « Réglages avancés », seul, et la ligne du menu ne le montre pas', () => {
+test('« Bouton LanguageTool » n\'est pas au niveau des autres réglages (le porteur, 12/11) : il est dans « Réglages avancés », et la ligne du menu ne le montre pas', () => {
   for (const lang of ['fr', 'en']) {
     const { items } = build(lang);
     const names = rows(items).map(item => item.label);
     assert.ok(!names.some(name => /LanguageTool/.test(name)), `${lang} : une ligne du menu nomme LanguageTool`);
     const advanced = items[5];
     assert.ok(Array.isArray(advanced.submenu), `${lang} : « Réglages avancés » n'ouvre pas de sous-menu`);
-    assert.deepEqual(advanced.submenu.map(entry => (entry === '-' ? '-' : entry.label)), [lang === 'fr' ? 'Bouton LanguageTool' : 'LanguageTool button']);
+    assert.deepEqual(advanced.submenu.map(entry => (entry === '-' ? '-' : entry.label)), lang === 'fr' ? ['Bouton LanguageTool', 'Rouvrir au rechargement'] : ['LanguageTool button', 'Reopen after a reload']);
   }
 });
 
 test('« Bouton LanguageTool » est un interrupteur à lui seul (case à cocher), non un choix parmi d\'autres comme les langues', () => {
   const { items } = build('fr');
   assert.equal(items[5].submenu[0].toggle, true);
+  assert.equal(items[5].submenu[1].toggle, true, '« Rouvrir au rechargement » aussi');
   assert.equal(items[5].toggle, undefined);
   assert.equal(items[0].submenu.some(entry => entry !== '-' && entry.toggle), false);
 });
 
-test('chaque ligne fait ce qu\'elle dit : choisir une langue, ouvrir le thème, ouvrir « Dépendances… », mettre le bouton LanguageTool dans la barre, ouvrir « À propos »', () => {
+test('chaque ligne fait ce qu\'elle dit : choisir une langue, ouvrir le thème, ouvrir « Dépendances… », mettre le bouton LanguageTool dans la barre, couper ou rallumer la reprise après un rechargement, ouvrir « À propos »', () => {
   const { items, calls } = build('fr');
   const [language, theme, , , dependencies, advanced, , , about] = items;
   const [auto, , fr, en] = language.submenu;
@@ -83,8 +84,9 @@ test('chaque ligne fait ce qu\'elle dit : choisir une langue, ouvrir le thème, 
   theme.run();
   dependencies.run();
   advanced.submenu[0].run();
+  advanced.submenu[1].run();
   about.run();
-  assert.deepEqual(calls, [['langue', 'auto'], ['langue', 'fr'], ['langue', 'en'], ['theme'], ['dependances'], ['langtool'], ['apropos']]);
+  assert.deepEqual(calls, [['langue', 'auto'], ['langue', 'fr'], ['langue', 'en'], ['theme'], ['dependances'], ['langtool'], ['reouvrir'], ['apropos']]);
 });
 
 test('la ligne de la barre est celle que le contrôleur donne, sans changement : le menu ne connaît pas la barre', () => {
@@ -99,6 +101,16 @@ test('« Bouton LanguageTool » : cochée quand le bouton est dans la barre, dé
     assert.match(row.title, /bouton de la barre coupe ou rallume LanguageTool dans l’app ouverte/);
   }
   assert.match(build('en').items[5].submenu[0].title, /button in the bar turns LanguageTool off or back on in the open app/);
+});
+
+test('« Rouvrir au rechargement » (demande du porteur, 26/11) : cochée quand la reprise est allumée, décochée sinon, et l\'infobulle dit ce que GFS rouvre, dans les deux langues', () => {
+  for (const reopens of [true, false]) {
+    const row = build('fr', { reopens }).items[5].submenu[1];
+    assert.equal(row.check, reopens);
+    assert.equal(row.icon, 'refresh');
+    assert.match(row.title, /rouvre le fichier ou l’endroit de l’explorateur où vous étiez/);
+  }
+  assert.match(build('en').items[5].submenu[1].title, /reopens the file or the explorer place where you were/);
 });
 
 test('les lignes à fenêtre ou à sous-menu disent pourquoi à l\'infobulle : la langue et le thème valent pour la suite et ses apps', () => {

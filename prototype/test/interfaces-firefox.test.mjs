@@ -147,7 +147,7 @@ function measureSettingsMenu(needSub = false) {
 
 // Ce que la page sait après un geste : combien de menus restent ouverts, le dernier choix du menu, et si le clavier est sur le bouton « Réglages ».
 const afterSettingsGesture = () => ({
-  menus: document.querySelectorAll('.menu').length, language: window.__language, place: window.__place, langtool: window.__langtool,
+  menus: document.querySelectorAll('.menu').length, language: window.__language, place: window.__place, langtool: window.__langtool, reopen: window.__reopen,
   onButton: Boolean(document.activeElement && document.activeElement.querySelector && document.activeElement.querySelector('use[href="#i-sliders"]')),
 });
 
@@ -318,7 +318,7 @@ async function openSettings(page, row) {
 
 const SETTINGS_ROWS = { fr: ['Langue', 'Thème…', 'Gérer les partages…', 'Index des noms…', 'Dépendances…', 'Réglages avancés', 'Position de la barre', 'À propos…'],
   en: ['Language', 'Theme…', 'Manage sharing…', 'Name index…', 'Dependencies…', 'Advanced settings', 'Bar position', 'About…'] };
-const ADVANCED_ROWS = { fr: ['Bouton LanguageTool'], en: ['LanguageTool button'] };
+const ADVANCED_ROWS = { fr: ['Bouton LanguageTool', 'Rouvrir au rechargement'], en: ['LanguageTool button', 'Reopen after a reload'] };
 const LANGUAGE_ROWS = { fr: ['Comme Grist (Français)', 'Français', 'English'], en: ['Same as Grist (English)', 'Français', 'English'] };
 const EDGE_ROWS = { fr: ['À gauche', 'En haut', 'À droite', 'En bas'], en: ['Left', 'Top', 'Right', 'Bottom'] };
 const INDEX_TITLE = { fr: 'Créer l’index des noms ?', en: 'Create the name index?' };
@@ -418,12 +418,12 @@ async function settingsGestures(page, language, note) {
   if (now.language !== other.value) note('Langue : le choix', `choisir « ${LANGUAGE_ROWS[language][other.index]} » rend « ${now.language} » à la page au lieu de « ${other.value} »`);
   if (now.menus !== 0) note('Langue : le menu reste', `${now.menus} menu(s) restent ouverts après le choix d'une langue`);
   if (!now.onButton) note('Langue : le clavier', 'après le choix d\'une langue, le clavier n\'est pas revenu sur le bouton « Réglages »');
-  // « Réglages avancés » : son sous-menu n'a que « Bouton LanguageTool », une case à cocher décochée ; un clic à la souris la coche, les menus se ferment et le clavier revient
+  // « Réglages avancés » : son sous-menu a « Bouton LanguageTool », une case à cocher décochée, et « Rouvrir au rechargement », cochée au départ ; un clic à la souris la coche, les menus se ferment et le clavier revient
   // au bouton « Réglages » ; rouvert, le sous-menu la montre cochée.
   await openSettings(page, 5);
   const advanced = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
   if (!advanced) { note('Réglages avancés : sans sous-menu', 'la ligne « Réglages avancés » n\'ouvre aucun sous-menu'); return; }
-  subLayout(advanced, from.menu.items[5], ADVANCED_ROWS[language], '', from.menu.items[5].label, note);
+  subLayout(advanced, from.menu.items[5], ADVANCED_ROWS[language], 1, from.menu.items[5].label, note); // « Rouvrir au rechargement » (la ligne 1) est cochée de départ
   const box = advanced.sub.items[0];
   if (box.role !== 'menuitemcheckbox' || box.checked !== 'false') note('LanguageTool : la case', `la ligne « Bouton LanguageTool » devait être une case à cocher décochée (${box.role}, ${box.checked})`);
   await page.click(...box.center);
@@ -433,6 +433,18 @@ async function settingsGestures(page, language, note) {
   await openSettings(page, 5);
   const checked = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
   if (!checked || checked.sub.items[0].checked !== 'true') note('LanguageTool : la coche', 'rouvert, le sous-menu devait montrer « Bouton LanguageTool » coché');
+  // « Rouvrir au rechargement » : une case à cocher, cochée au départ ; un clic à la vraie souris la décoche, les menus se ferment et le clavier revient au bouton « Réglages ».
+  const reopen = checked && checked.sub.items[1];
+  if (!reopen || reopen.role !== 'menuitemcheckbox' || reopen.checked !== 'true') note('Rouvrir au rechargement : la case', `la ligne devait être une case à cocher cochée (${reopen && reopen.role}, ${reopen && reopen.checked})`);
+  if (reopen) {
+    await page.click(...reopen.center);
+    now = await after();
+    if (now.reopen !== false) note('Rouvrir au rechargement : le choix', `cliquer la ligne devait couper la reprise (${now.reopen})`);
+    if (now.menus !== 0 || !now.onButton) note('Rouvrir au rechargement : le menu', `après le clic, ${now.menus} menu(s) restent ouverts, le clavier ${now.onButton ? 'sur' : 'hors de'} « Réglages »`);
+    await openSettings(page, 5);
+    const off = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
+    if (!off || off.sub.items[1].checked !== 'false') note('Rouvrir au rechargement : la coche', 'rouvert, le sous-menu devait montrer la ligne décochée');
+  }
   await page.press('Escape');
   await page.press('Escape');
   await openSettings(page, 6);

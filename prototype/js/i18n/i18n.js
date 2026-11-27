@@ -116,6 +116,11 @@ const STRINGS = {
     'set.advanced.tip': 'Des réglages dont on se sert rarement',
     'set.langtool': 'Bouton LanguageTool',
     'langtool.tip': 'Un bouton de la barre coupe ou rallume LanguageTool dans l’app ouverte',
+    'set.reopen': 'Rouvrir au rechargement',
+    'set.reopen.tip': 'Après un rechargement de la page, GFS rouvre le fichier ou l’endroit de l’explorateur où vous étiez',
+    // La reprise après un rechargement : le fichier qu’on avait ouvert ne s’ouvre plus, l’explorateur s’ouvre à sa place.
+    'resume.gone': 'Le fichier « {name} » que vous aviez ouvert n’existe plus, ou n’est plus à votre disposition.',
+    'resume.locked': 'Le fichier « {name} » ne s’ouvre plus : son app ou son extension n’est plus disponible.',
     'set.about': 'À propos…',
     // La fenêtre « À propos ».
     'about.title': 'À propos de Grist Factory Suite',
@@ -307,6 +312,11 @@ const STRINGS = {
     'set.advanced.tip': 'Settings that are rarely needed',
     'set.langtool': 'LanguageTool button',
     'langtool.tip': 'A button in the bar turns LanguageTool off or back on in the open app',
+    'set.reopen': 'Reopen after a reload',
+    'set.reopen.tip': 'After the page reloads, GFS reopens the file or the explorer place where you were',
+    // Reopening after a reload: the file that was open can no longer be opened, the explorer opens instead.
+    'resume.gone': 'The file “{name}” you had open no longer exists, or is no longer available to you.',
+    'resume.locked': 'The file “{name}” can no longer be opened: its app or extension is no longer available.',
     'set.about': 'About…',
     // La fenêtre « À propos ».
     'about.title': 'About Grist Factory Suite',

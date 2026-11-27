@@ -23,7 +23,7 @@ export async function clickSettingsRow(target, row) {
   await settingsRows(target).nth(row).click();
 }
 
-// Le sous-menu « Réglages avancés » ouvert, à côté de sa ligne : « Bouton LanguageTool », seule (le porteur, 12/11 : trop niche pour le niveau des autres réglages).
+// Le sous-menu « Réglages avancés » ouvert, à côté de sa ligne : « Bouton LanguageTool » (le porteur, 12/11 : trop niche pour le niveau des autres réglages) et « Rouvrir au rechargement » (27/11).
 export async function openAdvancedMenu(target) {
   await clickSettingsRow(target, ROW.advanced);
   await target.locator('.menu-sub').waitFor();

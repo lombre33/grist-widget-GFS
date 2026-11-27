@@ -1392,6 +1392,12 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    celle que GFS a donnée (`access`, `gfs`) et rien n'est écrit dans le document ; l'essai échoue avec l'app à `71287c4`. À
    `dc00b9d`, le choix de langue de l'app restait refusé dans GFS (le cadre n'a pas de stockage : la case revenait sur la
    langue de la page, sans rechargement) ; depuis `f6d3fd0` il est grisé et la langue est celle de GFS (point 6).
+   **Après un rechargement de la page de Grist (27/11, cahier 6.2, point 6 ; faits vérifiés 188)**, GFS rouvre le fichier que la personne avait ouvert :
+   c'est une **ouverture comme un double-clic**, de raison `explorateur` (aucune raison de plus, le contrat ne change pas), rendue une fois au premier
+   `contexte` de l'app à froid, ou par l'appel `ouvrir` d'une app déjà là. GFS ne la lance qu'après avoir lu la liste des fichiers de la personne et y
+   avoir trouvé le fichier : une app lancée à froid sur un numéro absent ou que les règles cachent ouvre une page blanche (« Nouveau modèle », mesuré le
+   26/11), jamais rouvert à l'aveugle. L'app n'a rien à faire de plus ; elle applique, à cette ouverture, ce qu'elle applique à toute ouverture (le mode
+   Lecture ou Édition de la vue pour Publipostage+, faits vérifiés 186).
 4. [D] `bibliotheques` : GFS cherche dans son catalogue (2.6, point 6) les bibliothèques qu'exigent les extensions actives de
    l'app et donne, pour chacune, l'adresse du mode choisi (CDN ou vendorisé) et son empreinte. L'extension charge la
    bibliothèque par cette adresse, avec l'empreinte (`integrity`) et `crossorigin="anonymous"`, au premier usage, et ne charge

@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-fvJZySL0iqGXoSPLPaETMNY7JKv/OyHdYlUjimZBz4o='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-bStdxmjQyFnRz20aAXnfaLsFajGEzMRQFexHXGgjGvc='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6ad7dc03e9">
 <link rel="stylesheet" href="css/explorer.css?v=21d07db54c">
 <link rel="stylesheet" href="css/modules.css?v=dcbf3e09ce">
@@ -23,7 +23,7 @@
 <link rel="stylesheet" href="css/annuaire.css?v=5b3e38867f">
 <link rel="stylesheet" href="css/annuaire-edit.css?v=d5c91ced58">
 <link rel="stylesheet" href="css/annuaire-tools.css?v=96898deb53">
-<link rel="stylesheet" href="css/guide.css?v=e9a81476c8">
+<link rel="stylesheet" href="css/guide.css?v=b53773b4eb">
 <link rel="stylesheet" href="css/annuaire-plan.css?v=bdd461753a">
 <link rel="stylesheet" href="css/folder-looks.css?v=cfc86893cb">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
@@ -242,13 +242,15 @@
     "./js/files/undo-stack.js": "./js/files/undo-stack.js?v=bb94cd21d3",
     "./js/guide/guide-config.js": "./js/guide/guide-config.js?v=1c82303c5e",
     "./js/guide/guide-contacts.js": "./js/guide/guide-contacts.js?v=ab174738b0",
-    "./js/guide/guide-control.js": "./js/guide/guide-control.js?v=7d92003a6f",
+    "./js/guide/guide-control.js": "./js/guide/guide-control.js?v=3a841cbb8c",
+    "./js/guide/guide-edit-window.js": "./js/guide/guide-edit-window.js?v=a88662df7b",
     "./js/guide/guide-keys.js": "./js/guide/guide-keys.js?v=0b7d574fc8",
     "./js/guide/guide-model.js": "./js/guide/guide-model.js?v=fff09aff80",
     "./js/guide/guide-panes.js": "./js/guide/guide-panes.js?v=904ccfe882",
     "./js/guide/guide-setup.js": "./js/guide/guide-setup.js?v=fa46cf0ff9",
-    "./js/guide/guide-store.js": "./js/guide/guide-store.js?v=32fe2a1032",
-    "./js/guide/guide-window.js": "./js/guide/guide-window.js?v=a460940a92",
+    "./js/guide/guide-store.js": "./js/guide/guide-store.js?v=0e16ffb4dd",
+    "./js/guide/guide-window.js": "./js/guide/guide-window.js?v=30eaeed41c",
+    "./js/guide/guide-write.js": "./js/guide/guide-write.js?v=00e15b1bfe",
     "./js/i18n/i18n-annuaire-add.js": "./js/i18n/i18n-annuaire-add.js?v=f6a8c69cd6",
     "./js/i18n/i18n-annuaire-edit.js": "./js/i18n/i18n-annuaire-edit.js?v=3a2235d58a",
     "./js/i18n/i18n-annuaire-field.js": "./js/i18n/i18n-annuaire-field.js?v=71a41a6906",
@@ -266,7 +268,7 @@
     "./js/i18n/i18n-dependencies.js": "./js/i18n/i18n-dependencies.js?v=6d1bf6469a",
     "./js/i18n/i18n-explorer.js": "./js/i18n/i18n-explorer.js?v=43433f2b8d",
     "./js/i18n/i18n-folders.js": "./js/i18n/i18n-folders.js?v=d284a5dc12",
-    "./js/i18n/i18n-guide.js": "./js/i18n/i18n-guide.js?v=41dffce6bb",
+    "./js/i18n/i18n-guide.js": "./js/i18n/i18n-guide.js?v=eb0948d427",
     "./js/i18n/i18n-looks.js": "./js/i18n/i18n-looks.js?v=bd7253d159",
     "./js/i18n/i18n-manage.js": "./js/i18n/i18n-manage.js?v=3a26464780",
     "./js/i18n/i18n-natives.js": "./js/i18n/i18n-natives.js?v=e97e96b787",
@@ -585,7 +587,7 @@
 <link rel="modulepreload" href="./js/i18n/i18n-dependencies.js?v=6d1bf6469a">
 <link rel="modulepreload" href="./js/i18n/i18n-security.js?v=7139f06696">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire.js?v=362d2456d8">
-<link rel="modulepreload" href="./js/i18n/i18n-guide.js?v=41dffce6bb">
+<link rel="modulepreload" href="./js/i18n/i18n-guide.js?v=eb0948d427">
 <link rel="modulepreload" href="./js/theme/ambiance.js?v=6608543445">
 <link rel="modulepreload" href="./js/theme/oklch.js?v=7ef04e0793">
 <link rel="modulepreload" href="./js/theme/ambiance-forme.js?v=9945157b3b">

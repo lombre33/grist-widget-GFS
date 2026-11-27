@@ -26,7 +26,8 @@ export class GuideWindow {
   #open = new Set();
   #note = '';
 
-  // opts : { container, t, inertTargets(), onSwitch(), onConfigure(), onNew(), onCopy(texte) -> Promise<vrai si copié>, onClose() }
+  // opts : { container, t, inertTargets(), onSwitch(), onConfigure(), onNew(), onNewProc(mère: ligne ou null), onEditProc(ligne), writeBlock() -> texte ou
+  //   null, onCopy(texte) -> Promise<vrai si copié>, onClose() }
   constructor(opts) { this.#o = opts; }
 
   get isOpen() { return this.#root !== null; }
@@ -90,13 +91,14 @@ export class GuideWindow {
     const refs = { title: h('h2', { id: 'gd-title' }), name: h('button', { type: 'button', class: 'gd-name', 'aria-haspopup': 'dialog',
       dataset: { act: 'switch', fk: 'switch' } }),
       search: h('input', { type: 'search', autocomplete: 'off', dataset: { fk: 'search' } }), views: h('div', { class: 'gd-seg', role: 'group' }),
+      add: h('button', { type: 'button', class: 'gd-ibtn', dataset: { act: 'newproc', fk: 'newproc' } }, icon('plus')),
       config: h('button', { type: 'button', class: 'gd-ibtn', dataset: { act: 'configure', fk: 'configure' } }, icon('sliders')),
       body: h('div', { class: 'mod-body gd-body' }), note: h('p', { class: 'mod-note gd-foot', 'aria-live': 'polite' }),
       close: h('button', { type: 'button', class: 'btn', dataset: { act: 'close', fk: 'close' } }) };
     this.#refs = refs;
     const section = h('section', { class: 'mod gd', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'gd-title' },
       h('header', { class: 'mod-head gd-head' }, h('div', { class: 'gd-top' }, icon('guide', 'gd-logo'), refs.title, refs.name, h('span', { class: 'gd-grow' }),
-        h('label', { class: 'inp-search gd-search' }, icon('search'), refs.search), refs.views, refs.config)),
+        h('label', { class: 'inp-search gd-search' }, icon('search'), refs.search), refs.views, refs.add, refs.config)),
       refs.body, h('footer', { class: 'mod-foot' }, refs.note, refs.close));
     this.#root = h('div', { class: 'mod-scrim gd-scrim' }, section);
     refs.search.addEventListener('input', () => { this.#query = refs.search.value; this.#proc = null; this.#note = ''; this.#paintBody(); this.#paintFoot(); });
@@ -115,7 +117,7 @@ export class GuideWindow {
 
   #paintHead() {
     const t = this.#o.t;
-    const { title, name, search, views, config, close } = this.#refs;
+    const { title, name, search, views, add, config, close } = this.#refs;
     const { current } = this.#show;
     title.textContent = t('gd.title');
     name.replaceChildren(h('span', { class: 'gd-name-t' }, current ? current.name : t('gd.none.name')), icon('chev-down'));
@@ -126,9 +128,29 @@ export class GuideWindow {
     views.replaceChildren(...VIEWS.map(([id, glyph, key]) => h('button', { type: 'button', class: 'gd-seg-b',
       'aria-pressed': String(this.#view === id && this.#proc === null),
       title: t(key), 'aria-label': t(key), dataset: { act: 'view', view: id, fk: `v:${id}` } }, icon(glyph), h('span', { class: 'gd-seg-t' }, t(key)))));
+    const why = this.#addWhy();
+    add.title = why || t('gd.proc.new');
+    add.setAttribute('aria-label', t('gd.proc.new'));
+    add.setAttribute('aria-disabled', why ? 'true' : 'false');
     config.title = t('gd.configure');
     config.setAttribute('aria-label', t('gd.configure'));
     close.textContent = t('gd.close');
+  }
+
+  // Pourquoi « Nouvelle démarche » est grisé : le document ne s'écrit pas, ou aucun guide n'est lu. Jamais masqué (charte).
+  #addWhy() {
+    const blocked = this.#o.writeBlock ? this.#o.writeBlock() : null;
+    if (blocked) return blocked;
+    return this.#ready() ? '' : this.#o.t('gd.proc.needGuide');
+  }
+
+  // Le bouton qui crée une démarche, dans l'écran vide.
+  #addButton() {
+    const t = this.#o.t;
+    const why = this.#addWhy();
+    return h('button', { type: 'button', class: 'btn primary', 'aria-disabled': why ? 'true' : null, title: why || null,
+      dataset: { act: 'newproc', fk: 'newproc-empty' } },
+      icon('plus'), t('gd.proc.new'));
   }
 
   #ready() { return this.#show.state === 'ready' && this.#show.data; }
@@ -162,9 +184,17 @@ export class GuideWindow {
 
   #themesNodes(data) {
     const t = this.#o.t;
-    if (!data.procs.length) return [h('div', { class: 'gd-card gd-empty' }, h('p', { class: 'gd-note' }, t('gd.empty')))];
+    if (!data.procs.length) return [this.#emptyCard()];
     return [h('div', { class: 'gd-card gd-home' }, h('h3', { class: 'gd-home-t' }, t('gd.home')),
       h('div', { class: 'gd-tiles' }, ...themeTiles(data, { t, answerFor: data.answerFor })))];
+  }
+
+  // Un guide sans démarche : il le dit et propose d'écrire la première.
+  #emptyCard() {
+    const t = this.#o.t;
+    return h('div', { class: 'gd-card gd-empty' }, icon('guide', 'gd-state-ic'), h('p', { class: 'gd-state-title' }, t('gd.empty.title')),
+      h('p', { class: 'gd-note' }, t('gd.empty')),
+      this.#addButton());
   }
 
   // Les démarches qui répondent à la recherche, d'un bout à l'autre du guide.
@@ -187,7 +217,7 @@ export class GuideWindow {
 
   #listNodes(data) {
     const t = this.#o.t;
-    if (!data.procs.length) return [h('div', { class: 'gd-card gd-empty' }, h('p', { class: 'gd-note' }, t('gd.empty')))];
+    if (!data.procs.length) return [this.#emptyCard()];
     const node = this.#node === null ? null : data.index.byRow.get(this.#node);
     const rows = this.#below(data);
     const shown = rows.slice(0, LIST_SHOWN).map((proc, at) => procedureRow(data, proc, { answerFor: data.answerFor, tabStop: at === 0, here: this.#node }));
@@ -205,7 +235,9 @@ export class GuideWindow {
     const t = this.#o.t;
     const proc = data.index.byRow.get(this.#proc);
     const back = h('button', { type: 'button', class: 'btn sm gd-back', dataset: { act: 'back', fk: 'back' } }, icon('chev-left'), t('gd.back'));
-    return [h('div', { class: 'gd-card gd-fiche-info' }, back, infoPane(data, proc, { t })),
+    const edit = h('button', { type: 'button', class: 'btn sm gd-edit-b', 'aria-disabled': this.#addWhy() ? 'true' : null, title: this.#addWhy() || null,
+      dataset: { act: 'edit', row: String(proc.row), fk: 'edit' } }, icon('edit'), t('gd.proc.edit'));
+    return [h('div', { class: 'gd-card gd-fiche-info' }, h('div', { class: 'gd-fiche-bar' }, back, edit), infoPane(data, proc, { t })),
       h('div', { class: 'gd-card gd-fiche-who' }, contactsPane(data.answerFor(proc.row),
         { t, titleOf: row => (data.index.byRow.get(row) || { title: '' }).title }))];
   }
@@ -249,6 +281,8 @@ export class GuideWindow {
       switch: () => this.#o.onSwitch(),
       configure: () => this.#o.onConfigure(),
       new: () => this.#o.onNew(),
+      newproc: () => this.#newProc(),
+      edit: () => this.#guardedEdit(row),
       view: () => { this.#view = data.view; this.#proc = null; this.#note = ''; this.#repaint(); },
       open: () => this.#openProc(row),
       back: () => { this.#proc = null; this.#note = ''; this.#repaint(); },
@@ -258,6 +292,22 @@ export class GuideWindow {
     };
     if (handlers[name]) handlers[name]();
   }
+
+  // « Nouvelle démarche » : la mère proposée est la démarche ouverte, ou celle dont la liste montre le dessous ; grisé, un clic dit pourquoi.
+  #newProc() {
+    const why = this.#addWhy();
+    if (why) { this.say(why); return; }
+    this.#o.onNewProc(this.#proc !== null ? this.#proc : this.#node);
+  }
+
+  #guardedEdit(row) {
+    const why = this.#addWhy();
+    if (why) { this.say(why); return; }
+    this.#o.onEditProc(row);
+  }
+
+  // Montre la fiche d'une démarche (après un enregistrement : la démarche qu'on vient d'écrire).
+  showProc(row) { this.#openProc(row); }
 
   #click(event) {
     const button = event.target.closest('[data-act]');

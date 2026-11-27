@@ -169,3 +169,12 @@
   .gd-body[data-mode="list"] { grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); }
   .gd-who { flex-basis: 40%; }
 }
+
+/* L'éditeur d'une démarche (27/11) : les étapes et les détails sont des zones de texte, « Supprimer » est en rouge lisible (--danger-ink), à gauche du pied. */
+.gd-area { min-height: 72px; resize: vertical; font: inherit; line-height: 1.4; }
+.gd-edit .mod-foot { align-items: center; }
+.gd-remove { color: var(--danger-ink); border-color: var(--danger-ink); }
+.gd-remove[aria-disabled="true"] { opacity: .6; cursor: not-allowed; }
+.gd-fiche-bar { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+.gd-ibtn[aria-disabled="true"], .gd-edit-b[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.gd-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 18px; }

@@ -7,6 +7,8 @@
 import { GuideStore, MissingTable, NameTaken, TableDeclined } from './guide-store.js';
 import { GuideWindow } from './guide-window.js';
 import { GuideSetup } from './guide-setup.js';
+import { GuideEdit } from './guide-edit-window.js';
+import { fieldsOf, recordOf } from './guide-write.js';
 import { PROCEDURE_COLUMNS, PROCEDURE_TABLE } from './guide-config.js';
 import { rolesFor } from './guide-model.js';
 import { directoryOf, answerOf } from './guide-contacts.js';
@@ -28,6 +30,7 @@ export class GuideControl {
   #row = null; // le guide montré (le numéro de sa ligne)
   #reading = 0; // le numéro de la dernière lecture lancée : une lecture plus ancienne qui finit après ne montre rien
   #loaded = false;
+  #data = null; // la dernière lecture du guide montré (celle que l'éditeur lit)
 
   // opts : { port ({ doc }), container, t, locale(), inertTargets(), ask(opts) -> Promise<boolean>, notice(texte), writeBlock() -> texte ou null, fullAccess(),
   //   identity() -> l'adresse de la personne, ou '' tant qu'on ne la connaît pas }
@@ -38,7 +41,9 @@ export class GuideControl {
     this.#store = new GuideStore({ port: opts.port, consent });
     this.#annuaires = new AnnuaireStore({ port: opts.port, consent: () => Promise.resolve(false) }); // le guide lit les annuaires, il n'en crée jamais
     this.#window = new GuideWindow({ container: opts.container, t: opts.t, inertTargets: opts.inertTargets, onSwitch: () => void this.#switch(),
-      onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onCopy: text => copyText(text, opts.container.ownerDocument),
+      onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onNewProc: parent => void this.#editProc(null, parent),
+        onEditProc: row => void this.#editProc(row),
+      writeBlock: () => opts.writeBlock(), onCopy: text => copyText(text, opts.container.ownerDocument),
         onClose: () => {} });
   }
 
@@ -90,10 +95,11 @@ export class GuideControl {
     const current = this.#current;
     const t = this.#o.t;
     const mine = ++this.#reading;
+    this.#data = null;
     this.#window.show({ state: 'loading', guides: this.#list, current, data: null });
     try {
       const data = await this.#viewOf(await this.#store.read(current));
-      if (mine === this.#reading) this.#window.show({ state: 'ready', guides: this.#list, current, data, error: '' });
+      if (mine === this.#reading) { this.#data = data; this.#window.show({ state: 'ready', guides: this.#list, current, data, error: '' }); }
     } catch (error) {
       if (mine !== this.#reading) return;
       if (!(error instanceof MissingTable)) console.error('GFS : lecture du guide impossible', error);
@@ -218,6 +224,46 @@ export class GuideControl {
       console.error('GFS : enregistrement du guide impossible', error);
       this.#o.notice(t('gd.saveFailed', { reason: String(error && error.message) }));
     }
+  }
+
+  // Écrire une démarche (`row` null : une neuve, sous `parent`) ou la retirer : la fenêtre de saisie, puis l'écriture dans la table du guide, puis la
+  // relecture.
+  async #editProc(row, parent = null) {
+    const { t } = this.#o;
+    const data = this.#data;
+    const current = this.#current;
+    if (!data || !current) return;
+    const blocked = this.#o.writeBlock();
+    if (blocked) { this.#o.notice(blocked); return; }
+    const proc = row === null ? null : data.index.byRow.get(row) || null;
+    const fields = fieldsOf(data.config, data.schema, current.table, data.directory);
+    const done = await new GuideEdit({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, fields, read: data, directory: data.directory, proc,
+      parent,
+      writeBlock: () => this.#o.writeBlock() }).run();
+    if (!done) return;
+    try {
+      if (done.remove) { await this.#remove(proc, data, current); return; }
+      const saved = await this.#store.saveProcedure(current, proc ? proc.row : null, recordOf(fields, done.values, done.before));
+      await this.#read();
+      if (Number.isFinite(saved)) this.#window.showProc(saved);
+      this.#window.say(t(proc ? 'gd.proc.saved' : 'gd.proc.created', { title: String(done.values.title).trim() }));
+    } catch (error) {
+      console.error('GFS : écriture de la démarche impossible', error);
+      this.#o.notice(t('gd.proc.saveFailed', { reason: String(error && error.message) }));
+    }
+  }
+
+  // Retirer une démarche : la personne confirme dans une fenêtre qui dit ce qui devient de ses sous-démarches (elles passent à la racine).
+  async #remove(proc, data, current) {
+    const { t } = this.#o;
+    const kids = (data.index.children.get(proc.row) || []).map(kid => kid.row);
+    const ok = await this.#o.ask({ title: t('gd.proc.del.title', { title: proc.title }),
+      message: t(kids.length ? 'gd.proc.del.text' : 'gd.proc.del.none', { table: current.table, n: kids.length }),
+      confirmLabel: t('gd.proc.remove'), cancelLabel: t('table.cancel') });
+    if (!ok) return;
+    await this.#store.removeProcedure(current, proc.row, kids);
+    await this.#read();
+    this.#window.say(t('gd.proc.removed', { title: proc.title }));
   }
 
   // Un autre guide du document, ou un nouveau.

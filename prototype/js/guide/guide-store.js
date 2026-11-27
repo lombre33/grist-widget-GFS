@@ -9,6 +9,7 @@ import { MissingTable, NameTaken } from '../annuaire/annuaire-store.js';
 import { columnOf } from '../annuaire/annuaire-schema.js';
 import { GUIDES_TABLE, GUIDES_COLUMNS, guidesOf, newRecord, addAction, updateAction, writeConfig } from './guide-config.js';
 import { buildProcedures, buildIndex } from './guide-model.js';
+import { addRecordAction, updateRecordAction, removeActions } from './guide-write.js';
 
 export { TableDeclined, MissingTable, NameTaken };
 
@@ -106,5 +107,23 @@ export class GuideStore {
       await this.#port.doc.applyUserActions([updateAction(this.#own.id, guide.row, { Name: String(name).trim(), Table: table, Config: writeConfig(config) })]);
       return { ...guide, name: String(name).trim(), table, config };
     });
+  }
+
+  // Écrit une démarche dans la table du guide : une ligne neuve (`row` null) ou une ligne réécrite ; `record` ne porte que des colonnes qui existent
+  // (js/guide/guide-write.js). Rend le numéro de la ligne. Les écritures s'enchaînent ; Grist répond par ses règles d'accès (l'erreur dit pourquoi).
+  saveProcedure(guide, row, record) {
+    return this.#then(async () => {
+      if (row !== null) {
+        if (Object.keys(record).length) await this.#port.doc.applyUserActions([updateRecordAction(guide.table, row, record)]);
+        return row;
+      }
+      const result = await this.#port.doc.applyUserActions([addRecordAction(guide.table, record)]);
+      return result && Array.isArray(result.retValues) ? result.retValues[0] : null;
+    });
+  }
+
+  // Retire une démarche ; ses filles (`kids` : les lignes) passent à la racine dans le même lot (leur mère n'existe plus).
+  removeProcedure(guide, row, kids) {
+    return this.#then(() => this.#port.doc.applyUserActions(removeActions(guide.table, row, kids, guide.config.parent)));
   }
 }

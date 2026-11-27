@@ -275,3 +275,14 @@ test('une copie qui échoue ne bloque pas les Ctrl+D suivants', async () => {
   await clipboard.take('gfs-fichiers:aa', 'duplicate');
   assert.deepEqual(log.revealed, ['gfs-fichiers:neuf']);
 });
+
+test('un raccourci (js/files/shortcuts.js) : Ctrl+C et Ctrl+D disent pourquoi il ne se copie pas, rien n\'est copié ni retenu ; Ctrl+X le coupe pour le changer de dossier', async () => {
+  const link = { ...file('s1', 'Facture (lien)', 'gfs-shortcut'), shortcut: { target: 'gfs-fichiers:aa', state: 'ok' } };
+  const { clipboard, log } = setup({ files: [link], copyable: ['gfs-shortcut'] });
+  clipboard.take(link.key, 'copy');
+  clipboard.take(link.key, 'duplicate');
+  assert.deepEqual([log.notices, log.copies, clipboard.held], [[FR.t('sc.noCopy'), FR.t('sc.noCopy')], [], null]);
+  clipboard.take(link.key, 'cut');
+  await clipboard.paste();
+  assert.deepEqual(log.moves, [['file', link.key, 'Factures']]);
+});

@@ -5,8 +5,8 @@
 const SKIPPED = new Set(['typeInfo', 'search', 'pieces']);
 const drop = (key, value) => (SKIPPED.has(key) ? undefined : value);
 
-export function listSignature({ files, trash, folders, received, spaces, notices, problems }) {
+export function listSignature({ files, trash, folders, received, spaces, notices, problems, shortcutFiles }) {
   const places = spaces ? [spaces.spaces, spaces.links, [...spaces.placed]] : null;
   const told = notices ? [notices.shares, notices.data] : null; // les partages lisibles et les notifications : ce que la cloche annonce
-  return JSON.stringify([files, trash, folders, received, places, told, problems], drop);
+  return JSON.stringify([files, trash, folders, received, places, told, problems, shortcutFiles || []], drop);
 }

@@ -314,6 +314,19 @@ export class Rangement {
     return rows.length;
   }
 
+  // Les raccourcis de la personne (js/files/shortcuts.js) : une ligne de plus du rangement, sous l'app `gfs-shortcut`. `make({ data, tableId, identity })` rend
+  // les actions d'après la table relue ; sans table, l'accord de la personne est demandé comme pour tout rangement (`TableDeclined` s'il est refusé). Rend true
+  // quand un lot est parti. Un raccourci est à la personne seule : sans son adresse, rien ne s'écrit (`false`).
+  async writeShortcuts(make) {
+    const state = await this.#ready([...FILING, 'Value']);
+    if (!this.identity) return false;
+    const actions = make({ data: state.data, tableId: this.#table.id, identity: this.identity });
+    if (!actions.length) return false;
+    await this.#port.doc.applyUserActions(actions);
+    await this.#stamp(state.data);
+    return true;
+  }
+
   // La table du rangement telle qu'elle est, sans la créer ni poser de question : null quand elle manque ou qu'une colonne du rangement lui manque (aucune
   // n'est ajoutée ici). Pour ce qui ne vaut pas qu'on dérange la personne.
   async #loaded() {

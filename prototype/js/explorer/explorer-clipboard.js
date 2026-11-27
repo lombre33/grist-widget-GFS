@@ -40,6 +40,7 @@ export class Clipboard {
     } else {
       const found = file(key);
       if (!found) return undefined;
+      if (mode !== 'cut' && found.shortcut) { notice(t('sc.noCopy')); return undefined; } // un raccourci se coupe (il change de dossier), il ne se copie pas
       if (mode !== 'cut' && !copying.handles(found)) { notice(t('ex.notice.appOnly', { app: appName(found.app) })); return undefined; }
       if (mode === 'duplicate') return this.duplicate(found);
       this.#held = { mode, key, name: found.name || t('ex.untitled') };

@@ -95,6 +95,8 @@ const family = file => (FAMILY_NAMES.includes(file.family) ? file.family : null)
 
 // Le poids d'une ligne, dans la langue de la personne (js/weight/weight.js).
 const weightText = (ctx, bytes) => formatBytes(bytes, ctx.locale, ctx.t);
+// Le poids d'un fichier ; un raccourci ne pèse rien (sa cible pèse déjà) : un tiret, pas « 0 o ».
+const fileWeight = (ctx, file) => (file.shortcut ? '—' : weightText(ctx, file.weight));
 
 // Le fil d'Ariane : la racine (« Moi »), puis les dossiers ; « Résultats » quand une recherche ou un filtre est en cours.
 export function crumbs(ctx) {
@@ -172,7 +174,7 @@ function fileCells(ctx, file, flat) {
   return [
     nameCell(ctx, file, flat),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, ctx.typeLabel(file))),
-    h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, file.weight)),
+    h('div', { class: 'wt', role: 'gridcell' }, fileWeight(ctx, file)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(stampOf(file), ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }, who.initials ? h('span', { class: 'who', title: who.name }, who.initials) : null),
     actionsCell(ctx, file),
@@ -199,7 +201,8 @@ function actionsCell(ctx, file) {
   const { t } = ctx;
   const pinTitle = file.pinned ? t('ex.unpin') : t('ex.pin');
   return h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
-    : (ctx.state.view === 'shared' ? null : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key },
+    : (ctx.state.view === 'shared' || file.shortcut ? null : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`,
+      dataset: { pin: file.key },
       title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin'))),
     moreButton(t, file.key));
 }
@@ -248,7 +251,7 @@ function tileFacts(ctx, row) {
   const file = row.file;
   const lock = ctx.lockOf(file);
   return { folder: false, key: file.key, lock, glyph: lock ? 'lock' : file.icon, name: file.name || t('ex.untitled'), caption: ctx.typeLabel(file),
-    weight: weightText(ctx, file.weight), fam: lock ? null : family(file) };
+    weight: fileWeight(ctx, file), fam: lock ? null : family(file) };
 }
 
 export function tile(ctx, row) {
@@ -329,7 +332,7 @@ function fileInfo(ctx, file) {
   const second = lock ? lock.text : fileFacts(ctx, file).filter(Boolean).join(' · ');
   return h('div', { class: 'inf', 'data-fam': lock ? null : family(file) },
     infoLine1(icon(lock ? 'lock' : file.icon), h('b', null, file.name || t('ex.untitled')),
-      h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)} · ${weightText(ctx, file.weight)}`)),
+      h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)} · ${fileWeight(ctx, file)}`)),
     h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)));
 }
 

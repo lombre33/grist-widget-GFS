@@ -291,10 +291,13 @@ export const rowKey = row => (row.kind === 'file' ? row.file.key : `${row.shared
 // montrer en tête) }.
 function levelOf(files, state, filtering, locale) {
   if (state.view === 'shared' && !filtering) return { flat: true, ...sharedLevel(files, state.group, locale) };
-  if (state.view === 'recent') return { pool: [...files].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT), flat: true,
+  // Un raccourci (js/files/shortcuts.js) ne se montre que dans son dossier de « Moi » : ni dans les listes à plat, ni dans une recherche (le fichier visé y
+  // est).
+  const real = files.filter(file => !file.shortcut);
+  if (state.view === 'recent') return { pool: [...real].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT), flat: true,
     groups: [] };
-  if (state.view === 'fav') return { pool: files.filter(file => file.pinned), flat: true, groups: [] };
-  if (filtering || ['trash', 'shared', 'opened'].includes(state.view)) return { pool: files, flat: true, groups: [] };
+  if (state.view === 'fav') return { pool: real.filter(file => file.pinned), flat: true, groups: [] };
+  if (filtering || ['trash', 'shared', 'opened'].includes(state.view)) return { pool: real, flat: true, groups: [] };
   return { pool: files.filter(file => file.folder === state.path && keptInFolder(file)), flat: false, groups: [] };
 }
 

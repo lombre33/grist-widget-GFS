@@ -902,3 +902,26 @@ test('un geste qui s\'écrit d\'abord (un fichier rangé par une copie) attend d
   await copied;
   assert.deepEqual(log.writes.map(write => (write.folders ? 'dossier' : 'copie')), ['dossier', 'copie']);
 });
+
+// Les raccourcis de fichiers (js/files/shortcuts.js ; demande du porteur, 27/11) : ils se rangent comme un fichier, mais jamais dans un espace.
+const shortcut = (id, folder = '') => ({ key: `gfs-shortcut:${id}`, app: 'gfs-shortcut', id, table: '', row: 7, name: 'Convocation', folder, pinned: false, shortcut: { target: 'publipostage:1', state: 'ok' } });
+
+test('déplacer un raccourci : les dossiers d\'un espace ne lui sont pas proposés ; un dossier de « Moi » reçoit sa ligne de rangement', async () => {
+  const link = shortcut('s1', 'A');
+  const { filing, log } = harness({ files: [file(1, 'A/B'), file(2, 'Espaces/Achats/Contrats'), link], answers: ['A/B'] });
+  await filing.moveFile(link);
+  assert.deepEqual(log.windows[0].folders, ['A', 'A/B'], 'ni « Espaces », ni l\'espace, ni ses dossiers');
+  assert.deepEqual(log.writes[0].entries, [{ app: 'gfs-shortcut', file: 's1', pinned: false, folder: 'A/B' }]);
+  const plain = harness({ files: [file(1, 'A/B'), file(2, 'Espaces/Achats/Contrats')], answers: [null] });
+  await plain.filing.moveFile(file(1, 'A/B'));
+  assert.ok(plain.log.windows[0].folders.includes('Espaces/Achats/Contrats'), 'un fichier ordinaire garde les dossiers d\'un espace');
+});
+
+test('couper-coller ou glisser un raccourci dans un espace : rien n\'est écrit, la phrase le dit ; un fichier ordinaire n\'est pas concerné par ce refus', async () => {
+  const link = shortcut('s1', 'A');
+  const { filing, log } = harness({ files: [file(1, 'A/B'), link] });
+  assert.equal(await filing.moveFileTo(link, 'Espaces/Achats'), undefined);
+  assert.deepEqual([log.writes, log.refreshes, log.notices], [[], 0, [t('sc.noSpace')]]);
+  assert.equal(await filing.moveFileTo(link, 'A/B'), 'moved');
+  assert.deepEqual(log.writes[0].entries, [{ app: 'gfs-shortcut', file: 's1', pinned: false, folder: 'A/B' }]);
+});

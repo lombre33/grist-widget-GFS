@@ -4,11 +4,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Removal } from '../js/explorer/explorer-removal.js';
 
-function bench({ view = 'folder', choice = false, files = [{ key: 'a', app: 'pp' }, { key: 'b', app: 'pp' }, { key: 'c', app: 'pp' }], trashed = [{ key: 't1' }, { key: 't2' }], handles = true, keys = ['a', 'b', 'c'], open = true, moved = true } = {}) {
+function bench({ view = 'folder', choice = false, files = [{ key: 'a', app: 'pp' }, { key: 'b', app: 'pp' }, { key: 'c', app: 'pp' }], trashed = [{ key: 't1' }, { key: 't2' }], handles = true, keys = ['a', 'b', 'c'], open = true, moved = true, shortcuts = null } = {}) {
   const calls = [];
   const state = { view, choice, keys, open };
   const bin = { handles: file => handles && file.app === 'pp', move: async file => { calls.push(`move:${file.key}`); return moved; }, restore: async file => { calls.push(`restore:${file.key}`); return true; }, purge: async file => { calls.push(`purge:${file.key}`); return true; }, empty: async list => { calls.push(`empty:${list.map(file => file.key).join(',')}`); return true; } };
-  const opts = { i18n: { t: (key, vars) => (vars && vars.app ? `${key}:${vars.app}` : key) }, notice: text => calls.push(`notice:${text}`), appName: app => `App ${app}`, filing: { deleteFolder: async path => { calls.push(`folder:${path}`); return true; } } };
+  const opts = { i18n: { t: (key, vars) => (vars && vars.app ? `${key}:${vars.app}` : key) }, notice: text => calls.push(`notice:${text}`), appName: app => `App ${app}`, filing: { deleteFolder: async path => { calls.push(`folder:${path}`); return true; } }, ...(shortcuts ? { shortcuts } : {}) };
   const removal = new Removal({ opts: () => opts, view: () => state.view, choice: () => state.choice, files: () => files, trashed: () => trashed, bin: () => bin, keys: () => state.keys, isOpen: () => state.open, select: (key, focus) => calls.push(`select:${key}:${focus}`) });
   return { removal, calls, state };
 }
@@ -78,4 +78,12 @@ test('restaurer, supprimer pour de bon et vider la corbeille', async () => {
   const none = bench({ trashed: [] });
   await none.removal.emptyTrash();
   assert.deepEqual(none.calls, [], 'une corbeille vide ne demande rien');
+});
+
+test('Suppr sur un raccourci (js/files/shortcuts.js) : il se retire, sans corbeille ni gardien, et la ligne suivante prend le clavier', async () => {
+  const calls = [];
+  const link = { key: 'gfs-shortcut:s1', app: 'gfs-shortcut', shortcut: { target: 'a', state: 'ok' } };
+  const b = bench({ files: [{ key: 'a', app: 'pp' }, link, { key: 'c', app: 'pp' }], keys: ['a', link.key, 'c'], handles: false, shortcuts: { remove: async file => { calls.push(`remove:${file.key}`); return true; } } });
+  await b.removal.trash(link.key);
+  assert.deepEqual([calls, b.calls], [[`remove:${link.key}`], ['select:c:true']], 'même quand aucun gardien ne connaît ce « fichier » : un raccourci n\'a pas de gardien');
 });

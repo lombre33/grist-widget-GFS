@@ -21,6 +21,7 @@ import { normalize } from '../ui/search.js';
 import { UndoStack } from '../files/undo-stack.js';
 import { isSpaceItself, isSpacePath, SPACES_ROOT, splitWrites, touchesSpaces, writePlacement } from '../sharing/spaces-filing.js';
 import { linkWithin } from '../sharing/space-links.js';
+import { SHORTCUT_APP } from '../files/shortcuts.js';
 
 // Les deux phrases d'un geste : celle de Ctrl+Z (`undoKey`, js/i18n/i18n-trash.js) et celle de Ctrl+Y (`redoKey`) ; `redoParams` : ce que dit le rétablissement
 // quand il n'est pas celui de l'annulation (le dossier où le fichier retourne).
@@ -88,7 +89,9 @@ export class Filing {
   moveFile(file) {
     return this.#gesture(async () => {
       const now = this.#now(file);
-      const target = await this.#chooseFolder({ title: this.#opts.t('ex.moveTitle', { name: this.#title(now) }), folders: this.#folders(), current: now.folder,
+      // un raccourci reste dans « Moi » (js/files/shortcuts.js) : les dossiers d'un espace ne lui sont pas proposés
+      const folders = now.shortcut ? this.#folders().filter(path => !isSpacePath(path)) : this.#folders();
+      const target = await this.#chooseFolder({ title: this.#opts.t('ex.moveTitle', { name: this.#title(now) }), folders, current: now.folder,
         base: this.#opts.here() });
       if (target !== null && target !== now.folder) await this.#writeMoves([{ app: now.app, file: now.id, pinned: now.pinned, folder: target }], null, {},
         this.#movedBack(now, target));
@@ -402,6 +405,9 @@ export class Filing {
   //   rangement comme il était.
   async #write(entries, folders = {}, undo = null) {
     if (isEmptyWrite(entries, folders)) return false;
+    // un raccourci est à la personne seule : il ne se range jamais dans un espace (les placements d'un espace se partagent)
+    if (entries.some(entry => entry.app === SHORTCUT_APP && isSpacePath(normalizePath(entry.folder)))) {
+      this.#opts.notice(this.#opts.t('sc.noSpace')); return false; }
     const before = undo ? this.#before(entries, folders) : null;
     const plan = this.#opts.spaces ? splitWrites(entries, folders, this.#opts.files(), this.#opts.spaces.info()) : null;
     if (plan && plan.error) { this.#opts.notice(this.#opts.t(plan.error)); return false; }

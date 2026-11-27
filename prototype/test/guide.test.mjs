@@ -171,3 +171,26 @@ test('la page porte le bouton du guide que la barre cherche (sans lui, GFS ne d�
   assert.match(page, /id="floater-guide"/);
   assert.match(page, /css\/guide\.css\?v=/);
 });
+
+test('contacts à l\'envers : qui est cité par quoi, les contacts introuvables en tête, le repli compté une seule fois', async () => {
+  const { contactsIndex, citingPerson } = await import('../js/guide/guide-contacts-index.js');
+  const found = contactsIndex(procs, row => answerFor(procs.find(proc => proc.row === row).title));
+  assert.ok(found.length > 0);
+  const lostAt = found.findIndex(group => group.found);
+  assert.ok(found.slice(0, lostAt < 0 ? 0 : lostAt).every(group => !group.found), 'les introuvables d\'abord');
+  const vacant = found.find(group => group.label === 'Poste vacant');
+  assert.ok(vacant && !vacant.found && vacant.kind === 'post', 'un poste vacant est cité et perdu');
+  assert.deepEqual(vacant.procs.map(proc => proc.title), ['Remboursement de frais']);
+  const budget = found.find(group => group.label === 'Budget');
+  assert.equal(budget.kind, 'service');
+  assert.ok(budget.procs.length > budget.own, 'les démarches filles qui l\'héritent comptent, sans être propres');
+  const dir = found.find(group => group.label === 'Directeur du numérique');
+  assert.ok(dir && dir.found && dir.people.length === 1);
+  const of = row => answerFor(procs.find(proc => proc.row === row).title);
+  const nathan = citingPerson(procs, of, 3);
+  assert.deepEqual(nathan.map(cite => cite.title), ['Congés et absences', 'Missions et déplacements', 'Poser des congés', 'Poser des congés exceptionnels', 'Remboursement de frais'],
+    'cité directement, par héritage, par le rôle « À défaut » ou par le responsable d\'un service ; sans doublon, par titre');
+  assert.deepEqual([nathan[2], nathan[3]].map(cite => [cite.via, cite.own]), [['person', true], ['person', false]], 'directement, puis par héritage');
+  assert.ok(citingPerson(procs, of, budget.people[0].row).some(cite => cite.title === 'Congés et absences' && cite.via === 'service'), 'la responsable d\'un service est citée par son service');
+  assert.deepEqual(citingPerson(procs, of, 9999), []);
+});

@@ -204,3 +204,36 @@
 .gd-ty-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .gd-ty-new { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: center; }
 .gd-ty-pick { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Le plan et les contacts à l'envers (27/11). Le plan : un arbre de gauche à droite, des traits qui relient la mère à ses filles ; un contact propre est plein, hérité en pointillé. */
+.gd-plan-card, .gd-contacts-card { padding: 10px 12px; overflow: auto; }
+.gd-plan, .gd-plan ul { list-style: none; margin: 0; padding: 0; }
+.gd-plan ul { padding-left: 4px; }
+.gd-plan li { position: relative; display: flex; align-items: center; padding: 3px 0 3px 22px; }
+.gd-plan li::before { content: ""; position: absolute; left: 0; top: 50%; width: 22px; border-top: 1px solid var(--border-strong); }
+.gd-plan li::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; border-left: 1px solid var(--border-strong); }
+.gd-plan li:first-child::after { top: 50%; }
+.gd-plan li:last-child::after { bottom: 50%; }
+.gd-plan li:only-child::after { display: none; }
+.gd-plan > li { padding-left: 0; }
+.gd-plan > li::before, .gd-plan > li::after { display: none; }
+.gd-pn { position: relative; display: flex; align-items: stretch; flex: none; max-width: 230px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface); }
+.gd-pn.is-inh { border-style: dashed; }
+.gd-pn.is-bare { border-color: var(--danger-ink); }
+.gd-pn-b { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: 5px 8px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.gd-pn-b:hover { background: var(--surface-sunken); }
+.gd-pn-t { display: flex; align-items: center; gap: 5px; font-weight: 600; }
+.gd-pn-ic { width: 14px; height: 14px; color: var(--t-guide-ink); flex: none; }
+.gd-pn-lead { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+.gd-pn-lead .ic { width: 12px; height: 12px; flex: none; }
+.gd-pn-lead.is-none { color: var(--danger-ink); }
+.gd-pn-tg { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; border: 0; border-left: 1px solid var(--border); background: transparent; color: var(--text-muted); font: inherit; font-size: max(12px, var(--fs-min)); cursor: pointer; }
+.gd-crs { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.gd-cr-b { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.gd-cr-b:hover { background: var(--surface-sunken); }
+.gd-cr-b.is-lost { border-color: var(--danger-ink); }
+.gd-cr-ic { width: 18px; height: 18px; color: var(--text-muted); flex: none; }
+.gd-cr-t { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; }
+.gd-cr-name { font-weight: 600; overflow-wrap: anywhere; }
+.gd-cr-sub { color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+.gd-cr-procs { list-style: none; margin: 4px 0 4px 26px; padding: 0; display: flex; flex-direction: column; gap: 2px; }

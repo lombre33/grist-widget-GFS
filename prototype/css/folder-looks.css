@@ -17,10 +17,10 @@
 /* Un émoji : il prend la place de l'icône, à la même taille (le nom du dossier dit tout : `aria-hidden`). */
 .fe { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 16px; height: 16px; font-size: 14px; font-style: normal; line-height: 1; filter: none !important;
   font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
-.tr-row .fe { width: 14px; height: 14px; font-size: 12.5px; }
-.ls-row .nm .fe { width: 15px; height: 15px; font-size: 13.5px; }
+.tr-row .fe { width: 14px; height: 14px; font-size: max(12.5px, var(--fs-min)); }
+.ls-row .nm .fe { width: 15px; height: 15px; font-size: max(13.5px, var(--fs-min)); }
 .th-pv .fe, .lk-prev .fe { width: 34px; height: 34px; font-size: 30px; }
-.inf .l1 > .fe { width: 15px; height: 15px; font-size: 13.5px; }
+.inf .l1 > .fe { width: 15px; height: 15px; font-size: max(13.5px, var(--fs-min)); }
 
 /* La fenêtre « Apparence du dossier » (js/explorer/look-window.js). */
 .mod.lk-win { width: min(520px, 100%); }

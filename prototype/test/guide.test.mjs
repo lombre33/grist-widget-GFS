@@ -164,3 +164,10 @@ test('contacts : sans annuaire, le rôle se lit comme du texte, rien n\'est remp
   assert.equal(by(lost, 'Demander').viaFallback, false);
   assert.deepEqual(by(lost, 'Demander').entries.map(entry => entry.found), [false], 'le service est dit, sans personne');
 });
+
+test('la page porte le bouton du guide que la barre cherche (sans lui, GFS ne démarre pas)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const page = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(page, /id="floater-guide"/);
+  assert.match(page, /css\/guide\.css\?v=/);
+});

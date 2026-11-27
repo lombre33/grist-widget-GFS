@@ -12,6 +12,7 @@ import { ANNUAIRE_FILTER_STRINGS } from './i18n-annuaire-filters.js';
 import { ANNUAIRE_RIGHTS_STRINGS } from './i18n-annuaire-rights.js';
 import { ANNUAIRE_LOCK_STRINGS } from './i18n-annuaire-lock.js';
 import { ANNUAIRE_ADD_STRINGS } from './i18n-annuaire-add.js';
+import { ANNUAIRE_FIELD_STRINGS } from './i18n-annuaire-field.js';
 
 export const ANNUAIRE_STRINGS = Object.freeze({
   fr: {
@@ -25,6 +26,7 @@ export const ANNUAIRE_STRINGS = Object.freeze({
     ...ANNUAIRE_RIGHTS_STRINGS.fr,
     ...ANNUAIRE_LOCK_STRINGS.fr,
     ...ANNUAIRE_ADD_STRINGS.fr,
+    ...ANNUAIRE_FIELD_STRINGS.fr,
     'an.tip': 'Annuaire',
     'an.tipLong': 'Annuaire des personnes du document',
     'an.title': 'Annuaire',
@@ -293,6 +295,7 @@ export const ANNUAIRE_STRINGS = Object.freeze({
     ...ANNUAIRE_RIGHTS_STRINGS.en,
     ...ANNUAIRE_LOCK_STRINGS.en,
     ...ANNUAIRE_ADD_STRINGS.en,
+    ...ANNUAIRE_FIELD_STRINGS.en,
     'an.tip': 'Directory',
     'an.tipLong': 'Directory of the people in the document',
     'an.title': 'Directory',

@@ -20,6 +20,15 @@ export function fakeGrist(tables = {}, { renameTo = null, email = null, fail = {
     const table = tables[name];
     if (verb === 'AddColumn') { table.columns.push(a); (specs[name] ||= {})[a] = { id: a, ...b }; return null; }
     if (fail[verb] && verb !== 'AddTable') throw new Error(fail[verb]);
+    // Le type ou les options d'une colonne qui change (`ModifyColumn`) : la ligne de la colonne, dans les tables internes quand le document les porte. Le faux Grist ne convertit
+    // aucune cellule (le vrai le fait à sa façon : labo/run-annuaire-champ-ui.mjs) ; une colonne absente est refusée.
+    if (verb === 'ModifyColumn') {
+      const home = tables._grist_Tables && tables._grist_Tables.rows.find(row => row.tableId === name);
+      const meta = home && tables._grist_Tables_column.rows.find(row => row.parentId === home.id && row.colId === a);
+      if (!meta) throw new Error(`Invalid column ${a}`);
+      Object.assign(meta, b);
+      return null;
+    }
     // Retirer une ligne qui n'est plus là n'échoue pas, comme dans Grist (mesuré, labo/run-corbeille-apps.mjs) : le lot continue, la réponse est null.
     if (verb === 'RemoveRecord') {
       const at = table.rows.findIndex(row => row.id === a);

@@ -13,6 +13,16 @@ const TYPE_KEYS = Object.freeze({ choice: 'an.type.choice', choicelist: 'an.type
   number: 'an.type.number',
   ref: 'an.type.ref', reflist: 'an.type.reflist', text: 'an.type.text' });
 
+// Les colonnes que GFS lit déjà par un nom ou que les niveaux suivent : elles ne se proposent pas en champ.
+export function takenColumns(config) {
+  const taken = new Set(['name', 'first', 'title', 'email', 'phone', 'lead', 'manager'].map(key => config[key]).filter(Boolean));
+  for (const level of config.levels) if (level.path[0]) taken.add(level.path[0]);
+  for (const rel of config.relations) if (rel.col) taken.add(rel.col);
+  for (const field of config.fields) taken.add(field.col);
+  for (const col of [config.leave, config.presence.col]) if (col) taken.add(col); // les colonnes des options (départ, présence) ne se proposent pas en champ
+  return taken;
+}
+
 // Le type d'une colonne, en un mot (« Choix », « Oui / non », « Personne » pour une référence à la table des personnes elle-même).
 export function typeLabel(col, table, t) {
   if (!col) return t('an.type.absent');

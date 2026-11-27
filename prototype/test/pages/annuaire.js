@@ -199,7 +199,7 @@ async function mount() {
   // et `window.__annuaireBlock` (un texte : le document ne s'écrit pas, ce que dit `writeBlock`).
   const applyUserActions = grist.port.doc.applyUserActions;
   grist.port.doc.applyUserActions = async list => {
-    if (window.__annuaireRefuse && list.some(action => (action[0] === 'UpdateRecord' || action[0] === 'BulkAddRecord') && action[1] === 'Personnes')) throw new Error(window.__annuaireRefuse);
+    if (window.__annuaireRefuse && list.some(action => ['UpdateRecord', 'BulkAddRecord', 'ModifyColumn'].includes(action[0]) && action[1] === 'Personnes')) throw new Error(window.__annuaireRefuse);
     return applyUserActions(list);
   };
   const seed = new AnnuaireStore({ port: grist.port, consent: async () => true });

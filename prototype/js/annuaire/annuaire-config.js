@@ -75,9 +75,10 @@ function readSub(input) {
 // La configuration lue d'un texte JSON (ou d'un objet) : toujours complète, jamais d'exception. Ce que GFS ne connaît pas (une clé d'une version plus récente)
 // est ignoré à la lecture et perdu à la réécriture : `writeConfig` ne garde que ce qu'elle connaît ; une version plus récente écrit donc sa propre ligne. { v,
 // name, first, order, upper, hierarchy, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], relations: [{ col, label, inverse, card }],
-//   columns: ['email', 'phone'], fields: [{ col, path, filter, list, column }] }
+//   columns: ['email', 'phone'], fields: [{ col, path, label, filter, list, column }] }
 // `columns` : les colonnes fixes que la personne met en colonne de la liste (retour du porteur, 25/11 : « des colonnes pour les attributs, réglables comme les
-// filtres ») ; les champs ont leur propre `column`.
+// filtres ») ; les champs ont leur propre `column`. `label` d'un champ (choix du porteur, 27/11 : « le nom du champ et la colonne, ce n'est pas forcément les
+// mêmes ») : le nom que l'annuaire écrit (liste, filtres, fiche, export) ; vide, c'est le nom de la colonne. Il n'est écrit nulle part dans Grist.
 // `name`, `first`, `title`, `email` et `phone` sont une colonne de la personne ou, quand la personne en a dit une dans une table liée (retour du porteur,
 // 25/11 :
 // « le poste est une référence, je veux choisir une autre colonne de la table des postes »), un chemin écrit « Poste › Intitulé » (`keyPath`).
@@ -117,7 +118,7 @@ export function readConfig(source) {
   config.fields = fields.map(field => {
     const route = path(field && field.path);
     const steps = route.length ? route : [text(field && field.col)].filter(Boolean);
-    return { col: steps.join(FIELD_SEPARATOR), path: steps.length > 1 ? steps : [], filter: Boolean(field && field.filter),
+    return { col: steps.join(FIELD_SEPARATOR), path: steps.length > 1 ? steps : [], label: text(field && field.label), filter: Boolean(field && field.filter),
       list: Boolean(field && field.list), column: Boolean(field && field.column) };
   }).filter(field => field.col && !seen.has(field.col) && seen.add(field.col));
   return config;
@@ -125,9 +126,10 @@ export function readConfig(source) {
 
 // Les colonnes que suit une clé de la personne (`name`, `title`…) : « Poste › Intitulé » donne ['Poste', 'Intitulé'], une colonne seule [colonne], rien [].
 export const keyPath = key => (key ? String(key).split(FIELD_SEPARATOR).map(step => step.trim()).filter(Boolean) : []);
-// Les colonnes qu'un champ suit depuis la personne, et le nom qu'on lui donne à l'écran (la dernière colonne du chemin).
+// Les colonnes qu'un champ suit depuis la personne, et le nom qu'on lui donne à l'écran (celui que la personne lui a donné, sinon la dernière colonne du
+// chemin).
 export const fieldPath = field => (field.path && field.path.length ? field.path : [field.col]);
-export const fieldLabel = field => fieldPath(field).at(-1);
+export const fieldLabel = field => (field.label && field.label.trim()) || fieldPath(field).at(-1);
 
 export const writeConfig = config => JSON.stringify(readConfig(config));
 
@@ -164,8 +166,9 @@ export const addAction = (tableId, record) => ['AddRecord', tableId, null, recor
 export const updateAction = (tableId, row, record) => ['UpdateRecord', tableId, row, record];
 // L'action qui ajoute une colonne vide (retour du porteur, 25/11 : « le widget propose de la créer ») ; `type` : un type de Grist (« Text », « Ref:Personnes
 // »…). `shown` : le numéro de la colonne que montre une référence (Grist écrit le nom de la personne plutôt que son numéro), 0 sans.
-export const addColumnAction = (tableId, name, type, shown = 0) => ['AddColumn', tableId, text(name),
-  { type, isFormula: false, label: text(name), ...(shown ? { visibleCol: shown } : {}) }];
+export const addColumnAction = (tableId, name, type, shown = 0, choices = []) => ['AddColumn', tableId, text(name),
+  { type, isFormula: false, label: text(name), ...(shown ? { visibleCol: shown } : {}),
+    ...(choices.length ? { widgetOptions: JSON.stringify({ choices }) } : {}) }];
 // La table que GFS crée quand l'annuaire n'a pas encore sa table de personnes (retour du porteur, 25/11 : « laisser l'option d'en créer une ») : une ligne par
 // personne, le nom et l'adresse e-mail ; les autres colonnes se créent ensuite depuis le réglage, une à une. Des noms anglais dès le départ (décision du
 // 25/11 : les tables et les colonnes de la suite sont en anglais). Le préfixe `GFS_` est celui de la mécanique de GFS : la table des personnes est celle de la

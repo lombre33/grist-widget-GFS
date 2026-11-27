@@ -310,6 +310,7 @@ async function play(run) {
   check('Grist a le nouveau bureau d\'Emma (la ligne 10), rien d\'autre n\'a changé', emma[t('an.plan.officeName')] === 10 && emma.Nom === 'Emma Rolland', emma);
   await planImage(run, frame, page);
   await planShapes(run, page);
+  await planNav(run, page);
   await planTrace(run, page);
   check('aucune erreur de GFS dans la console (ni violation de la politique de contenu)', unexpected(run).length === 0, unexpected(run));
 }
@@ -551,6 +552,91 @@ async function planShapes(run, page) {
     && (await crumbOf(frame)).at(-1) === 'Étage 1', await crumbOf(frame));
   await shot(frame, '22-bureau-repere');
   check('contraste 4,5:1 sur le plan, ses tracés et ses places', (await contrastProblems(frame, '.an-plan')).length === 0, await contrastProblems(frame, '.an-plan'));
+}
+
+const sibsOf = async frame => (await frame.locator('[data-fk="plan-sibs"] .an-pl-sibb').evaluateAll(list => list.map(node => [node.querySelector('.an-pl-sibn').textContent,
+  node.querySelector('.an-pl-sibc').textContent, node.getAttribute('aria-pressed')])));
+
+async function planNav(run, page) {
+  say('--- 10. se déplacer : les autres étages avec leur décompte, les lieux estompés par une recherche, la carte en ligne ---');
+  const context = page.context();
+  let frame = await gfsFrame(page);
+  await page.reload();
+  frame = await gfsFrame(page);
+  await openAnnuaire(frame, page);
+  await frame.locator('[data-fk="v:plan"]').click();
+  await goTo(frame, page, ['Siège', 'Bâtiment A']);
+  check('au cran du bâtiment : les deux bâtiments du site, avec leur décompte (5 et 1), le bâtiment A enfoncé',
+    JSON.stringify(await sibsOf(frame)) === JSON.stringify([['Bâtiment A', '5', 'true'], ['Bâtiment B', '1', 'false']]), await sibsOf(frame));
+  await frame.locator('[data-fk="plan-sib:3"]').click();
+  await page.waitForTimeout(300);
+  check('un clic sur « Bâtiment B » y va, sans remonter', (await crumbOf(frame)).at(-1) === 'Bâtiment B' && (await sibsOf(frame))[1][2] === 'true', await crumbOf(frame));
+  await frame.locator('[data-fk="plan-sib:2"]').click();
+  await frame.locator('.an-pl-tile', { hasText: 'Étage 1' }).click();
+  await page.waitForTimeout(300);
+  check('au cran de l\'étage : les deux étages du bâtiment A, 2 personnes à l\'étage 1 et 3 à l\'étage 2, l\'étage 1 enfoncé',
+    JSON.stringify(await sibsOf(frame)) === JSON.stringify([['Étage 1', '2', 'true'], ['Étage 2', '3', 'false']]), await sibsOf(frame));
+  const sibBox = await frame.locator('[data-fk="plan-sibs"]').boundingBox();
+  const planBox = await frame.locator('.an-pl-vp').boundingBox();
+  const panel = await (await frame.frameElement()).boundingBox();
+  check('la rangée des étages se voit en haut du volet, au-dessus du plan, sans défiler (700 × 400)', sibBox.height > 14 && sibBox.y + sibBox.height <= planBox.y + 1 && sibBox.y >= panel.y
+    && sibBox.y + sibBox.height <= panel.y + panel.height, [sibBox, planBox, panel.y + panel.height]);
+  await shot(frame, '30-autres-etages');
+  await frame.locator('[data-fk="plan-sib:5"]').click();
+  await page.waitForTimeout(300);
+  check('un clic sur « Étage 2 » y va : ses locaux, son décompte', (await crumbOf(frame)).at(-1) === 'Étage 2' && JSON.stringify(await tilesOf(frame)) === JSON.stringify(['Bureau 201', 'Sanitaires']), [await crumbOf(frame), await tilesOf(frame)]);
+  await frame.locator('[data-fk="plan-sib:4"]').click();
+  await page.waitForTimeout(300);
+  await frame.locator('.an-pl-shape').first().waitFor({ state: 'visible', timeout: 15000 });
+  const tileDim = async () => (await frame.locator('.an-pl-tile.is-dim').evaluateAll(list => list.map(node => node.dataset.id)));
+  const shapeDim = async () => (await frame.locator('.an-pl-shape.is-dim').evaluateAll(list => list.map(node => node.dataset.id)));
+  check('sans recherche, rien n\'est estompé', (await tileDim()).length === 0 && (await shapeDim()).length === 0, [await tileDim(), await shapeDim()]);
+  const search = frame.locator(`input[aria-label="${t('an.searchLabel')}"]`);
+  await search.fill('camille');
+  await page.waitForTimeout(500);
+  check('avec « camille », les locaux où personne ne correspond (102, Atlas) sont estompés, le 101 et le couloir grisé non',
+    JSON.stringify((await tileDim()).sort()) === JSON.stringify(['7', '9']) && JSON.stringify((await shapeDim()).sort()) === JSON.stringify(['7', '9']), [await tileDim(), await shapeDim()]);
+  check('le décompte du bureau 101 dit 1 (Camille seule) et le nom reste lisible', (await text(frame.locator('.an-pl-tile[data-id="6"]'))).includes('1'), await text(frame.locator('.an-pl-tile[data-id="6"]')));
+  await shot(frame, '31-recherche-estompe');
+  check('contraste 4,5:1 avec des lieux estompés et le sélecteur d\'étages', (await contrastProblems(frame, '.an-plan')).length === 0, await contrastProblems(frame, '.an-plan'));
+  await search.fill('');
+  await page.waitForTimeout(400);
+  check('la recherche effacée, plus rien n\'est estompé', (await tileDim()).length === 0 && (await shapeDim()).length === 0);
+
+  say('  la carte en ligne : un lien, l\'adresse du site pour tous ses lieux, les coordonnées quand elles existent, grisé sans rien');
+  const geo = frame.locator('[data-fk="plan-geo"]');
+  const siege = 'https://www.openstreetmap.org/search?query=12%20rue%20des%20%C3%89coles%2C%20Lyon';
+  check('l\'étage se situe par l\'adresse du site : un lien OpenStreetMap, nouvel onglet, rien d\'autre', (await geo.getAttribute('href')) === siege && (await geo.getAttribute('target')) === '_blank'
+    && (await geo.getAttribute('rel')) === 'noopener noreferrer', await geo.getAttribute('href'));
+  await context.route('https://www.openstreetmap.org/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>OpenStreetMap</title>' })); // le cloud n'a pas de réseau : l'adresse visée suffit
+  const popup = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
+  await geo.click();
+  const opened = await popup;
+  check('un clic à la vraie souris ouvre un nouvel onglet vers OpenStreetMap', Boolean(opened) && /^https:\/\/www\.openstreetmap\.org\//.test(opened.url()), opened ? opened.url() : 'aucun onglet');
+  if (opened) await opened.close().catch(() => {});
+  const coords = await apply(run, [['UpdateRecord', 'Directory_Places', 3, { Lat: 45.75, Lng: 4.85 }]]);
+  check('des coordonnées posées sur « Bâtiment B »', coords.status === 200, coords.text);
+  await page.reload();
+  frame = await gfsFrame(page);
+  await openAnnuaire(frame, page);
+  await frame.locator('[data-fk="v:plan"]').click();
+  await goTo(frame, page, ['Siège', 'Bâtiment B']);
+  check('« Bâtiment B » se situe par ses coordonnées', (await frame.locator('[data-fk="plan-geo"]').getAttribute('href')) === 'https://www.openstreetmap.org/?mlat=45.75&mlon=4.85#map=18/45.75/4.85',
+    await frame.locator('[data-fk="plan-geo"]').getAttribute('href'));
+  await shot(frame, '32-carte-en-ligne');
+  const blank = await apply(run, [['UpdateRecord', 'Directory_Places', 1, { Address: '' }]]);
+  check('l\'adresse du site est effacée', blank.status === 200, blank.text);
+  await page.reload();
+  frame = await gfsFrame(page);
+  await openAnnuaire(frame, page);
+  await frame.locator('[data-fk="v:plan"]').click();
+  await goTo(frame, page, ['Siège', 'Bâtiment A']);
+  const grey = frame.locator('[data-fk="plan-geo"]');
+  check('sans adresse ni coordonnées, le lien reste là, grisé', (await grey.count()) === 1 && (await grey.getAttribute('aria-disabled')) === 'true' && !(await grey.getAttribute('href')), await grey.getAttribute('aria-disabled'));
+  await pressGreyed(page, grey);
+  await page.waitForTimeout(300);
+  check('un clic dit quelles colonnes remplir', (await noteOf(frame)) === t('an.plan.noGeo'), await noteOf(frame));
+  await shot(frame, '33-carte-grisee');
 }
 
 // La fenêtre de tracé : sa taille et ce qui y déborde (la première fenêtre de la page est celle de l'annuaire, pas la sienne).

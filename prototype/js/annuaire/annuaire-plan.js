@@ -133,3 +133,31 @@ export function officeChoices(plan) {
   return plan.places.filter(place => !NO_SEATS.includes(place.use)).map(place => ({ id: place.id, label: pathText(plan, place.id) }))
     .sort((a, b) => a.label.localeCompare(b.label, 'fr', { numeric: true, sensitivity: 'base' }));
 }
+
+// Les lieux de même rang que `id` (les autres étages du même bâtiment, les autres bâtiments du même site…), lui compris, dans l'ordre naturel ; [] quand il est
+// seul ou inconnu.
+export function siblingsOf(plan, id) {
+  const place = plan.byId.get(id);
+  const all = place ? childrenOf(plan, place.parent) : [];
+  return all.length > 1 ? all : [];
+}
+
+// Le lien d'une carte en ligne (OpenStreetMap) pour un lieu : ses coordonnées (colonnes « Lat » et « Lng ») quand elles sont justes, sinon son adresse.
+// Rien n'est chargé : c'est un lien que la personne clique. '' sans l'un ni l'autre. Une colonne numérique que Grist laisse « vide » vaut 0 : le couple
+// (0, 0) est donc une cellule vide, jamais un endroit (mesuré dans le vrai Grist : le lien tombait en plein golfe de Guinée).
+export function mapLinkOf(place) {
+  const { lat, lng, address } = place;
+  const exact = lat !== null && lng !== null && (lat !== 0 || lng !== 0) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+  if (exact) return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`;
+  return address ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(address)}` : '';
+}
+
+// Où le lieu `id` se voit sur une carte en ligne : le lieu lui-même, sinon son plus proche ancêtre qui a des coordonnées ou une adresse (un étage se situe par
+// son bâtiment, un local par son site) : { place, url }, ou null.
+export function geoOf(plan, id) {
+  for (let at = plan.byId.get(id); at; at = plan.byId.get(at.parent)) {
+    const url = mapLinkOf(at);
+    if (url) return { place: at, url };
+  }
+  return null;
+}

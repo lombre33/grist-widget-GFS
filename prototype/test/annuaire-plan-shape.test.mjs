@@ -137,6 +137,20 @@ test('ce que le calque dessine : les lieux tracés, les grisés, le repéré, l\
   assert.equal(other.seats, null, 'un couloir n\'a pas de places');
 });
 
+test('une recherche ou un filtre estompe les lieux où personne ne correspond (le couloir reste grisé, le cadrage garde sa règle)', () => {
+  const plan = planFixture();
+  const few = occupancy(plan, shown.slice(0, 1));
+  const state = { t, here: 0, selected: null, filtered: true };
+  const floor = layerOf({ plan, map: mapOf(plan, 3), count: few, state });
+  assert.deepEqual(floor.shapes.map(each => [each.id, each.grey, each.dim]), [[4, false, false], [5, true, false]], 'un lieu qui a des personnes correspondantes ne s\'estompe pas, un couloir est grisé, pas estompé');
+  const none = layerOf({ plan, map: mapOf(plan, 3), count: occupancy(plan, []), state });
+  assert.deepEqual(none.shapes.map(each => each.dim), [true, false], 'sans personne qui corresponde, le bureau s\'estompe');
+  const plain = layerOf({ plan, map: mapOf(plan, 3), count: occupancy(plan, []), state: { ...state, filtered: false } });
+  assert.deepEqual(plain.shapes.map(each => each.dim), [false, false], 'sans filtre, rien ne s\'estompe');
+  const framed = layerOf({ plan, map: mapOf(plan, 4), count: few, state });
+  assert.deepEqual(framed.shapes.map(each => [each.id, each.dim]), [[4, false], [5, true]], 'un local cadré estompe les autres, comme avant');
+});
+
 test('le calque : une forme par lieu avec l\'action de sa carte, des places qui s\'ouvrent, des noms qui se taisent quand la forme est trop petite', () => {
   const plan = planFixture();
   const count = occupancy(plan, shown);

@@ -57,6 +57,7 @@ export class PlanPane {
   paint({ t, data, people, selected, send }) {
     if (!data.plan.byId.has(this.#place)) this.#place = 0;
     this.#view.show({ t, plan: data.plan, people, current: this.#place, here: this.#here, selected, masked: data.masked, send, imageWhy: imageWhy(data),
+      filtered: people.length < data.people.length,
       traceWhy: traceWhy(data) });
   }
 

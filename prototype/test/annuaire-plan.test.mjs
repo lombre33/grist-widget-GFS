@@ -12,7 +12,7 @@ import { ANNUAIRE_PLAN_STRINGS } from '../js/i18n/i18n-annuaire-plan.js';
 installFakeDocument();
 
 const { readConfig, planReady, PLAN_COLUMNS, PLAN_TABLE } = await import('../js/annuaire/annuaire-config.js');
-const { planOf, kindOf, useOf, kindAt, pathOf, pathText, placeOfPerson, occupancy, officeChoices, childrenOf } = await import('../js/annuaire/annuaire-plan.js');
+const { planOf, kindOf, useOf, kindAt, pathOf, pathText, placeOfPerson, occupancy, officeChoices, childrenOf, siblingsOf, mapLinkOf, geoOf } = await import('../js/annuaire/annuaire-plan.js');
 const { schemaOf, tablesNeeded } = await import('../js/annuaire/annuaire-schema.js');
 const { AnnuaireStore } = await import('../js/annuaire/annuaire-store.js');
 const { editableFields, refOptions } = await import('../js/annuaire/annuaire-edit.js');
@@ -261,6 +261,68 @@ test('la vue : le fil d\'Ariane, les occupants d\'un local, ceux qui n\'ont pas 
   const empty = new PlanView();
   empty.show({ t, plan: planOf(planConfig(), 'Personnes', { Personnes: people(), Directory_Places: { id: [] } }), people: shown, current: 0, here: 0, selected: null, masked: new Set() });
   assert.match(text(empty.element), /« Directory_Places » ne contient encore aucun lieu/);
+});
+
+test('les lieux de même rang : les autres étages, bâtiments ou sites, jamais un lieu seul', () => {
+  const plan = planOf(planConfig(), 'Personnes', data());
+  assert.deepEqual(siblingsOf(plan, 2).map(place => place.name), ['Bâtiment A', 'Bâtiment B']);
+  assert.deepEqual(siblingsOf(plan, 1), [], 'le seul site n\'a pas d\'autre site');
+  assert.deepEqual(siblingsOf(plan, 3), [], 'le seul étage du bâtiment');
+  assert.deepEqual(siblingsOf(plan, 0).concat(siblingsOf(plan, 999)), [], 'tous les lieux, ou un lieu inconnu : rien');
+});
+
+test('la carte en ligne : les coordonnées quand elles sont justes, sinon l\'adresse, sinon rien ; un étage se situe par son bâtiment', () => {
+  assert.equal(mapLinkOf({ lat: 45.75, lng: 4.85, address: '1 rue de la Paix' }), 'https://www.openstreetmap.org/?mlat=45.75&mlon=4.85#map=18/45.75/4.85');
+  assert.equal(mapLinkOf({ lat: 123, lng: 4.85, address: '1 rue de la Paix' }), 'https://www.openstreetmap.org/search?query=1%20rue%20de%20la%20Paix', 'une latitude impossible : l\'adresse');
+  assert.equal(mapLinkOf({ lat: 45.75, lng: null, address: 'Lyon' }), 'https://www.openstreetmap.org/search?query=Lyon', 'une seule coordonnée ne suffit pas');
+  assert.equal(mapLinkOf({ lat: null, lng: null, address: 'a&b=c#d' }), 'https://www.openstreetmap.org/search?query=a%26b%3Dc%23d', 'l\'adresse est encodée : jamais un morceau d\'adresse qui devient un paramètre');
+  assert.equal(mapLinkOf({ lat: null, lng: null, address: '' }), '');
+  assert.equal(mapLinkOf({ lat: 0, lng: 0, address: 'Lyon' }), 'https://www.openstreetmap.org/search?query=Lyon', 'Grist laisse 0 dans une cellule numérique vide : (0, 0) n\'est pas un endroit');
+  assert.equal(mapLinkOf({ lat: 0, lng: 0, address: '' }), '');
+  assert.equal(mapLinkOf({ lat: 0, lng: 4.85, address: '' }), 'https://www.openstreetmap.org/?mlat=0&mlon=4.85#map=18/0/4.85', 'sur l\'équateur, c\'est un vrai endroit');
+  const plan = planOf(planConfig(), 'Personnes', data());
+  const found = geoOf(plan, 4);
+  assert.deepEqual([found.place.name, found.url], ['Siège', 'https://www.openstreetmap.org/search?query=1%20rue%20de%20la%20Paix'], 'le bureau se situe par le site, seul lieu qui a une adresse');
+  assert.equal(geoOf(plan, 0), null);
+});
+
+test('la vue : les autres étages avec leur décompte, le lieu où l\'on est enfoncé ; rien pour un local, un lieu seul ou le sommet', () => {
+  const view = new PlanView();
+  tiles(view, 2);
+  const group = byClass(view.element, 'an-pl-sib');
+  assert.equal(group.length, 1);
+  assert.equal(group[0].attrs['aria-label'], t('an.plan.sibs.building'));
+  assert.ok(byClass(view.element, 'an-pl-head')[0].children.includes(group[0]), 'la rangée est dans le titre du volet : une case de plus dans la grille du plan se perdrait sous le plan');
+  const buttons = byClass(group[0], 'an-pl-sibb');
+  assert.deepEqual(buttons.map(button => [text(byClass(button, 'an-pl-sibn')[0]), text(byClass(button, 'an-pl-sibc')[0]), button.attrs['aria-pressed'], button.dataset.act, button.dataset.id]),
+    [['Bâtiment A', '2', 'true', 'plan-go', '2'], ['Bâtiment B', '0', 'false', 'plan-go', '7']], 'les décomptes sont ceux des personnes montrées ; un clic va au lieu, comme une carte');
+  for (const id of [0, 1, 3, 4]) { tiles(view, id); assert.equal(byClass(view.element, 'an-pl-sib').length, 0, `lieu ${id} : pas de sélecteur`); }
+});
+
+test('la vue : « Voir sur une carte en ligne » est un lien vers OpenStreetMap, grisé avec sa raison quand aucun lieu n\'a d\'adresse', () => {
+  const view = new PlanView();
+  tiles(view, 2);
+  const [link] = byClass(view.element, 'an-pl-geo');
+  assert.deepEqual([link.tag || link.tagName.toLowerCase(), link.attrs.href, link.attrs.target, link.attrs.rel],
+    ['a', 'https://www.openstreetmap.org/search?query=1%20rue%20de%20la%20Paix', '_blank', 'noopener noreferrer'], 'un bâtiment sans adresse se situe par son site');
+  assert.match(link.attrs.title, /Siège/);
+  assert.match(text(link), new RegExp(t('an.plan.geo')));
+  tiles(view, 0);
+  assert.equal(byClass(view.element, 'an-pl-geo').length, 0, 'tous les lieux : pas de lien');
+  const bare = { ...places(), Address: places().Address.map(() => '') };
+  const plan = planOf(planConfig(), 'Personnes', { Personnes: people(), Directory_Places: bare });
+  view.show({ t, plan, people: shown, current: 2, here: 0, selected: null, masked: new Set() });
+  const [grey] = byClass(view.element, 'an-pl-geo');
+  assert.deepEqual([grey.attrs['aria-disabled'], grey.dataset.act, grey.dataset.why, grey.attrs.href], ['true', 'plan-note', t('an.plan.noGeo'), undefined], 'grisé, jamais masqué : un clic dit quelle colonne remplir');
+});
+
+test('la vue : une recherche estompe les cartes où personne ne correspond, pas les autres ; sans recherche, rien ne s\'estompe', () => {
+  const view = new PlanView();
+  const dimmed = floor => floor.filter(tile => tile.className.includes('is-dim')).map(tile => tile.dataset.id);
+  assert.deepEqual(dimmed(tiles(view, 3, { people: shown.slice(0, 1), filtered: true })), ['6'], 'seul Camille correspond : le bureau 12 (personne) s\'estompe, le 204 et le couloir non');
+  assert.deepEqual(dimmed(tiles(view, 3, { people: shown.slice(0, 1) })), [], 'sans recherche, un bureau vide reste comme les autres');
+  const here = tiles(view, 3, { people: [], filtered: true, here: 6 }).find(tile => tile.dataset.id === '6');
+  assert.ok(here.className.includes('is-here') && here.className.includes('is-dim'), 'le bureau repéré reste repéré, et dit son décompte');
 });
 
 test('les textes : français (vouvoiement) et anglais ont les mêmes clés, et la vue n\'en cherche aucune qui manque', () => {

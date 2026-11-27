@@ -148,3 +148,19 @@
 @container antr (max-width: 560px) {
   .an-tr-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(70px, 34%); gap: 8px; }
 }
+
+/* Lot 4 (js/annuaire/annuaire-plan-nav.js) : les autres étages (ou bâtiments, ou sites) de même rang, chacun avec son décompte ; celui où l'on est est enfoncé. Les boutons
+   passent à la ligne quand ils sont nombreux ; la rangée est dans le titre du volet (un enfant du titre, jamais une case de plus dans la grille du plan). Un lieu où personne ne correspond à la recherche ou aux filtres s'estompe sans disparaître : son nom et son décompte restent
+   lisibles (le fond, pas le texte). « Voir sur une carte en ligne » est un lien qui s'habille en bouton ; grisé, il garde sa place et dit pourquoi au clic. */
+.an-pl-sib { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.an-pl-sibb { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 26px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-btn);
+  background: var(--surface); color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); cursor: pointer; }
+.an-pl-sibb:hover { background: var(--surface-sunken); }
+.an-pl-sibb[aria-pressed="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; cursor: default; }
+.an-pl-sibn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-pl-sibc { flex: none; min-width: 1.4em; padding: 0 5px; border-radius: 999px; background: var(--surface-sunken); color: var(--text); font-size: max(11px, var(--fs-min)); text-align: center; }
+.an-pl-sibb[aria-pressed="true"] .an-pl-sibc { background: var(--surface); }
+.an-pl-sibb:focus-visible, .an-pl-geo:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.an-pl-tile.is-dim:not(.is-here) { background: var(--surface-sunken); border-style: dashed; }
+.an-pl-geo { flex: none; text-decoration: none; }
+.an-pl-geo[aria-disabled="true"] { opacity: 1; border-style: dashed; border-color: var(--border-strong); background: var(--surface); color: var(--text-muted); cursor: not-allowed; }

@@ -47,7 +47,8 @@ export function labelLines(name, count, widthPx, heightPx) {
 
 // Ce que le plan dessine pour `map` (js/annuaire/annuaire-plan.js : `mapOf`) : { shapes: [{ id, name, shape, grey, here, current, dim, label, why, marks (des
 // classes de plus : la fenêtre de tracé) }], seats : { shape, people: [{ row, name, selected }], free } | null }. `state` : { t, here (le lieu à repérer),
-// selected }, `count` : `occupancy` (js/annuaire/annuaire-plan.js).
+// selected, filtered (la recherche ou un filtre a réduit les personnes : un lieu où personne ne correspond s'estompe) }, `count` : `occupancy`
+// (js/annuaire/annuaire-plan.js).
 export function layerOf({ plan, map, count, state }) {
   const { t } = state;
   const here = new Set(pathOf(plan, state.here).map(place => place.id));
@@ -56,7 +57,7 @@ export function layerOf({ plan, map, count, state }) {
     const n = count.total.get(place.id) || 0;
     const label = grey || (!n && !place.capacity) ? '' : place.capacity ? `${n}/${place.capacity}` : String(n);
     return { id: place.id, name: place.name, shape: place.shape, grey, here: here.has(place.id), current: Boolean(map.focus && map.focus.id === place.id),
-      dim: Boolean(map.focus) && map.focus.id !== place.id, label, why: grey ? t('an.plan.noSeats') : '' };
+      dim: Boolean(map.focus ? map.focus.id !== place.id : state.filtered && !n && !grey), label, why: grey ? t('an.plan.noSeats') : '' };
   });
   const focus = map.focus && map.focus.shape && !NO_SEATS.includes(map.focus.use) ? map.focus : null;
   const people = focus ? count.direct.get(focus.id) || [] : [];

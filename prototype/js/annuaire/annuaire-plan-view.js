@@ -13,6 +13,7 @@ import { icon } from '../ui/icons.js';
 import { childrenOf, pathOf, kindAt, occupancy, mapOf, NO_SEATS } from './annuaire-plan.js';
 import { personRow } from './annuaire-panes.js';
 import { PlanMap } from './annuaire-plan-map.js';
+import { siblingsBar, geoLink } from './annuaire-plan-nav.js';
 import { layerOf } from './annuaire-plan-shapes.js';
 import { imagesReady } from './annuaire-images.js';
 
@@ -63,7 +64,8 @@ export class PlanView {
       this.#map.show({ t, place: map.host, layer: layerOf({ plan, map, count, state }), focus: map.focus, trace });
     }
     this.#refs.body.className = mapped ? 'an-pl-body has-map' : 'an-pl-body';
-    this.#refs.body.replaceChildren(...[head(state, place, count.total.get(current) || 0), mapped ? this.#map.element : null,
+    this.#refs.body.replaceChildren(...[head(state, place, count.total.get(current) || 0, place ? siblingsBar(state, place, count) : null),
+      mapped ? this.#map.element : null,
       h('div', { class: 'an-pl-side' }, ...[grid, direct.length ? occupants(state, direct, kids.length > 0) : null,
         empty(state, kids.length + direct.length), current ? null : unplacedNote(state, count.unplaced)].filter(Boolean))].filter(Boolean));
   }
@@ -93,14 +95,14 @@ function step(label, id, last) {
 }
 
 // Le titre du volet : le lieu où l'on est (son genre, son adresse, combien de personnes il accueille), ou « Tous les lieux ».
-function head(state, place, total) {
+function head(state, place, total, sibs) {
   const { t } = state;
   if (!place) return h('div', { class: 'an-pl-head' }, h('h3', null, t('an.plan.all')),
     h('span', { class: 'an-count' }, t('an.count', { n: total || state.people.length })));
   const sub = [t(`an.plan.kind.${kindAt(place)}`), place.use ? t(`an.plan.use.${place.use}`) : '', place.address].filter(Boolean).join(' · ');
   return h('div', { class: 'an-pl-head' }, icon(GLYPHS[kindAt(place)], 'an-pl-ic'), h('h3', null, place.name), imageButtons(state, place),
-    h('span', { class: 'an-count' }, t('an.count', { n: total })),
-    h('p', { class: 'an-pe-sub an-pl-sub' }, sub));
+    geoLink(state, place), h('span', { class: 'an-count' }, t('an.count', { n: total })),
+    h('p', { class: 'an-pe-sub an-pl-sub' }, sub), sibs);
 }
 
 // Les boutons de l'image du plan du lieu : « Image du plan… » (ou « Remplacer l'image… » et « Retirer »). Jamais masqués : grisés avec leur raison, un clic la
@@ -122,7 +124,8 @@ function tile(place, state, count) {
   const n = count.total.get(place.id) || 0;
   const meta = [t(`an.plan.kind.${kindAt(place)}`), place.use ? t(`an.plan.use.${place.use}`) : '', place.address].filter(Boolean).join(' · ');
   const seats = place.capacity ? t('an.plan.seats', { n, max: place.capacity }) : t('an.count', { n });
-  return h('button', { type: 'button', class: `an-pl-tile${grey ? ' is-grey' : ''}${place.id === state.here ? ' is-here' : ''}`,
+  const dim = state.filtered && !n && !grey;
+  return h('button', { type: 'button', class: `an-pl-tile${grey ? ' is-grey' : ''}${place.id === state.here ? ' is-here' : ''}${dim ? ' is-dim' : ''}`,
     'aria-disabled': grey ? 'true' : null,
     title: grey ? t('an.plan.noSeats') : null, dataset: { act: grey ? 'plan-note' : 'plan-go', id: String(place.id),
       ...(grey ? { why: t('an.plan.noSeats') } : {}), fk: `pl:${place.id}` } },

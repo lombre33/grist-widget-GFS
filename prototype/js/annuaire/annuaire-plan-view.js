@@ -5,13 +5,15 @@
 // Des fonctions qui construisent des nœuds ; les clics se lisent par délégation, d'après les attributs `data-act` (js/annuaire/annuaire-window.js). Un lieu qui
 // porte l'image de son plan la montre dans un cadre qu'on agrandit et qu'on déplace (js/annuaire/annuaire-plan-map.js) ; les boutons qui choisissent,
 // remplacent ou retirent cette image sont ici (le geste d'écrire est à js/annuaire/annuaire-plan-image.js) : grisés, avec leur raison, pour qui ne peut pas les
-// presser. Les tracés se posent sur l'image au lot suivant ; la vue marche sans.
+// presser. Les lieux tracés sur l'image se cliquent comme leurs cartes ; un local sans image à lui se montre sur le plan de son étage, cadré (lot 3). La vue
+// marche sans image ni tracé.
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { childrenOf, pathOf, kindAt, occupancy, NO_SEATS } from './annuaire-plan.js';
+import { childrenOf, pathOf, kindAt, occupancy, mapOf, NO_SEATS } from './annuaire-plan.js';
 import { personRow } from './annuaire-panes.js';
 import { PlanMap } from './annuaire-plan-map.js';
+import { layerOf } from './annuaire-plan-shapes.js';
 import { imagesReady } from './annuaire-images.js';
 
 // L'icône de chaque genre de lieu : une icône = une fonction.
@@ -54,8 +56,9 @@ export class PlanView {
     const place = current ? plan.byId.get(current) : null;
     const direct = count.direct.get(current) || [];
     const grid = kids.length ? h('div', { class: 'an-pl-grid' }, ...kids.map(kid => tile(kid, state, count))) : null;
-    const mapped = Boolean(place && place.plan && imagesReady());
-    if (mapped) this.#map.show({ t, place });
+    const map = current ? mapOf(plan, current) : null;
+    const mapped = Boolean(map && imagesReady());
+    if (mapped) this.#map.show({ t, place: map.host, layer: layerOf({ plan, map, count, state }), focus: map.focus });
     this.#refs.body.className = mapped ? 'an-pl-body has-map' : 'an-pl-body';
     this.#refs.body.replaceChildren(...[head(state, place, count.total.get(current) || 0), mapped ? this.#map.element : null,
       h('div', { class: 'an-pl-side' }, ...[grid, direct.length ? occupants(state, direct, kids.length > 0) : null,

@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-mYKuEuUhUkvioWNV7Ntu2SJDinRioDpUHGMJzIrO7YY='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-91TA4CiLV5Fw3zMPW3oc4DMODmJG/EeqB2qb2npeztM='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6ad7dc03e9">
 <link rel="stylesheet" href="css/explorer.css?v=21d07db54c">
 <link rel="stylesheet" href="css/modules.css?v=dcbf3e09ce">
@@ -24,7 +24,7 @@
 <link rel="stylesheet" href="css/annuaire-edit.css?v=d5c91ced58">
 <link rel="stylesheet" href="css/annuaire-tools.css?v=96898deb53">
 <link rel="stylesheet" href="css/guide.css?v=e9a81476c8">
-<link rel="stylesheet" href="css/annuaire-plan.css?v=e2a2c213f6">
+<link rel="stylesheet" href="css/annuaire-plan.css?v=de33563e15">
 <link rel="stylesheet" href="css/folder-looks.css?v=cfc86893cb">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
 <link rel="stylesheet" href="css/acces.css?v=37f61fd8f0">
@@ -43,7 +43,7 @@
     "./js/annuaire/annuaire-add.js": "./js/annuaire/annuaire-add.js?v=319c169b37",
     "./js/annuaire/annuaire-check-window.js": "./js/annuaire/annuaire-check-window.js?v=db6771440e",
     "./js/annuaire/annuaire-check.js": "./js/annuaire/annuaire-check.js?v=2f4c9669cc",
-    "./js/annuaire/annuaire-config.js": "./js/annuaire/annuaire-config.js?v=a49aff999f",
+    "./js/annuaire/annuaire-config.js": "./js/annuaire/annuaire-config.js?v=5b09ae979f",
     "./js/annuaire/annuaire-control.js": "./js/annuaire/annuaire-control.js?v=ef1e319e9c",
     "./js/annuaire/annuaire-copy.js": "./js/annuaire/annuaire-copy.js?v=c7b90011f9",
     "./js/annuaire/annuaire-edit-controls.js": "./js/annuaire/annuaire-edit-controls.js?v=ef8c707b7c",
@@ -75,11 +75,13 @@
     "./js/annuaire/annuaire-pick.js": "./js/annuaire/annuaire-pick.js?v=2d2581df89",
     "./js/annuaire/annuaire-plan-fiche.js": "./js/annuaire/annuaire-plan-fiche.js?v=bab2073d5c",
     "./js/annuaire/annuaire-plan-image.js": "./js/annuaire/annuaire-plan-image.js?v=dbc2176a8a",
-    "./js/annuaire/annuaire-plan-map.js": "./js/annuaire/annuaire-plan-map.js?v=b15b183ee4",
+    "./js/annuaire/annuaire-plan-map.js": "./js/annuaire/annuaire-plan-map.js?v=eb742d0e18",
     "./js/annuaire/annuaire-plan-pane.js": "./js/annuaire/annuaire-plan-pane.js?v=428c4d7e39",
-    "./js/annuaire/annuaire-plan-view.js": "./js/annuaire/annuaire-plan-view.js?v=d034319f4f",
-    "./js/annuaire/annuaire-plan-zoom.js": "./js/annuaire/annuaire-plan-zoom.js?v=c6cf80180f",
-    "./js/annuaire/annuaire-plan.js": "./js/annuaire/annuaire-plan.js?v=7eb1beb39d",
+    "./js/annuaire/annuaire-plan-shape.js": "./js/annuaire/annuaire-plan-shape.js?v=2b8e672e91",
+    "./js/annuaire/annuaire-plan-shapes.js": "./js/annuaire/annuaire-plan-shapes.js?v=1b915ba44d",
+    "./js/annuaire/annuaire-plan-view.js": "./js/annuaire/annuaire-plan-view.js?v=76fba91128",
+    "./js/annuaire/annuaire-plan-zoom.js": "./js/annuaire/annuaire-plan-zoom.js?v=c986dd1a5f",
+    "./js/annuaire/annuaire-plan.js": "./js/annuaire/annuaire-plan.js?v=2173fb685f",
     "./js/annuaire/annuaire-presence.js": "./js/annuaire/annuaire-presence.js?v=b3fa19812d",
     "./js/annuaire/annuaire-relations.js": "./js/annuaire/annuaire-relations.js?v=aec60ceb61",
     "./js/annuaire/annuaire-sample.js": "./js/annuaire/annuaire-sample.js?v=261465d823",
@@ -744,7 +746,7 @@
 <link rel="modulepreload" href="./js/sharing/other-beta-notice.js?v=02d0828958">
 <link rel="modulepreload" href="./js/apps/dependencies-source-view.js?v=ad87b7ba0a">
 <link rel="modulepreload" href="./js/annuaire/annuaire-mail.js?v=bb71779a03">
-<link rel="modulepreload" href="./js/annuaire/annuaire-config.js?v=a49aff999f">
+<link rel="modulepreload" href="./js/annuaire/annuaire-config.js?v=5b09ae979f">
 <!-- /préchargement -->
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
 <script type="module" src="js/gfs.js?v=60629b72f1"></script>

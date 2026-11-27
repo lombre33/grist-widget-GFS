@@ -79,8 +79,8 @@ const placeCell = async (run, id) => ((await rowsOf(run, 'Directory_Places')) ||
 const attachmentId = cell => (Array.isArray(cell) ? cell.filter(each => typeof each === 'number')[0] || 0 : 0);
 const noteOf = async frame => (await frame.locator('.mod.an .an-foot').innerText()).replace(/\s+/g, ' ').trim();
 // L'agrandissement que le cadre applique à l'image : 1 quand rien n'est posé (l'image entière), sinon `scale(k)` et le décalage.
-const viewOf = frame => frame.locator('.an-pl-img').evaluate(img => {
-  const match = /translate\((-?[\d.]+)px, (-?[\d.]+)px\) scale\(([\d.]+)\)/.exec(img.style.transform);
+const viewOf = frame => frame.locator('.an-pl-stage').evaluate(stage => {
+  const match = /translate\((-?[\d.]+)px, (-?[\d.]+)px\) scale\(([\d.]+)\)/.exec(stage.style.transform);
   return match ? { x: Number(match[1]), y: Number(match[2]), k: Number(match[3]) } : { x: 0, y: 0, k: 1 };
 });
 
@@ -309,6 +309,7 @@ async function play(run) {
   const emma = ((await rowsOf(run, 'Personnes')) || []).find(row => row.id === EMMA);
   check('Grist a le nouveau bureau d\'Emma (la ligne 10), rien d\'autre n\'a changé', emma[t('an.plan.officeName')] === 10 && emma.Nom === 'Emma Rolland', emma);
   await planImage(run, frame, page);
+  await planShapes(run, page);
   check('aucune erreur de GFS dans la console (ni violation de la politique de contenu)', unexpected(run).length === 0, unexpected(run));
 }
 
@@ -420,6 +421,135 @@ async function planImage(run, frame, page) {
   check('« Retirer » vide la cellule : le cadre disparaît, le bouton « Image du plan… » revient', attachmentId(await placeCell(run, 2)) === 0 && (await frame.locator('.an-pl-map').count()) === 0
     && (await frame.locator('.an-pl-img-b').allInnerTexts()).map(each => each.trim()).join('|') === t('an.plan.imgPick'), await noteOf(frame));
   check('le pied dit que l\'image est retirée', (await noteOf(frame)) === t('an.plan.imgRemoved', { name: 'Bâtiment A' }), await noteOf(frame));
+}
+
+// Les locaux de l'étage 1 tracés là où `seedPlan` les a dessinés (le plan de 1600 × 1000 pixels fait 1000 × 625 unités) : deux bureaux, le couloir, et la salle Atlas en
+// L (un polygone).
+const SHAPES = { 6: { t: 'r', x: 40, y: 50, w: 300, h: 250 }, 7: { t: 'r', x: 360, y: 50, w: 300, h: 250 }, 8: { t: 'r', x: 40, y: 325, w: 920, h: 75 },
+  9: { t: 'p', p: [[680, 50], [960, 50], [960, 300], [820, 300], [820, 180], [680, 180]] } };
+
+// Le centre d'un nœud, ramené à ce qu'on en voit dans le cadre du plan (un tracé agrandi dépasse du cadre : on clique dans la part visible).
+async function visibleCentre(frame, locator) {
+  const box = await locator.boundingBox();
+  const view = await frame.locator('.an-pl-vp').boundingBox();
+  const x1 = Math.max(box.x, view.x);
+  const x2 = Math.min(box.x + box.width, view.x + view.width);
+  const y1 = Math.max(box.y, view.y);
+  const y2 = Math.min(box.y + box.height, view.y + view.height);
+  return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+}
+
+// Où tombe, dans la page, le point (x, y) du plan (en unités du plan) d'un tracé : la matrice de l'écran du SVG, plus la place du cadre dans la page.
+async function unitPoint(frame, locator, x, y) {
+  const inner = await locator.evaluate((path, [px, py]) => { const p = new DOMPoint(px, py).matrixTransform(path.getScreenCTM()); return { x: p.x, y: p.y }; }, [x, y]);
+  const host = await (await frame.frameElement()).boundingBox();
+  return { x: host.x + inner.x, y: host.y + inner.y };
+}
+
+const shapeNamed = (frame, id) => frame.locator(`.an-pl-shape[data-id="${id}"] path`);
+
+async function planShapes(run, page) {
+  say('--- 8. les locaux tracés : cliquables, nommés, comptés ; le local ouvert est cadré avec ses places ---');
+  const ids = Object.keys(SHAPES).map(Number);
+  const done = await apply(run, [['BulkUpdateRecord', 'Directory_Places', ids, { Shape: ids.map(id => JSON.stringify(SHAPES[id])) }]]);
+  check('les quatre tracés sont écrits dans la colonne « Shape »', done.status === 200, done.text);
+  await page.reload();
+  let frame = await gfsFrame(page);
+  await openAnnuaire(frame, page);
+  await frame.locator('[data-fk="v:plan"]').click();
+  await goTo(frame, page, ['Siège', 'Bâtiment A', 'Étage 1']);
+  await frame.locator('.an-pl-shape').first().waitFor({ state: 'visible', timeout: 25000 });
+  const shapeIds = async () => (await frame.locator('.an-pl-shape').evaluateAll(list => list.map(node => node.dataset.id)));
+  check('un tracé par local tracé, rien pour les autres', JSON.stringify((await shapeIds()).sort()) === JSON.stringify(['6', '7', '8', '9']), await shapeIds());
+  const labels = async () => frame.locator('.an-pl-shape').evaluateAll(list => list.map(node => [node.dataset.id,
+    [...node.querySelectorAll('.is-name')].map(each => each.textContent).filter(Boolean).join(' '), node.querySelector('.is-count').textContent]));
+  const seen = Object.fromEntries((await labels()).map(([id, name, count]) => [id, [name, count]]));
+  say('  les noms et les décomptes :', JSON.stringify(seen));
+  check('le nom et le décompte de chaque local sont écrits dans sa forme (2 sur 2 places, 0 sur 1 depuis qu\'Emma est partie, la salle sans personne : 0 sur 12)',
+    seen[6]?.join('|') === 'Bureau 101|2/2' && seen[7]?.join('|') === 'Bureau 102|0/1' && seen[9]?.join('|') === 'Salle Atlas|0/12', seen);
+  check('le couloir est grisé, avec son nom et sans décompte', (await frame.locator('.an-pl-shape.is-grey').evaluateAll(list => list.map(node => node.dataset.id))).join() === '8' && seen[8]?.[0] === 'Couloir' && seen[8]?.[1] === '');
+  const labelBox = await frame.locator('.an-pl-shape[data-id="6"] .is-name').first().boundingBox();
+  const tracedBox = await shapeNamed(frame, 6).boundingBox();
+  check('le nom garde sa taille d\'écran (autour de 12 px de haut) et tient dans sa forme',
+    labelBox.height > 8 && labelBox.height < 26 && labelBox.x >= tracedBox.x && labelBox.x + labelBox.width <= tracedBox.x + tracedBox.width, [labelBox, tracedBox]);
+  await shot(frame, '18-locaux-traces');
+  check('la fenêtre tient dans le panneau 700 × 400', (await windowFits(frame)).inPanel);
+
+  say('  le couloir grisé dit pourquoi ; un bureau s\'ouvre au clic, à la vraie souris');
+  let at = await visibleCentre(frame, shapeNamed(frame, 8));
+  await page.mouse.click(at.x, at.y);
+  await page.waitForTimeout(250);
+  check('un clic sur le couloir dit qu\'il n\'a pas de poste de travail, sans changer de lieu', (await noteOf(frame)) === t('an.plan.noSeats') && (await crumbOf(frame)).at(-1) === 'Étage 1', await noteOf(frame));
+  at = await visibleCentre(frame, shapeNamed(frame, 7));
+  await page.mouse.click(at.x, at.y);
+  await page.waitForTimeout(500);
+  check('un clic sur « Bureau 102 » descend dans ce bureau', (await crumbOf(frame)).at(-1) === 'Bureau 102', await crumbOf(frame));
+  const closer = await viewOf(frame);
+  check('le plan est resté celui de l\'étage et se cadre sur le bureau (agrandi)', closer.k > 1.3 && (await frame.locator('.an-pl-img').count()) === 1, closer);
+  const classes = async () => Object.fromEntries(await frame.locator('.an-pl-shape').evaluateAll(list => list.map(node => [node.dataset.id, node.getAttribute('class')])));
+  const marked = await classes();
+  check('le bureau ouvert est cerné, les autres s\'estompent', Object.values(marked).filter(each => each.includes('is-current')).length === 1 && Object.values(marked).filter(each => each.includes('is-dim')).length === 3, marked);
+  const seats = async () => ({ taken: await frame.locator('.an-pl-seat.is-taken').count(), free: await frame.locator('.an-pl-seat.is-free').count() });
+  check('une place vide : le bureau 102 a une place et personne dedans', JSON.stringify(await seats()) === JSON.stringify({ taken: 0, free: 1 }), await seats());
+  await shot(frame, '19-local-cadre');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  at = await visibleCentre(frame, shapeNamed(frame, 6));
+  await page.mouse.click(at.x, at.y);
+  await page.waitForTimeout(500);
+  check('le bureau 101 : deux places pleines, aucune vide (Camille et Théo)', JSON.stringify(await seats()) === JSON.stringify({ taken: 2, free: 0 }), await seats());
+  const seat = frame.locator('.an-pl-seat.is-taken').first();
+  const seatRow = Number(await seat.getAttribute('data-row'));
+  await seat.click();
+  await page.waitForTimeout(500);
+  const names = { [CAMILLE]: 'Camille Durand', [THEO]: 'Théo Lambert' };
+  check('un clic sur une place pleine ouvre la fiche de la personne', (await frame.locator('.an-side').innerText()).includes(names[seatRow]), [seatRow, await frame.locator('.an-side').innerText().catch(() => '')]);
+  await shot(frame, '20-place-fiche');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+  check('Échap remonte à l\'étage : le plan revient entier', (await crumbOf(frame)).at(-1) === 'Étage 1' && (await viewOf(frame)).k === 1, [await crumbOf(frame), await viewOf(frame)]);
+
+  say('  la salle en L : douze places, toutes dans la forme');
+  await shot(frame, '21a-avant-le-l');
+  // un point dans la branche haute du L (le creux est en bas à gauche), de l'unité du plan à l'écran
+  at = await unitPoint(frame, shapeNamed(frame, 9), 900, 100);
+  await page.mouse.click(at.x, at.y);
+  await page.waitForTimeout(500);
+  check('un clic dans le L descend dans la salle Atlas', (await crumbOf(frame)).at(-1) === 'Salle Atlas', await crumbOf(frame));
+  check('douze places libres, aucune pleine', JSON.stringify(await seats()) === JSON.stringify({ taken: 0, free: 12 }), await seats());
+  const inside = await frame.locator('.an-pl-shape.is-current path').evaluate(path => [...path.ownerSVGElement.querySelectorAll('.an-pl-seat')].map(circle => {
+    const r = Number(circle.getAttribute('r'));
+    const x = Number(circle.getAttribute('cx'));
+    const y = Number(circle.getAttribute('cy'));
+    return [[x, y], [x - r, y], [x + r, y], [x, y - r], [x, y + r]].every(([px, py]) => path.isPointInFill(new DOMPoint(px, py)));
+  }));
+  check('chaque place est entièrement dans le L (jamais dans le creux)', inside.length === 12 && inside.every(Boolean), inside);
+  await shot(frame, '21-salle-en-l');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+
+  say('  agrandi, un clic sur un tracé descend toujours (le glisser ne le mange pas)');
+  await frame.locator('[data-fk="plan-zoom-in"]').click();
+  await frame.locator('[data-fk="plan-zoom-in"]').click();
+  await page.waitForTimeout(300);
+  check('le plan est agrandi', (await viewOf(frame)).k > 2, await viewOf(frame));
+  at = await visibleCentre(frame, shapeNamed(frame, 6));
+  await page.mouse.click(at.x, at.y);
+  await page.waitForTimeout(500);
+  check('un clic simple sur un tracé du plan agrandi descend dans « Bureau 101 »', (await crumbOf(frame)).at(-1) === 'Bureau 101', await crumbOf(frame));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+
+  say('  « Voir sur le plan » depuis la fiche : le bureau est repéré sur son étage');
+  await frame.locator('[data-fk="v:list"]').click();
+  await frame.locator(`[data-fk="pe:${CAMILLE}"]`).scrollIntoViewIfNeeded();
+  if (!(await frame.locator('.an-side [data-fk="plan-open"]').count())) await frame.locator(`[data-fk="pe:${CAMILLE}"]`).click(); // sa fiche est déjà ouverte : un second clic la fermerait
+  await frame.locator('[data-fk="plan-open"]').click();
+  await frame.locator('.an-pl-shape.is-here').waitFor({ state: 'visible', timeout: 15000 });
+  check('le bureau 101 est repéré sur le plan de son étage', (await frame.locator('.an-pl-shape.is-here').evaluateAll(list => list.map(node => node.dataset.id))).join() === '6'
+    && (await crumbOf(frame)).at(-1) === 'Étage 1', await crumbOf(frame));
+  await shot(frame, '22-bureau-repere');
+  check('contraste 4,5:1 sur le plan, ses tracés et ses places', (await contrastProblems(frame, '.an-plan')).length === 0, await contrastProblems(frame, '.an-plan'));
 }
 
 const pluginApi = await requireServer();

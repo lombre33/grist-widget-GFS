@@ -11,6 +11,7 @@
 
 import { normalize } from '../ui/search.js';
 import { planReady, PLAN_TABLE } from './annuaire-config.js';
+import { readShape } from './annuaire-plan-shape.js';
 
 export const KINDS = Object.freeze(['site', 'building', 'floor', 'room']);
 export const USES = Object.freeze(['office', 'meeting', 'circulation', 'service']);
@@ -38,13 +39,14 @@ const numberOf = value => (typeof value === 'number' && Number.isFinite(value) ?
 const attachmentOf = cell => (Array.isArray(cell) ? cell.slice(cell[0] === 'L' ? 1 : 0).find(each => Number.isInteger(each) && each > 0) || 0 : 0);
 
 // Les lieux de la table `data[plan.table]` : [{ id, name, kind (celui que la table dit, ou ''), use, parent (0 : au sommet), address, lat, lng, plan (le numéro
-// de la pièce jointe, 0 sans), capacity, depth }]. Un lieu sans nom est ignoré ; un parent qui n'existe plus, ou qui ferait une boucle, laisse le lieu au
-// sommet.
+// de la pièce jointe, 0 sans), shape (son tracé sur le plan de son parent : js/annuaire/annuaire-plan-shape.js, null sans), capacity, depth }]. Un lieu sans
+// nom est ignoré ; un parent qui n'existe plus, ou qui ferait une boucle, laisse le lieu au sommet.
 function placesOf(rows, byId) {
   const cell = (column, i) => (Array.isArray(rows[column]) ? rows[column][i] : undefined);
   const places = rows.id.map((id, i) => ({ id, name: clean(cell('Name', i)), kind: kindOf(cell('Kind', i)), use: useOf(cell('Use', i)),
     parent: typeof cell('Parent', i) === 'number' ? cell('Parent', i) : 0, address: clean(cell('Address', i)), lat: numberOf(cell('Lat', i)),
-    lng: numberOf(cell('Lng', i)), plan: attachmentOf(cell('Plan', i)), capacity: Math.max(0, Math.round(Number(cell('Capacity', i))) || 0), depth: 0 }))
+    lng: numberOf(cell('Lng', i)), plan: attachmentOf(cell('Plan', i)), shape: readShape(cell('Shape', i)),
+      capacity: Math.max(0, Math.round(Number(cell('Capacity', i))) || 0), depth: 0 }))
     .filter(place => place.name);
   for (const place of places) byId.set(place.id, place);
   for (const place of places) {
@@ -74,8 +76,10 @@ export function planOf(config, tableId, data) {
   const column = people && Array.isArray(people[config.plan.office]) ? people[config.plan.office] : [];
   const offices = new Map();
   (people && Array.isArray(people.id) ? people.id : []).forEach((row, i) => { if (byId.has(column[i])) offices.set(row, column[i]); });
-  // `canImage` : la table a sa colonne « Plan » (les pièces jointes) ; sans elle, rien ne s'écrit (jamais une colonne absente).
-  return { table: config.plan.table, places, byId, kids, offices, canImage: Array.isArray(rows[PLAN_TABLE.image]) };
+  // `canImage` et `canShape` : la table a sa colonne « Plan » (les pièces jointes), sa colonne « Shape » (les tracés) ; sans elle, rien ne s'écrit (jamais une
+  // colonne absente).
+  return { table: config.plan.table, places, byId, kids, offices, canImage: Array.isArray(rows[PLAN_TABLE.image]),
+    canShape: Array.isArray(rows[PLAN_TABLE.shape]) };
 }
 
 // Le genre d'un lieu : celui que la table dit, sinon celui que sa profondeur suggère (site, bâtiment, étage, local).
@@ -89,6 +93,18 @@ export function pathOf(plan, id) {
 }
 
 export const pathText = (plan, id, separator = ' › ') => pathOf(plan, id).map(place => place.name).join(separator);
+
+// L'image que le lieu `id` montre (0 : tous les lieux, qui n'a pas d'image) : { host (le lieu dont l'image est montrée : lui-même quand il porte la sienne,
+// sinon son plus proche ancêtre qui en porte une : un local se montre sur le plan de son étage), focus (le lieu de la chaîne qui est un enfant direct de
+// `host` : celui qu'on cadre ; null quand l'image est celle du lieu même), shapes (les enfants de `host` qui ont un tracé) }, ou null sans image à montrer.
+export function mapOf(plan, id) {
+  let focus = null;
+  for (let at = plan.byId.get(id); at; focus = at, at = plan.byId.get(at.parent)) {
+    if (!at.plan) continue;
+    return { host: at, focus: at.id === id ? null : focus, shapes: childrenOf(plan, at.id).filter(place => place.shape) };
+  }
+  return null;
+}
 
 // Le lieu où travaille la personne, ou null.
 export const placeOfPerson = (plan, row) => plan.byId.get(plan.offices.get(row)) || null;

@@ -27,6 +27,7 @@ import { presenceState } from './annuaire-presence.js';
 import { editBlock } from './annuaire-edit-rights.js';
 import { PlanPane, planWhy } from './annuaire-plan-pane.js';
 import { ACTIONS } from './annuaire-actions.js';
+import { guideBlock } from './annuaire-guide-link.js';
 
 const VIEWS = Object.freeze([['list', 'list', 'an.view.list'], ['cards', 'tiles', 'an.view.cards'], ['org', 'org', 'an.view.org'],
   ['plan', 'plan', 'an.view.plan']]);
@@ -383,7 +384,7 @@ export class AnnuaireWindow {
     const relations = relationsOf(data.config, t);
     const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres, relations,
       index: relationIndex(data.people, relations), plan: data.plan || null, writeBlock: this.#writeBlock(), editBlock: person => this.#editBlock(person),
-        masked: data.masked,
+        masked: data.masked, guide: Boolean(this.#o.onGuide), guideBlock: guideBlock(data, t),
         presence: person => this.#presenceOf(person), insert: true };
     const person = this.#person === null ? null : data.people.find(each => each.row === this.#person);
     // la fiche d'une carte de l'organigramme parle des mêmes personnes que la carte

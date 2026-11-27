@@ -31,6 +31,7 @@ export class GuideControl {
   #reading = 0; // le numéro de la dernière lecture lancée : une lecture plus ancienne qui finit après ne montre rien
   #loaded = false;
   #data = null; // la dernière lecture du guide montré (celle que l'éditeur lit)
+  #focus = null; // la personne dont la fenêtre doit montrer les démarches dès que la lecture est finie (la ligne dans l'annuaire du guide)
 
   // opts : { port ({ doc }), container, t, locale(), inertTargets(), ask(opts) -> Promise<boolean>, notice(texte), writeBlock() -> texte ou null, fullAccess(),
   //   identity() -> l'adresse de la personne, ou '' tant qu'on ne la connaît pas }
@@ -58,6 +59,26 @@ export class GuideControl {
     this.#window.show({ state: 'loading', error: '' });
     this.#window.open();
     await this.#load();
+  }
+
+  // Le bouton « Démarches » de la fiche d'une personne dans l'annuaire : ouvre le premier guide qui s'appuie sur cet annuaire (la ligne `directory`), sur les
+  // démarches de la personne (la ligne `personRow`). Rend vrai quand le guide s'est ouvert ; sinon la personne en est prévenue.
+  async openForPerson(directory, personRow) {
+    const { t } = this.#o;
+    if (!this.#o.fullAccess()) { this.#o.notice(t('gd.needsAccess')); return false; }
+    let list;
+    try {
+      list = await this.#store.list();
+    } catch (error) {
+      console.error('GFS : lecture des guides impossible', error);
+      this.#o.notice(t('gd.readFailed', { reason: String(error && error.message) }));
+      return false;
+    }
+    const found = list.find(each => each.config.directory === String(directory));
+    if (!found) { this.#o.notice(t('gd.person.noGuide')); return false; }
+    this.#focus = personRow;
+    if (this.#window.isOpen) { this.#row = found.row; await this.#load(); } else await this.open(found.row);
+    return true;
   }
 
   close() { this.#window.close(); }
@@ -95,11 +116,17 @@ export class GuideControl {
     const current = this.#current;
     const t = this.#o.t;
     const mine = ++this.#reading;
+    const focus = this.#focus;
+    this.#focus = null;
     this.#data = null;
     this.#window.show({ state: 'loading', guides: this.#list, current, data: null });
     try {
       const data = await this.#viewOf(await this.#store.read(current));
-      if (mine === this.#reading) { this.#data = data; this.#window.show({ state: 'ready', guides: this.#list, current, data, error: '' }); }
+      if (mine === this.#reading) {
+        this.#data = data;
+        this.#window.show({ state: 'ready', guides: this.#list, current, data, error: '' });
+        if (focus !== null) this.#window.focusPerson(focus);
+      }
     } catch (error) {
       if (mine !== this.#reading) return;
       if (!(error instanceof MissingTable)) console.error('GFS : lecture du guide impossible', error);

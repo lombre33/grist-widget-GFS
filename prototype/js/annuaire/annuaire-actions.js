@@ -33,5 +33,6 @@ export const ACTIONS = Object.freeze({
   insert: (window_, data, button) => window_.insertTool(Number(data.row), button),
   'plan-go': (window_, data) => window_.goPlace(Number(data.id)),
   'plan-note': (window_, data) => window_.say(data.why),
+  'guide-open': (window_, data) => window_.callout('onGuide', Number(data.row)),
   'plan-open': (window_, data) => window_.showOnPlan(Number(data.row)),
 });

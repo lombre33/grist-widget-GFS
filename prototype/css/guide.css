@@ -237,3 +237,9 @@
 .gd-cr-name { font-weight: 600; overflow-wrap: anywhere; }
 .gd-cr-sub { color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
 .gd-cr-procs { list-style: none; margin: 4px 0 4px 26px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+
+/* Les démarches d'une personne (bouton « Démarches » de sa fiche dans l'annuaire) */
+.gd-pv-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.gd-pv-head .btn { margin-left: auto; }
+.gd-pv-chips { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.gd-pv-list .gd-kid { gap: 12px; }

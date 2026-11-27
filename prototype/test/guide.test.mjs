@@ -194,3 +194,11 @@ test('contacts à l\'envers : qui est cité par quoi, les contacts introuvables 
   assert.ok(citingPerson(procs, of, budget.people[0].row).some(cite => cite.title === 'Congés et absences' && cite.via === 'service'), 'la responsable d\'un service est citée par son service');
   assert.deepEqual(citingPerson(procs, of, 9999), []);
 });
+
+test('annuaire : le bouton « Démarches » est grisé tant que le document n\'a pas de table GFS_Guides, et le dit', async () => {
+  const { guideBlock } = await import('../js/annuaire/annuaire-guide-link.js');
+  const t = key => key;
+  assert.equal(guideBlock({ schema: { Personnes: { columns: [] } } }, t), 'an.guide.none');
+  assert.equal(guideBlock(null, t), 'an.guide.none');
+  assert.equal(guideBlock({ schema: { GFS_Guides: { columns: [] } } }, t), '');
+});

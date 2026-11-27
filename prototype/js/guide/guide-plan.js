@@ -9,7 +9,7 @@ import { icon } from '../ui/icons.js';
 import { initials } from '../annuaire/annuaire-items.js';
 import { headline } from './guide-panes.js';
 import { typeOf } from './guide-types.js';
-import { contactsIndex } from './guide-contacts-index.js';
+import { contactsIndex, citingPerson } from './guide-contacts-index.js';
 
 const KIND_GLYPH = Object.freeze({ person: 'user', service: 'building', post: 'briefcase', text: 'info' });
 export const PLAN_FOLD_AT = 40; // au-delà, le plan s'ouvre replié sous les thèmes : un guide de centaines de démarches ne s'étale pas d'un coup
@@ -82,4 +82,20 @@ export function contactsView(model, { t, open, answerFor }) {
   return h('div', { class: 'gd-card gd-contacts-card' }, h('p', { class: 'gd-hint' }, t('gd.contacts.hint')),
     lost ? h('p', { class: 'gd-warn' }, icon('warning'), h('span', null, t('gd.contacts.lostCount', { n: lost }))) : null,
     groups.length ? h('ul', { class: 'gd-crs' }, ...groups.map(group => contactRow(group, { t, open }))) : h('p', { class: 'gd-note' }, t('gd.contacts.none')));
+}
+
+// Les démarches d'une personne (ce qu'ouvre le bouton « Démarches » de sa fiche dans l'annuaire) : celles qui la citent par son nom, son poste ou le service
+// dont elle est responsable. `row` : la ligne de la personne dans l'annuaire du guide.
+export function personView(model, { t, row, answerFor }) {
+  const person = model.directory && model.directory.byRow.get(row);
+  const name = person ? person.name : t('gd.person.someone');
+  const found = citingPerson(model.procs, answerFor, row);
+  const list = h('ul', { class: 'gd-cr-procs gd-pv-list' }, ...found.map(proc => h('li', null, h('button', { type: 'button', class: 'gd-kid',
+    dataset: { act: 'open', row: String(proc.row), fk: `pv:${proc.row}` } }, h('span', null, proc.title),
+  h('span', { class: 'gd-pv-chips' }, h('span', { class: 'gd-chip' }, t(`gd.via.${proc.via}`)),
+    proc.own ? null : h('span', { class: 'gd-chip is-inh' }, icon('corner'), h('span', null, t('gd.inherited')))), icon('chev-right')))));
+  return h('div', { class: 'gd-card gd-person-card' }, h('div', { class: 'gd-pv-head' }, person ? avatar(name) : null,
+    h('span', { class: 'gd-cr-name' }, name), h('button', { type: 'button', class: 'btn sm', dataset: { act: 'person-clear', fk: 'pv-all' } },
+      t('gd.person.all'))),
+  h('p', { class: 'gd-hint' }, t('gd.person.hint')), found.length ? list : h('p', { class: 'gd-note' }, t('gd.person.none', { name })));
 }

@@ -7,6 +7,8 @@ import { AnnuaireStore, MissingTable, NameTaken, TableDeclined } from './annuair
 import { AnnuaireWindow } from './annuaire-window.js';
 import { AnnuaireSetup } from './annuaire-setup.js';
 import { pickFrom } from '../ui/pick-window.js';
+import { guideBlock } from './annuaire-guide-link.js';
+import { openGuideForPerson } from '../shell/guide-entry.js';
 import { shown } from './annuaire-panes.js';
 import { EditWindow } from './annuaire-edit-window.js';
 import { openAdd } from './annuaire-add-window.js';
@@ -76,7 +78,7 @@ export class AnnuaireControl {
       onCheck: () => this.#check(), onMail: people => this.#mail(people), onPresence: (row, on) => this.#setPresence(row, on),
         onSub: key => this.#subGesture(key), onMergePick: row => this.#mergePick(row), targets: () => (opts.targets ? opts.targets() : []),
       onInsert: (id, person) => this.#insert(id, person), onUnlock: target => (opts.unlock ? opts.unlock(target) : undefined),
-      onApps: () => (opts.apps ? opts.apps() : undefined),
+      onApps: () => (opts.apps ? opts.apps() : undefined), onGuide: opts.guide ? row => void this.#guide(row) : null,
       onFilterMore: (col, option) => this.#more(col, option), onSortPick: (keys, sort) => this.#pickSort(keys, sort), onClose: () => {} });
   }
 
@@ -122,6 +124,15 @@ export class AnnuaireControl {
     const opened = await this.#o.insert(appId, person);
     if (opened) this.#window.close();
     return opened;
+  }
+
+  // « Démarches » d'une fiche : le guide du document s'ouvre sur les démarches de la personne ; la fenêtre de l'annuaire se referme quand il est ouvert.
+  // Grisé, le bouton dit pourquoi (le document n'a pas de guide) ; un guide qui ne s'appuie pas sur cet annuaire le dit en s'ouvrant.
+  async #guide(row) {
+    const blocked = guideBlock(this.#data, this.#o.t);
+    if (blocked) { this.#o.notice(blocked); return; }
+    const current = this.#current;
+    if (current && await this.#o.guide(current.parent || current.row, row)) this.#window.close();
   }
 
   // Les groupes de la fenêtre « Choisir une personne » : « Tous mes annuaires » (quand il y en a plusieurs : une adresse e-mail ne fait qu'une personne), puis
@@ -508,5 +519,6 @@ export function createAnnuaire(c) {
     notice: text => c.notice(text), writeBlock: () => c.writeBlock(), fullAccess: () => c.fullAccess, isOwner: () => c.transfer.isOwner(),
     images: { download: id => c.transfer.download(id), upload: (file, name) => c.transfer.upload(file, name) },
     identity: () => c.identity || '', rights: c.rights, targets: () => c.personTargets(), insert: (id, person) => c.openings.openPerson(id, person),
-    unlock: target => c.unlock({ text: target.lock, focus: target.focus }), apps: () => c.openModules() });
+    unlock: target => c.unlock({ text: target.lock, focus: target.focus }), apps: () => c.openModules(),
+    guide: (directory, row) => openGuideForPerson(c, directory, row) });
 }

@@ -11,8 +11,8 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-ibKd35htPNl50VSuGJOVNVd6uFoMAgukIqXsay2I6S4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<link rel="stylesheet" href="css/gfs.css?v=a2e086add5">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-5w5LJyzVf4U/JPZ9XDjsP01s8WFdcyumknnJ7UUWWfA='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="stylesheet" href="css/gfs.css?v=6c1daba6a9">
 <link rel="stylesheet" href="css/explorer.css?v=c8ff42b04b">
 <link rel="stylesheet" href="css/modules.css?v=dcbf3e09ce">
 <link rel="stylesheet" href="css/templates.css?v=48d8b4f22f">
@@ -28,6 +28,8 @@
 <link rel="stylesheet" href="css/acces.css?v=37f61fd8f0">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
 <script src="js/broker/router.js?v=20d0f9a823"></script>
+<!-- La garde de démarrage ensuite : un module qui ne charge pas (404 de GitHub Pages gardé par son CDN) ne laisse pas une page blanche (js/shell/boot-guard.js). Script classique, avant le module d'entrée. -->
+<script src="js/shell/boot-guard.js?v=2ab39b7823"></script>
 <!-- La carte d'importation, écrite par outils/versions.mjs (ne pas la modifier à la main) : chaque module se charge à son adresse versionnée, si bien que le cache de Pages
      (10 minutes) ne mélange jamais un module ancien avec un module neuf. Son empreinte (sha256) est dans la politique de sécurité ci-dessus. -->
 <script type="importmap">
@@ -131,7 +133,7 @@
     "./js/apps/work-row.js": "./js/apps/work-row.js?v=d41fd514ae",
     "./js/apps/work-window.js": "./js/apps/work-window.js?v=7e55716161",
     "./js/broker/app-calls.js": "./js/broker/app-calls.js?v=b78fa262c3",
-    "./js/broker/app-context.js": "./js/broker/app-context.js?v=0bda5d139d",
+    "./js/broker/app-context.js": "./js/broker/app-context.js?v=3c9ccc13eb",
     "./js/broker/app-status.js": "./js/broker/app-status.js?v=651007029f",
     "./js/broker/app-storage.js": "./js/broker/app-storage.js?v=d24c6008f9",
     "./js/broker/arrival-table.js": "./js/broker/arrival-table.js?v=58ba2ca762",
@@ -166,7 +168,7 @@
     "./js/broker/state.js": "./js/broker/state.js?v=69aa288268",
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=063ac32914",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
-    "./js/broker/view-options.js": "./js/broker/view-options.js?v=7c746e590f",
+    "./js/broker/view-options.js": "./js/broker/view-options.js?v=79ce30f54e",
     "./js/controller.js": "./js/controller.js?v=63ce9a8a88",
     "./js/explorer/doc-key.js": "./js/explorer/doc-key.js?v=4c44c49f1a",
     "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=24f50ca5b6",
@@ -451,7 +453,7 @@
 <link rel="modulepreload" href="./js/apps/manifest.js?v=e4ffb08a57">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
 <link rel="modulepreload" href="./js/broker/broker.js?v=0ebcd8a01c">
-<link rel="modulepreload" href="./js/broker/view-options.js?v=7c746e590f">
+<link rel="modulepreload" href="./js/broker/view-options.js?v=79ce30f54e">
 <link rel="modulepreload" href="./js/broker/own-section.js?v=b4451c0cb2">
 <link rel="modulepreload" href="./js/broker/view-link.js?v=1853f29883">
 <link rel="modulepreload" href="./js/files/page-tree.js?v=70269f6676">
@@ -516,7 +518,7 @@
 <link rel="modulepreload" href="./js/apps/modules-window.js?v=6f0bda466f">
 <link rel="modulepreload" href="./js/apps/templates-control.js?v=2d04c161a5">
 <link rel="modulepreload" href="./js/apps/dependencies-control.js?v=8b4cdf633a">
-<link rel="modulepreload" href="./js/broker/app-context.js?v=0bda5d139d">
+<link rel="modulepreload" href="./js/broker/app-context.js?v=3c9ccc13eb">
 <link rel="modulepreload" href="./js/broker/filter.js?v=bc7c4073e1">
 <link rel="modulepreload" href="./js/broker/player-sites.js?v=79d15fdf51">
 <link rel="modulepreload" href="./js/apps/manifest-names.js?v=c4e17ea272">

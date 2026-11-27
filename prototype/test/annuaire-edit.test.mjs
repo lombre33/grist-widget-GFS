@@ -6,6 +6,7 @@ import { schemaOf, columnOf } from '../js/annuaire/annuaire-schema.js';
 import { buildPeople } from '../js/annuaire/annuaire-model.js';
 import { editableFields, personValues, valueOf, secondsOf, problemOf, cellOf, changesOf, updateOf, refOptions, choiceOptions } from '../js/annuaire/annuaire-edit.js';
 import { documentFixture, configFixture } from './annuaire-fixtures.mjs';
+import { labelsOf, say, controlOf } from '../js/annuaire/annuaire-edit-controls.js';
 
 const doc = documentFixture();
 const schema = schemaOf(doc._grist_Tables, doc._grist_Tables_column);
@@ -143,4 +144,29 @@ test('les choix d\'une référence : les personnes de l\'annuaire, ou la colonne
   assert.deepEqual(choiceOptions(byKey(fields, 'Contrat'), 'Titulaire'), ['Titulaire', 'Contractuelle', 'Stagiaire']);
   assert.deepEqual(choiceOptions(byKey(fields, 'Contrat'), 'Intérimaire'), ['Titulaire', 'Contractuelle', 'Stagiaire', 'Intérimaire']);
   assert.deepEqual(choiceOptions(byKey(fields, 'Competences'), ['Budget', 'Droit']), ['Budget', 'Marchés publics', 'Pilotage', 'Droit']);
+});
+
+// Retour du porteur, 27/11 : « dans Poste ça m'affiche ça, n'a pas l'air d'être un poste, son poste en fait c'est ça ». Le poste est une référence à une autre table que celle des
+// personnes ; les numéros des deux tables se recouvrent (le poste 3 et la personne 3), et un seul jeu de noms pour tous les champs montrait le nom de la personne.
+test('un poste (référence à une autre table) ne prend jamais le nom d\'une personne qui a le même numéro : un jeu de noms par champ', () => {
+  const columns = doc._grist_Tables_column;
+  const asRef = schemaOf(doc._grist_Tables, { ...columns, type: columns.type.map((type, at) => (columns.id[at] === 11 ? 'Ref:Structures' : type)),
+    visibleCol: columns.visibleCol.map((visible, at) => (columns.id[at] === 11 ? 20 : visible)) });
+  const withPost = { ...doc, Personnes: { ...doc.Personnes, Poste: [3, 5, 1, 7, 0, 2] } };
+  const { fields } = editableFields(configFixture(), asRef, 'Personnes', t);
+  const people = buildPeople(configFixture(), 'Personnes', withPost, asRef);
+  const ctx = { data: withPost, people, table: 'Personnes' };
+  const title = byKey(fields, 'title');
+  assert.equal(title.genre, 'ref');
+  assert.equal(title.ref, 'Structures');
+  const labels = labelsOf(fields, ctx);
+  assert.equal(labels.title[3], 'Direction des finances', 'le poste 3 est la ligne 3 de la table des postes');
+  assert.equal(labels.manager[3], 'Nathan Roussel', 'la personne 3 reste la personne 3');
+  assert.notEqual(labels.title[3], labels.manager[3]);
+  const host = { t, locale: 'fr', labels };
+  assert.equal(say(title, 3, host), 'Direction des finances');
+  assert.equal(say(byKey(fields, 'manager'), 3, host), 'Nathan Roussel');
+  assert.equal(say(byKey(fields, 'Contrat'), 'Titulaire', host), 'Titulaire', 'un champ qui n\'est pas une référence n\'a pas de noms, et ne casse rien');
+  assert.equal(say(byKey(fields, 'rel:Referents'), [5, 3], host), 'Emma Rolland, Nathan Roussel');
+  assert.equal(say(title, 99, host), '99', 'une ligne qui n\'existe plus se dit par son numéro');
 });

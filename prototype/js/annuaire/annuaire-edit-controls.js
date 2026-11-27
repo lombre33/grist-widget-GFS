@@ -10,11 +10,13 @@ import { choiceOptions, refOptions } from './annuaire-edit.js';
 
 const INPUT_MODES = Object.freeze({ email: 'email', phone: 'tel', number: 'decimal' });
 
-// Le texte d'une valeur de la fenêtre, tel qu'on le lit (un choix, un nom, « Oui », une date dans la langue) ; `labels` : { id: nom } des références.
+// Le texte d'une valeur de la fenêtre, tel qu'on le lit (un choix, un nom, « Oui », une date dans la langue) ; `labels` : { clé du champ: { id: nom } } des
+// références.
 export function say(field, value, { t, locale, labels }) {
+  const names = labels[field.key] || {};
   if (field.genre === 'bool') return t(value ? 'an.yes' : 'an.no');
-  if (field.genre === 'ref') return value ? labels[value] || String(value) : '';
-  if (field.genre === 'reflist' || field.genre === 'choicelist') return value.map(each => labels[each] || each).join(', ');
+  if (field.genre === 'ref') return value ? names[value] || String(value) : '';
+  if (field.genre === 'reflist' || field.genre === 'choicelist') return value.map(each => names[each] || each).join(', ');
   if (field.genre === 'date' && value) {
     const date = new Date(`${value}T12:00:00Z`);
     return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(locale, { dateStyle: 'medium', timeZone: 'UTC' });
@@ -22,11 +24,13 @@ export function say(field, value, { t, locale, labels }) {
   return String(value ?? '');
 }
 
-// Les noms des personnes ou des lignes qu'une référence désigne : { id: nom }.
+// Les noms des personnes ou des lignes qu'une référence désigne : { clé du champ: { id: nom } }. Un jeu de noms PAR CHAMP : les numéros de deux tables n'ont
+// rien de commun (le numéro 12 d'un poste n'est pas la personne 12), un jeu partagé montrait le nom d'une personne à la place du poste.
 export function labelsOf(fields, ctx) {
   const labels = {};
   for (const field of fields.filter(each => each.genre === 'ref' || each.genre === 'reflist')) {
-    for (const option of refOptions(field, ctx)) labels[option.id] = option.label;
+    labels[field.key] = {};
+    for (const option of refOptions(field, ctx)) labels[field.key][option.id] = option.label;
   }
   return labels;
 }
@@ -52,26 +56,27 @@ function choiceChips(field, value, t) {
 }
 
 // Des personnes (ou des lignes) en pastilles qu'on retire d'un clic, et le bouton qui en ajoute (la liste avec recherche).
-function refChips(field, value, t, labels) {
+function refChips(field, value, t, names) {
   return h('div', { class: 'an-ed-chips', role: 'group', 'aria-label': field.label },
-    ...value.map(id => h('span', { class: 'an-ed-pill' }, h('span', null, labels[id] || String(id)),
-      iconButton(t, { glyph: 'x', label: t('an.edit.remove', { what: labels[id] || String(id) }), fk: `er:${field.key}:${id}`,
+    ...value.map(id => h('span', { class: 'an-ed-pill' }, h('span', null, names[id] || String(id)),
+      iconButton(t, { glyph: 'x', label: t('an.edit.remove', { what: names[id] || String(id) }), fk: `er:${field.key}:${id}`,
         data: { act: 'ed-remove', key: field.key,
         value: String(id) } }))),
     h('button', { type: 'button', class: 'btn sm an-ed-add', dataset: { act: 'ed-add', key: field.key, fk: `ea:${field.key}` } }, icon('plus'),
       t('an.edit.add')));
 }
 
-// Le contrôle d'un champ pour sa valeur du moment. `host` : { t, locale, labels }.
+// Le contrôle d'un champ pour sa valeur du moment. `host` : { t, locale, labels } (les noms de CE champ : labels[field.key]).
 export function controlOf(field, value, host) {
-  const { t, labels } = host;
+  const { t } = host;
+  const names = host.labels[field.key] || {};
   const pick = (act, text) => chooser(t, `ef:${field.key}`, text, { act, key: field.key });
   switch (field.genre) {
     case 'bool': return boolSwitch(field, value, t);
     case 'choice': return pick('ed-choice', value);
-    case 'ref': return pick('ed-ref', value ? labels[value] || String(value) : '');
+    case 'ref': return pick('ed-ref', value ? names[value] || String(value) : '');
     case 'choicelist': return choiceChips(field, value, t);
-    case 'reflist': return refChips(field, value, t, labels);
+    case 'reflist': return refChips(field, value, t, names);
     default: return textInput(field, value);
   }
 }

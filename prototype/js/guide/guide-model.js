@@ -31,7 +31,8 @@ const keywordsOf = (cell, col, ctx) => (col && col.genre === 'choicelist' ? valu
   String(cell ?? '').split(/[,;\n]/).map(clean).filter(Boolean));
 
 // Les démarches de la table : [{ row, title, parent (la ligne de la mère, ou null), keywords, steps (une étape par ligne), details, roles: { colonne: { ids,
-// texts } } }], triées par titre. Une ligne sans titre est ignorée (GFS ne saurait pas la nommer). `config` : js/guide/guide-config.js.
+// texts } }, kind (l'identifiant du type), extra: { champ: texte } }], triées par titre. Une ligne sans titre est ignorée (GFS ne saurait pas la nommer).
+// `config` : js/guide/guide-config.js.
 export function buildProcedures(config, tableId, data, schema) {
   const table = data[tableId];
   if (!table || !Array.isArray(table.id) || !config.title) return [];
@@ -43,6 +44,7 @@ export function buildProcedures(config, tableId, data, schema) {
     return { row, title: valuesOf(cell(config.title, i), col('title'), ctx)[0] || clean(cell(config.title, i)), parent: mother,
       keywords: keywordsOf(cell(config.keywords, i), col('keywords'), ctx), steps: lines(cell(config.steps, i)),
       details: String(cell(config.details, i) ?? '').trim(),
+      kind: clean(cell(config.kind, i)), extra: Object.fromEntries(config.fields.map(field => [field.id, String(cell(field.col, i) ?? '').trim()])),
       roles: Object.fromEntries(config.roles.map(role => [role.col, roleCell(cell(role.col, i), columnOf(schema, tableId, role.col), ctx)])) };
   });
   return procs.filter(proc => proc.title).sort((a, b) => a.title.localeCompare(b.title, 'fr'));

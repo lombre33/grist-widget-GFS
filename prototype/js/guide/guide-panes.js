@@ -6,6 +6,7 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { initials, telHref } from '../annuaire/annuaire-items.js';
 import { ancestors, below } from './guide-model.js';
+import { typeOf, fieldsOfType, fieldLabel, typeLabel, valueOf, dayOf, showsRole } from './guide-types.js';
 
 const KIND_GLYPH = Object.freeze({ person: 'user', service: 'building', post: 'briefcase', text: 'info' });
 
@@ -139,18 +140,58 @@ const crumbs = (model, proc, t) => {
 };
 
 // Les démarches qui sont dessous : de quoi descendre d'un cran.
-const childrenList = (model, proc, t) => {
-  const kids = model.index.children.get(proc.row) || [];
+// Un parcours (un type qui demande le champ « Quand ? ») range ses étapes par date relative (J−90, J+15) et la dit devant chaque étape.
+const whenField = (config, type) => (type ? fieldsOfType(config, type).find(field => field.id === 'when') || null : null);
+
+const childrenList = (model, proc, t, config) => {
+  const when = whenField(config, typeOf(config, proc));
+  const kids = [...(model.index.children.get(proc.row) || [])];
+  if (when) kids.sort((a, b) => (dayOf(a.extra.when) ?? Infinity) - (dayOf(b.extra.when) ?? Infinity));
   return kids.length ? h('div', { class: 'gd-block' }, h('h4', { class: 'gd-sec' }, t('gd.children', { n: kids.length })), h('ul', { class: 'gd-kids' },
     ...kids.map(kid => h('li', null, h('button', { type: 'button', class: 'gd-kid', dataset: { act: 'open', row: String(kid.row), fk: `kid:${kid.row}` } },
-      h('span', null, kid.title), icon('chev-right')))))) : null;
+      when && kid.extra.when ? h('span', { class: 'gd-chip is-when' }, kid.extra.when) : null, h('span', null, kid.title), icon('chev-right')))))) : null;
 };
 
+// Un champ du type, montré comme son identifiant et sa forme le demandent : la réponse en grand, le numéro à appeler, un bouton pour une adresse de prise de
+// rendez-vous ou de formulaire, le lieu (avec « Voir sur la carte », grisé tant que la cartographie n'est pas là), sinon une ligne « nom : valeur ».
+function fieldBlock(field, value, t) {
+  const label = fieldLabel(field, t);
+  if (field.id === 'answer') return h('p', { class: 'gd-answer' }, value.text);
+  if (field.id === 'phone') {
+    const call = telHref(value.text);
+    return h(call ? 'a' : 'span', { class: 'gd-urgent', href: call || null, dataset: { fk: 'fld:phone' } }, icon('phone'), h('span', { class: 'gd-urgent-t' },
+      h('b', null, value.text), h('small', null, label)));
+  }
+  if (value.href && (field.id === 'booking' || field.id === 'form')) return h('a',
+    { class: 'btn primary sm gd-cta', href: value.href, target: '_blank', rel: 'noopener',
+    dataset: { fk: `fld:${field.id}` } }, icon(field.id === 'booking' ? 'clock' : 'open'), label);
+  if (field.id === 'where') return h('div', { class: 'gd-where' }, icon('pin'), h('span', { class: 'gd-where-t' }, h('b', null, value.text),
+    h('small', null, label)),
+    h('button', { type: 'button', class: 'btn sm', 'aria-disabled': 'true', title: t('gd.map.off'), dataset: { act: 'mapoff', fk: 'fld:map' } }, icon('pin'),
+      t('gd.map')));
+  const shown = value.items ? h('span', { class: 'gd-chips' }, ...value.items.map(item => h('span', { class: 'gd-chip' }, item))) : value.href ?
+    h('a', { class: 'gd-link',
+    href: value.href, target: '_blank', rel: 'noopener' }, value.text, icon('open', 'sm')) :
+      h('span', { class: field.shape === 'long' ? 'gd-long' : 'gd-val' }, value.text);
+  return h('div', { class: field.shape === 'long' ? 'gd-block' : 'gd-kv' }, h('span', { class: 'gd-kv-k' }, label), shown);
+}
+
+// Les champs que le type de la démarche demande, remplis ; ceux qui sont vides ne se montrent pas.
+const typedBlocks = (proc, type, config, t) => fieldsOfType(config, type).map(field => ({ field, value: valueOf(field, proc.extra[field.id]) })).filter(each =>
+  each.value)
+  .map(each => fieldBlock(each.field, each.value, t));
+
+// Les rôles que le type de la démarche montre (tous sans type).
+export const visibleAnswer = (answer, type) => answer.filter(item => showsRole(type, item.role));
+
 // La colonne de gauche de la fiche : le fil d'Ariane, le titre, les mots-clés, les détails, les étapes, les sous-démarches, et l'alerte d'une boucle.
-export function infoPane(model, proc, { t }) {
+export function infoPane(model, proc, { t, config }) {
   const looped = model.index.loops.has(proc.row);
+  const type = typeOf(config, proc);
+  const chips = [type ? h('span', { class: 'gd-chip is-type' }, icon(type.glyph), h('span', null, typeLabel(type, t))) : null,
+    ...proc.keywords.map(word => h('span', { class: 'gd-chip' }, word))].filter(Boolean);
   return h('div', { class: 'gd-info' }, crumbs(model, proc, t), h('h3', { class: 'gd-title' }, proc.title),
-    proc.keywords.length ? h('div', { class: 'gd-chips' }, ...proc.keywords.map(word => h('span', { class: 'gd-chip' }, word))) : null,
-    looped ? h('p', { class: 'gd-warn' }, icon('warning'), h('span', null, t('gd.loop'))) : null,
-    proc.details ? h('p', { class: 'gd-details' }, proc.details) : null, stepsList(proc.steps, t), childrenList(model, proc, t));
+    chips.length ? h('div', { class: 'gd-chips' }, ...chips) : null,
+    looped ? h('p', { class: 'gd-warn' }, icon('warning'), h('span', null, t('gd.loop'))) : null, ...typedBlocks(proc, type, config, t),
+    proc.details ? h('p', { class: 'gd-details' }, proc.details) : null, stepsList(proc.steps, t), childrenList(model, proc, t, config));
 }

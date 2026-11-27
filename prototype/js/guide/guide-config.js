@@ -33,10 +33,46 @@ export const MAX_ROLES = 12;
 
 const text = value => (typeof value === 'string' ? value.trim() : '');
 
+export const FIELD_SHAPES = Object.freeze(['text', 'long', 'list', 'link']);
+export const MAX_FIELDS = 16;
+export const MAX_TYPES = 12;
+const ID_RE = /^[a-z][a-z0-9]{0,23}$/;
+
+// Les champs en plus et les types (27/11, option A du porteur : « champs par type, plus un texte libre ») : `kind` est la colonne qui garde le type d'une
+// démarche ; chaque champ est une colonne de texte de la table, avec sa forme (`text` : une ligne, `long` : un paragraphe, `list` : une liste séparée par des
+// virgules,
+// `link` : une adresse web) ; un type dit quels champs il demande (`fields`, par identifiant) et quels rôles de contact il montre (`roles`, par réglage ;
+//   vide : tous). Les types livrés (js/guide/guide-types.js) s'installent d'un geste ; la personne peut en écrire d'autres.
+function readFields(input, once) {
+  const found = [];
+  for (const item of Array.isArray(input) ? input : []) {
+    const id = text(item && item.id);
+    if (!ID_RE.test(id) || found.some(each => each.id === id)) continue;
+    const col = once(item.col);
+    if (!col) continue;
+    found.push({ id, label: text(item.label), col, shape: FIELD_SHAPES.includes(item.shape) ? item.shape : 'text' });
+  }
+  return found.slice(0, MAX_FIELDS);
+}
+
+function readTypes(input, fields) {
+  const found = [];
+  for (const item of Array.isArray(input) ? input : []) {
+    const id = text(item && item.id);
+    if (!ID_RE.test(id) || found.some(each => each.id === id)) continue;
+    const ids = (Array.isArray(item.fields) ? item.fields : []).map(text).filter((each, at, all) => fields.some(field => field.id === each) &&
+      all.indexOf(each) === at);
+    const roles = (Array.isArray(item.roles) ? item.roles : []).filter((each, at, all) => ROLE_PRESETS.includes(each) && all.indexOf(each) === at);
+    found.push({ id, label: text(item.label), glyph: text(item.glyph) || 'guide', fields: ids, roles });
+  }
+  return found.slice(0, MAX_TYPES);
+}
+
 // La configuration lue d'un texte JSON (ou d'un objet) : toujours complète, jamais d'exception. Ce que GFS ne connaît pas (une clé d'une version plus récente)
-// est ignoré à la lecture et perdu à la réécriture. { v, title, parent, keywords, steps, details, directory, roles: [{ col, label, preset }] }
+// est ignoré à la lecture et perdu à la réécriture. { v, title, parent, keywords, steps, details, directory, roles: [{ col, label, preset }], kind, fields,
+// types }
 // `directory` : le numéro de ligne de l'annuaire dont viennent les contacts (vide : aucun, les rôles se lisent comme du texte, les gestes de contact sont
-//   grisés). Une colonne ne sert qu'à un seul usage (titre, mère, mots-clés, étapes, détails, un rôle).
+//   grisés). Une colonne ne sert qu'à un seul usage (titre, mère, mots-clés, étapes, détails, un rôle, le type, un champ).
 export function readConfig(source) {
   let raw = source;
   if (typeof source === 'string') {
@@ -57,6 +93,9 @@ export function readConfig(source) {
     if (preset === 'fallback') { if (fallback) preset = 'other'; fallback = true; }
     return col ? { col, label: text(role.label) || col, preset } : null;
   }).filter(Boolean).slice(0, MAX_ROLES);
+  config.kind = once(input.kind);
+  config.fields = readFields(input.fields, once);
+  config.types = readTypes(input.types, config.fields);
   return config;
 }
 

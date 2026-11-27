@@ -34,3 +34,11 @@ export function treeKeys(event, active, { tree, root, open, toggle }) {
     else buttons.slice(0, at).reverse().find(each => each.dataset.id !== id && id.startsWith(each.dataset.id))?.focus();
   }
 }
+
+// Une fenêtre posée au-dessus de l'annuaire (le réglage, une liste avec recherche) : le clavier est à elle, l'annuaire derrière n'écoute pas (sans cela, Échap
+// dans la liste le fermait). `root` : le voile de la fenêtre de l'annuaire.
+export function isCovered(root) {
+  const host = root.parentElement;
+  const later = node => node !== root && node.classList.contains('mod-scrim') && Boolean(root.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING);
+  return Boolean(host) && [...host.children].some(later);
+}

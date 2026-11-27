@@ -109,6 +109,10 @@ const ICONS = {
   building: '<path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M14 10h5a1 1 0 0 1 1 1v10"/><path d="M8 8h2M8 12h2M8 16h2M2.5 21h19"/>',
   briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/>',
   corner: '<path d="M5 4v9a3 3 0 0 0 3 3h11"/><path d="M15 12l4 4-4 4"/>',
+  // Le plan des bâtiments de l'annuaire (27/11) : le plan d'un étage (des murs) et un local (sa porte) ; l'étage est « stack » et
+  // le site « pin ».
+  plan: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 11h8M11 4v9M11 17v3M15 11h6M15 11v9"/>',
+  door: '<path d="M7 21V3.5h10V21M4 21h16"/><path d="M14 12.5v.1"/>',
   // Les repères dessinés dans un dossier et la goutte de « Apparence… » (js/ui/icons-looks.js).
   ...LOOK_ICONS,
 };

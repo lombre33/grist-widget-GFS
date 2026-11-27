@@ -11,7 +11,7 @@
 import { h } from '../ui/dom.js';
 import { openModal } from '../ui/modal.js';
 import { pickFrom } from '../ui/pick-window.js';
-import { readConfig } from './annuaire-config.js';
+import { PLAN_COLUMNS, PLAN_TABLE, readConfig } from './annuaire-config.js';
 import { genreOf, targetOf, columnOf } from './annuaire-schema.js';
 import { modifyActions } from './annuaire-field-edit.js';
 import { Sampler } from './annuaire-sample.js';
@@ -20,9 +20,10 @@ import { hierarchyTab, hierarchyAct, levelInput, paintPreview } from './annuaire
 import { relationsTab, relationsAct, relationInput } from './annuaire-setup-relations.js';
 import { fieldsTab, fieldsAct } from './annuaire-setup-fields.js';
 import { optionsTab, optionsAct } from './annuaire-setup-options.js';
+import { planTab, planAct } from './annuaire-setup-plan.js';
 
 const TABS = Object.freeze([['people', 'an.tab.people', peopleTab], ['hier', 'an.tab.hier', hierarchyTab], ['relations', 'an.tab.relations', relationsTab],
-  ['fields', 'an.tab.fields', fieldsTab], ['options', 'an.tab.options', optionsTab]]);
+  ['fields', 'an.tab.fields', fieldsTab], ['plan', 'an.tab.plan', planTab], ['options', 'an.tab.options', optionsTab]]);
 const PREVIEW_DELAY = 120; // ms : le temps qu'une suite de choix se pose avant de relire l'aperçu
 
 export class AnnuaireSetup {
@@ -62,6 +63,7 @@ export class AnnuaireSetup {
       inertTargets: this.#o.inertTargets, preview: this.#preview, lock: this.#o.lock || null, body: this.#refs.body, sample: this.#sample(),
       repaint: () => this.#paint(), changed: () => { this.#paint(); this.#schedule(); }, list: opts => this.#list(opts),
         focus: (...keys) => this.#focus(...keys), createColumn: (table, made) => this.#createColumn(table, made), createTable: name => this.#createTable(name),
+        createPlanTable: name => this.#createPlanTable(name),
         columnState: (table, col) => this.#columnState(table, col), modifyColumn: (table, col, plan) => this.#modifyColumn(table, col, plan),
         writeBlock: () => (this.#o.writeBlock ? this.#o.writeBlock() : null) };
   }
@@ -89,9 +91,10 @@ export class AnnuaireSetup {
   }
 
   // Une colonne nouvelle dans `table` : Grist l'écrit (le nom réel peut changer : on le relit), le schéma du réglage la connaît aussitôt, la table se relira.
-  async #createColumn(table, { name, type, choices = [] }) {
+  async #createColumn(table, { name, type, choices = [], show }) {
     if (!this.#o.createColumn) throw new Error('écriture indisponible');
-    const made = await this.#o.createColumn(table, name, type, this.#draft.config.name, choices);
+    // `show` : la colonne que montre une référence à une autre table
+    const made = await this.#o.createColumn(table, name, type, show ?? this.#draft.config.name, choices);
     this.#wrote = true;
     const col = { id: made.id, type, genre: genreOf(type), ref: targetOf(type), visible: '', formula: false, choices };
     if (this.#o.schema[table]) this.#o.schema[table].columns.push(col);
@@ -130,6 +133,19 @@ export class AnnuaireSetup {
     this.#o.schema[made.id] = { columns: made.columns.map(col => ({ id: col.id, type: col.type, genre: genreOf(col.type), ref: '', visible: '' })) };
     this.#cache.delete(made.id);
     return { table: made.id, name: made.columns[0].id, email: made.columns[1].id };
+  }
+
+  // La table des lieux que GFS crée (js/annuaire/annuaire-plan.js) : Grist l'écrit (l'identifiant réel peut changer : on le relit), le schéma du réglage la
+  // connaît aussitôt. Rend { table } : l'identifiant de la table.
+  async #createPlanTable(name) {
+    if (!this.#o.createPlanTable) throw new Error('écriture indisponible');
+    const made = await this.#o.createPlanTable(name);
+    const columns = PLAN_COLUMNS.map(col => ({ id: col.id, type: col.type, genre: genreOf(col.type), ref: '', visible: '' }));
+    columns.push({ id: made.parent, type: `Ref:${made.id}`, genre: 'ref', ref: made.id, visible: made.name || PLAN_TABLE.name });
+    this.#o.schema[made.id] = { columns };
+    this.#cache.delete(made.id);
+    this.#wrote = true;
+    return { table: made.id };
   }
 
   // La fenêtre : rend { name, table, config } ou null.
@@ -224,6 +240,7 @@ export class AnnuaireSetup {
   #needsAttention(id) {
     const { config } = this.#draft;
     if (id === 'relations') return config.relations.some(rel => !rel.col);
+    if (id === 'plan') return Boolean(config.plan.table) && !config.plan.office; // la table des lieux est choisie, la colonne du bureau manque
     return id === 'hier' && config.hierarchy && (!config.levels.length || config.levels.some(level => !level.path.length));
   }
 
@@ -284,7 +301,7 @@ export class AnnuaireSetup {
     const { act } = button.dataset;
     if (act === 'tab') { this.#select(button.dataset.tab); return; }
     const host = this.#host;
-    [peopleAct, hierarchyAct, relationsAct, fieldsAct, optionsAct].some(run => run(host, act, button.dataset));
+    [peopleAct, hierarchyAct, relationsAct, fieldsAct, planAct, optionsAct].some(run => run(host, act, button.dataset));
   }
 
   // ---------- l'aperçu ----------

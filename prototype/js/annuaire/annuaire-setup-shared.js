@@ -19,7 +19,8 @@ export function takenColumns(config) {
   for (const level of config.levels) if (level.path[0]) taken.add(level.path[0]);
   for (const rel of config.relations) if (rel.col) taken.add(rel.col);
   for (const field of config.fields) taken.add(field.col);
-  for (const col of [config.leave, config.presence.col]) if (col) taken.add(col); // les colonnes des options (départ, présence) ne se proposent pas en champ
+  // les colonnes des options (départ, présence, bureau) ne se proposent pas en champ
+  for (const col of [config.leave, config.presence.col, (config.plan || {}).office]) if (col) taken.add(col);
   return taken;
 }
 
@@ -61,3 +62,7 @@ export function shift(list, at, by) {
   [list[at], list[to]] = [list[to], list[at]];
   return true;
 }
+
+// Un bloc d'un onglet du réglage : son titre, sa phrase, ses lignes (les « Options », les « Lieux »).
+export const block = (title, sub, ...rows) => h('section', { class: 'an-ob' }, h('header', { class: 'an-ob-h' }, h('b', null, title), h('small', null, sub)),
+  h('div', { class: 'an-ob-b' }, ...rows.filter(Boolean)));

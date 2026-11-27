@@ -21,12 +21,15 @@ import { MergePanel } from './annuaire-merge-panel.js';
 import { checkButton, mailButton, addButton, footNodes } from './annuaire-tools.js';
 import { addBlock } from './annuaire-add.js';
 import { openInsertMenu } from './annuaire-insert-menu.js';
-import { listKeys, treeKeys } from './annuaire-keys.js';
+import { listKeys, treeKeys, isCovered } from './annuaire-keys.js';
 import { addressesOf } from './annuaire-mail.js';
 import { presenceState } from './annuaire-presence.js';
 import { editBlock } from './annuaire-edit-rights.js';
+import { PlanPane, planWhy } from './annuaire-plan-pane.js';
+import { ACTIONS } from './annuaire-actions.js';
 
-const VIEWS = Object.freeze([['list', 'list', 'an.view.list'], ['cards', 'tiles', 'an.view.cards'], ['org', 'org', 'an.view.org']]);
+const VIEWS = Object.freeze([['list', 'list', 'an.view.list'], ['cards', 'tiles', 'an.view.cards'], ['org', 'org', 'an.view.org'],
+  ['plan', 'plan', 'an.view.plan']]);
 const PEOPLE_KEY = 'gfs.annuaire.orgPeople'; // le choix « Personnes » de l'organigramme, retenu sur le navigateur (js/shell/stored-choice.js)
 
 export class AnnuaireWindow {
@@ -35,6 +38,7 @@ export class AnnuaireWindow {
   #refs = null;
   #mounted = null;
   #org = null;
+  #plan = new PlanPane(); // la vue « Plan » (js/annuaire/annuaire-plan-pane.js)
   #show = { state: 'loading', annuaires: [], current: null, data: null, error: '' };
   #node = '';
   #query = '';
@@ -105,8 +109,15 @@ export class AnnuaireWindow {
     const other = !this.#show.current || !next.current || this.#show.current.row !== next.current.row;
     this.#show = { ...this.#show, ...next };
     if (other) this.#reset();
-    if (this.#view === 'org' && this.#show.state === 'ready' && !this.#orgPossible()) this.#view = 'list'; // le réglage vient d'éteindre la hiérarchie
+    if (this.#viewWhy(this.#view)) this.#view = 'list'; // le réglage vient d'éteindre la hiérarchie ou le plan
     this.#paint();
+  }
+
+  // Pourquoi une vue ne s'allume pas (grisée, jamais masquée : un clic le dit) : la clé du texte, ou '' quand elle s'allume.
+  #viewWhy(id) {
+    if (this.#show.state !== 'ready' || !this.#show.data) return '';
+    if (id === 'org') return this.#orgPossible() ? '' : (this.#merged() ? 'an.merge.noOrg' : 'an.org.noHierarchy');
+    return id === 'plan' ? planWhy(this.#show.data) : '';
   }
 
   // L'organigramme a de quoi se dessiner : des niveaux (par structures) ou une colonne de responsable direct (par responsables).
@@ -124,6 +135,7 @@ export class AnnuaireWindow {
     this.#struct = null;
     this.#note = '';
     this.#open = new Set(['']);
+    this.#plan.reset();
     this.#menu.close();
     if (this.#refs) this.#refs.search.value = '';
   }
@@ -146,7 +158,7 @@ export class AnnuaireWindow {
     };
     this.#org = new OrgView({ t, onPick: item => this.#orgPick(item), onMode: id => this.#orgMode(id),
       onTool: (act, data) => { const handler = ACTIONS[act]; if (handler) handler(this, data); } });
-    refs.main.append(refs.crumb, refs.fbar, refs.list, this.#org.element);
+    refs.main.append(refs.crumb, refs.fbar, refs.list, this.#org.element, this.#plan.element);
     refs.body.append(refs.state, refs.tree, refs.main, refs.side);
     this.#refs = refs;
     const section = h('section', { class: 'mod an', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'an-title' },
@@ -190,10 +202,9 @@ export class AnnuaireWindow {
     search.placeholder = t('an.search');
     search.setAttribute('aria-label', t('an.searchLabel'));
     views.setAttribute('aria-label', t('an.views'));
-    const greyed = id => id === 'org' && this.#show.state === 'ready' && !this.#orgPossible(); // grisé, jamais masqué : un clic dit comment l'allumer
+    const why = id => this.#viewWhy(id); // grisé, jamais masqué : un clic dit comment l'allumer
     views.replaceChildren(...VIEWS.map(([id, glyph, key]) => h('button', { type: 'button', class: 'an-seg-b', 'aria-pressed': String(this.#view === id),
-      'aria-disabled': greyed(id) ? 'true' : null, title: greyed(id) ? t(this.#merged() ? 'an.merge.noOrg' : 'an.org.noHierarchy') : t(key),
-        'aria-label': t(key),
+      'aria-disabled': why(id) ? 'true' : null, title: why(id) ? t(why(id)) : t(key), 'aria-label': t(key),
       dataset: { act: 'view', view: id, fk: `v:${id}` } }, icon(glyph), h('span', { class: 'an-seg-t' }, t(key)))));
     tools.replaceChildren(...(this.#show.state === 'ready' && data ? [checkButton(data.checks, t), sub ? subButton(t) : null].filter(Boolean) : []));
     const merged = this.#merged();
@@ -224,7 +235,7 @@ export class AnnuaireWindow {
     const refs = this.#refs;
     const ready = state === 'ready' && data;
     refs.state.hidden = Boolean(ready);
-    refs.tree.hidden = !ready || this.#view === 'org' || data.config.levels.length === 0;
+    refs.tree.hidden = !ready || this.#view === 'org' || this.#view === 'plan' || data.config.levels.length === 0;
     refs.main.hidden = !ready;
     refs.side.hidden = !ready || (this.#person === null && this.#struct === null);
     refs.body.dataset.side = String(!refs.side.hidden);
@@ -261,12 +272,27 @@ export class AnnuaireWindow {
   #paintMain() {
     const { crumb, list, main } = this.#refs;
     const org = this.#view === 'org';
-    crumb.hidden = org;
-    list.hidden = org;
+    const plan = this.#view === 'plan';
+    crumb.hidden = org || plan;
+    list.hidden = org || plan;
     this.#org.element.hidden = !org;
+    this.#plan.element.hidden = !plan;
     main.dataset.view = this.#view;
     if (org) { this.#paintOrg(); return; }
+    if (plan) { this.#paintPlan(); return; }
     this.#paintList();
+  }
+
+  // La vue « Plan » : les personnes que l'annuaire montre (la recherche et les filtres les ont réduites) et les mêmes outils que l'organigramme (« Filtres »,
+  // « Ajouter », « Écrire »).
+  #paintPlan() {
+    const t = this.#o.t;
+    const { data } = this.#show;
+    const people = this.#matching();
+    const model = this.#filterModel(data.people);
+    this.#plan.tools.replaceChildren(this.#menu.button(model, this.#filters), addButton(this.#addBlock(), t), mailButton(this.#mailState(people), t));
+    place(this.#plan.filters, this.#menu.bar(model, this.#filters));
+    this.#plan.paint({ t, data, people, selected: this.#person });
   }
 
   // Les filtres de ce que `base` contient (les mêmes dans la liste, les cartes et l'organigramme : retour du porteur, 25/11) : ce qu'on peut cocher, et combien
@@ -355,7 +381,8 @@ export class AnnuaireWindow {
     const genres = fieldGenres(data.config, current.table, data.schema);
     const relations = relationsOf(data.config, t);
     const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres, relations,
-      index: relationIndex(data.people, relations), writeBlock: this.#writeBlock(), editBlock: person => this.#editBlock(person), masked: data.masked,
+      index: relationIndex(data.people, relations), plan: data.plan || null, writeBlock: this.#writeBlock(), editBlock: person => this.#editBlock(person),
+        masked: data.masked,
         presence: person => this.#presenceOf(person), insert: true };
     const person = this.#person === null ? null : data.people.find(each => each.row === this.#person);
     // la fiche d'une carte de l'organigramme parle des mêmes personnes que la carte
@@ -376,7 +403,7 @@ export class AnnuaireWindow {
     const note = this.#refs.note;
     if (this.#note) { note.textContent = this.#note; return; }
     if (state !== 'ready' || !data) { note.textContent = ''; return; }
-    const found = this.#view === 'org' ? this.#matching().length : this.#scope().found.length;
+    const found = this.#wide() ? this.#matching().length : this.#scope().found.length;
     note.replaceChildren(...footNodes({ t, locale: this.#o.locale(), total: data.people.length, found, sub: data.sub, merged: this.#merged(),
       chosen: this.#menu.summary(this.#filterModel(data.people), this.#filters) }));
   }
@@ -419,6 +446,7 @@ export class AnnuaireWindow {
 
   // Une phrase dans le pied (la fiche qu'on vient d'enregistrer) ; elle s'efface au geste suivant.
   say(text) { if (this.#root) this.#say(text); }
+
 
   // Choisit un nœud de la hiérarchie : lui et tout ce qui le porte se déplient, pour qu'il se voie.
   // Un geste que le contrôle fait (changer d'annuaire, en créer un, le régler).
@@ -510,7 +538,7 @@ export class AnnuaireWindow {
 
   // Le bouton « Écrire » : les personnes affichées (celles du nœud, de la recherche et des filtres ; dans l'organigramme, tout l'annuaire filtré).
   mailTool() {
-    const people = this.#view === 'org' ? this.#matching() : this.#scope().found;
+    const people = this.#wide() ? this.#matching() : this.#scope().found;
     if (!addressesOf(people).length) { this.#say(this.#o.t('an.mail.noAddress')); return; }
     void this.#o.onMail(people);
   }
@@ -546,14 +574,37 @@ export class AnnuaireWindow {
     this.#focus(`tn:${id}`);
   }
 
+  // Les vues qui montrent tout l'annuaire (réduit par la recherche et les filtres), pas un nœud de la hiérarchie : l'organigramme et le plan.
+  #wide() { return this.#view === 'org' || this.#view === 'plan'; }
+
   setView(view) {
-    if (view === 'org' && this.#show.state === 'ready' && !this.#orgPossible()) {
-      this.#say(this.#o.t(this.#merged() ? 'an.merge.noOrg' : 'an.org.noHierarchy')); return; }
+    const why = this.#viewWhy(view);
+    if (why) { this.#say(this.#o.t(why)); return; }
     this.#menu.close();
     this.#view = view;
     this.#note = '';
     this.#paint();
     this.#focus(`v:${view}`);
+  }
+
+  // Le plan descend ou remonte : le lieu choisi (0 : tous les lieux) ; le clavier revient au fil d'Ariane, qui dit où l'on est.
+  goPlace(id) {
+    if (!this.#plan.go(this.#show.data.plan, id)) return;
+    this.#note = '';
+    this.#paintBody();
+    this.#paintFoot();
+    this.#focus(`plan-at:${id}`, 'search');
+  }
+
+  // « Voir sur le plan » (la section « Lieu » de la fiche) : le plan s'ouvre sur l'étage du bureau, le bureau repéré ; la fiche reste ouverte.
+  showOnPlan(row) {
+    const at = this.#plan.reveal(this.#show.data && this.#show.data.plan, row);
+    if (!at) return;
+    this.#menu.close();
+    this.#view = 'plan';
+    this.#note = '';
+    this.#paint();
+    this.#focus(`pl:${at.id}`, `plan-at:${at.parent}`);
   }
 
   pickPerson(row) {
@@ -664,17 +715,8 @@ export class AnnuaireWindow {
 
   // ---------- le clavier ----------
 
-  // Une fenêtre posée au-dessus (le réglage, une liste avec recherche) : le clavier est à elle, l'annuaire derrière n'écoute pas (sans cela, Échap dans la
-  // liste le fermait).
-  #covered() {
-    const host = this.#root.parentElement;
-    const later = node => node !== this.#root && node.classList.contains('mod-scrim') &&
-      Boolean(this.#root.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING);
-    return Boolean(host) && [...host.children].some(later);
-  }
-
   #keydown(event) {
-    if (this.#covered()) return;
+    if (isCovered(this.#root)) return;
     const doc = this.#root.ownerDocument;
     if (doc.activeElement && doc.activeElement.closest('[data-popover], .menu')) return; // un panneau (filtres) ou un menu garde Échap et Tab
     if (event.key === 'Escape') { this.#escape(event); return; }
@@ -695,43 +737,15 @@ export class AnnuaireWindow {
     event.preventDefault();
     event.stopImmediatePropagation();
     if (this.#merge.isOpen) { this.#merge.close(); this.#focus('switch', 'search'); return; }
-    if (!this.#menu.isOpen) { this.close(); return; }
+    if (!this.#menu.isOpen) {
+      // sur le plan, Échap remonte d'un cran avant de fermer
+      if (this.#view === 'plan' && !this.#plan.atTop) this.goPlace(this.#plan.parent(this.#show.data.plan));
+      else this.close();
+      return;
+    }
     this.#menu.close();
     this.#focus('filters', 'search');
   }
 
   #tab(event) { trapTab(event, this.#root, this.#refs.search); }
 }
-
-// Ce que fait chaque `data-act` de la fenêtre (hors de l'organigramme, qui lit les siens).
-const ACTIONS = Object.freeze({
-  close: window_ => window_.close(),
-  switch: window_ => window_.nameClick(),
-  configure: window_ => window_.configureClick(),
-  'merge-pick': (window_, data) => void window_.mergePick(Number(data.row)),
-  'merge-one': window_ => window_.mergeOne(),
-  new: window_ => window_.callout('onNew'),
-  view: (window_, data) => window_.setView(data.view),
-  'tree-pick': (window_, data) => window_.pickNode(data.id),
-  'tree-toggle': (window_, data) => window_.toggleNode(data.id),
-  person: (window_, data) => window_.pickPerson(Number(data.row)),
-  filters: window_ => window_.toggleFilters(),
-  sort: (window_, data) => window_.sortBy(data.key),
-  'sort-pick': window_ => window_.pickSort(),
-  fsec: (window_, data) => window_.toggleFilterSection(data.col),
-  'filter-menu': (window_, data) => window_.toggleFilterMenu(data.col),
-  'filters-reset': window_ => window_.resetFilters(),
-  'org-people': window_ => window_.toggleOrgPeople(),
-  filter: (window_, data) => window_.toggleFilter(data.col, data.value),
-  'filter-more': (window_, data) => window_.moreFilter(data.col),
-  copy: (window_, data) => void window_.copy(data.value),
-  'side-close': window_ => window_.closeSide(),
-  'node-list': (window_, data) => window_.listNode(data.id),
-  edit: (window_, data) => window_.editPerson(Number(data.row)),
-  check: window_ => window_.checkTool(),
-  sub: window_ => window_.subTool(),
-  add: window_ => window_.callout('onAdd'),
-  mail: window_ => window_.mailTool(),
-  presence: (window_, data) => window_.togglePresence(Number(data.row)),
-  insert: (window_, data, button) => window_.insertTool(Number(data.row), button),
-});

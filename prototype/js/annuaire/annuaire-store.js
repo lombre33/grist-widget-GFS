@@ -6,8 +6,9 @@
 
 import { OwnTable, TableDeclined } from '../files/own-table.js';
 import { DocTools } from '../files/doc-tools.js';
-import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, PEOPLE_COLUMNS, annuairesOf, newRecord, addAction, updateAction, writeConfig, readConfig,
+import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, PEOPLE_COLUMNS, PLAN_COLUMNS, PLAN_TABLE, annuairesOf, newRecord, addAction, updateAction, writeConfig, readConfig,
   effectiveConfig } from './annuaire-config.js';
+import { planOf } from './annuaire-plan.js';
 import { SHARES_TABLE, PLACE_TABLE } from '../sharing/sharing-model.js';
 import { TABLE as FILING_TABLE } from '../files/rangement.js';
 import { tablesNeeded } from './annuaire-schema.js';
@@ -71,16 +72,17 @@ export class AnnuaireStore {
     };
     await Promise.all([...tablesNeeded(config, annuaire.table, schema)].map(async name => { data[name] = await fetch(name); }));
     const people = buildPeople(config, annuaire.table, data, schema);
-    return { annuaire, config, schema, people, tree: buildTree(people, config.levels, annuaire.name), data };
+    return { annuaire, config, schema, people, tree: buildTree(people, config.levels, annuaire.name), data, plan: planOf(config, annuaire.table, data) };
   }
 
   // Un sous-annuaire lu : sa copie (js/annuaire/annuaire-sub.js), sans toucher à la table des personnes ni lire le schéma du document : la copie porte le sien.
   // `data` est vide : rien dans la copie ne se modifie (les fiches se modifient dans l'annuaire d'origine) et « Ma présence » n'y a pas de colonne à lire.
   #readSub(annuaire) {
     const base = effectiveConfig(annuaire.config);
-    const config = { ...base, presence: { ...base.presence, on: false } }; // « Ma présence » se règle et se lit dans l'annuaire d'origine
+    // « Ma présence » se règle et se lit dans l'annuaire d'origine, le plan aussi (la copie ne porte pas les lieux)
+    const config = { ...base, presence: { ...base.presence, on: false }, plan: { table: '', office: '' } };
     const { people, schema, at } = unpackFiches(annuaire.fiches, config.levels.length);
-    return { annuaire, config, schema, people, tree: buildTree(people, config.levels, annuaire.name), data: {}, copy: { at } };
+    return { annuaire, config, schema, people, tree: buildTree(people, config.levels, annuaire.name), data: {}, copy: { at }, plan: null };
   }
 
   // Écrit la fiche d'une personne : `action` est l'`UpdateRecord` de js/annuaire/annuaire-edit.js (une ligne, les colonnes changées). Le geste vient du bouton
@@ -99,6 +101,19 @@ export class AnnuaireStore {
   // Crée la table des personnes `name` avec son nom et son adresse e-mail : { id, columns: [{ id, type }] }. Le geste vient d'une fenêtre qui a dit ce qui
   // s'écrit (js/annuaire/annuaire-setup-table.js).
   addTable(name) { return this.#then(() => this.#tools.addTable(name, PEOPLE_COLUMNS)); }
+
+  // Crée la table des lieux du plan `name` : { id, name, parent } (l'identifiant réel de la table, la colonne du nom, la colonne `Parent`). `Parent` s'ajoute
+  // juste après, une référence à la table qu'on vient de créer qui montre `Name` (Grist ne connaît pas la table avant qu'elle naisse ; `visibleCol` : sans lui,
+  // la colonne ne montrerait que des numéros, mesuré dans un vrai Grist : faits vérifiés, 200). Le geste vient d'une fenêtre qui a dit ce qui s'écrit
+  // (js/annuaire/annuaire-setup-table.js) ; si `Parent` échoue, la table reste créée sans lui et l'erreur remonte.
+  addPlanTable(name) {
+    return this.#then(async () => {
+      const made = await this.#tools.addTable(name, PLAN_COLUMNS);
+      const shows = made.columns[0].id;
+      const parent = await this.#tools.addColumn(made.id, PLAN_TABLE.parent, `Ref:${made.id}`, shows);
+      return { id: made.id, name: shows, parent: parent.id };
+    });
+  }
 
   // Ce que Grist garde d'une colonne, pour changer son type ou ses valeurs (js/annuaire/annuaire-field-edit.js) : { ids (les numéros de ligne), cells, raw (le
   // texte de ses options, que le changement réécrit sans perdre les autres réglages) }, relus à l'instant ; une colonne qu'on ne trouve pas donne des cellules

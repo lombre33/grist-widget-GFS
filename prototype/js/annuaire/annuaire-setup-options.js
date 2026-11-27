@@ -11,13 +11,9 @@ import { icon } from '../ui/icons.js';
 import { CHECK_KINDS, MAIL_PER, FILTER_MODES, EDIT_LEVELS, effectiveConfig } from './annuaire-config.js';
 import { checkNeeds } from './annuaire-check.js';
 import { pickColumn } from './annuaire-setup-path.js';
-import { chooser, switchButton, iconButton, formRow } from './annuaire-setup-shared.js';
+import { chooser, switchButton, iconButton, formRow, block } from './annuaire-setup-shared.js';
 
 const PER_STEP = 5; // d'un cran du compteur « Par message »
-
-// Un bloc : son titre, sa phrase, ses lignes.
-const block = (title, sub, ...rows) => h('section', { class: 'an-ob' }, h('header', { class: 'an-ob-h' }, h('b', null, title), h('small', null, sub)),
-  h('div', { class: 'an-ob-b' }, ...rows.filter(Boolean)));
 
 // Une ligne « interrupteur, libellé, aide ».
 function switchRow({ on, label, sub, fk, data, disabled = false, title = '' }) {

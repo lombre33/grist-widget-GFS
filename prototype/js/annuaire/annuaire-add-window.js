@@ -13,7 +13,7 @@ export async function openAdd({ read, t, locale, container, inertTargets, save }
   const table = read.annuaire.table;
   const { fields, locked } = editableFields(read.config, read.schema, table, t);
   const window_ = new EditWindow({ container, inertTargets, t, locale, person: { row: 0, name: '' }, table, fields, locked, values: blankValues(fields),
-    options: { data: read.data, people: read.people, table }, lockedText: () => '', save,
+    options: { data: read.data, people: read.people, table, plan: read.plan }, lockedText: () => '', save,
     add: { who: read.annuaire.name, config: read.config, people: read.people } });
   const saved = await window_.run();
   return { saved, names: window_.added };

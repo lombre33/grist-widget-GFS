@@ -64,7 +64,8 @@ function readOptions(input) {
     filterMode: FILTER_MODES.includes(input.filterMode) ? input.filterMode : FILTER_MODES[0], leave: text(input.leave),
     checks: Array.isArray(input.checks) ? CHECK_KINDS.filter(kind => input.checks.includes(kind)) : [...DEFAULT_CHECKS],
     presence: { on: presence.on === true && Boolean(text(presence.col)), col: text(presence.col) },
-    mail: { per: Number.isFinite(per) ? Math.min(MAIL_PER.max, Math.max(MAIL_PER.min, per)) : MAIL_DEFAULT.per, to: mail.to === 'to' ? 'to' : 'bcc' } };
+    mail: { per: Number.isFinite(per) ? Math.min(MAIL_PER.max, Math.max(MAIL_PER.min, per)) : MAIL_DEFAULT.per, to: mail.to === 'to' ? 'to' : 'bcc' },
+    plan: { table: text(object(input.plan).table), office: text(object(input.plan).office) } };
 }
 
 // Le critère d'un sous-annuaire (js/annuaire/annuaire-sub.js) : { key (la clé du filtre : celle d'un niveau de la hiérarchie, ou la colonne d'un champ), label
@@ -92,6 +93,9 @@ function readSub(input) {
 // `presence` (« Ma présence », une option de l'administrateur) : { on, col } : `col` est une colonne oui/non de la personne, « apparaître dans l'annuaire » ;
 // `mail` : { per, to } (« Écrire au groupe ») ; `filterMode` : « panel » ou « bar » (voir FILTER_MODES) ; `edit` : { self, level, role } (qui modifie les
 //   fiches, voir EDIT_LEVELS ; `role` est une colonne oui/non de la personne : les personnes dont la case est cochée modifient toutes les fiches).
+// `plan` (le plan des bâtiments, décision du porteur du 27/11 : « le plan comme base ») : { table, office } : `table` est la table des lieux (`PLAN_TABLE`,
+// plus bas : celle que GFS crée avec l'accord de la personne), `office` la colonne « référence » de la table des personnes qui désigne le bureau de chacun ;
+// vides, il n'y a pas de plan (la vue « Plan » reste grisée, avec sa raison).
 // `hierarchy` : l'option « postes et hiérarchie » (décision du porteur, 25/11 : par défaut seulement le nom et l'adresse). Une ligne écrite avant elle, qui a
 // déjà un poste ou des niveaux, la garde allumée : rien ne change pour elle. Éteinte, elle garde ses niveaux écrits (on les retrouve en la rallumant) mais
 // la lecture ne s'en sert pas : voir `effectiveConfig`.
@@ -192,3 +196,18 @@ export const PEOPLE_COLUMNS = Object.freeze([{ id: PEOPLE_TABLE.name, type: 'Tex
 export const addTableAction = (name, columns) => ['AddTable', text(name), columns.map(column => ({ ...column }))];
 // L'action qui range dans une référence la formule de la colonne qu'elle montre (`$Assistant.Nom`) : la colonne d'aide que Grist lit pour l'écran.
 export const displayAction = (tableId, colRef, colId, shown) => ['SetDisplayFormula', tableId, null, colRef, `$${colId}.${shown}`];
+// La table des lieux du plan des bâtiments (décision du porteur, 27/11 : « une seule table ») : un lieu est un site, un bâtiment, un étage ou un local, rangé
+// dans son parent (`Parent`, une référence à la même table, ajoutée juste après la création : Grist ne connaît pas encore la table quand elle naît). Des noms
+// anglais dès le départ (décision du 25/11) ; les valeurs de `Kind` et de `Use` sont stables d'une langue à l'autre (l'écran les traduit :
+// js/annuaire/annuaire-plan.js).
+// `Plan` : le plan du lieu (une image, en pièce jointe) ; `Shape` : le tracé du lieu sur le plan de son parent (un texte JSON) ; `Lat`, `Lng`, `Address` :
+// facultatifs (le lien « Voir sur une carte en ligne », jamais un géocodage).
+export const PLAN_TABLE = Object.freeze({ id: 'Directory_Places', name: 'Name', parent: 'Parent' });
+const choices = list => JSON.stringify({ choices: list });
+export const PLAN_COLUMNS = Object.freeze([{ id: 'Name', type: 'Text' }, { id: 'Kind', type: 'Choice',
+  widgetOptions: choices(['Site', 'Building', 'Floor', 'Room']) },
+  { id: 'Use', type: 'Choice', widgetOptions: choices(['Office', 'Meeting', 'Circulation', 'Service']) }, { id: 'Address', type: 'Text' },
+  { id: 'Lat', type: 'Numeric' }, { id: 'Lng', type: 'Numeric' }, { id: 'Plan', type: 'Attachments' }, { id: 'Shape', type: 'Text' },
+    { id: 'Capacity', type: 'Int' }]);
+// Le plan est réglé : la table des lieux et la colonne du bureau sont dites.
+export const planReady = config => Boolean(config && config.plan && config.plan.table && config.plan.office);

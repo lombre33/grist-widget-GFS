@@ -92,5 +92,7 @@ export function tablesNeeded(config, tableId, schema) {
   for (const field of config.fields) walk(field.path && field.path.length ? field.path : [field.col]);
   for (const key of ['name', 'first', 'title', 'email', 'phone', 'avatar', 'logo']) if (config[key]) walk(keyPath(config[key]));
   if (config.lead) walk([config.lead]);
+  // les lieux du plan (js/annuaire/annuaire-plan.js)
+  if (config.plan && config.plan.table && config.plan.office && schema[config.plan.table]) needed.add(config.plan.table);
   return needed;
 }

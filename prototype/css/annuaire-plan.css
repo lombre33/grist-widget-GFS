@@ -1,0 +1,43 @@
+/* Le plan des bâtiments de l'annuaire (demande du porteur du 27/11 ; js/annuaire/annuaire-plan-view.js) : la vue « Plan » prend toute la largeur, comme l'organigramme ; un
+   fil d'Ariane, puis une carte par lieu (son genre, son adresse, combien de personnes il accueille). Tout par les jetons de gfs.css, jamais une couleur en dur, aucun
+   attribut `style`. Les classes portent `an-pl-` : aucune ne rejoint celles du reste du module. */
+
+.an-body[data-view="plan"] { grid-template-columns: minmax(0, 1fr); }
+.an-body[data-view="plan"][data-side="true"] { grid-template-columns: minmax(0, 1fr) minmax(190px, 230px); }
+.an-main[data-view="plan"] .an-fbar-row { display: none; }
+.an-plan { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.an-plan[hidden] { display: none; }
+.an-pl-crumb { flex: 1 1 auto; min-width: 0; }
+.an-pl-trail { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.an-pl-trail li { display: inline-flex; align-items: center; min-width: 0; }
+.an-pl-trail li + li::before { content: "›"; margin: 0 2px; color: var(--text-muted); }
+.an-pl-step { max-width: 220px; height: 26px; padding: 0 8px; border: 0; border-radius: var(--radius-btn); background: transparent; color: var(--accent-ink); font: inherit;
+  font-size: max(12.5px, var(--fs-min)); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.an-pl-step:hover { background: var(--accent-soft); }
+.an-pl-step.is-last { color: var(--text); cursor: default; }
+.an-pl-step.is-last:hover { background: transparent; }
+.an-pl-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 6px 14px 14px; overflow: auto; }
+.an-pl-head { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.an-pl-head h3 { margin: 0; min-width: 0; font-size: var(--fs-head); overflow-wrap: anywhere; }
+.an-pl-sub { flex-basis: 100%; margin: 0; white-space: normal; }
+.an-pl-ic { flex: none; width: 18px; height: 18px; color: var(--text-muted); }
+.an-pl-grid { flex: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 8px; align-content: start; }
+.an-pl-tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; padding: 10px 10px 10px 40px; border: 1px solid var(--border);
+  border-radius: calc(var(--radius-lg) * 1.25); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.an-pl-tile:hover { border-color: var(--border-strong); }
+.an-pl-tile > .an-pl-ic { position: absolute; left: 12px; top: 11px; }
+.an-pl-name { max-width: 100%; font-size: max(13px, var(--fs-min)); font-weight: 700; overflow-wrap: anywhere; }
+.an-pl-meta { max-width: 100%; white-space: normal; }
+.an-pl-tile.is-here { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.an-pl-tile.is-here .an-pe-sub { color: var(--text); }
+.an-pl-tile.is-here .an-pill { background: var(--surface); }
+/* Un lieu sans poste de travail (couloir, escalier, sanitaires) : cadre en pointillés et fond creusé, jamais d'opacité (le contraste reste) ; un clic dit pourquoi. */
+.an-pl-tile.is-grey { border-style: dashed; background: var(--surface-sunken); color: var(--text-muted); cursor: default; }
+.an-pl-people { flex: none; display: flex; flex-direction: column; }
+.an-pl-people > .an-fs-h { margin: 4px 0 4px 8px; }
+.an-pl-unplaced { margin: 0; padding: 4px 0 0; }
+/* Étroit (540 px et moins) : la fiche prend la place du plan tant qu'elle est ouverte, et le volet défile d'un bloc. */
+@container an (max-width: 540px) {
+  .an-body[data-view="plan"], .an-body[data-view="plan"][data-side="true"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .an-main[data-view="plan"] { overflow: hidden; }
+}

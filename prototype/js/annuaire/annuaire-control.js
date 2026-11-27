@@ -251,7 +251,7 @@ export class AnnuaireControl {
     const { fields, locked } = editableFields(read.config, read.schema, table, t);
     const saved = await new EditWindow({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, locale: this.#o.locale(), person, table, fields,
       locked,
-      values: personValues(fields, read.data[table], row), options: { data: read.data, people: read.people, table },
+      values: personValues(fields, read.data[table], row), options: { data: read.data, people: read.people, table, plan: read.plan },
       lockedText: entry => (['name', 'title', 'email', 'phone'].includes(entry.key) ? person[entry.key] : (person.fields[entry.key] || []).join(', ')),
       save: action => this.#store.update(action) }).run();
     if (!saved) return false;
@@ -450,7 +450,7 @@ export class AnnuaireControl {
       read: (draft, cache) => this.#store.read(draft, schema, cache),
       fetch: name => this.#store.table(name), createColumn: (table, name, type, show, choices) => this.#store.addColumn(table, name, type, show, choices),
       columnState: (table, column) => this.#store.columnState(table, column), modify: actions => this.#store.modify(actions),
-      createTable: name => this.#store.addTable(name),
+      createTable: name => this.#store.addTable(name), createPlanTable: name => this.#store.addPlanTable(name),
         writeBlock: () => this.#o.writeBlock() };
   }
 

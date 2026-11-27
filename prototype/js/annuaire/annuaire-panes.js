@@ -9,6 +9,7 @@ import { avatarNode, logoNode } from './annuaire-images.js';
 import { fieldLabel } from './annuaire-config.js';
 import { maskedPill, presenceRow } from './annuaire-tools.js';
 import { insertButton } from './annuaire-insert-menu.js';
+import { placeContent } from './annuaire-plan-fiche.js';
 
 // Combien de personnes une relation montre avant « +n » (une ligne de la fiche).
 export const CHIPS_SHOWN = 6;
@@ -195,7 +196,8 @@ function ficheActions(person, ctx) {
 
 // La fiche d'une personne, en sections comme la carte du suivi de projet du porteur : l'en-tête (avatar, nom, poste, « Écrire »), « Coordonnées »,
 // « Rattachement » (le découpage hiérarchique), « Informations » (les champs). `ctx` : { t, locale, levels, config, genres: { colonne: genre }, relations,
-// index, writeBlock (ce qui empêche d'écrire : le texte, ou rien), editBlock(personne) (ce qui empêche de modifier cette fiche : le texte, ou rien), masked
+// index, plan (le plan lu : js/annuaire/annuaire-plan.js ; la section « Lieu »), writeBlock (ce qui empêche d'écrire : le texte, ou rien), editBlock(personne)
+// (ce qui empêche de modifier cette fiche : le texte, ou rien), masked
 // (Set : les fiches masquées qu'on voit grisées), presence(personne) -> { on, can, blocked } ou rien : la ligne « Apparaître dans l'annuaire » quand l'option
 // « Ma présence » est allumée, insert (vrai : le bouton « Insérer dans… » est posé ; js/annuaire/annuaire-insert-menu.js) }.
 export function fiche(person, ctx) {
@@ -203,6 +205,7 @@ export function fiche(person, ctx) {
   const contact = contactRows(person, ctx);
   const fields = fieldRows(person, ctx);
   const path = attachment(person, ctx);
+  const place = placeContent(person, ctx);
   const write = ficheActions(person, ctx);
   return h('div', { class: 'an-fiche-card' },
     h('div', { class: 'an-fiche-head' }, avatarNode({ id: person.avatar, text: who(person), cls: 'an-av-xl' }),
@@ -210,8 +213,9 @@ export function fiche(person, ctx) {
         ctx.masked && ctx.masked.has(person.row) ? maskedPill(t) : null), logoNode(person.logo, 'an-logo-l')), write,
     ctx.presence && ctx.presence(person) ? presenceRow(person, ctx.presence(person), t) : null,
     contact.length ? section(t('an.fiche.contact'), h('dl', { class: 'an-fiche-rows' }, ...contact)) : null, path ? section(t('an.fiche.attach'), path) : null,
+    place ? section(t('an.fiche.place'), ...place) : null,
     fields.length ? section(t('an.fiche.fields'), h('dl', { class: 'an-fiche-rows' }, ...fields)) : null,
-    contact.length || path || fields.length ? null : h('p', { class: 'an-note' }, t('an.fiche.bare')));
+    contact.length || path || place || fields.length ? null : h('p', { class: 'an-note' }, t('an.fiche.bare')));
 }
 
 // La fiche d'une structure (un clic sur sa carte de l'organigramme) : son nom, son niveau, combien de personnes, qui en est responsable, et le moyen de voir

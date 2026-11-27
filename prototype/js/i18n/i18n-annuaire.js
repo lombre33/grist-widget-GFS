@@ -14,6 +14,7 @@ import { ANNUAIRE_LOCK_STRINGS } from './i18n-annuaire-lock.js';
 import { ANNUAIRE_ADD_STRINGS } from './i18n-annuaire-add.js';
 import { ANNUAIRE_FIELD_STRINGS } from './i18n-annuaire-field.js';
 import { ANNUAIRE_IMAGES_STRINGS } from './i18n-annuaire-images.js';
+import { ANNUAIRE_PLAN_STRINGS } from './i18n-annuaire-plan.js';
 
 export const ANNUAIRE_STRINGS = Object.freeze({
   fr: {
@@ -29,6 +30,7 @@ export const ANNUAIRE_STRINGS = Object.freeze({
     ...ANNUAIRE_ADD_STRINGS.fr,
     ...ANNUAIRE_FIELD_STRINGS.fr,
     ...ANNUAIRE_IMAGES_STRINGS.fr,
+    ...ANNUAIRE_PLAN_STRINGS.fr,
     'an.tip': 'Annuaire',
     'an.tipLong': 'Annuaire des personnes du document',
     'an.title': 'Annuaire',
@@ -299,6 +301,7 @@ export const ANNUAIRE_STRINGS = Object.freeze({
     ...ANNUAIRE_ADD_STRINGS.en,
     ...ANNUAIRE_FIELD_STRINGS.en,
     ...ANNUAIRE_IMAGES_STRINGS.en,
+    ...ANNUAIRE_PLAN_STRINGS.en,
     'an.tip': 'Directory',
     'an.tipLong': 'Directory of the people in the document',
     'an.title': 'Directory',

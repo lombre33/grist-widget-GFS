@@ -7,6 +7,7 @@
 
 import { columnOf } from './annuaire-schema.js';
 import { keyPath, fieldLabel } from './annuaire-config.js';
+import { officeChoices } from './annuaire-plan.js';
 
 const WRITABLE = Object.freeze(['text', 'choice', 'choicelist', 'bool', 'date', 'number', 'ref', 'reflist']);
 
@@ -57,6 +58,7 @@ export function editableFields(config, schema, table, t) {
   add('manager', t('an.rel.manager'), config.manager, 'relations');
   for (const rel of config.relations || []) add(`rel:${rel.col}`, rel.label, rel.col, 'relations');
   for (const field of config.fields) add(field.col, fieldLabel(field), field.path && field.path.length ? field.path : field.col, 'info');
+  if (config.plan && config.plan.office) add('office', t('an.plan.field'), config.plan.office, 'info'); // le bureau (js/annuaire/annuaire-plan.js)
   return { fields, locked };
 }
 
@@ -140,8 +142,10 @@ export function updateOf(table, row, changes) {
 }
 
 // Les choix d'une référence : [{ id, label }] triés par nom. Une référence à la table des personnes elle-même donne les noms de l'annuaire (le prénom y est) ;
-// une autre table donne la colonne que Grist montre pour elle (`field.visible`). Vide quand Grist ne dit pas quelle colonne montrer.
-export function refOptions(field, { data, people, table }) {
+// une autre table donne la colonne que Grist montre pour elle (`field.visible`) ; les lieux du plan s'écrivent en chemin entier (`plan`). Vide quand Grist ne
+// dit pas quelle colonne montrer.
+export function refOptions(field, { data, people, table, plan = null }) {
+  if (plan && field.ref === plan.table) return officeChoices(plan);
   if (field.ref === table) return people.map(person => ({ id: person.row, label: person.name })).sort((a, b) => a.label.localeCompare(b.label, 'fr'));
   const rows = data[field.ref];
   if (!rows || !Array.isArray(rows.id) || !field.visible || !Array.isArray(rows[field.visible])) return [];

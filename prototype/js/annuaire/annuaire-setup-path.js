@@ -102,7 +102,7 @@ function createWindow(host, { table, types }) {
   const blocked = host.writeBlock();
   const taken = name => (schema[table] ? schema[table].columns : []).some(col => normalize(col.id) === normalize(name));
   const input = h('input', { type: 'text', class: 'an-set-input', autocomplete: 'off', placeholder: t('an.new.namePlaceholder'), 'aria-label': t('an.new.name'),
-    dataset: { fk: 'nc-name' } });
+    value: types[0].suggest || '', dataset: { fk: 'nc-name' } }); // `suggest` : le nom qu'un type propose (le bureau du plan)
   const seg = h('div', { class: 'an-seg', role: 'group', 'aria-label': t('an.new.type') });
   const note = h('span', { class: 'mod-note', 'aria-live': 'polite' });
   const cancel = h('button', { type: 'button', class: 'btn', dataset: { fk: 'nc-cancel' } }, t('an.set.cancel'));
@@ -134,7 +134,7 @@ function createWindow(host, { table, types }) {
     busy = true;
     check();
     try {
-      done((await host.createColumn(table, { name: input.value.trim(), type: chosen.type, choices: choosing() ? values.values() : [] })).id);
+      done((await host.createColumn(table, { name: input.value.trim(), type: chosen.type, choices: choosing() ? values.values() : [], show: chosen.show })).id);
     } catch (error) {
       busy = false;
       check();

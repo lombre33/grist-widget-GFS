@@ -205,6 +205,22 @@ test('setFiling : des dossiers seuls s\'écrivent sans fichier ; un lot qui n\'a
   assert.equal(tables[TABLE].rows.filter(line => line.Folder === 'Contrats/2026').length, 0);
 });
 
+test('setFiling : un dossier qui revient avec son apparence (Ctrl+Z d\'une suppression) écrit sa cellule `Value` ; la colonne absente est ajoutée avant, une ligne qui existe déjà n\'est pas touchée', async () => {
+  const tables = { [TABLE]: { columns: full, rows: [row(1, { User: 'ana@exemple.org', Folder: 'Present' })] } };
+  const { port } = fakeGrist(tables, { email: 'ana@exemple.org' });
+  await new Rangement({ port, consent: accept() }).setFiling([], { add: ['Vide', 'Present'], looks: { Vide: { color: 'red', emoji: '🧾' }, Present: { color: 'blue' }, Autre: { glyph: 'star' } } });
+  const mine = dataRows(tables[TABLE].rows).filter(line => line.User === 'ana@exemple.org' && !line.App && !line.File);
+  assert.deepEqual(mine.map(line => [line.Folder, line.Value]).sort(), [['Present', ''], ['Vide', JSON.stringify({ look: { color: 'red', emoji: '🧾' } })]],
+    '« Present » a déjà sa ligne, laissée telle quelle ; « Autre » n\'est pas ajouté : seule l\'apparence d\'un dossier ajouté s\'écrit');
+  const older = fakeGrist({ [TABLE]: { columns: full.filter(name => name !== 'Value'), rows: [] } }, { email: 'ana@exemple.org' });
+  await new Rangement({ port: older.port, consent: accept() }).setFiling([], { add: ['Vide'], looks: { Vide: { glyph: 'star' } } });
+  const at = verb => older.actions.findIndex(action => action[0] === verb && (verb !== 'AddColumn' || action[2] === 'Value') && (verb !== 'AddRecord' || action[3].Folder === 'Vide'));
+  assert.ok(at('AddColumn') >= 0 && at('AddRecord') > at('AddColumn'), 'la colonne `Value` d\'abord : une colonne inconnue annulerait le lot');
+  const plain = fakeGrist({ [TABLE]: { columns: full.filter(name => name !== 'Value'), rows: [] } }, { email: 'ana@exemple.org' });
+  await new Rangement({ port: plain.port, consent: accept() }).setFiling([], { add: ['Vide'] });
+  assert.equal(plain.actions.some(action => action[0] === 'AddColumn' && action[2] === 'Value'), false, 'sans apparence, rien de plus qu\'avant : la colonne `Value` n\'est pas demandée');
+});
+
 test('setFiling en sourdine : sans la table rien n\'est écrit et rien n\'est demandé, avec elle le lot part, une colonne de rangement absente n\'est jamais ajoutée ; rend true seulement quand un lot est parti', async () => {
   const none = fakeGrist({ Clients: { columns: ['id', 'Nom'], rows: [] } });
   assert.equal(await new Rangement({ port: none.port, consent: () => assert.fail('aucune question'), ...noProbe }).setFiling([], { add: ['A'], quiet: true }), false);

@@ -12,6 +12,7 @@ import { SHARE_OTHER_STRINGS } from './i18n-share-other.js';
 import { MANAGE_STRINGS } from './i18n-manage.js';
 import { SPACE_LINK_STRINGS } from './i18n-space-links.js';
 import { SHORTCUT_STRINGS } from './i18n-shortcuts.js';
+import { LOOK_STRINGS } from './i18n-looks.js';
 import { RECEIVED_STRINGS } from './i18n-received.js';
 import { NOTIFICATION_STRINGS } from './i18n-notifications.js';
 import { EXPLORER_STRINGS } from './i18n-explorer.js';
@@ -38,6 +39,7 @@ const STRINGS = {
     ...MANAGE_STRINGS.fr,
     ...SPACE_LINK_STRINGS.fr,
     ...SHORTCUT_STRINGS.fr,
+    ...LOOK_STRINGS.fr,
     ...RECEIVED_STRINGS.fr,
     ...NOTIFICATION_STRINGS.fr,
     ...EXPLORER_STRINGS.fr,
@@ -235,6 +237,7 @@ const STRINGS = {
     ...MANAGE_STRINGS.en,
     ...SPACE_LINK_STRINGS.en,
     ...SHORTCUT_STRINGS.en,
+    ...LOOK_STRINGS.en,
     ...RECEIVED_STRINGS.en,
     ...NOTIFICATION_STRINGS.en,
     ...EXPLORER_STRINGS.en,

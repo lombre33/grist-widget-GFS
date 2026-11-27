@@ -25,7 +25,9 @@ const LOST_MS = 30000; // une recherche sans réponse ne se refait pas avant ce 
 export function addressOf(url) {
   try {
     const { origin, pathname } = new URL(url);
-    return origin + pathname.replace(/\/index\.html$/, '').replace(/\/+$/, '');
+    // Les barres de plus que la garde de démarrage met dans le chemin (`prototype//index.html`, js/shell/boot-guard.js) ne sont pas dans l'adresse que la
+    // personne a donnée.
+    return origin + pathname.replace(/\/{2,}/g, '/').replace(/\/index\.html$/, '').replace(/\/+$/, '');
   } catch (error) { return null; }
 }
 

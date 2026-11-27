@@ -6,6 +6,7 @@ import { icon } from '../ui/icons.js';
 import { person, formatDate, pathParts, stampOf, authorOf, rowKey, FAMILY_NAMES } from './explorer-model.js';
 import { SPACES_ROOT, folderLabel, isSpacePath } from '../sharing/spaces-filing.js';
 import { formatBytes } from '../weight/weight.js';
+import { folderIcon, lookColor, lookIn } from './folder-look-view.js';
 
 export const SORT_HEADERS = [['name', 'ex.name'], ['type', 'ex.type'], ['poids', 'ex.weight'], ['mod', 'ex.modified'], ['by', 'ex.by']];
 
@@ -122,12 +123,13 @@ export function crumbs(ctx) {
   return [link('', t('ex.me')), ...parts.flatMap((part, i) => [sep(), crumb(part, i)])];
 }
 
-function treeRow({ label, glyph, data, current, depth = 0, caret = null, toggle = null, count = null, grey = false }) {
+function treeRow({ label, glyph, data, current, depth = 0, caret = null, toggle = null, count = null, grey = false, look = null }) {
   // Le nom entier au survol : le volet est étroit, un nom long y est coupé (charte).
   return h('button', { type: 'button', class: 'tr-row', title: label, dataset: data, 'aria-current': String(Boolean(current)),
-    'aria-disabled': grey ? 'true' : null, vars: { '--d': depth } },
+    'aria-disabled': grey ? 'true' : null, 'data-look': lookColor(look), vars: { '--d': depth } },
     h('span', { class: 'car-slot', dataset: toggle === null ? null : { toggle } }, caret ? icon('chev-right', caret === 'open' ? 'open' : '') : null),
-    icon(glyph, glyph === 'folder' ? 'fld' : ''), h('span', { class: 'lbl' }, label), count === null ? null : h('span', { class: 'cnt' }, String(count)));
+    glyph === 'folder' ? folderIcon(look) : icon(glyph), h('span', { class: 'lbl' }, label),
+      count === null ? null : h('span', { class: 'cnt' }, String(count)));
 }
 
 // Le volet : Récents et Favoris toujours en haut, puis « Moi » et ses dossiers.
@@ -148,7 +150,8 @@ export function tree(ctx) {
     h('hr', { class: 'tr-sep' }));
   // « Espaces » est une racine à côté de « Moi » : ses lignes viennent après celles de « Moi », au même niveau que lui.
   const row = (item, shift) => h('div', { class: 'tr-folder' }, treeRow({
-    label: folderLabel(t, item.path, item.name), glyph: item.path === SPACES_ROOT ? 'users' : 'folder', data: { path: item.path }, current: inFolders &&
+    label: folderLabel(t, item.path, item.name), glyph: item.path === SPACES_ROOT ? 'users' : 'folder', look: lookIn(ctx, item.path), data: { path: item.path },
+    current: inFolders &&
       state.path === item.path, depth: item.depth + shift,
     caret: item.hasChildren ? (item.open ? 'open' : 'closed') : null, toggle: item.hasChildren ? item.path : null,
   }));
@@ -196,15 +199,15 @@ function nameCell(ctx, file, flat) {
     lock ? h('span', { class: 'sr-only' }, `, ${lock.text}`) : null);
 }
 
+// L'épingle d'une ligne (un fichier, ou un dossier de « Moi ») : allumée quand la ligne est en favori ; un clic l'allume ou l'éteint.
+const pinButton = (t, key, pinned) => h('button', { type: 'button', class: `rb pin${pinned ? ' on' : ''}`, dataset: { pin: key },
+  title: pinned ? t('ex.unpin') : t('ex.pin'), 'aria-label': pinned ? t('ex.unpin') : t('ex.pin'), 'aria-pressed': String(pinned) }, icon('pin'));
+
 // Les boutons de la ligne : « Restaurer » à la corbeille, l'étoile d'un fichier qu'on épingle (rien dans « Partagés avec moi »), et « Plus d'actions ».
 function actionsCell(ctx, file) {
   const { t } = ctx;
-  const pinTitle = file.pinned ? t('ex.unpin') : t('ex.pin');
   return h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
-    : (ctx.state.view === 'shared' || file.shortcut ? null : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`,
-      dataset: { pin: file.key },
-      title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin'))),
-    moreButton(t, file.key));
+    : (ctx.state.view === 'shared' || file.shortcut ? null : pinButton(t, file.key, file.pinned)), moreButton(t, file.key));
 }
 
 // « Restaurer » d'une ligne de la corbeille : il prend la place de l'étoile (un fichier à la corbeille ne s'épingle pas).
@@ -227,18 +230,26 @@ export function fileRow(ctx, file, flat) {
 // accepter » avec leur nombre (le mot et la couleur vont ensemble).
 const folderCaption = (t, folder) => (folder.pending ? t('rx.folder.pending', { n: folder.pending }) : t('ex.fileCount', { n: folder.count }));
 
+// Un dossier de « Moi » s'épingle ; un dossier reçu d'un autre document et ceux des espaces, pas encore (l'article du menu reste grisé et le dit).
+const pinnable = folder => !folder.shared && !isSpacePath(folder.path);
+
+// Dans « Favoris », le dossier du dessus, à côté du nom (rien à la racine) ; son chemin entier au survol.
+const whereHint = (ctx, folder) => (ctx.state.view === 'fav' && folder.parent ? h('span', { class: 'hint', title: folder.parent },
+  folder.parent.split('/').pop()) : null);
+
 export function folderRow(ctx, folder) {
   const { t } = ctx;
   const key = rowKey(folder);
+  const look = folder.shared ? null : lookIn(ctx, folder.path); // un dossier reçu d'un autre document garde son aspect d'origine
   return h('div', { class: `ls-row folder${folder.pending ? ' lk' : ''}`, role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key },
-    'aria-selected': String(ctx.state.sel === key) },
-    h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't', title: folderLabel(t, folder.path, folder.name) },
-      folderLabel(t, folder.path, folder.name))),
+    'aria-selected': String(ctx.state.sel === key), 'data-look': lookColor(look) },
+    h('div', { class: 'nm', role: 'gridcell' }, folderIcon(look), h('span', { class: 't', title: folderLabel(t, folder.path, folder.name) },
+      folderLabel(t, folder.path, folder.name)), whereHint(ctx, folder)),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, folderCaption(t, folder))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, folder.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(folder.ts, ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }),
-    h('div', { class: 'acts', role: 'gridcell' }, moreButton(t, key)));
+    h('div', { class: 'acts', role: 'gridcell' }, pinnable(folder) ? pinButton(t, key, Boolean(folder.pinned)) : null, moreButton(t, key)));
 }
 
 // Ce qu'une vignette montre : un dossier ou un fichier (grisé ou non).
@@ -246,7 +257,7 @@ function tileFacts(ctx, row) {
   const { t } = ctx;
   if (row.kind === 'folder') {
     return { folder: true, key: rowKey(row), lock: null, glyph: 'folder', name: row.name, caption: folderCaption(t, row), weight: weightText(ctx, row.weight),
-      fam: null, grey: row.pending > 0 };
+      fam: null, grey: row.pending > 0, look: row.shared ? null : lookIn(ctx, row.path) };
   }
   const file = row.file;
   const lock = ctx.lockOf(file);
@@ -255,13 +266,13 @@ function tileFacts(ctx, row) {
 }
 
 export function tile(ctx, row) {
-  const { folder, key, lock, glyph, name, caption, weight, fam, grey } = tileFacts(ctx, row);
+  const { folder, key, lock, glyph, name, caption, weight, fam, grey, look } = tileFacts(ctx, row);
   const selected = ctx.state.sel === key;
   return h('div', {
     class: `th${folder ? ' folder' : ''}${lock || grey ? ' lk' : ''}`, role: 'row', tabindex: selected ? '0' : '-1', dataset: { key },
-    'aria-selected': String(selected), 'data-fam': fam, title: lock ? lock.text : null,
+    'aria-selected': String(selected), 'data-fam': fam, 'data-look': lookColor(look), title: lock ? lock.text : null,
   },
-  h('div', { class: 'th-pv' }, icon(glyph, folder ? 'fld' : '')),
+  h('div', { class: 'th-pv' }, folder ? folderIcon(look) : icon(glyph)),
   h('span', { class: 'tn', title: lock ? `${name} · ${lock.text}` : name }, name),
   h('div', { class: 'tt' }, icon(glyph), caption),
   h('div', { class: 'tw' }, weight));
@@ -320,7 +331,8 @@ function noSelectionInfo(ctx) {
 function folderInfo(ctx, selected) {
   const { t } = ctx;
   const second = selected.shared ? t('rx.folder.hint') : filingHintOf(ctx);
-  return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)),
+  const look = selected.shared ? null : lookIn(ctx, selected.path);
+  return h('div', { class: 'inf', 'data-look': lookColor(look) }, infoLine1(folderIcon(look, ''), h('b', null, folderLabel(t, selected.path, selected.name)),
     h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
     second ? h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)) : null);
 }

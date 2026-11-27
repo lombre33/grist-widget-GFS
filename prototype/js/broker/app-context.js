@@ -53,7 +53,8 @@ export class AppContext {
     let document = null;
     try { document = await c.port.doc.getDocName(); } catch (error) { console.warn('GFS : le nom du document est illisible', error); }
     const referrer = c.doc.referrer;
-    this.#facts = { instance: instanceOf(referrer), page: pageOf(referrer), document, widgetAddress: `${location.origin}${location.pathname}` };
+    this.#facts = { instance: instanceOf(referrer), page: pageOf(referrer), document,
+      widgetAddress: `${location.origin}${location.pathname.replace(/\/{2,}/g, '/')}` };
     return this.#facts;
   }
 

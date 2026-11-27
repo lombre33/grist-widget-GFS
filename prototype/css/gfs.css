@@ -138,6 +138,12 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(
   background: var(--solid-neutral); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-float); color: var(--on-neutral); font-size: max(12.5px, var(--fs-min)); }
 .status--bad { background: var(--danger-soft); border-color: var(--danger); color: var(--danger-ink); }
 .toast { bottom: 64px; }
+/* La garde de démarrage (js/shell/boot-guard.js) : un fichier de GFS n'a pas chargé ; la page le dit au lieu de rester blanche. Elle vit sans le reste du code : seuls les jetons de couleur de cette feuille. */
+.boot-failure { box-sizing: border-box; max-width: 460px; margin: 24px auto; padding: 12px 16px; background: var(--danger-soft); border: 1px solid var(--danger); border-radius: var(--radius-sm);
+  color: var(--danger-ink); font-size: max(13px, var(--fs-min)); line-height: 1.45; }
+.boot-failure p { margin: 0 0 8px; }
+.boot-failure__detail { font-family: ui-monospace, monospace; font-size: max(12px, var(--fs-min)); overflow-wrap: anywhere; }
+.boot-failure .btn { min-height: 28px; padding: 3px 12px; border-radius: var(--radius-sm); }
 /* Barre en bas : les phrases d'état se posent au-dessus d'elle. */
 .floaters[data-edge="bas"] ~ .status { bottom: 46px; }
 .floaters[data-edge="bas"] ~ .toast { bottom: 98px; }

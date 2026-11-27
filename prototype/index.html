@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-fYJbgK/5ifM+EbKyTXgqcfdmdvoO7DGhAP7ROqBpzt4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-8iOhpYIjRV42jYou+OJlWRDtP88n4tR6cbfGhBP5yuA='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=a2e086add5">
 <link rel="stylesheet" href="css/explorer.css?v=c8ff42b04b">
 <link rel="stylesheet" href="css/modules.css?v=dcbf3e09ce">
@@ -183,7 +183,7 @@
     "./js/explorer/explorer.js": "./js/explorer/explorer.js?v=e358a1d091",
     "./js/explorer/file-refresh.js": "./js/explorer/file-refresh.js?v=14ee4e203f",
     "./js/explorer/files-reading.js": "./js/explorer/files-reading.js?v=ed8b51ffaf",
-    "./js/explorer/filing-window.js": "./js/explorer/filing-window.js?v=6752e9e381",
+    "./js/explorer/filing-window.js": "./js/explorer/filing-window.js?v=1ffb1c7425",
     "./js/explorer/filing.js": "./js/explorer/filing.js?v=9b3eb5ddb3",
     "./js/explorer/heavy-hint.js": "./js/explorer/heavy-hint.js?v=b10999c56c",
     "./js/explorer/index-model.js": "./js/explorer/index-model.js?v=a54ba16326",
@@ -592,7 +592,7 @@
 <link rel="modulepreload" href="./js/explorer/explorer.js?v=e358a1d091">
 <link rel="modulepreload" href="./js/explorer/filing.js?v=9b3eb5ddb3">
 <link rel="modulepreload" href="./js/explorer/shortcut-gestures.js?v=1e4572c3e9">
-<link rel="modulepreload" href="./js/explorer/filing-window.js?v=6752e9e381">
+<link rel="modulepreload" href="./js/explorer/filing-window.js?v=1ffb1c7425">
 <link rel="modulepreload" href="./js/sharing/folder-shares.js?v=32c00ae828">
 <link rel="modulepreload" href="./js/files/file-managers.js?v=846233fe95">
 <link rel="modulepreload" href="./js/files/trash.js?v=3e36b5ca0a">

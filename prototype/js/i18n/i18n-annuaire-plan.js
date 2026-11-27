@@ -38,8 +38,8 @@ export const ANNUAIRE_PLAN_STRINGS = Object.freeze({
     'an.plan.office': 'Bureau de la personne',
     'an.plan.officeHint': 'La colonne de la table des personnes qui désigne le lieu où chacun travaille.',
     'an.plan.needTable': 'Choisissez d’abord la table des lieux.',
-    'an.plan.note': 'Pour l’instant, les lieux se saisissent directement dans la table, dans Grist : un nom, un genre (site, bâtiment, étage, local) et un parent. '
-      + 'L’image du plan d’un lieu se pose depuis la vue « Plan » (administrateurs).',
+    'an.plan.note': 'Les lieux se rangent dans la table : un nom, un genre (site, bâtiment, étage, local) et un parent. L’image du plan d’un lieu se pose depuis la vue '
+      + '« Plan », et ses locaux s’y tracent avec « Tracer les locaux… » (administrateurs).',
     'an.plan.item': 'Créer la table des lieux…',
     'an.plan.itemHint': 'GFS la crée et la tient, avec votre accord',
     'an.plan.pickTable': 'Table des lieux',
@@ -102,8 +102,8 @@ export const ANNUAIRE_PLAN_STRINGS = Object.freeze({
     'an.plan.office': 'Person’s office',
     'an.plan.officeHint': 'The column of the people table that points to the place where each person works.',
     'an.plan.needTable': 'Choose the places table first.',
-    'an.plan.note': 'For now, places are entered directly in the table, in Grist: a name, a kind (site, building, floor, room) and a parent. '
-      + 'A place’s plan image is set from the “Plan” view (administrators).',
+    'an.plan.note': 'Places are kept in the table: a name, a kind (site, building, floor, room) and a parent. A place’s plan image is set from the “Plan” view, '
+      + 'and its rooms are traced there with “Trace the rooms…” (administrators).',
     'an.plan.item': 'Create the places table…',
     'an.plan.itemHint': 'GFS creates and keeps it, with your consent',
     'an.plan.pickTable': 'Places table',

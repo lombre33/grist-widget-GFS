@@ -77,9 +77,9 @@ export function planOf(config, tableId, data) {
   const offices = new Map();
   (people && Array.isArray(people.id) ? people.id : []).forEach((row, i) => { if (byId.has(column[i])) offices.set(row, column[i]); });
   // `canImage` et `canShape` : la table a sa colonne « Plan » (les pièces jointes), sa colonne « Shape » (les tracés) ; sans elle, rien ne s'écrit (jamais une
-  // colonne absente).
+  // colonne absente) ; `has` : les colonnes que la table a (js/annuaire/annuaire-trace.js n'écrit que celles-là).
   return { table: config.plan.table, places, byId, kids, offices, canImage: Array.isArray(rows[PLAN_TABLE.image]),
-    canShape: Array.isArray(rows[PLAN_TABLE.shape]) };
+    canShape: Array.isArray(rows[PLAN_TABLE.shape]), has: new Set(Object.keys(rows)) };
 }
 
 // Le genre d'un lieu : celui que la table dit, sinon celui que sa profondeur suggère (site, bâtiment, étage, local).

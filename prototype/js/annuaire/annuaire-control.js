@@ -31,7 +31,8 @@ import { MERGED_ROW, mergeReads } from './annuaire-merge.js';
 import { PickWindow, personPayload } from './annuaire-pick.js';
 import { useImages } from './annuaire-images.js';
 import { writePlanImage } from './annuaire-plan-image.js';
-import { imageWhy } from './annuaire-plan-pane.js';
+import { imageWhy, traceWhy } from './annuaire-plan-pane.js';
+import { traceRooms } from './annuaire-trace-go.js';
 
 const NEW = '__new__';
 const NEW_SUB = '__new_sub__';
@@ -72,7 +73,7 @@ export class AnnuaireControl {
       notice: text => opts.notice(text), port: opts.port, rights: opts.rights, schema: () => this.#schema(), writeBlock: () => opts.writeBlock() });
     this.#window = new AnnuaireWindow({ container: opts.container, t: opts.t, locale: opts.locale, inertTargets: opts.inertTargets, writeBlock: opts.writeBlock,
       onSwitch: () => void this.#switch(), onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onEdit: row => this.#edit(row),
-        onAdd: () => this.#addPeople(), onPlanImage: (id, file) => void this.#planImage(id, file),
+        onAdd: () => this.#addPeople(), onPlan: { image: (id, file) => void this.#planImage(id, file), trace: id => void this.#planTrace(id) },
       onCheck: () => this.#check(), onMail: people => this.#mail(people), onPresence: (row, on) => this.#setPresence(row, on),
         onSub: key => this.#subGesture(key), onMergePick: row => this.#mergePick(row), targets: () => (opts.targets ? opts.targets() : []),
       onInsert: (id, person) => this.#insert(id, person), onUnlock: target => (opts.unlock ? opts.unlock(target) : undefined),
@@ -347,6 +348,21 @@ export class AnnuaireControl {
     const done = await writePlanImage({ store: this.#store, plan: read.plan, id, file, t });
     if (done.ok) await this.#read(true);
     this.#window.say(done.say);
+  }
+
+  // Le tracé des locaux d'un plan : la fenêtre de tracé, puis une seule écriture (js/annuaire/annuaire-trace-go.js). Réservé aux administrateurs, comme
+  // l'image.
+  async #planTrace(id) {
+    const read = this.#data;
+    if (!read || !read.plan) return;
+    const blocked = this.#o.writeBlock();
+    if (blocked) { this.#o.notice(blocked); return; }
+    const why = traceWhy(read);
+    if (why) { this.#window.say(this.#o.t(why)); return; }
+    const o = this.#o;
+    const done = await traceRooms({ store: this.#store, read, id, t: o.t, container: o.container, inertTargets: o.inertTargets, ask: x => o.ask(x) });
+    if (done.ok) await this.#read(true);
+    if (done.say) this.#window.say(done.say);
   }
 
   // La lecture d'un annuaire principal, vue d'un administrateur (les fiches masquées y sont) : de quoi prendre la copie d'un sous-annuaire.

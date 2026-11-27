@@ -22,7 +22,7 @@ const GLYPHS = Object.freeze({ site: 'pin', building: 'building', floor: 'stack'
 export class PlanView {
   #refs;
   #map = new PlanMap();
-  #send = null; // (lieu, fichier | null) : ce que le volet demande quand on choisit ou retire une image
+  #send = null; // { image(lieu, fichier | null), trace(lieu) } : ce que le volet demande quand on choisit ou retire une image, ou qu'on veut tracer les locaux
   #target = 0;
 
   constructor() {
@@ -43,7 +43,7 @@ export class PlanView {
 
   // Montre le lieu `current` (0 : tous les lieux). `state` : { t, plan, people (celles que l'annuaire montre), current, here (le lieu à repérer : le bureau de
   // la personne dont la fiche s'ouvre), selected (la ligne de la personne dont la fiche est ouverte), masked (Set), imageWhy (la phrase qui grise les boutons
-  // de l'image, ou ''), send (voir `#send`) }.
+  // de l'image, ou ''), traceWhy (celle qui grise « Tracer les locaux », ou ''), send (voir `#send`) }.
   show(state) {
     const { t, plan, people, current } = state;
     this.#send = state.send || null;
@@ -58,7 +58,10 @@ export class PlanView {
     const grid = kids.length ? h('div', { class: 'an-pl-grid' }, ...kids.map(kid => tile(kid, state, count))) : null;
     const map = current ? mapOf(plan, current) : null;
     const mapped = Boolean(map && imagesReady());
-    if (mapped) this.#map.show({ t, place: map.host, layer: layerOf({ plan, map, count, state }), focus: map.focus });
+    if (mapped) {
+      const trace = { id: map.host.id, why: state.traceWhy ? t(state.traceWhy) : '', go: id => this.#send && this.#send.trace(id) };
+      this.#map.show({ t, place: map.host, layer: layerOf({ plan, map, count, state }), focus: map.focus, trace });
+    }
     this.#refs.body.className = mapped ? 'an-pl-body has-map' : 'an-pl-body';
     this.#refs.body.replaceChildren(...[head(state, place, count.total.get(current) || 0), mapped ? this.#map.element : null,
       h('div', { class: 'an-pl-side' }, ...[grid, direct.length ? occupants(state, direct, kids.length > 0) : null,
@@ -69,7 +72,7 @@ export class PlanView {
   #press(event) {
     const button = event.target.closest('[data-pl]');
     if (!button || button.getAttribute('aria-disabled') === 'true' || !this.#send) return;
-    if (button.dataset.pl === 'img-clear') { this.#send(Number(button.dataset.id), null); return; }
+    if (button.dataset.pl === 'img-clear') { this.#send.image(Number(button.dataset.id), null); return; }
     if (button.dataset.pl !== 'img-pick') return;
     this.#target = Number(button.dataset.id);
     this.#refs.file.value = '';
@@ -78,7 +81,7 @@ export class PlanView {
 
   #picked() {
     const file = this.#refs.file.files && this.#refs.file.files[0];
-    if (file && this.#send && this.#target) this.#send(this.#target, file);
+    if (file && this.#send && this.#target) this.#send.image(this.#target, file);
   }
 }
 

@@ -87,8 +87,10 @@ export class AnnuaireStore {
 
   // Écrit la fiche d'une personne : `action` est l'`UpdateRecord` de js/annuaire/annuaire-edit.js (une ligne, les colonnes changées). Le geste vient du bouton
   // « Enregistrer » d'une fenêtre qui a dit ce qui change ; Grist répond par ses règles d'accès (une erreur dit pourquoi : la fenêtre la montre telle quelle).
+  // Plusieurs actions d'un coup (le tracé des locaux : js/annuaire/annuaire-trace.js) : une liste d'actions, que Grist applique ensemble (une seule étape
+  // d'annulation).
   update(action) {
-    return this.#then(() => this.#port.doc.applyUserActions([action]));
+    return this.#then(() => this.#port.doc.applyUserActions(Array.isArray(action[0]) ? action : [action]));
   }
 
   // Une table du document, en tableaux de colonnes (pour les exemples du réglage).

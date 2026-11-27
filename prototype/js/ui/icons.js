@@ -116,6 +116,12 @@ const ICONS = {
   // le site « pin ».
   plan: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 11h8M11 4v9M11 17v3M15 11h6M15 11v9"/>',
   door: '<path d="M7 21V3.5h10V21M4 21h16"/><path d="M14 12.5v.1"/>',
+  // Les outils de tracé des locaux (js/annuaire/annuaire-trace-window.js) : choisir, tracer un rectangle, tracer un polygone, annuler, rétablir.
+  pointer: '<path d="M5 3.5v15l4.2-3.8 2.8 6 2.4-1.1-2.8-5.9H18.5z"/>',
+  'shape-rect': '<rect x="4.5" y="6.5" width="15" height="11" rx="1"/><path d="M2.5 4.5h4v4h-4zM17.5 15.5h4v4h-4z"/>',
+  'shape-poly': '<path d="M5 17l2-9 8-4 5 9-6 7z"/><path d="M5 17v.1M7 8v.1M15 4v.1M20 13v.1M14 20v.1"/>',
+  undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h9.5a6.5 6.5 0 0 1 0 13H9"/>',
+  redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9h-9.5a6.5 6.5 0 0 0 0 13H15"/>',
   // Les repères dessinés dans un dossier et la goutte de « Apparence… » (js/ui/icons-looks.js).
   ...LOOK_ICONS,
 };

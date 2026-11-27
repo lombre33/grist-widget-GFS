@@ -45,9 +45,9 @@ export function labelLines(name, count, widthPx, heightPx) {
   return fits(lines.length) ? { name: lines, count: '' } : none;
 }
 
-// Ce que le plan dessine pour `map` (js/annuaire/annuaire-plan.js : `mapOf`) : { shapes: [{ id, name, shape, grey, here, current, dim, label, why }], seats : {
-// shape, people: [{ row, name, selected }], free } | null }. `state` : { t, here (le lieu à repérer), selected }, `count` : `occupancy`
-// (js/annuaire/annuaire-plan.js).
+// Ce que le plan dessine pour `map` (js/annuaire/annuaire-plan.js : `mapOf`) : { shapes: [{ id, name, shape, grey, here, current, dim, label, why, marks (des
+// classes de plus : la fenêtre de tracé) }], seats : { shape, people: [{ row, name, selected }], free } | null }. `state` : { t, here (le lieu à repérer),
+// selected }, `count` : `occupancy` (js/annuaire/annuaire-plan.js).
 export function layerOf({ plan, map, count, state }) {
   const { t } = state;
   const here = new Set(pathOf(plan, state.here).map(place => place.id));
@@ -83,10 +83,11 @@ export class ShapeLayer {
   }
 
   #shape(item) {
-    const { id, name, shape, grey, here, current, dim, label, why } = item;
+    const { id, name, shape, grey, here, current, dim, label, why, marks } = item;
     const [cx, cy] = centerOf(shape);
     const title = node('title', null, label ? `${name} · ${label}` : name);
-    const cls = ['an-pl-shape', grey ? 'is-grey' : '', here ? 'is-here' : '', current ? 'is-current' : '', dim ? 'is-dim' : ''].filter(Boolean).join(' ');
+    const cls = ['an-pl-shape', grey ? 'is-grey' : '', here ? 'is-here' : '', current ? 'is-current' : '', dim ? 'is-dim' : '',
+      marks].filter(Boolean).join(' ');
     const lines = [0, 1, 2].map(i => node('text', { class: `an-pl-label${i === 2 ? ' is-count' : ' is-name'}`, x: cx, 'text-anchor': 'middle',
       'dominant-baseline': 'central' }));
     this.#items.push({ box: boundsOf(shape), cy, name, label, lines, labelled: !current });

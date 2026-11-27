@@ -310,6 +310,7 @@ async function play(run) {
   check('Grist a le nouveau bureau d\'Emma (la ligne 10), rien d\'autre n\'a changé', emma[t('an.plan.officeName')] === 10 && emma.Nom === 'Emma Rolland', emma);
   await planImage(run, frame, page);
   await planShapes(run, page);
+  await planTrace(run, page);
   check('aucune erreur de GFS dans la console (ni violation de la politique de contenu)', unexpected(run).length === 0, unexpected(run));
 }
 
@@ -342,7 +343,7 @@ async function planImage(run, frame, page) {
   const sideBox = await frame.locator('.an-pl-side').boundingBox();
   check('le cadre est à gauche, les lieux à droite (la fiche est fermée : 700 px suffisent)', frameBox.x < sideBox.x && frameBox.width > 220 && Math.abs(frameBox.y - sideBox.y) < 40, [frameBox, sideBox]);
   const buttons = async () => (await frame.locator('.an-pl-zb').evaluateAll(list => list.map(node => node.getAttribute('aria-disabled'))));
-  check('tout entier : on peut agrandir, pas réduire ni ajuster (grisés, jamais masqués)', JSON.stringify(await buttons()) === JSON.stringify(['false', 'true', 'true']), await buttons());
+  check('tout entier : on peut agrandir, pas réduire ni ajuster (grisés, jamais masqués)', JSON.stringify(await buttons()) === JSON.stringify(['false', 'true', 'true', 'false']), await buttons());
   await shot(frame, '14-plan-image');
   check('la fenêtre tient dans le panneau 700 × 400', (await windowFits(frame)).inPanel);
   check('contraste 4,5:1 sur le plan et ses boutons', (await contrastProblems(frame, '.an-plan')).length === 0, await contrastProblems(frame, '.an-plan'));
@@ -354,7 +355,7 @@ async function planImage(run, frame, page) {
   await page.waitForTimeout(300);
   const zoomed = await viewOf(frame);
   check('la molette agrandit le plan sous le pointeur', zoomed.k > 1.5 && zoomed.x < 0 && zoomed.y < 0, zoomed);
-  check('« Réduire » et « Tout le plan » s\'ouvrent', JSON.stringify(await buttons()) === JSON.stringify(['false', 'false', 'false']), await buttons());
+  check('« Réduire » et « Tout le plan » s\'ouvrent', JSON.stringify(await buttons()) === JSON.stringify(['false', 'false', 'false', 'false']), await buttons());
   await shot(frame, '15-plan-zoom');
   await page.mouse.move(centre.x, centre.y);
   await page.mouse.down();
@@ -550,6 +551,180 @@ async function planShapes(run, page) {
     && (await crumbOf(frame)).at(-1) === 'Étage 1', await crumbOf(frame));
   await shot(frame, '22-bureau-repere');
   check('contraste 4,5:1 sur le plan, ses tracés et ses places', (await contrastProblems(frame, '.an-plan')).length === 0, await contrastProblems(frame, '.an-plan'));
+}
+
+// La fenêtre de tracé : sa taille et ce qui y déborde (la première fenêtre de la page est celle de l'annuaire, pas la sienne).
+const traceFits = frame => frame.evaluate(() => {
+  const mod = document.querySelector('.mod.an-trace');
+  if (!mod) return { shown: false };
+  const box = mod.getBoundingClientRect();
+  const overflowing = [...mod.querySelectorAll('*')].filter(node => (node.checkVisibility ? node.checkVisibility() : true)).filter(node => {
+    const at = node.getBoundingClientRect();
+    return at.width > 0 && !node.closest('.an-tr-list') && (at.right > box.right + 1 || at.left < box.left - 1 || at.bottom > box.bottom + 1 || at.top < box.top - 1);
+  }).map(node => node.className || node.tagName).slice(0, 5);
+  return { shown: true, inPanel: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight, overflowing, box: [box.width, box.height] };
+});
+
+// Tire un rectangle (ou une suite de points) à la vraie souris entre deux points du plan, en unités.
+async function dragUnits(page, frame, anchor, from, to) {
+  const a = await unitPoint(frame, anchor, ...from);
+  const b = await unitPoint(frame, anchor, ...to);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move((a.x + b.x) / 2, (a.y + b.y) / 2, { steps: 4 });
+  await page.mouse.move(b.x, b.y, { steps: 4 });
+  await page.mouse.up();
+}
+
+const roomRow = (frame, id) => frame.locator(`[data-fk="trace-room:${id}"]`);
+const rowText = async (frame, id) => (await text(roomRow(frame, id)));
+const countOf = frame => text(frame.locator('.an-tr-side-head .an-count'));
+const saveText = frame => text(frame.locator('[data-fk="trace-save"]'));
+
+async function planTrace(run, page) {
+  say('--- 9. tracer les locaux : la fenêtre, un nouveau local, un rectangle, un polygone, un angle tiré, annuler, effacer, enregistrer d\'un coup ---');
+  let frame = await gfsFrame(page);
+  await page.reload();
+  frame = await gfsFrame(page);
+  await openAnnuaire(frame, page);
+  await frame.locator('[data-fk="v:plan"]').click();
+  await goTo(frame, page, ['Siège', 'Bâtiment A', 'Étage 1']);
+  await frame.locator('.an-pl-shape').first().waitFor({ state: 'visible', timeout: 25000 });
+  const open = frame.locator('[data-fk="plan-trace"]');
+  check('« Tracer les locaux… » est là, ouvert à l\'administrateur (le propriétaire du document)', (await open.count()) === 1 && (await open.getAttribute('aria-disabled')) === 'false'
+    && (await open.getAttribute('aria-label')) === t('an.plan.trace'), await open.getAttribute('aria-disabled'));
+  await open.focus();
+  await page.keyboard.press('Enter');
+  await frame.locator('.mod.an-trace').waitFor({ state: 'visible', timeout: 20000 });
+  await frame.locator('.an-tr-vp .an-pl-shape').first().waitFor({ state: 'visible', timeout: 25000 });
+  await page.waitForTimeout(400);
+  check('au clavier (Entrée sur le bouton), la fenêtre s\'ouvre avec le nom du lieu', (await text(frame.locator('.mod.an-trace .mod-head h2'))) === t('an.tr.title', { name: 'Étage 1' }), await text(frame.locator('.mod.an-trace .mod-head h2')));
+  const rooms = (await frame.locator('.an-tr-room .an-tr-name').allInnerTexts()).map(each => each.trim());
+  check('les quatre locaux de l\'étage sont listés, tracés, et rien n\'est à enregistrer', JSON.stringify(rooms) === JSON.stringify(['Bureau 101', 'Bureau 102', 'Couloir', 'Salle Atlas'])
+    && (await countOf(frame)) === t('an.tr.traced', { n: 4, max: 4 }) && (await saveText(frame)) === t('an.tr.save', { n: 0 }) && (await frame.locator('[data-fk="trace-save"]').getAttribute('aria-disabled')) === 'true', [rooms, await countOf(frame)]);
+  const fits = await traceFits(frame);
+  check('la fenêtre de tracé tient dans le panneau 700 × 400, rien n\'y déborde', fits.inPanel && fits.overflowing.length === 0, fits);
+  const canvas = await frame.locator('.an-tr-vp').boundingBox();
+  check('le plan garde une hauteur utile (150 px au moins) à 700 × 400', canvas.height >= 150 && canvas.width >= 300, canvas);
+  await shot(frame, '23-trace-ouvert');
+  check('contraste 4,5:1 dans la fenêtre de tracé', (await contrastProblems(frame, '.mod.an-trace')).length === 0, await contrastProblems(frame, '.mod.an-trace'));
+
+  say('  un nouveau local : « Bureau 103 », un bureau de deux places, tracé en rectangle');
+  await frame.locator('[data-fk="trace-new"]').click();
+  await frame.locator('.mod.an-tr-new').waitFor({ state: 'visible' });
+  check('« Créer et tracer » est grisé tant que le nom est vide', (await frame.locator('[data-fk="trn-ok"]').getAttribute('aria-disabled')) === 'true');
+  await page.keyboard.type('Bureau 103');
+  await frame.locator('[data-fk="trn-seats"]').click({ clickCount: 3 });
+  await page.keyboard.type('2');
+  await shot(frame, '24-nouveau-local');
+  await frame.locator('[data-fk="trn-ok"]').click();
+  await frame.locator('.mod.an-tr-new').waitFor({ state: 'detached' });
+  check('le nouveau local est dans la liste, « nouveau », à tracer ; l\'outil rectangle est pris', (await rowText(frame, 'new:1')).includes('Bureau 103') && (await rowText(frame, 'new:1')).includes(t('an.tr.statusNew'))
+    && (await frame.locator('[data-fk="trace-tool:rect"]').getAttribute('aria-pressed')) === 'true' && (await saveText(frame)) === t('an.tr.save', { n: 1 }), [await rowText(frame, 'new:1'), await saveText(frame)]);
+  const anchor = frame.locator('.an-tr-vp .an-pl-shape[data-id="6"] path');
+  await dragUnits(page, frame, anchor, [520, 430], [740, 590]);
+  await page.waitForTimeout(300);
+  check('le rectangle est tracé : « 5 tracés sur 5 », l\'outil revient à « Choisir » avec le tracé choisi et ses quatre poignées',
+    (await countOf(frame)) === t('an.tr.traced', { n: 5, max: 5 }) && (await frame.locator('[data-fk="trace-tool:select"]').getAttribute('aria-pressed')) === 'true' && (await frame.locator('.an-tr-handle').count()) === 4,
+    [await countOf(frame), await frame.locator('.an-tr-handle').count()]);
+  await shot(frame, '25-rectangle-trace');
+
+  say('  un angle tiré (la grille aimante), puis le même geste sans l\'aimant');
+  const corner = frame.locator('.an-tr-handle').nth(2);
+  const from = await unitPoint(frame, anchor, 740, 590);
+  const to = await unitPoint(frame, anchor, 764, 590);
+  const cornerBox = await corner.boundingBox();
+  check('la poignée du coin bas droit est sur le coin du tracé (à la vraie souris)', Math.abs(cornerBox.x + cornerBox.width / 2 - from.x) < 4 && Math.abs(cornerBox.y + cornerBox.height / 2 - from.y) < 4, [cornerBox, from]);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  check('l\'angle tiré en (764, 590) tombe sur la grille : (760, 590)', await frame.locator('.an-tr-vp .an-pl-shape[data-id="new:1"] path').evaluate(path => path.getAttribute('d')).then(d => /520[ ,]430/.test(d) && /760[ ,]590/.test(d)), await frame.locator('.an-tr-vp .an-pl-shape[data-id="new:1"] path').evaluate(path => path.getAttribute('d')));
+  await frame.locator('[data-fk="trace-snap"]').click();
+  check('« Aimanter à la grille » se coupe et se rallume (enfoncé = allumé)', (await frame.locator('[data-fk="trace-snap"]').getAttribute('aria-pressed')) === 'false');
+  await frame.locator('[data-fk="trace-snap"]').click();
+  check('… et revient allumé', (await frame.locator('[data-fk="trace-snap"]').getAttribute('aria-pressed')) === 'true');
+
+  say('  un second local, « Local technique » (sans place), tracé en polygone ; annuler et rétablir');
+  await frame.locator('[data-fk="trace-new"]').click();
+  await frame.locator('.mod.an-tr-new').waitFor({ state: 'visible' });
+  await page.keyboard.type('Local technique');
+  await frame.locator('[data-fk="trn-use:service"]').click();
+  check('un lieu technique n\'a pas de places : le champ est grisé, avec sa raison', (await frame.locator('[data-fk="trn-seats"]').isDisabled()) && (await text(frame.locator('.mod.an-tr-new .an-set-hint'))) === t('an.plan.noSeats'));
+  await frame.locator('[data-fk="trn-ok"]').click();
+  await frame.locator('.mod.an-tr-new').waitFor({ state: 'detached' });
+  await frame.locator('[data-fk="trace-tool:poly"]').click();
+  for (const [x, y] of [[780, 430], [960, 430], [960, 590], [840, 590]]) {
+    const at = await unitPoint(frame, anchor, x, y);
+    await page.mouse.click(at.x, at.y);
+    await page.waitForTimeout(80);
+  }
+  check('pendant le tracé, quatre points posés et l\'aide dit comment fermer', (await frame.locator('.an-tr-dot').count()) === 4 && (await noteOf(frame).catch(() => '')) !== undefined);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  check('Entrée ferme le polygone : « 6 tracés sur 6 », deux changements à enregistrer', (await countOf(frame)) === t('an.tr.traced', { n: 6, max: 6 }) && (await saveText(frame)) === t('an.tr.save', { n: 2 }), [await countOf(frame), await saveText(frame)]);
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(200);
+  check('Ctrl+Z défait le polygone : « 5 tracés sur 6 », le local reste à tracer', (await countOf(frame)) === t('an.tr.traced', { n: 5, max: 6 }) && (await rowText(frame, 'new:2')).includes(t('an.tr.statusNew')), await countOf(frame));
+  await page.keyboard.press('Control+y');
+  await page.waitForTimeout(200);
+  check('Ctrl+Y le rétablit : « 6 tracés sur 6 »', (await countOf(frame)) === t('an.tr.traced', { n: 6, max: 6 }), await countOf(frame));
+  await shot(frame, '26-polygone-trace');
+
+  say('  effacer le tracé du couloir, abandonner puis revenir, enregistrer');
+  await roomRow(frame, 8).click();
+  await frame.locator('[data-fk="trace-del"]').click();
+  await page.waitForTimeout(200);
+  check('le couloir n\'est plus tracé : « 5 tracés sur 6 », trois changements à enregistrer', (await countOf(frame)) === t('an.tr.traced', { n: 5, max: 6 }) && (await saveText(frame)) === t('an.tr.save', { n: 3 })
+    && (await rowText(frame, 8)).includes(t('an.tr.statusTodo')), [await countOf(frame), await saveText(frame), await rowText(frame, 8)]);
+  await page.keyboard.press('Escape');
+  await frame.locator('.mod.ask').waitFor({ state: 'visible', timeout: 5000 });
+  check('Échap avec un brouillon demande avant d\'abandonner, et dit combien de changements se perdraient', (await text(frame.locator('.mod.ask .mod-head h2'))) === t('an.tr.leaveTitle')
+    && (await text(frame.locator('.mod.ask #ask-text'))) === t('an.tr.leaveText', { n: 3 }), await text(frame.locator('.mod.ask #ask-text')));
+  await shot(frame, '27-abandonner');
+  await frame.locator('[data-fk="ask-no"]').click();
+  await frame.locator('.mod.ask').waitFor({ state: 'detached' });
+  check('« Continuer le tracé » : la fenêtre est toujours là, le brouillon intact', (await frame.locator('.mod.an-trace').count()) === 1 && (await saveText(frame)) === t('an.tr.save', { n: 3 }));
+  const before = (await rowsOf(run, 'Directory_Places')).length;
+  check('rien n\'est écrit dans Grist tant qu\'on n\'a pas enregistré (treize lieux)', before === 13, before);
+  await frame.locator('[data-fk="trace-save"]').click();
+  await frame.locator('.mod.an-trace').waitFor({ state: 'detached', timeout: 40000 });
+  await page.waitForTimeout(800);
+  const places = (await rowsOf(run, 'Directory_Places')) || [];
+  const byName = name => places.find(row => row.Name === name);
+  const shapeOf = row => (row && row.Shape ? JSON.parse(row.Shape) : null);
+  check('Grist a deux lieux de plus, rien d\'autre en plus', places.length === 15, places.map(row => row.Name));
+  const room = byName('Bureau 103');
+  const tech = byName('Local technique');
+  check('« Bureau 103 » : un local, un bureau de deux places, enfant de l\'étage 1, le rectangle aimanté à la grille',
+    room && room.Kind === 'Room' && room.Use === 'Office' && room.Capacity === 2 && room.Parent === 4 && JSON.stringify(shapeOf(room)) === JSON.stringify({ t: 'r', x: 520, y: 430, w: 240, h: 160 }), room);
+  check('« Local technique » : un local de service, sans place, le polygone à quatre angles', tech && tech.Kind === 'Room' && tech.Use === 'Service' && !tech.Capacity && tech.Parent === 4
+    && JSON.stringify(shapeOf(tech)) === JSON.stringify({ t: 'p', p: [[780, 430], [960, 430], [960, 590], [840, 590]] }), tech);
+  check('le tracé du couloir est effacé (vide), les trois autres n\'ont pas bougé', !byName('Couloir').Shape && JSON.stringify(shapeOf(byName('Salle Atlas'))) === JSON.stringify(SHAPES[9])
+    && JSON.stringify(shapeOf(byName('Bureau 101'))) === JSON.stringify(SHAPES[6]), places.map(row => [row.Name, row.Shape]));
+  check('la fenêtre de l\'annuaire dit que le tracé est enregistré, et le plan montre les nouveaux locaux', (await noteOf(frame)).includes(t('an.tr.saved', { name: 'Étage 1' }).replace(/\s+/g, ' ')) && (await tilesOf(frame)).includes('Bureau 103')
+    && (await tilesOf(frame)).includes('Local technique'), [await noteOf(frame), await tilesOf(frame)]);
+  await frame.locator('.an-pl-shape').first().waitFor({ state: 'visible', timeout: 15000 });
+  const ids = (await frame.locator('.an-pl-shape').evaluateAll(list => list.map(node => node.dataset.id))).sort();
+  check('le plan montre les cinq tracés (le couloir n\'en a plus)', JSON.stringify(ids) === JSON.stringify([String(room.id), String(tech.id), '6', '7', '9'].sort()), ids);
+  await shot(frame, '28-apres-enregistrement');
+
+  say('  sans colonne « Shape » : le bouton reste là, grisé, et un clic dit pourquoi');
+  const gone = await apply(run, [['RemoveColumn', 'Directory_Places', 'Shape']]);
+  check('la colonne « Shape » est retirée du document', gone.status === 200, gone.text);
+  await page.reload();
+  frame = await gfsFrame(page);
+  await openAnnuaire(frame, page);
+  await frame.locator('[data-fk="v:plan"]').click();
+  await goTo(frame, page, ['Siège', 'Bâtiment A', 'Étage 1']);
+  await frame.locator('.an-pl-img').waitFor({ state: 'visible', timeout: 25000 });
+  const grey = frame.locator('[data-fk="plan-trace"]');
+  check('« Tracer les locaux… » est grisé (jamais masqué)', (await grey.count()) === 1 && (await grey.getAttribute('aria-disabled')) === 'true', await grey.getAttribute('aria-disabled'));
+  await pressGreyed(page, grey);
+  await page.waitForTimeout(300);
+  check('un clic dit qu\'il manque la colonne « Shape », et n\'ouvre aucune fenêtre', (await noteOf(frame)) === t('an.plan.noShapeCol') && (await frame.locator('.mod.an-trace').count()) === 0, await noteOf(frame));
+  await shot(frame, '29-sans-colonne');
 }
 
 const pluginApi = await requireServer();

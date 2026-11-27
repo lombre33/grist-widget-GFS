@@ -94,3 +94,57 @@
 .an-pl-seat.is-taken:hover { stroke: var(--text); }
 .an-pl-seat.is-taken.is-selected { stroke: var(--text); stroke-width: calc(var(--px) * 2.5px); }
 .an-pl-seat.is-free { fill: var(--surface); fill-opacity: 0.85; stroke: var(--accent); }
+
+/* La fenêtre « Tracer les locaux » (lot 3 ; js/annuaire/annuaire-trace-window.js) : la barre d'outils, puis le plan à gauche et la liste des locaux à droite ; sous 560 px
+   la liste passe sous le plan. Le plan remplit la place qui reste (à 700 × 400, la hauteur d'une page de plan entière), les poignées et le tracé qu'on tire s'écrivent en
+   unités du plan et gardent leur taille d'écran grâce à `--px`, comme les tracés du lot 2. Pendant qu'on trace, les tracés existants ne prennent plus le clic. */
+.mod.an-trace { width: min(var(--win-l), 100%); height: 100%; container: antr / inline-size; }
+.an-tr-bar { flex: none; display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.an-tr-group { display: inline-flex; gap: 4px; }
+.an-tr-tb { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-btn);
+  background: var(--surface); color: var(--text); cursor: pointer; }
+.an-tr-tb:hover { border-color: var(--border-strong); }
+.an-tr-tb[aria-pressed="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); }
+.an-tr-tb[aria-disabled="true"] { color: var(--text-muted); cursor: default; }
+.an-tr-tb[aria-disabled="true"]:hover { border-color: var(--border); }
+.an-tr-tb svg { width: 15px; height: 15px; }
+.an-tr-tb:focus-visible, .an-tr-room:focus-visible, .an-tr-vp:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.an-tr-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, 240px); gap: 12px; padding: 10px 12px; overflow: hidden; }
+.an-tr-map { position: relative; min-width: 0; min-height: 0; margin: 0; display: flex; }
+.an-tr-vp.an-pl-vp { height: auto; min-height: 120px; flex: 1 1 auto; }
+.an-tr-vp[data-tool="rect"], .an-tr-vp[data-tool="poly"] { cursor: crosshair; }
+.an-tr-vp.is-pan { cursor: grabbing; }
+.an-tr-vp[data-tool="rect"] .an-pl-shape, .an-tr-vp[data-tool="poly"] .an-pl-shape { pointer-events: none; }
+.an-tr-vp .an-pl-shape { cursor: pointer; }
+.an-tr-vp .an-pl-shape.is-target path { stroke-width: calc(var(--px) * 2.5px); }
+.an-tr-vp .an-pl-shape.is-selected path { fill: var(--accent); fill-opacity: 0.35; stroke-width: calc(var(--px) * 2.5px); }
+.an-tr-edit { pointer-events: none; }
+.an-tr-handle { pointer-events: all; fill: var(--surface); stroke: var(--accent); stroke-width: calc(var(--px) * 2px); cursor: crosshair; }
+.an-tr-handle:hover { fill: var(--accent-soft); }
+.an-tr-draft { fill: var(--accent-soft); fill-opacity: 0.5; stroke: var(--accent); stroke-width: calc(var(--px) * 2px); stroke-dasharray: calc(var(--px) * 6px) calc(var(--px) * 3px);
+  stroke-linejoin: round; }
+.an-tr-draft.is-open { fill: none; }
+.an-tr-dot { fill: var(--accent-solid); stroke: var(--surface); stroke-width: calc(var(--px) * 1.5px); }
+.an-tr-dot.is-first { fill: var(--surface); stroke: var(--accent); stroke-width: calc(var(--px) * 2px); }
+.an-tr-side { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.an-tr-side-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.an-tr-side-head .an-fs-h { margin: 0; }
+.an-tr-list { flex: 1 1 auto; min-height: 60px; overflow: auto; display: flex; flex-direction: column; gap: 3px; }
+.an-tr-row { display: flex; align-items: center; gap: 4px; }
+.an-tr-room { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--radius-btn);
+  background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.an-tr-room:hover { border-color: var(--border-strong); }
+.an-tr-room[aria-pressed="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); }
+.an-tr-room .an-pl-ic { flex: none; width: 14px; height: 14px; color: var(--text-muted); }
+.an-tr-room.is-traced .an-pl-ic { color: var(--accent-ink); }
+.an-tr-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-tr-fresh { align-self: flex-start; }
+.an-tr-seatcell { display: flex; align-items: center; gap: 8px; }
+.an-tr-seats { width: 5em; }
+.an-tr-new .an-seg { flex-wrap: wrap; }
+/* Grisé, jamais masqué : « Enregistrer le tracé » sans changement et « Créer et tracer » sans nom gardent leur texte lisible (4,5:1) et se voient grisés (pointillés). */
+.an-trace .mod-foot .btn[aria-disabled="true"], .an-tr-new .mod-foot .btn[aria-disabled="true"] { opacity: 1; border-style: dashed; border-color: var(--border-strong); background: var(--surface);
+  color: var(--text-muted); cursor: not-allowed; }
+@container antr (max-width: 560px) {
+  .an-tr-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(70px, 34%); gap: 8px; }
+}

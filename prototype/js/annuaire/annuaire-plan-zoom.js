@@ -22,6 +22,22 @@ export function zoomAt(view, factor, px, py, vw, vh) {
   return clampView({ k, x: px - (px - view.x) * ratio, y: py - (py - view.y) * ratio }, vw, vh);
 }
 
+// Où l'image tient dans un cadre de `vw` × `vh` pixels, à l'agrandissement 1 (`object-fit: contain`) : { dw, dh (sa taille), ox, oy (son coin haut gauche) } ;
+// `ratio` est sa largeur sur sa hauteur.
+export function fitRect(vw, vh, ratio) {
+  const wide = vw / (vh || 1) > ratio;
+  const dw = wide ? vh * ratio : vw;
+  const dh = wide ? vh : vw / ratio;
+  return { dw, dh, ox: (vw - dw) / 2, oy: (vh - dh) / 2 };
+}
+
+// Le point (`fx`, `fy`) du cadre, en unités du plan (la largeur de l'image en vaut `units`) : on défait la vue puis le placement de l'image. C'est ce que le
+// pointeur désigne sur le plan, quel que soit l'agrandissement.
+export function unitsAt(view, rect, fx, fy, units) {
+  const per = units / rect.dw;
+  return [((fx - view.x) / view.k - rect.ox) * per, ((fy - view.y) / view.k - rect.oy) * per];
+}
+
 // La vue qui cadre le rectangle `box` ({ x, y, w, h }, en pixels du cadre, l'image étant à l'agrandissement 1) avec un peu de marge autour : le local qu'on
 // ouvre, vu de près. Jamais moins que l'image entière, jamais plus que MAX_ZOOM.
 export function focusView(box, vw, vh, margin = 0.25) {

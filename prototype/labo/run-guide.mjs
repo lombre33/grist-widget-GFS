@@ -19,6 +19,12 @@ await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', 
 check('GFS démarre (pas de « GFS ne démarre pas »)', (await frame.evaluate(() => document.body.dataset.gfs)) !== 'starting', await frame.evaluate(() => document.body.dataset.gfs));
 await closeModules(page, frame);
 await seedAnnuaire(frame);
+await frame.evaluate(async config => {
+  const { AnnuaireStore } = await import('/prototype/js/annuaire/annuaire-store.js');
+  const store = new AnnuaireStore({ port: { doc: grist.docApi }, consent: async () => true });
+  await store.create({ name: 'Annuaire de l’établissement', table: 'Personnes', config });
+}, { v: 1, name: 'Nom', title: 'Poste', email: 'Email', phone: 'Tel', lead: 'Chef', manager: 'Responsable', relations: [], columns: ['email'],
+  levels: [{ label: 'Pôle', path: ['Structure', 'Pole'] }, { label: 'Direction', path: ['Structure', 'Direction'] }, { label: 'Service', path: ['Service'] }], fields: [] });
 await page.waitForTimeout(500);
 await lab.forgetActions();
 const tables = () => frame.evaluate(() => grist.docApi.listTables());
@@ -187,6 +193,65 @@ check('le lien de prise de rendez-vous est un lien https qui s\u2019ouvre à par
 await win.locator('[data-fk="fld:map"]').click({ force: true });
 check('« Voir sur la carte » est grisé et dit pourquoi', /carte|map/i.test(await win.locator('.gd-foot').innerText()), await win.locator('.gd-foot').innerText());
 await lab.shotPanel(run, '16-fiche-type');
+// 5. Le plan et les contacts à l'envers.
+const now = await procs();
+await frame.evaluate(first => grist.docApi.applyUserActions([['BulkAddRecord', 'Guide_Procedures', [null, null], { Title: ['Arriver au travail', 'Retirer son badge'], Parent: [0, first], Contact: ['Service RH', ''] }]]), Math.max(...now.id) + 1);
+await page.keyboard.press('Escape');
+await win.waitFor({ state: 'detached' });
+await button.click();
+await win.waitFor({ state: 'visible' });
+await page.waitForTimeout(900);
+await win.locator('[data-fk="v:plan"]').click();
+await page.waitForTimeout(400);
+const plan = win.locator('.gd-plan');
+check('le plan montre les thèmes et leurs démarches', (await plan.locator('.gd-pn').count()) >= 4, await win.innerText());
+check('un contact hérité est en pointillé, un thème sans contact est signalé', (await plan.locator('.gd-pn.is-inh').count()) >= 1 && (await plan.locator('.gd-pn.is-bare').count()) >= 1, await plan.innerHTML());
+await lab.shotPanel(run, '17-plan');
+await plan.locator('[data-act="plan-toggle"]').first().click();
+check('le repli d\u2019une démarche cache ses filles et dit combien', (await plan.locator('.gd-pn-tg').first().innerText()).trim() !== '', await plan.innerText());
+await win.locator('[data-fk="v:contacts"]').click();
+await page.waitForTimeout(400);
+check('les contacts à l\u2019envers citent « Service RH » pour ses démarches', (await win.innerText()).includes('Service RH') && /2 démarches|2 procedures/.test(await win.innerText()), await win.innerText());
+await win.locator('[data-act="contact-toggle"]').first().click();
+check('un contact s\u2019ouvre sur les démarches qui le citent', (await win.locator('.gd-cr-procs .gd-kid').count()) === 2, await win.innerText());
+await lab.shotPanel(run, '18-contacts');
+await win.locator('.gd-cr-procs .gd-kid').first().click();
+check('un clic sur une démarche ouvre sa fiche', (await win.locator('.gd-title').count()) === 1, await win.innerText());
+await page.keyboard.press('Escape');
+await win.waitFor({ state: 'detached' });
+// 6. De la fiche d'une personne de l'annuaire aux démarches qui la citent (un rôle « Responsable » qui désigne une personne, ajouté ici comme le ferait le réglage).
+const people = await frame.evaluate(() => grist.docApi.fetchTable('Personnes'));
+const sarah = people.id[people.Nom.indexOf('Sarah Benoit')];
+const procsNow = await procs();
+await frame.evaluate(async ({ person, row }) => {
+  await grist.docApi.applyUserActions([['AddColumn', 'Guide_Procedures', 'Owner', { type: 'Ref:Personnes', isFormula: false }]]);
+  await grist.docApi.applyUserActions([['UpdateRecord', 'Guide_Procedures', row, { Owner: person }]]);
+  const guides = await grist.docApi.fetchTable('GFS_Guides');
+  const config = JSON.parse(guides.Config[0]);
+  const directories = await grist.docApi.fetchTable('GFS_Directories');
+  config.directory = String(directories.id[0]);
+  config.roles.push({ col: 'Owner', label: 'Responsable', preset: 'ask' });
+  await grist.docApi.applyUserActions([['UpdateRecord', 'GFS_Guides', guides.id[0], { Config: JSON.stringify(config) }]]);
+}, { person: sarah, row: procsNow.id[procsNow.Title.indexOf('Arriver au travail')] });
+await frame.locator('.ex-title-row button', { has: frame.locator('use[href="#i-annuaire"]') }).click();
+await frame.locator('.mod.an').waitFor({ state: 'visible' });
+await frame.locator('.an-person').first().waitFor({ timeout: 25000 });
+await frame.locator('.an-person', { hasText: 'Sarah Benoit' }).click();
+const guideButton = frame.locator('[data-fk="guide-open"]');
+await guideButton.waitFor({ state: 'visible' });
+check('la fiche d\u2019une personne a sa section « Démarches » et son bouton', (await guideButton.getAttribute('aria-disabled')) !== 'true', await frame.locator('.an-fiche-card').innerText());
+await lab.shotPanel(run, '19-fiche-annuaire');
+await guideButton.click();
+await win.waitFor({ state: 'visible' });
+await page.waitForTimeout(1200);
+const person = win.locator('.gd-person-card');
+check('le guide s\u2019ouvre sur les démarches de cette personne, et l\u2019annuaire se referme', (await person.count()) === 1 && (await frame.locator('.mod.an').count()) === 0, await win.innerText());
+const cited = await person.innerText();
+check('elle est citée par « Arriver au travail » et, par héritage, « Retirer son badge »', cited.includes('Sarah Benoit') && cited.includes('Arriver au travail') && cited.includes('Retirer son badge'), cited);
+check('la démarche qui hérite de son contact le dit', (await person.locator('.gd-chip.is-inh').count()) === 1, cited);
+await lab.shotPanel(run, '20-demarches-personne');
+await win.locator('[data-fk="pv-all"]').click();
+check('« Tout le guide » ramène aux vues du guide', (await win.locator('.gd-person-card').count()) === 0, await win.innerText());
 await page.keyboard.press('Escape');
 await win.waitFor({ state: 'detached' });
 const written = await lab.actions();

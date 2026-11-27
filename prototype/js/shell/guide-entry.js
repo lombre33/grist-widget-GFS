@@ -30,3 +30,15 @@ export async function newGuide(c) {
     c.notice(c.t('gd.loadFailed'));
   }
 }
+
+// Le bouton « Démarches » de la fiche d'une personne dans l'annuaire : le guide qui s'appuie sur cet annuaire s'ouvre sur les démarches de la personne. Rend
+// vrai quand il s'est ouvert (l'annuaire peut alors se fermer) ; sinon la personne en est prévenue.
+export async function openGuideForPerson(c, directory, personRow) {
+  try {
+    return await (await control(c)).openForPerson(directory, personRow);
+  } catch (error) {
+    console.error('GFS : le guide ne s\'ouvre pas', error);
+    c.notice(c.t('gd.loadFailed'));
+    return false;
+  }
+}

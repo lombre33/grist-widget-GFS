@@ -10,9 +10,11 @@ import { mountWindow, giveBackFocus, trapTab, listKeys, LIST_SHOWN } from '../ui
 import { ancestors, below, searchProcedures } from './guide-model.js';
 import { themeTiles, treeNav, procedureRow, infoPane, contactsPane, visibleAnswer } from './guide-panes.js';
 import { typeOf } from './guide-types.js';
+import { planTree, contactsView, planFolded, personView } from './guide-plan.js';
 import { treeKeys } from './guide-keys.js';
 
-const VIEWS = Object.freeze([['themes', 'tiles', 'gd.view.themes'], ['list', 'list', 'gd.view.list']]);
+const VIEWS = Object.freeze([['themes', 'tiles', 'gd.view.themes'], ['list', 'list', 'gd.view.list'], ['plan', 'org', 'gd.view.plan'],
+  ['contacts', 'users', 'gd.view.contacts']]);
 
 export class GuideWindow {
   #o;
@@ -25,6 +27,9 @@ export class GuideWindow {
   #proc = null; // la démarche dont la fiche est ouverte
   #query = '';
   #open = new Set();
+  #folded = null; // les démarches repliées du plan (rien tant que le plan ne s'est pas montré)
+  #contactsOpen = new Set(); // les contacts ouverts de la vue « Contacts »
+  #person = null; // la personne de l'annuaire dont on montre les démarches (la ligne dans l'annuaire), ou null
   #note = '';
 
   // opts : { container, t, inertTargets(), onSwitch(), onConfigure(), onNew(), onNewProc(mère: ligne ou null), onEditProc(ligne), writeBlock() -> texte ou
@@ -76,6 +81,9 @@ export class GuideWindow {
     this.#query = '';
     this.#note = '';
     this.#open = new Set();
+    this.#folded = null;
+    this.#contactsOpen = new Set();
+    this.#person = null;
     if (this.#refs) this.#refs.search.value = '';
   }
 
@@ -127,7 +135,7 @@ export class GuideWindow {
     search.placeholder = t('gd.search');
     views.setAttribute('aria-label', t('gd.views'));
     views.replaceChildren(...VIEWS.map(([id, glyph, key]) => h('button', { type: 'button', class: 'gd-seg-b',
-      'aria-pressed': String(this.#view === id && this.#proc === null),
+      'aria-pressed': String(this.#view === id && this.#proc === null && this.#person === null),
       title: t(key), 'aria-label': t(key), dataset: { act: 'view', view: id, fk: `v:${id}` } }, icon(glyph), h('span', { class: 'gd-seg-t' }, t(key)))));
     const why = this.#addWhy();
     add.title = why || t('gd.proc.new');
@@ -163,8 +171,8 @@ export class GuideWindow {
     let nodes;
     if (this.#proc !== null) nodes = this.#ficheNodes(data);
     else if (this.#query.trim()) nodes = this.#resultsNodes(data);
-    else nodes = this.#view === 'themes' ? this.#themesNodes(data) : this.#listNodes(data);
-    body.dataset.mode = this.#proc !== null ? 'fiche' : this.#query.trim() ? 'results' : this.#view;
+    else nodes = this.#viewNodes(data);
+    body.dataset.mode = this.#proc !== null ? 'fiche' : this.#query.trim() ? 'results' : this.#person !== null ? 'person' : this.#view;
     body.replaceChildren(...nodes);
   }
 
@@ -196,6 +204,20 @@ export class GuideWindow {
     return h('div', { class: 'gd-card gd-empty' }, icon('guide', 'gd-state-ic'), h('p', { class: 'gd-state-title' }, t('gd.empty.title')),
       h('p', { class: 'gd-note' }, t('gd.empty')),
       this.#addButton());
+  }
+
+  // Ce que montre la vue choisie (hors fiche et recherche).
+  #viewNodes(data) {
+    const t = this.#o.t;
+    if (this.#person !== null && data.procs.length) return [personView(data, { t, row: this.#person, answerFor: data.answerFor })];
+    if (this.#view === 'themes') return this.#themesNodes(data);
+    if (this.#view === 'list') return this.#listNodes(data);
+    if (!data.procs.length) return [this.#emptyCard()];
+    if (this.#view === 'plan') {
+      this.#folded ??= planFolded(data);
+      return [planTree(data, { t, folded: this.#folded, answerFor: data.answerFor })];
+    }
+    return [contactsView(data, { t, open: this.#contactsOpen, answerFor: data.answerFor })];
   }
 
   // Les démarches qui répondent à la recherche, d'un bout à l'autre du guide.
@@ -252,7 +274,10 @@ export class GuideWindow {
     const total = data.procs.length;
     if (this.#proc !== null) note.textContent = t('gd.foot.in', { n: total });
     else if (this.#query.trim()) note.textContent = t('gd.foot.results', { n: searchProcedures(data.procs, this.#query).length });
+    else if (this.#person !== null) note.textContent = t('gd.foot.person', { total });
     else if (this.#view === 'themes') note.textContent = t('gd.foot.themes', { n: data.index.roots.length, total });
+    else if (this.#view === 'plan') note.textContent = t('gd.foot.plan', { total });
+    else if (this.#view === 'contacts') note.textContent = t('gd.foot.contacts', { total });
     else note.textContent = this.#node === null ? t('gd.foot.all', { total }) : t('gd.foot.list',
       { n: below(data.index, this.#node), name: data.index.byRow.get(this.#node).title, total });
   }
@@ -283,9 +308,13 @@ export class GuideWindow {
       configure: () => this.#o.onConfigure(),
       new: () => this.#o.onNew(),
       newproc: () => this.#newProc(),
+      'plan-toggle': () => { if (this.#folded.has(row)) this.#folded.delete(row); else this.#folded.add(row); this.#repaint(); },
+      'contact-toggle': () => {
+        if (this.#contactsOpen.has(data.key)) this.#contactsOpen.delete(data.key); else this.#contactsOpen.add(data.key); this.#repaint(); },
       mapoff: () => this.say(this.#o.t('gd.map.off')),
       edit: () => this.#guardedEdit(row),
-      view: () => { this.#view = data.view; this.#proc = null; this.#note = ''; this.#repaint(); },
+      'person-clear': () => { this.#person = null; this.#proc = null; this.#repaint(); },
+      view: () => { this.#view = data.view; this.#person = null; this.#proc = null; this.#note = ''; this.#repaint(); },
       open: () => this.#openProc(row),
       back: () => { this.#proc = null; this.#note = ''; this.#repaint(); },
       node: () => this.#pickNode(row),
@@ -310,6 +339,16 @@ export class GuideWindow {
 
   // Montre la fiche d'une démarche (après un enregistrement : la démarche qu'on vient d'écrire).
   showProc(row) { this.#openProc(row); }
+
+  // Montre les démarches d'une personne de l'annuaire du guide (la ligne `row` de sa fiche) : le bouton « Démarches » de la fiche de l'annuaire.
+  focusPerson(row) {
+    if (!this.#ready()) return;
+    this.#person = row;
+    this.#proc = null;
+    this.#query = '';
+    if (this.#refs) this.#refs.search.value = '';
+    this.#repaint();
+  }
 
   #click(event) {
     const button = event.target.closest('[data-act]');

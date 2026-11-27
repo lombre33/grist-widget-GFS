@@ -10,6 +10,7 @@ import { fieldLabel } from './annuaire-config.js';
 import { maskedPill, presenceRow } from './annuaire-tools.js';
 import { insertButton } from './annuaire-insert-menu.js';
 import { placeContent } from './annuaire-plan-fiche.js';
+import { guideContent } from './annuaire-guide-link.js';
 
 // Combien de personnes une relation montre avant « +n » (une ligne de la fiche).
 export const CHIPS_SHOWN = 6;
@@ -205,7 +206,8 @@ export function fiche(person, ctx) {
   const contact = contactRows(person, ctx);
   const fields = fieldRows(person, ctx);
   const path = attachment(person, ctx);
-  const place = placeContent(person, ctx);
+  const extras = [[t('an.fiche.place'), placeContent(person, ctx)], [t('an.fiche.guide'), ctx.guide ? guideContent(person, ctx) : null]]
+    .filter(([, body]) => body).map(([title, body]) => section(title, ...body));
   const write = ficheActions(person, ctx);
   return h('div', { class: 'an-fiche-card' },
     h('div', { class: 'an-fiche-head' }, avatarNode({ id: person.avatar, text: who(person), cls: 'an-av-xl' }),
@@ -213,9 +215,9 @@ export function fiche(person, ctx) {
         ctx.masked && ctx.masked.has(person.row) ? maskedPill(t) : null), logoNode(person.logo, 'an-logo-l')), write,
     ctx.presence && ctx.presence(person) ? presenceRow(person, ctx.presence(person), t) : null,
     contact.length ? section(t('an.fiche.contact'), h('dl', { class: 'an-fiche-rows' }, ...contact)) : null, path ? section(t('an.fiche.attach'), path) : null,
-    place ? section(t('an.fiche.place'), ...place) : null,
+    ...extras,
     fields.length ? section(t('an.fiche.fields'), h('dl', { class: 'an-fiche-rows' }, ...fields)) : null,
-    contact.length || path || place || fields.length ? null : h('p', { class: 'an-note' }, t('an.fiche.bare')));
+    contact.length || path || extras.length || fields.length ? null : h('p', { class: 'an-note' }, t('an.fiche.bare')));
 }
 
 // La fiche d'une structure (un clic sur sa carte de l'organigramme) : son nom, son niveau, combien de personnes, qui en est responsable, et le moyen de voir

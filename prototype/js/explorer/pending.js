@@ -12,22 +12,31 @@ import { normalize } from '../ui/search.js';
 
 const searchOf = file => normalize(`${file.name} ${file.folder}`);
 
-// Ce que chaque sorte de changement fait à { files, folders } (`folders` : les dossiers gardés sans fichier). Les fichiers touchés sont recopiés, les autres
-// gardent leur objet. Un fichier se désigne comme le rangement l'écrit : par son app et son numéro.
+// Ce que chaque sorte de changement fait à { files, folders, looks } (`folders` : les dossiers gardés sans fichier ; `looks` : l'apparence des dossiers, chemin
+// -> apparence). Les fichiers touchés sont recopiés, les autres gardent leur objet. Un fichier se désigne comme le rangement l'écrit : par son app et son
+// numéro.
 const SHOW = {
   // le ★ et le dossier d'un fichier (épingler, ranger, déplacer : une ligne de rangement)
-  place: ({ files, folders }, { app, id, pinned, folder }) => ({
-    files: files.map(file => (file.app === app && file.id === String(id) ? { ...file, pinned, folder, search: searchOf({ ...file, folder }) } : file)),
-      folders }),
+  place: ({ files, ...rest }, { app, id, pinned, folder }) => ({ ...rest,
+    files: files.map(file => (file.app === app && file.id === String(id) ? { ...file, pinned, folder, search: searchOf({ ...file, folder }) } : file)) }),
   // le nom d'un fichier
-  rename: ({ files, folders }, { key, name }) => ({
-    files: files.map(file => (file.key === key ? { ...file, name, search: searchOf({ ...file, name }) } : file)), folders }),
+  rename: ({ files, ...rest }, { key, name }) => ({ ...rest,
+    files: files.map(file => (file.key === key ? { ...file, name, search: searchOf({ ...file, name }) } : file)) }),
   // un fichier qui part à la corbeille (choix du porteur, 24/11) : il quitte la liste des fichiers vivants
-  leave: ({ files, folders }, { app, id }) => ({ files: files.filter(file => !(file.app === app && file.id === String(id))), folders }),
+  leave: ({ files, ...rest }, { app, id }) => ({ ...rest, files: files.filter(file => !(file.app === app && file.id === String(id))) }),
   // des dossiers gardés sans fichier qui s'ajoutent (un dossier neuf, ou celui qu'un déplacement a vidé), une fois chacun
-  addFolders: ({ files, folders }, { paths }) => ({ files, folders: [...folders, ...paths.filter(path => !folders.includes(path))] }),
+  addFolders: ({ folders, ...rest }, { paths }) => ({ ...rest, folders: [...folders, ...paths.filter(path => !folders.includes(path))] }),
   // des dossiers gardés sans fichier qui s'en vont
-  dropFolders: ({ files, folders }, { paths }) => ({ files, folders: folders.filter(path => !paths.includes(path)) }),
+  dropFolders: ({ folders, ...rest }, { paths }) => ({ ...rest, folders: folders.filter(path => !paths.includes(path)) }),
+  // l'apparence d'un dossier (js/files/folder-looks.js) : posée, ou retirée quand `look` est null
+  look: ({ looks = new Map(), ...rest }, { path, look }) => ({ ...rest, looks: new Map(
+    [...looks].filter(([key]) => key !== path).concat(look ? [[path, look]] : [])) }),
+  // l'apparence qui suit les dossiers déplacés (`moved` : [[de, vers]]) et s'en va avec ceux qui s'effacent ou se fondent dans un autre (`gone` : [chemin])
+  moveLooks: ({ looks = new Map(), ...rest }, { moved = [], gone = [] }) => {
+    const next = new Map([...looks].filter(([path]) => !gone.includes(path) && !moved.some(([from]) => from === path)));
+    for (const [from, to] of moved) if (looks.has(from)) next.set(to, looks.get(from));
+    return { ...rest, looks: next };
+  },
 };
 
 export class Pending {

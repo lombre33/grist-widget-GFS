@@ -42,6 +42,9 @@ const showsOf = (entries, folders) => [
   ...entries.map(entry => ({ op: 'place', app: entry.app, id: entry.file, pinned: entry.pinned, folder: entry.folder })),
   { op: 'dropFolders', paths: [...(folders.drop || []), ...(folders.moved || []).map(([from]) => from), ...(folders.merged || []).map(([from]) => from)] },
   { op: 'addFolders', paths: [...(folders.add || []), ...(folders.moved || []).map(([, to]) => to)] },
+  // l'apparence d'un dossier déplacé le suit (sa ligne d'état change de chemin sur place) ; celle d'un dossier retiré ou fondu dans un autre s'en va
+  { op: 'moveLooks', moved: folders.moved || [], gone: [...(folders.drop || []), ...(folders.merged || []).map(([from]) => from)] },
+  ...Object.entries(folders.looks || {}).map(([path, look]) => ({ op: 'look', path, look })), // un dossier qui revient avec son apparence
 ];
 
 // Les colonnes de la table `tableId` d'après les tables internes de Grist (deux petites tables : la table de fichiers peut peser des mégaoctets).
@@ -61,6 +64,8 @@ export class Filing {
 
   // opts : { port, rangement, t, locale(), files() -> [fichier], folders?() -> les dossiers gardés sans fichier, here() -> le dossier ouvert, specOf(file) ->
   //   son entrée `fichiers` du manifeste,
+  //          looks?() -> l'apparence des dossiers que montre la vue (chemin -> apparence, js/files/folder-looks.js) : un dossier supprimé que Ctrl+Z rend
+  //          revient avec elle,
   //          spaces?: { info() -> ce que disent les espaces (js/sharing/spaces-filing.js), owner() -> Promise<vrai si la personne est propriétaire> },
   //          folderShares?: { relocation(de, vers, dossiers), removal(chemins) } (js/sharing/folder-shares.js) : ce que renommer, déplacer ou supprimer un
   //          dossier de « Moi » change à ses partages et à ses liens, dans le même lot,
@@ -491,14 +496,17 @@ export class Filing {
     // l'annulation lui en redonne une.
     const moved = (folders.moved || []).filter(([from]) => spare.includes(from)).map(([from, to]) => [to, from]);
     const fused = (folders.merged || []).filter(([from]) => spare.includes(from)).map(([from]) => from);
+    const back = [...dropped.filter(path => spare.includes(path)), ...fused];
+    const looks = this.#opts.looks ? this.#opts.looks() : new Map(); // l'apparence des dossiers qui reviennent revient avec eux
     return {
       entries: entries.map(entry => {
         const was = live.find(item => item.app === entry.app && item.id === String(entry.file));
         return { app: entry.app, file: entry.file, pinned: Boolean(was && was.pinned), folder: was ? was.folder || '' : '' };
       }),
-      add: [...dropped.filter(path => spare.includes(path)), ...fused],
+      add: back,
       drop: (folders.add || []).filter(path => !spare.includes(path) && !dropped.includes(path)),
       moved,
+      looks: Object.fromEntries(back.filter(path => looks.has(path)).map(path => [path, looks.get(path)])),
     };
   }
 
@@ -506,7 +514,8 @@ export class Filing {
   // tour le geste inverse, avec les deux phrases échangées. Rend la phrase de ce qui vient de se faire (`phrases.undo` : l'entrée porte celle qu'elle dit quand
   // on la joue).
   #replayWrite(before, phrases) {
-    return this.#gesture(async () => ((await this.#write(before.entries, { add: before.add, drop: before.drop, moved: before.moved },
+    return this.#gesture(async () => ((await this.#write(before.entries, { add: before.add, drop: before.drop, moved: before.moved,
+      ...(Object.keys(before.looks).length ? { looks: before.looks } : {}) },
       { undo: phrases.redo, redo: phrases.undo })) ?
       this.#opts.t(phrases.undo.key, phrases.undo.params) : null));
   }

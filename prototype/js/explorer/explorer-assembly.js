@@ -7,7 +7,11 @@ import { Explorer } from './explorer.js';
 import { loadAttachments } from './explorer-data.js';
 import { Filing } from './filing.js';
 import { ShortcutGestures } from './shortcut-gestures.js';
+import { LookGestures } from './look-gestures.js';
+import { askLook } from './look-window.js';
 import { askName, chooseFolder } from './filing-window.js';
+import { folderPaths } from './explorer-model.js';
+import { isSpacePath } from '../sharing/spaces-filing.js';
 import { FolderShares } from '../sharing/folder-shares.js';
 import { FILES_APP, cleanName } from '../files/gfs-files.js';
 import { isTable } from '../apps/doc-names.js';
@@ -25,7 +29,7 @@ export function buildFiling(c) {
   const layer = opts => ({ ...opts, t: c.t, container: c.$('stage'), inertTargets: c.inertTargets });
   return new Filing({
     port: c.port, rangement: c.rangement, t: c.t, locale: () => c.locale, files: () => (c.explorer ? c.explorer.files : []),
-      folders: () => c.explorer.folders, appName: c.appName,
+      folders: () => c.explorer.folders, looks: () => c.explorer.looks, appName: c.appName,
     spaces: { info: () => c.spaces, owner: async () => (await c.transfer.isOwner()) === true },
     folderShares: new FolderShares({ port: c.port, rangement: c.rangement, identity: () => c.identity,
       owner: async () => (await c.transfer.isOwner()) === true }),
@@ -38,14 +42,28 @@ export function buildFiling(c) {
 
 // Les raccourcis de fichiers : les fenêtres du widget par-dessus l'explorateur, les écritures dans la file du rangement (derrière celles qui sont parties) et
 // la pile d'annulation du rangement.
+const layerOf = c => opts => ({ ...opts, t: c.t, container: c.$('stage'), inertTargets: c.inertTargets });
+
 function buildShortcuts(c, filing) {
-  const layer = opts => ({ ...opts, t: c.t, container: c.$('stage'), inertTargets: c.inertTargets });
+  const layer = layerOf(c);
   return new ShortcutGestures({
     rangement: c.rangement, t: c.t, notice: text => c.notice(text), writeBlock: () => c.writeBlock(), files: () => (c.explorer ? c.explorer.files : []),
     folders: () => (c.explorer ? c.explorer.folders : []), locale: () => c.locale,
       here: () => (c.explorer.state.view === 'folder' ? c.explorer.state.path : ''),
     windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) }, queue: task => filing.queued(task), undoStack: filing.undoStack,
     refresh: opts => c.refreshFiles(opts),
+  });
+}
+
+// L'apparence des dossiers de « Moi » (js/explorer/look-gestures.js) : la fenêtre « Apparence du dossier » par-dessus l'explorateur, l'écriture dans la file du
+// rangement et la pile d'annulation du rangement.
+function buildLooks(c, filing) {
+  const layer = layerOf(c);
+  return new LookGestures({
+    rangement: c.rangement, t: c.t, notice: text => c.notice(text), writeBlock: () => c.writeBlock(), looks: () => (c.explorer ? c.explorer.looks : new Map()),
+    exists: path => folderPaths(c.explorer ? c.explorer.files : [], c.locale, c.explorer ? c.explorer.folders : []).includes(path), isSpace: isSpacePath,
+    windows: { look: opts => askLook(layer(opts)) }, queue: task => filing.queued(task), undoStack: filing.undoStack, pending: c.pending,
+      refresh: opts => c.refreshFiles(opts),
   });
 }
 
@@ -81,6 +99,7 @@ export function buildExplorer(c) {
   });
   // les raccourcis de fichiers dans « Moi » (js/explorer/shortcut-gestures.js) : créés depuis le menu de toute ligne de fichier
   c.shortcuts = buildShortcuts(c, filing);
+  c.lookGestures = buildLooks(c, filing);
   const labelOf = file => (file.received ? c.received.typeLabel(file) : c.typeLabel(file));
   c.explorer = new Explorer({
     container: c.$('stage'), i18n: c.i18n, locale: c.locale, now: () => new Date(), appName: c.appName, received: c.received, notices: c.notices,
@@ -93,7 +112,8 @@ export function buildExplorer(c) {
     onOpen: file => c.openings.openFile(file), onNew: entry => c.openings.openNew(entry), onImport: entry => void c.openings.importFile(entry),
       onTemplates: () => void c.templates.open(),
       onClose: () => c.hideExplorer(), onApps: () => void c.openModules(), onAnnuaire: () => void openAnnuaire(c),
-    personal: () => Boolean(c.identity), filing, shortcuts: c.shortcuts, pending: c.pending, kept: c.kept, attachments: () => loadAttachments(c.port),
+    personal: () => Boolean(c.identity), filing, shortcuts: c.shortcuts, lookGestures: c.lookGestures, pending: c.pending, kept: c.kept,
+      attachments: () => loadAttachments(c.port),
     trash: new Trash({ managers, ask: opts => c.ask(opts), keepFolders: file => filing.keepFoldersOf(file), later, ...gestures }),
     copying: new Copying({ managers, file: (app, id, folder) => filing.rangeNew([{ app, file: id, pinned: false, folder }]), ...gestures }),
   });

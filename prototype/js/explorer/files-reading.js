@@ -79,7 +79,7 @@ export class FilesReading {
   }
 
   #loaded(result, opts) {
-    const { files, trash, folders, received, spaces, problems, stats, stamp, gfsTable, binTable, shortcutFiles: shortcuts = [] } = result;
+    const { files, trash, folders, received, spaces, problems, stats, stamp, gfsTable, binTable, shortcutFiles: shortcuts = [], looks } = result;
     const x = this.#x;
     const signature = listSignature(result);
     const same = signature === this.#signature;
@@ -91,7 +91,7 @@ export class FilesReading {
     x.rangement.note(gfsTable); // la table du rangement existe (ou non) : un geste de rangement le sait sans la relire
     if (x.noteBin) x.noteBin(binTable); // de même pour la table de la corbeille : mettre un fichier à la corbeille le sait
     if (x.pending) x.pending.retire(stamp);
-    x.explorer().setFiles([...files, ...shortcuts], trash, folders, received);
+    x.explorer().setFiles([...files, ...shortcuts], trash, folders, received, looks);
     x.onFiles(files);
     if (x.onNotices) x.onNotices(result); // la cloche : ce qu'on a donné à la personne, d'après les fichiers, les espaces et les partages qu'elle lit
     x.openedBar().sync(); // un fichier renommé, ou disparu, change le compte de la barre

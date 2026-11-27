@@ -8,6 +8,7 @@
 import { OwnTable, TableDeclined } from './own-table.js';
 import { appActions, carryOver, usable } from './app-filing.js';
 import { readGfsFolderRows } from '../explorer/explorer-model.js';
+import { lookValue } from './folder-looks.js';
 import { DocumentNewer, STRUCTURE, STRUCTURE_ROW, isNewer, stamped, structureFrom } from './structure.js';
 
 export { TableDeclined, DocumentNewer };
@@ -92,13 +93,21 @@ function movedActions(tableId, data, identity, moved) {
   return actions;
 }
 
+// Les listes d'un lot de dossiers (voir `setFiling`) : sans doublon, vides quand elles manquent. Un dossier qui revient avec son apparence (Ctrl+Z d'une
+// suppression, `looks`) écrit la cellule `Value` : la colonne est lue avec les autres, ou ajoutée (jamais écrire une colonne absente).
+function folderBatch(folders) {
+  const looks = folders.looks || {};
+  return { add: [...new Set(folders.add || [])], drop: [...new Set(folders.drop || [])], moved: folders.moved || [], merged: folders.merged || [],
+    extra: folders.extra || [], looks, columns: Object.keys(looks).length ? [...FILING, 'Value'] : FILING };
+}
+
 // Les actions sur les lignes d'état des dossiers gardés (`add`, `drop`, `moved`, `merged` : voir `setFiling`) : celles qu'on retire, celles qu'on ajoute (si le
 // chemin n'a pas déjà sa ligne), celles qui changent de chemin sur place, celles qui se fondent dans un dossier qui existe déjà.
-function folderActions(tableId, data, identity, { add, drop, moved, merged }) {
+function folderActions(tableId, data, identity, { add, drop, moved, merged, looks = {} }) {
   const removal = rowId => ['RemoveRecord', tableId, rowId];
   return [...drop.flatMap(path => rowsOf(data, folderKey(identity, path)).map(removal)),
     ...add.filter(path => !drop.includes(path) && findRow(data, folderKey(identity, path)) < 0).map(path => (
-      ['AddRecord', tableId, null, { ...folderKey(identity, path), Favorite: false }])),
+      ['AddRecord', tableId, null, { ...folderKey(identity, path), Favorite: false, ...(looks[path] ? { Value: lookValue(looks[path]) } : {}) }])),
     ...movedActions(tableId, data, identity, moved),
     ...merged.flatMap(([from]) => rowsOf(data, folderKey(identity, from)).map(removal))];
 }
@@ -317,7 +326,13 @@ export class Rangement {
   // Les raccourcis de la personne (js/files/shortcuts.js) : une ligne de plus du rangement, sous l'app `gfs-shortcut`. `make({ data, tableId, identity })` rend
   // les actions d'après la table relue ; sans table, l'accord de la personne est demandé comme pour tout rangement (`TableDeclined` s'il est refusé). Rend true
   // quand un lot est parti. Un raccourci est à la personne seule : sans son adresse, rien ne s'écrit (`false`).
-  async writeShortcuts(make) {
+  writeShortcuts(make) { return this.#writeRows(make); }
+
+  // L'apparence des dossiers de la personne (js/files/folder-looks.js) : la valeur de la ligne d'état du dossier. Mêmes règles que les raccourcis : l'accord
+  // pour créer la table, rien sans l'adresse de la personne (l'apparence est à elle seule), true quand un lot est parti.
+  writeLooks(make) { return this.#writeRows(make); }
+
+  async #writeRows(make) {
     const state = await this.#ready([...FILING, 'Value']);
     if (!this.identity) return false;
     const actions = make({ data: state.data, tableId: this.#table.id, identity: this.identity });
@@ -381,17 +396,15 @@ export class Rangement {
   // Relit d'abord ; fichiers et dossiers partent dans un seul lot, que Grist rejoue en entier ou pas du tout : un dossier déplacé n'est jamais rangé à moitié.
   // Rend true quand le lot est parti.
   async setFiling(entries, folders = {}) {
-    const moved = folders.moved || [];
-    const merged = folders.merged || [];
-    const add = [...new Set(folders.add || [])];
-    const drop = [...new Set(folders.drop || [])];
+    const batch = folderBatch(folders);
+    const { add, drop, moved, merged } = batch;
     if (!entries.length && !add.length && !drop.length && !moved.length && !merged.length) return false;
     // La table du rangement et celles des apps se lisent en même temps. Quand la table du rangement vient de naître (la personne a été interrogée entre-temps),
     // ce que les apps ont rendu peut avoir vieilli : leurs tables se relisent.
-    const [state, firstTargets] = await Promise.all([folders.quiet === true ? this.#loaded() : this.#ready(FILING), this.#appTargets()]);
+    const [state, firstTargets] = await Promise.all([folders.quiet === true ? this.#loaded() : this.#ready(batch.columns), this.#appTargets()]);
     if (!state) return false;
     const targets = state.created ? await this.#appTargets() : firstTargets;
-    const actions = this.#actionsOf(state.data, targets, entries, { add, drop, moved, merged, extra: folders.extra || [] });
+    const actions = this.#actionsOf(state.data, targets, entries, batch);
     if (!actions.length) return false;
     await this.#port.doc.applyUserActions(actions);
     await this.#stamp(state.data);
@@ -400,7 +413,7 @@ export class Rangement {
 
   // Les actions d'un lot de rangement : les lignes des fichiers dans `GFS_Filing` (ceux des apps qui tiennent leur rangement vont chez elles), les lignes
   // d'état des dossiers, ce que les apps tiennent, puis les actions de plus (`extra`).
-  #actionsOf(data, targets, entries, { add, drop, moved, merged, extra }) {
+  #actionsOf(data, targets, entries, { add, drop, moved, merged, extra, looks }) {
     const identity = this.identity;
     const tableId = this.#table.id;
     const actions = entries.filter(({ app }) => !targets.has(app)).map(({ app, file, pinned, folder }) => {
@@ -409,7 +422,7 @@ export class Rangement {
       const record = { Favorite: pinned === true, Folder: folder || '' };
       return at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] : ['AddRecord', tableId, null, { ...key, ...record }];
     });
-    actions.push(...folderActions(tableId, data, identity, { add, drop, moved, merged }));
+    actions.push(...folderActions(tableId, data, identity, { add, drop, moved, merged, looks }));
     // Chez une app, un dossier déplacé est une ligne d'état retirée puis ajoutée : son numéro ne désigne rien dans les partages.
     const batch = { entries, add: [...add, ...moved.map(([, to]) => to)], drop: [...drop, ...moved.map(([from]) => from), ...merged.map(([from]) => from)] };
     for (const [app, target] of targets) actions.push(...this.#appBatch(app, target, batch, { tableId, data }, identity));

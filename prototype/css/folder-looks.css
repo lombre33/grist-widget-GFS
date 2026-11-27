@@ -1,0 +1,54 @@
+/* L'apparence des dossiers de « Moi » (js/files/folder-looks.js ; étude du 27/11, maquette validée par le porteur). Aucune couleur neuve : les six teintes de type de la
+   charte (document, grille, présentation, PDF, e-mail, annuaire, css/gfs.css) et le gris du texte discret, par les jetons. Un dossier colorié ne change que son ICÔNE
+   (trait et remplissage) : son nom garde la couleur du texte (4,5:1). L'attribut `data-look` porte la couleur ; sans lui, le dossier garde l'accent de l'ambiance. */
+
+[data-look="gray"]   { --fc: var(--text-muted); --fc-fill: var(--border);          --fc-soft: var(--surface-sunken);   --fc-line: var(--border-strong); }
+[data-look="red"]    { --fc: var(--t-pdf);      --fc-fill: var(--t-pdf-line);      --fc-soft: var(--t-pdf-soft);       --fc-line: var(--t-pdf-line); }
+[data-look="orange"] { --fc: var(--t-slides);   --fc-fill: var(--t-slides-line);   --fc-soft: var(--t-slides-soft);    --fc-line: var(--t-slides-line); }
+[data-look="green"]  { --fc: var(--t-grid);     --fc-fill: var(--t-grid-line);     --fc-soft: var(--t-grid-soft);      --fc-line: var(--t-grid-line); }
+[data-look="teal"]   { --fc: var(--t-annuaire); --fc-fill: var(--t-annuaire-line); --fc-soft: var(--t-annuaire-soft);  --fc-line: var(--t-annuaire-line); }
+[data-look="blue"]   { --fc: var(--t-doc);      --fc-fill: var(--t-doc-line);      --fc-soft: var(--t-doc-soft);       --fc-line: var(--t-doc-line); }
+[data-look="purple"] { --fc: var(--t-email);    --fc-fill: var(--t-email-line);    --fc-soft: var(--t-email-soft);     --fc-line: var(--t-email-line); }
+
+.tr-row[data-look] .ic.fld, .tr-row[data-look][aria-current="true"] .ic.fld, .ls-row.folder[data-look] .nm .ic.fld, .inf[data-look] .l1 > .ic:first-child,
+.th.folder[data-look] .th-pv .ic, .lk-prev[data-look] .ic, .lk-gl[data-look] .ic { fill: var(--fc-fill); color: var(--fc); }
+.th.folder[data-look] .th-pv { background: var(--fc-soft); border-color: var(--fc-line); }
+
+/* Un émoji : il prend la place de l'icône, à la même taille (le nom du dossier dit tout : `aria-hidden`). */
+.fe { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 16px; height: 16px; font-size: 14px; font-style: normal; line-height: 1; filter: none !important;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.tr-row .fe { width: 14px; height: 14px; font-size: 12.5px; }
+.ls-row .nm .fe { width: 15px; height: 15px; font-size: 13.5px; }
+.th-pv .fe, .lk-prev .fe { width: 34px; height: 34px; font-size: 30px; }
+.inf .l1 > .fe { width: 15px; height: 15px; font-size: 13.5px; }
+
+/* La fenêtre « Apparence du dossier » (js/explorer/look-window.js). */
+.mod.lk-win { width: min(520px, 100%); }
+.lk-body { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; padding-bottom: 8px; }
+.lk-top { display: flex; align-items: center; gap: 10px; }
+.lk-prev { flex: none; width: 52px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--surface-sunken); }
+.lk-prev[data-look] { background: var(--fc-soft); border-color: var(--fc-line); }
+.lk-prev .ic { width: 26px; height: 26px; fill: var(--accent-soft-border); color: var(--accent-ink); stroke-width: 1.6; }
+.lk-who { min-width: 0; }
+.lk-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lk-sub, .lk-hint { color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+.lk-sec { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; align-items: center; }
+.lk-lab { font-size: max(12px, var(--fs-min)); font-weight: 700; color: var(--text); }
+.lk-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.lk-sw { position: relative; width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;
+  border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border-strong); background: var(--surface); color: var(--surface); }
+.lk-sw[data-look] { background: var(--fc); }
+.lk-sw[aria-checked="true"] { box-shadow: 0 0 0 2px var(--accent); }
+.lk-sw .ic { width: 14px; height: 14px; stroke-width: 2.4; }
+.lk-sw:not(.is-default):not([aria-checked="true"]) .ic { display: none; }
+.lk-sw.is-default .ic { width: 16px; height: 16px; stroke-width: 1.8; fill: var(--accent-soft-border); color: var(--accent-ink); }
+.lk-gl { width: 32px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); }
+.lk-gl .ic { width: 20px; height: 20px; fill: var(--accent-soft-border); color: var(--accent-ink); stroke-width: 1.6; }
+.lk-gl[aria-checked="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.lk-in { height: 30px; width: 150px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-input); background: var(--surface); color: var(--text); font: inherit; }
+.lk-note { flex: none; }
+.lk-note:empty { height: 0; margin: -5px 0; }
+.lk-win .mod-foot .btn[aria-disabled="true"] { opacity: 1; border-style: dashed; border-color: var(--border-strong); background: var(--surface); color: var(--text-muted); cursor: not-allowed; }
+@media (max-width: 460px) { .lk-sec { grid-template-columns: minmax(0, 1fr); gap: 4px; } }

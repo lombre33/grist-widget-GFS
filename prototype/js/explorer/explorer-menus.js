@@ -22,7 +22,8 @@ export function rowItems(x, key) {
     const link = opts.links ? opts.links.linkAt(path) : null;
     if (link) return linkFolderItems(x, key, link);
     return [item(t('ex.openFolder'), 'open', () => act.activate(key), t('key.enter')), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'),
-      item(t('ex.move'), 'move', () => void filing.moveFolder(path), choice ? undefined : 'Ctrl+X, V'), shareFolderItem(x, path), ...linkFolderItem(x, path),
+      ...lookItem(x, path), item(t('ex.move'), 'move', () => void filing.moveFolder(path), choice ? undefined : 'Ctrl+X, V'), shareFolderItem(x, path),
+        ...linkFolderItem(x, path),
         '-',
         deleteFolderItem(x, key)];
   }
@@ -30,6 +31,15 @@ export function rowItems(x, key) {
   if (!file) return null;
   if (file.shortcut) return shortcutItems(x, file);
   return ({ trash: () => trashItems(x, file), shared: () => sharedItems(x, file) })[x.view]?.() || fileItems(x, file);
+}
+
+// « Apparence… » (js/explorer/look-gestures.js) : juste après « Renommer », sur un dossier de « Moi » ; grisé pendant un choix et pour un dossier d'un espace,
+// le clic dit pourquoi. Rien (liste vide) sans les gestes (les essais de l'explorateur seul).
+function lookItem(x, path) {
+  const { t, opts } = x;
+  if (!opts.lookGestures) return [];
+  const why = x.choice ? t('ex.choose.newOff') : opts.lookGestures.whyNot(path);
+  return [{ label: t('lk.menu'), icon: 'droplet', greyed: why !== null, run: () => (why ? opts.notice(why) : void opts.lookGestures.change(path)) }];
 }
 
 // « Créer un raccourci… » (js/explorer/shortcut-gestures.js) : sur tout fichier, dans toutes les vues ; grisé pendant un choix, pour un raccourci et pour une

@@ -18,7 +18,7 @@ const META = {
 
 // Une doublure de tout ce que le contrôleur donne : `stored` est ce que la table de GFS retient, et la liste relue après chaque geste en part.
 // `spare` : les dossiers que la personne garde sans fichier (les lignes d'état de `GFS_Filing`) ; la doublure les suit quand un lot en ajoute ou en retire. Un lot de dossiers n'est noté que s'il y en a.
-function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], spare = [], block = null, answers = [], setFiling = null, meta = META, cleanName = undefined, folderShares = null, pending = null, known = true, hold = null, refuse = null } = {}) {
+function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], spare = [], looks = null, block = null, answers = [], setFiling = null, meta = META, cleanName = undefined, folderShares = null, pending = null, known = true, hold = null, refuse = null } = {}) {
   const log = { writes: [], actions: [], notices: [], windows: [], refreshes: 0, refreshed: [] };
   let list = files;
   let kept = [...spare];
@@ -39,7 +39,7 @@ function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, '
   const port = { doc: { fetchTable: async name => meta[name], applyUserActions: async actions => { log.actions.push(...actions); for (const action of actions) if (action[0] === 'UpdateRecord') list = list.map(item => (item.row === action[2] ? { ...item, name: Object.values(action[3])[0] } : item)); } } };
   const filing = new Filing({
     port, rangement, t, locale: () => 'fr', files: () => (pending ? pending.apply({ files: list, folders: kept }).files : list),
-    folders: () => (pending ? pending.apply({ files: list, folders: kept }).folders : kept), pending, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+', cleanName, folderShares,
+    folders: () => (pending ? pending.apply({ files: list, folders: kept }).folders : kept), looks: looks ? () => looks : undefined, pending, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+', cleanName, folderShares,
     writeBlock: () => block, notice: text => log.notices.push(text), refresh: async opts => { log.refreshes += 1; log.refreshed.push(opts); }, windows: { name: ask('name'), folder: ask('folder') },
   });
   return { filing, log, current: () => list, kept: () => kept, shown: () => (pending ? pending.apply({ files: list, folders: kept }) : { files: list, folders: kept }) };
@@ -486,6 +486,20 @@ test('Ctrl+Z après « Nouveau dossier » : le dossier est supprimé ; après «
   await empty.filing.undoStack.undo();
   assert.deepEqual(empty.kept(), ['Vide', 'Vide/Sous']);
   assert.equal(empty.log.notices.at(-1), t('undo.folder', { name: 'Vide' }));
+});
+
+test('Ctrl+Z après « Supprimer le dossier » : le dossier revient avec son apparence et celle de ses sous-dossiers ; sans apparence, le lot reste ce qu\'il était', async () => {
+  const looks = new Map([['Vide', { color: 'red' }], ['Vide/Sous', { emoji: '🧾' }], ['Autre', { glyph: 'star' }]]); // la table que lit la vue (explorer.looks)
+  const coloured = harness({ spare: ['Vide', 'Vide/Sous', 'Autre'], looks });
+  assert.equal(await coloured.filing.deleteFolder('Vide'), true);
+  await coloured.filing.undoStack.undo();
+  const back = coloured.log.writes.at(-1).folders;
+  assert.deepEqual(back.add, ['Vide', 'Vide/Sous']);
+  assert.deepEqual(back.looks, { Vide: { color: 'red' }, 'Vide/Sous': { emoji: '🧾' } }, 'seule l\'apparence des dossiers qui reviennent est réécrite');
+  const plain = harness({ spare: ['Vide'] });
+  await plain.filing.deleteFolder('Vide');
+  await plain.filing.undoStack.undo();
+  assert.equal('looks' in plain.log.writes.at(-1).folders, false, 'sans apparence, rien de plus dans le lot');
 });
 
 test('Ctrl+Z après un renommage : l\'ancien nom est réécrit dans la colonne du nom, la liste est relue', async () => {

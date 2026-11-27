@@ -51,12 +51,13 @@ export class Explorer {
   #refs;
   #files = [];
   // les fichiers et les dossiers tels que la lecture les a rendus : `#files` et `#folders` y ajoutent les changements en attente
-  #raw = { files: [], folders: [] };
+  #raw = { files: [], folders: [], looks: new Map() };
   #received = []; // les arrivées d'un autre document, telles que la lecture les a rendues
   #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
   #notices = { items: [], unread: 0 }; // ce qu'on a donné à la personne dans le document (js/sharing/notice-store.js), pour la cloche
   #arrivals = []; // les fichiers reçus d'un autre document, refusés exceptés (la vue « Partagés avec moi », js/sharing/received-files.js)
   #folders = []; // les dossiers que la personne garde sans fichier (js/explorer/explorer-data.js)
+  #looks = new Map(); // l'apparence des dossiers : chemin -> { color, glyph, emoji } (js/files/folder-looks.js)
   #rows = [];
   // la clé de chaque ligne de la liste, dans l'ordre : le clavier et la sélection lisent ceci, non le DOM (une liste longue n'en construit qu'une part)
   #keys = [];
@@ -105,6 +106,7 @@ export class Explorer {
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path,
   //          dossier) },
   //          shortcuts?: les raccourcis de fichiers (js/explorer/shortcut-gestures.js) : { whyNot(file), create(file), rename(file), remove(file) },
+  //          lookGestures?: l'apparence des dossiers (js/explorer/look-gestures.js) : { whyNot(path) -> phrase | null, change(path) },
   //          kept?: les fichiers que GFS garde lui-même (js/files/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file),
   //          extras(file)
   //          -> [article de menu] },
@@ -164,6 +166,9 @@ export class Explorer {
 
   get folders() { return this.#folders; }
 
+  // L'apparence des dossiers telle que la vue la montre (chemin -> { color, glyph, emoji }) : celle que la lecture a rendue, avec les gestes en attente.
+  get looks() { return this.#looks; }
+
   // Les fichiers que la liste peut montrer : tous, ou, en mode choix, ceux que la demande de l'app laisse passer.
   get #pool() { return this.#choice ? this.#files.filter(this.#choice.accept) : this.#files; }
 
@@ -189,9 +194,9 @@ export class Explorer {
   }
 
   // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier ; `received` : les arrivées d'un
-  //   autre document, tous états (js/explorer/explorer-data.js).
-  setFiles(files, trashed = [], folders = [], received = []) {
-    this.#show(files, trashed, folders, received);
+  //   autre document, tous états (js/explorer/explorer-data.js) ; `looks` : l'apparence des dossiers (celle d'avant quand la lecture n'en dit rien).
+  setFiles(files, trashed = [], folders = [], received = [], looks = this.#raw.looks) {
+    this.#show(files, trashed, folders, received, looks);
     this.#pieces.filesChanged();
     if (this.isOpen) {
       this.render();
@@ -201,13 +206,14 @@ export class Explorer {
 
   // Les listes que la vue montre : celles que la lecture a rendues, avec par-dessus les gestes de rangement qui s'affichent avant d'être écrits
   // (js/explorer/pending.js).
-  #show(files, trashed, folders, received) {
-    this.#raw = { files, folders };
+  #show(files, trashed, folders, received, looks = new Map()) {
+    this.#raw = { files, folders, looks };
     this.#received = received;
     const shown = this.#opts.pending ? this.#opts.pending.apply(this.#raw) : this.#raw;
     this.#files = shown.files;
     this.#trashed = trashed;
     this.#folders = shown.folders;
+    this.#looks = shown.looks;
     this.#arrivals = shownReceived(received);
     const keys = new Set([...shown.files, ...trashed, ...this.#arrivals].map(file => file.key));
     if (this.state.sel && !/^(dir|grp):/.test(this.state.sel) && !keys.has(this.state.sel)) this.state.sel = null;
@@ -217,7 +223,7 @@ export class Explorer {
 
   // Les arrivées d'un autre document ont changé pendant que l'explorateur est ouvert (js/sharing/sync-service.js, `whenReceived`) : seule leur liste se
   // remplace, le reste ne bouge pas.
-  setReceived(received) { this.setFiles(this.#raw.files, this.#trashed, this.#raw.folders, received); }
+  setReceived(received) { this.setFiles(this.#raw.files, this.#trashed, this.#raw.folders, received, this.#raw.looks); }
 
   // Ce qu'on a donné à la personne a changé (js/sharing/notice-store.js) : la pastille de la cloche suit, rien d'autre ne bouge.
   setNotices(state) {
@@ -229,7 +235,7 @@ export class Explorer {
 
   // Un changement de rangement s'affiche ou s'en va avant qu'une lecture n'arrive (js/explorer/pending.js) : la liste se redessine d'après la dernière lecture.
   repaint() {
-    this.#show(this.#raw.files, this.#trashed, this.#raw.folders, this.#received);
+    this.#show(this.#raw.files, this.#trashed, this.#raw.folders, this.#received, this.#raw.looks);
     if (this.isOpen) this.render();
   }
 
@@ -320,7 +326,8 @@ export class Explorer {
     const row = sel ? this.#rows.find(r => rowKey(r) === sel) : null;
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
-      lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering,
+      lockOf: this.#opts.lockOf, lookOf: path => this.#looks.get(path) || null, opensIn: file => this.#opensIn(file), sort: this.#sort(),
+        filtering: this.#filtering,
         favCount: this.#pool.filter(file => file.pinned && !file.shortcut).length, totalFiles: this.#pool.filter(file => !file.shortcut).length,
       openedCount: this.#opened.length, shownKey: this.#openedSource.shown(), trashCount: this.#trashed.length, sharedPending: pendingOf(this.#arrivals).length,
         selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pieces.facts(), ...extra,

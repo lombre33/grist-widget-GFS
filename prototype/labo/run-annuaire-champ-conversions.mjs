@@ -1,4 +1,4 @@
-// Ce que Grist fait d'un `ModifyColumn` qui change le TYPE d'une colonne qui a déjà des valeurs (module Annuaire, « Modifier le champ » ; choix du porteur, 27/11 ; faits vérifiés 190),
+// Ce que Grist fait d'un `ModifyColumn` qui change le TYPE d'une colonne qui a déjà des valeurs (module Annuaire, « Modifier le champ » ; choix du porteur, 27/11 ; faits vérifiés 191),
 // dans un VRAI serveur Grist (l'image officielle, `bash vrai-serveur.sh`), à l'API REST : c'est ce qui fixe la règle de js/annuaire/annuaire-field-edit.js (`typeVerdict` : quels changements
 // de type GFS ouvre, lesquels il grise avec leur raison). Aucun écran ici ; l'écran est mesuré par run-annuaire-champ-ui.mjs.
 //   bash vrai-serveur.sh && node run-annuaire-champ-conversions.mjs

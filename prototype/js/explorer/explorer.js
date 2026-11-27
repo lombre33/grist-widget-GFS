@@ -11,6 +11,8 @@ import { listItems, treeRows, typeChoices, rowKey } from './explorer-model.js';
 import { shownReceived, pendingOf, NO_RECEIVED } from '../sharing/received-files.js';
 import { receivedFolders } from '../sharing/received-folders.js';
 import { directFiles } from '../sharing/direct-shares.js';
+import { ACCEPTED } from '../sharing/received-state.js';
+import { originOf } from '../files/shortcuts.js';
 import { NO_OPENED } from './opened-files.js';
 import { words } from '../ui/search.js';
 import { buildShell, relabel, paintBell, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, groupBar, totalBar,
@@ -102,6 +104,7 @@ export class Explorer {
   //          personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path,
   //          dossier) },
+  //          shortcuts?: les raccourcis de fichiers (js/explorer/shortcut-gestures.js) : { whyNot(file), create(file), rename(file), remove(file) },
   //          kept?: les fichiers que GFS garde lui-même (js/files/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file),
   //          extras(file)
   //          -> [article de menu] },
@@ -318,7 +321,7 @@ export class Explorer {
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
       lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering,
-        favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
+        favCount: this.#pool.filter(file => file.pinned && !file.shortcut).length, totalFiles: this.#pool.filter(file => !file.shortcut).length,
       openedCount: this.#opened.length, shownKey: this.#openedSource.shown(), trashCount: this.#trashed.length, sharedPending: pendingOf(this.#arrivals).length,
         selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pieces.facts(), ...extra,
     };
@@ -426,6 +429,7 @@ export class Explorer {
 
   // Où s'ouvre le fichier : dans son app, ou, pour un fichier que GFS garde, sur l'ordinateur de la personne.
   #opensIn(file) {
+    if (file.shortcut) { const target = this.#targetOf(file); return target ? this.#opensIn(target) : ''; } // un raccourci s'ouvre où s'ouvre son fichier
     return this.#kept.has(file) ? this.#kept.opensIn(file) : this.#opts.i18n.t('ex.opensIn', { app: this.#opts.appName(file.app) });
   }
 
@@ -441,6 +445,10 @@ export class Explorer {
 
   // Le geste principal d'un fichier : « Ouvrir », ou celui d'un fichier que GFS garde (js/files/kept-files.js) ; à la corbeille : « Restaurer ».
   #openAs(file) {
+    if (file && file.shortcut) { // un raccourci fait ce que fait son fichier ; grisé quand on ne le lit plus
+      const target = this.#targetOf(file);
+      return target ? this.#openAs(target) : { label: this.#opts.i18n.t('ex.open'), icon: 'open', greyed: true };
+    }
     if (this.state.view === 'trash') return { label: this.#opts.i18n.t('trash.restore'), icon: 'restore', greyed: false };
     const answer = this.state.view === 'shared' && file && this.#shared.openAs(file);
     if (answer) return answer;
@@ -455,7 +463,7 @@ export class Explorer {
     for (const row of rows) row.tabIndex = row === chosen ? 0 : -1;
   }
 
-  #types() { return typeChoices(this.#shown, this.#opts.typeLabel); }
+  #types() { return typeChoices(this.#shown.filter(file => !file.shortcut), this.#opts.typeLabel); }
 
   // ---------- la case « + pièces jointes » ----------
 
@@ -642,7 +650,26 @@ export class Explorer {
       const arrival = this.#arrivals.find(item => item.key === key); if (arrival) { this.#shared.activate(arrival); return; } }
     const file = this.#files.find(item => item.key === key);
     if (!file) return;
-    if (this.#choice) this.#choice.onPick(file); else this.#opts.onOpen(file);
+    const real = file.shortcut ? this.#targetOf(file) : file;
+    if (!real) { this.#opts.notice(this.#opts.i18n.t('sc.missing')); return; }
+    if (this.#choice) this.#choice.onPick(real); else this.#opts.onOpen(real);
+  }
+
+  // Le fichier que vise un raccourci (js/files/shortcuts.js), tel que la liste le montre : un fichier vivant ou une arrivée acceptée ; rien quand la cible
+  // n'est plus lue.
+  #targetOf(file) {
+    if (file.shortcut.state !== 'ok') return null;
+    const { target } = file.shortcut;
+    return this.#files.find(item => item.key === target) || this.#arrivals.find(item => item.key === target && item.received.state === ACCEPTED) || null;
+  }
+
+  // « Aller au fichier d'origine » : la liste s'ouvre sur le dossier de la cible (ou sur « Partagés avec moi »), et la ligne prend le clavier.
+  #showOrigin(file) {
+    const target = this.#targetOf(file);
+    if (!target) { this.#opts.notice(this.#opts.i18n.t('sc.missing')); return; }
+    const at = originOf(target);
+    if (at.view === 'shared') this.#goView('shared'); else this.#goFolder(at.path);
+    this.#reveal(target.key);
   }
 
   #togglePin(key) {
@@ -717,7 +744,7 @@ export class Explorer {
       openAs: file => this.#openAs(file),
       act: { activate: at => this.#activate(at), deleteFolder: at => this.#removal.deleteFolder(at), restore: at => this.#removal.restore(at),
         purge: at => this.#removal.purge(at), trashKey: at => this.#removal.trash(at), duplicate: file => this.#clipboard.duplicate(file),
-        dropOpened: at => this.#dropOpened(at) },
+        dropOpened: at => this.#dropOpened(at), showOrigin: file => this.#showOrigin(file) },
     }, key);
     if (items) openMenu(anchor, items, { host: this.root, align: 'right', label: this.#opts.i18n.t('ex.more') });
   }
@@ -744,6 +771,6 @@ export class Explorer {
     const { filing } = this.#opts;
     if (key.startsWith('dir:')) { void filing.renameFolder(key.slice(4)); return; }
     const file = this.#files.find(item => item.key === key);
-    if (file) void filing.rename(file);
+    if (file) void (file.shortcut ? this.#opts.shortcuts.rename(file) : filing.rename(file));
   }
 }

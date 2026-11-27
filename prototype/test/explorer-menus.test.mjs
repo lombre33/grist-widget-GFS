@@ -211,3 +211,65 @@ test('un dossier : « Lier dans un espace… » porte la clé que donne `keyOf` 
   await new Promise(resolve => setTimeout(resolve, 0));
   assert.deepEqual(old.calls, [['link', { target: 'ancienne:Contrats', name: 'Contrats', kind: 'folder' }]]);
 });
+
+// Les raccourcis de fichiers (js/files/shortcuts.js ; demande du porteur, 27/11) : le bouton est dans le menu de tout fichier, dans toutes les vues.
+const withShortcuts = (extra = {}) => {
+  const x = context(extra);
+  x.opts.shortcuts = { whyNot: f => (f.shortcut ? t('sc.why.shortcut') : null), create: (...args) => x.calls.push(['createShortcut', ...args]), rename: (...args) => x.calls.push(['renameShortcut', ...args]),
+    remove: (...args) => x.calls.push(['removeShortcut', ...args]) };
+  return x;
+};
+
+test('« Créer un raccourci… » : dans le menu d\'un fichier de chaque vue (dossier, récents, favoris, ouverts, partagés), avec l\'icône du raccourci, et le clic crée', () => {
+  for (const view of ['folder', 'recent', 'fav', 'opened']) {
+    const x = withShortcuts({ view });
+    const entry = rowItems(x, 'publipostage:7').find(each => each.label === t('sc.menu'));
+    assert.ok(entry, `dans « ${view} »`);
+    assert.deepEqual([entry.icon, entry.greyed], ['shortcut', false]);
+    entry.run();
+    assert.deepEqual(x.calls, [['createShortcut', x.shown[0]]]);
+  }
+  const given = withShortcuts({ view: 'shared', shown: [{ ...file(), direct: { by: 'marc@x.fr' } }] });
+  assert.ok(rowItems(given, 'publipostage:7').some(each => each.label === t('sc.menu')), 'un fichier donné par une adresse');
+  const arrived = withShortcuts({ view: 'shared', shown: [{ ...file(), received: { state: 'accepted' } }] });
+  assert.ok(rowItems(arrived, 'publipostage:7').some(each => each.label === t('sc.menu')), 'une arrivée d\'un autre document acceptée');
+});
+
+test('« Créer un raccourci… » : grisé pendant un choix et pour ce que la personne ne peut pas viser ; le clic dit pourquoi, rien ne part ; absent sans le contrôle des raccourcis', () => {
+  const choosing = withShortcuts({ choice: true });
+  const entry = rowItems(choosing, 'publipostage:7').find(each => each.label === t('sc.menu'));
+  assert.equal(entry.greyed, true);
+  entry.run();
+  assert.deepEqual([choosing.notices, choosing.calls], [[t('ex.choose.newOff')], []]);
+  const pending = withShortcuts();
+  pending.opts.shortcuts.whyNot = () => t('sc.why.pending');
+  const grey = rowItems(pending, 'publipostage:7').find(each => each.label === t('sc.menu'));
+  grey.run();
+  assert.deepEqual([grey.greyed, pending.notices, pending.calls], [true, [t('sc.why.pending')], []]);
+  assert.equal(labels(rowItems(context(), 'publipostage:7')).includes(t('sc.menu')), false, 'les essais de l\'explorateur seul ne le montrent pas');
+});
+
+test('le menu d\'un raccourci : ouvrir, aller au fichier d\'origine, renommer, déplacer, un trait, retirer ; jamais « Créer un raccourci… », jamais la corbeille', () => {
+  const link = { ...file({ key: 'gfs-shortcut:s1' }), shortcut: { target: 'publipostage:7', state: 'ok' } };
+  const x = withShortcuts({ shown: [link] });
+  x.act.showOrigin = (...args) => x.calls.push(['showOrigin', ...args]);
+  const items = rowItems(x, link.key);
+  assert.deepEqual(labels(items), [t('ex.open'), t('sc.origin'), t('ex.rename'), t('ex.move'), '-', t('sc.remove')]);
+  for (const at of [0, 1, 2, 3, 5]) items[at].run();
+  assert.deepEqual(x.calls, [['activate', link.key], ['showOrigin', link], ['renameShortcut', link], ['moveFile', link], ['removeShortcut', link]]);
+  assert.deepEqual(items.filter(each => each !== '-').map(each => each.hint), [t('key.enter'), undefined, 'F2', 'Ctrl+X, V', t('key.delete')]);
+});
+
+test('le menu d\'un raccourci grisé (cible qu\'on ne lit plus) : « Aller au fichier d\'origine » dit pourquoi, retirer reste possible ; pendant un choix tout est grisé', () => {
+  const link = { ...file({ key: 'gfs-shortcut:s1' }), shortcut: { target: 'x', state: 'missing' } };
+  const x = withShortcuts({ shown: [link] });
+  const items = rowItems(x, link.key);
+  assert.equal(items[1].greyed, true);
+  items[1].run();
+  assert.deepEqual(x.notices, [t('sc.missing')]);
+  assert.equal(items.at(-1).greyed, false);
+  const choosing = withShortcuts({ shown: [link], choice: true });
+  const during = rowItems(choosing, link.key);
+  during[2].run(); during.at(-1).run();
+  assert.deepEqual([during[2].greyed, during.at(-1).greyed, choosing.calls, choosing.notices], [true, true, [], [t('ex.choose.newOff'), t('ex.choose.newOff')]]);
+});

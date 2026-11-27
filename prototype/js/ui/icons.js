@@ -7,6 +7,8 @@ const NS = 'http://www.w3.org/2000/svg';
 
 const ICONS = {
   doc: '<path d="M7 2h7l4 4v16H7z"/><path d="M14 2v4h4"/>',
+  // Un raccourci vers un fichier (js/files/shortcuts.js) : la page, et la flèche qui renvoie ailleurs (le mot « Raccourci » l'accompagne toujours).
+  shortcut: '<path d="M7 2h7l4 4v16H7z"/><path d="M14 2v4h4"/><path d="M10.5 18l5-5M11 13h4.5v4.5"/>',
   // Un PDF gardé par GFS : la page, et les lignes de ce qu'elle porte (le mot « PDF » l'accompagne toujours).
   pdf: '<path d="M7 2h7l4 4v16H7z"/><path d="M14 2v4h4"/><path d="M10 12h5M10 15.5h5M10 19h3"/>',
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M3 6l9 7 9-7"/>',

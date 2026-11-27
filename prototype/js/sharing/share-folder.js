@@ -14,8 +14,9 @@ import { FILES_APP, filesColumns, filesNames } from '../files/gfs-files.js';
 import { OwnTable } from '../files/own-table.js';
 import { isTooBig } from './share-links.js';
 
-// Un fichier du niveau de ce dossier, ni à la corbeille, ni reçu d'un autre document, ni donné par une adresse.
-const insideFolder = (file, path) => !file.trashed && !file.received && !file.direct && file.folder === path;
+// Un fichier du niveau de ce dossier, ni à la corbeille, ni reçu d'un autre document, ni donné par une adresse, ni un raccourci (js/files/shortcuts.js : une
+// ligne de la personne, qui ne se partage ni ne se compte parmi les fichiers « d'une app »).
+const insideFolder = (file, path) => !file.trashed && !file.received && !file.direct && !file.shortcut && file.folder === path;
 
 // Les fichiers d'un dossier qui peuvent partir : les PDF de GFS rangés dans ce dossier même, ni à la corbeille, ni reçus d'un autre document, ni donnés par une
 // adresse, et pas plus de 25 Mo chacun (js/sharing/share-links.js, `SEND_MAX` : au-delà, le moteur ne les envoie pas, `tooBigInFolder` les compte).

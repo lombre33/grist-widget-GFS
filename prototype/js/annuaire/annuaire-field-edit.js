@@ -4,7 +4,7 @@
 // à js/annuaire/annuaire-store.js. Le nom du champ et sa colonne sont des réglages de l'annuaire (`label`, `col` : js/annuaire/annuaire-config.js) : rien n'en
 // est écrit dans Grist.
 //
-// Ce que Grist fait d'un `ModifyColumn` qui change le type (mesuré dans un vrai Grist 1.7.19, faits vérifiés 190) : il convertit ce qu'il comprend (un texte
+// Ce que Grist fait d'un `ModifyColumn` qui change le type (mesuré dans un vrai Grist 1.7.19, faits vérifiés 191) : il convertit ce qu'il comprend (un texte
 // « 12 » devient 12, « 2024-03-01 » une date) et laisse le reste tel quel ; mais un « Choix multiple » devient « ('A', 'B') » en texte, un lien devient un
 // numéro de ligne, et un texte « A, B » ne devient pas une liste. GFS ne change donc le type d'une colonne qui a déjà des valeurs que depuis le texte ou un
 // choix (et découpe lui-même en choix multiple) ; une colonne vide change de type librement ; le reste se fait dans Grist, qui propose de convertir.

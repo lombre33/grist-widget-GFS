@@ -3,7 +3,7 @@
    Les couleurs par type (document, grille, présentation, PDF) ne servent que dans l'explorateur (explorer.css) ; une ambiance les redit (js/theme/ambiance-types.js, comme pour les autres jetons : ce sont ici celles d'origine). */
 :root {
   color-scheme: light;
-  --bg: #f4f6fa; --surface: #ffffff; --surface-sunken: #eef1f6;
+  --bg: #f4f6fa; --surface: #ffffff; --surface-sunken: #eef1f6; --image-ground: #ffffff;
   --border: #dde2ea; --border-strong: #c3cad6;
   --text: #1b2430; --text-muted: #5f6b7e;
   --accent: #2f6fed; --accent-hover: #2558c4; --accent-solid: #2f6fed; --accent-solid-hover: #2558c4; --accent-ink: #2558c4; --on-accent: #ffffff;

@@ -17,6 +17,8 @@ import { controlOf, lockedRow, say, labelsOf } from './annuaire-edit-controls.js
 import { formRow } from './annuaire-setup-shared.js';
 import { draftName, duplicatesOf, firstProblem, bulkAddOf } from './annuaire-add.js';
 import { draftsRow, addReviewNodes } from './annuaire-add-view.js';
+import { initials } from './annuaire-items.js';
+import { prepareImage, uploadImage, rememberImage, IMAGE_MAX } from './annuaire-images.js';
 
 const GROUP_TITLES = Object.freeze({ identity: 'an.edit.identity', contact: 'an.fiche.contact', relations: 'an.tab.relations', info: 'an.fiche.fields' });
 const NONE = '__none';
@@ -37,6 +39,8 @@ export class EditWindow {
   #labels;
   #busy = false;
   #done = null;
+  #picks = new Map(); // les images choisies dans la fenêtre, pas encore envoyées : numéro du choix -> { file, name, url } (js/annuaire/annuaire-images.js)
+  #photoOf = null; // le champ dont la personne choisit l'image
 
   // opts : { container, inertTargets(), t, locale, person ({ row, name }), table, fields, locked, values (ce que la fiche a : { clé: valeur }),
   //   lockedText(entrée) ->
@@ -49,7 +53,11 @@ export class EditWindow {
     this.#labels = labelsOf(opts.fields, opts.options);
   }
 
-  get #host() { return { t: this.#o.t, locale: this.#o.locale, labels: this.#labels }; }
+  get #host() {
+    const name = this.#adding ? draftName(this.#values, this.#o.add.config) : this.#o.person.name;
+    return { t: this.#o.t, locale: this.#o.locale, labels: this.#labels, initials: initials(name),
+      previews: new Map([...this.#picks].map(([number, pick]) => [number, pick.url])) };
+  }
   get #adding() { return Boolean(this.#o.add); }
   get #words() { return this.#adding ? ADD_WORDS : EDIT_WORDS; }
   get #values() { return this.#drafts[this.#at].values; }
@@ -63,12 +71,13 @@ export class EditWindow {
   run() {
     const refs = this.#refs = { body: h('div', { class: 'mod-body an-set-body an-ed-body' }),
       note: h('p', { class: 'mod-note an-set-note', 'aria-live': 'polite' }),
+      file: h('input', { type: 'file', accept: 'image/*', hidden: true, tabindex: '-1', 'aria-hidden': 'true', dataset: { fk: 'ed-file-input' } }),
       title: h('h2', { id: 'an-ed-title' }), cancel: h('button', { type: 'button', class: 'btn', dataset: { fk: 'ed-cancel' } }),
       next: h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'ed-next' } }) };
     const section = h('section', { class: 'mod an-set an-edit', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'an-ed-title' },
       h('header', { class: 'mod-head an-ed-head' }, refs.title, h('span', { class: 'an-ed-who' }, this.#adding ? this.#o.add.who : this.#o.person.name)),
         refs.body,
-      h('footer', { class: 'mod-foot' }, refs.note, refs.cancel, refs.next));
+      h('footer', { class: 'mod-foot' }, refs.file, refs.note, refs.cancel, refs.next));
     this.#paint();
     const first = refs.body.querySelector('input:not([disabled]), button[data-fk^="ef:"]') || refs.next;
     const { done, result } = openModal({ container: this.#o.container, section, inertTargets: this.#o.inertTargets, first, cancel: false });
@@ -77,6 +86,7 @@ export class EditWindow {
     refs.next.addEventListener('click', () => void this.#next());
     refs.body.addEventListener('click', event => this.#click(event));
     refs.body.addEventListener('input', event => this.#input(event));
+    refs.file.addEventListener('change', () => void this.#picked());
     return result.then(Boolean);
   }
 
@@ -226,6 +236,7 @@ export class EditWindow {
     this.#refs.next.setAttribute('aria-disabled', 'true');
     this.#say(t(this.#words.saving));
     try {
+      if (!(await this.#sendImages())) { this.#busy = false; this.#refs.next.setAttribute('aria-disabled', 'false'); return; }
       await this.#o.save(this.#action());
       this.#busy = false;
       this.#done(true);
@@ -234,6 +245,27 @@ export class EditWindow {
       this.#refs.next.setAttribute('aria-disabled', 'false');
       this.#say(t(this.#words.refused, { reason: String(error && error.message ? error.message : error) }), true);
     }
+  }
+
+  // Envoie les images choisies dans la fenêtre (une photo par fiche au plus) : la valeur du champ cite alors la pièce jointe que Grist a créée, et la photo
+  // réduite est gardée en mémoire sous ce numéro. Rend faux (le pied dit pourquoi) quand Grist ou le cadre d'envoi refuse : rien n'est écrit, la fenêtre reste.
+  async #sendImages() {
+    for (const draft of this.#drafts) {
+      for (const field of this.#o.fields.filter(each => each.genre === 'file')) {
+        const value = draft.values[field.key];
+        const pick = value.pick ? this.#picks.get(value.pick) : null;
+        if (!pick) continue;
+        try {
+          const id = await uploadImage(pick);
+          draft.values[field.key] = { id, pick: 0, name: '' };
+          rememberImage('avatar', id, pick.url);
+        } catch (error) {
+          this.#say(this.#o.t('an.img.uploadFailed', { name: pick.name, reason: String(error && error.message ? error.message : error) }), true);
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   // L'action de Grist que le bouton « Enregistrer » ou « Ajouter » envoie : une ligne changée, ou toutes les fiches préparées en un lot.
@@ -263,6 +295,8 @@ export class EditWindow {
     if (act === 'ed-bool') this.#set(field, !this.#values[key]);
     else if (act === 'ed-chip') this.#set(field, this.#toggled(this.#values[key], value));
     else if (act === 'ed-remove') this.#set(field, this.#values[key].filter(id => String(id) !== value));
+    else if (act === 'ed-file') { this.#photoOf = field; this.#refs.file.value = ''; this.#refs.file.click(); }
+    else if (act === 'ed-unfile') this.#set(field, { id: 0, pick: 0, name: '' });
     else if (act === 'ed-choice') void this.#choose(field);
     else if (act === 'ed-ref' || act === 'ed-add') void this.#chooseRef(field);
   }
@@ -288,6 +322,22 @@ export class EditWindow {
     this.#at = Math.max(0, Math.min(this.#at > index ? this.#at - 1 : this.#at, this.#drafts.length - 1));
     this.#paint();
     this.#focus(`ed-draft:${this.#at}`);
+  }
+
+  // Une image vient d'être choisie : jugée et réduite (js/annuaire/annuaire-images.js), puis posée dans la fenêtre ; elle ne part vers Grist qu'au bouton
+  // « Enregistrer ». Un fichier que le navigateur ne lit pas, ou trop lourd, est dit tel quel dans le pied.
+  async #picked() {
+    const file = this.#refs.file.files && this.#refs.file.files[0];
+    const field = this.#photoOf;
+    const t = this.#o.t;
+    if (!file || !field || this.#busy) return;
+    if (file.size > IMAGE_MAX) { this.#say(t('an.img.tooBig', { max: Math.round(IMAGE_MAX / 1048576) }), true); return; }
+    const prepared = await prepareImage(file, 'avatar');
+    if (!prepared) { this.#say(t('an.img.unreadable', { name: file.name }), true); return; }
+    const number = (this.#picks.size ? Math.max(...this.#picks.keys()) : 0) + 1;
+    this.#picks.set(number, prepared);
+    this.#set(field, { id: this.#values[field.key].id, pick: number, name: prepared.name });
+    this.#focus(`ef:${field.key}`);
   }
 
   #toggled(list, value) {

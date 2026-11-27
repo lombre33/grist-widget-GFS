@@ -1,0 +1,41 @@
+// Les textes des images de l'annuaire (la photo d'une personne, le logo d'une carte ; choix du porteur, 27/11 : les pièces jointes de Grist), en français
+// (vouvoiement) et en anglais dans le même lot. Ils rejoignent ceux du module par js/i18n/i18n-annuaire.js. Le chargement : js/annuaire/annuaire-images.js.
+
+export const ANNUAIRE_IMAGES_STRINGS = Object.freeze({
+  fr: {
+    'an.type.file': 'Pièces jointes',
+    'an.set.images': 'Images',
+    'an.set.avatar': 'Photo',
+    'an.set.avatarHint': 'La colonne « Pièces jointes » qui porte la photo de chaque personne. Sans photo, ses initiales s’affichent.',
+    'an.set.logo': 'Logo de la carte',
+    'an.set.logoHint': 'Une colonne « Pièces jointes » de la personne, ou d’une structure (« Structure › Direction › Logo » : le logo de sa direction). Il s’affiche en haut à droite de la carte et de la fiche.',
+    'an.img.choose': 'Choisir une image…',
+    'an.img.replace': 'Remplacer l’image…',
+    'an.img.remove': 'Retirer',
+    'an.img.hint': 'JPEG, PNG, WebP ou SVG, réduite à 512 pixels. Rien n’est envoyé à Grist avant la dernière étape.',
+    'an.img.picked': '{name} : envoyée à Grist avec la fiche, à la dernière étape.',
+    'an.img.noUpload': 'L’envoi d’images n’est pas disponible ici : la page ne peut pas joindre un fichier à votre document.',
+    'an.img.current': 'Photo actuelle',
+    'an.img.tooBig': 'Cette image pèse plus de {max} Mo : choisissez-en une plus légère.',
+    'an.img.unreadable': '« {name} » n’est pas une image que le navigateur sait lire.',
+    'an.img.uploadFailed': 'Grist n’a pas reçu l’image « {name} » : {reason}',
+  },
+  en: {
+    'an.type.file': 'Attachments',
+    'an.set.images': 'Images',
+    'an.set.avatar': 'Photo',
+    'an.set.avatarHint': 'The “Attachments” column that holds each person’s photo. Without a photo, their initials show.',
+    'an.set.logo': 'Card logo',
+    'an.set.logoHint': 'An “Attachments” column of the person, or of a structure (“Structure › Department › Logo”: the logo of their department). It shows at the top right of the card and the record.',
+    'an.img.choose': 'Choose an image…',
+    'an.img.replace': 'Replace the image…',
+    'an.img.remove': 'Remove',
+    'an.img.hint': 'JPEG, PNG, WebP or SVG, shrunk to 512 pixels. Nothing is sent to Grist before the last step.',
+    'an.img.picked': '{name}: sent to Grist with the card, at the last step.',
+    'an.img.noUpload': 'Sending images is not available here: the page cannot attach a file to your document.',
+    'an.img.current': 'Current photo',
+    'an.img.tooBig': 'This image weighs more than {max} MB: choose a lighter one.',
+    'an.img.unreadable': '“{name}” is not an image the browser can read.',
+    'an.img.uploadFailed': 'Grist did not receive the image “{name}”: {reason}',
+  },
+});

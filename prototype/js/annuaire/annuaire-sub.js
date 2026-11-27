@@ -73,7 +73,8 @@ export function miniSchema(config, tableId, schema) {
   return out;
 }
 
-const PERSON_KEYS = ['row', 'name', 'sort', 'initials', 'title', 'email', 'phone', 'levels', 'fields', 'rel', 'lead', 'manager'];
+const PERSON_KEYS = ['row', 'name', 'sort', 'initials', 'title', 'email', 'phone', 'levels', 'fields', 'rel', 'lead', 'manager', 'avatar', 'logo', 'logoAt',
+  'logoLevel'];
 
 // Le texte d'une copie : les personnes telles que la lecture les a construites, le schéma minimal et le moment (`at`, un texte ISO).
 export const packFiches = ({ people, schema, at }) => JSON.stringify({ v: FICHES_VERSION, at,
@@ -81,6 +82,10 @@ export const packFiches = ({ people, schema, at }) => JSON.stringify({ v: FICHES
 
 const text = value => (typeof value === 'string' ? value : '');
 const list = value => (Array.isArray(value) ? value.map(String) : []);
+const number = (value, otherwise) => (Number.isInteger(value) ? value : otherwise);
+// La cellule qui porte un logo ({ table, col, row }), ou null.
+const cellOf = value => (value && typeof value === 'object' && typeof value.table === 'string' && typeof value.col === 'string' && Number.isInteger(value.row)
+  ? { table: value.table, col: value.col, row: value.row } : null);
 
 // Une personne relue d'une copie, avec tout ce que l'écran lit (jamais d'exception : une valeur absente est vide).
 function personOf(raw, depth) {
@@ -93,7 +98,8 @@ function personOf(raw, depth) {
     email: text(object.email), phone: text(object.phone), levels: Array.from({ length: depth }, (_, at) => levels[at] || ''),
     fields: Object.fromEntries(Object.entries(fields).map(([col, values]) => [col, list(values)])),
     rel: Object.fromEntries(Object.entries(rel).map(([col, rows]) => [col, Array.isArray(rows) ? rows.map(Number).filter(Number.isFinite) : []])),
-    lead: object.lead === true, manager: Number.isFinite(object.manager) && object.manager > 0 ? object.manager : null };
+    lead: object.lead === true, manager: Number.isFinite(object.manager) && object.manager > 0 ? object.manager : null,
+    avatar: number(object.avatar, 0), logo: number(object.logo, 0), logoAt: cellOf(object.logoAt), logoLevel: number(object.logoLevel, -1) };
 }
 
 // La copie lue d'un texte : { people, schema, at } ; une copie vide ou abîmée donne aucune personne, sans exception. `depth` : le nombre de niveaux de la

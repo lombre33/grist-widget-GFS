@@ -10,12 +10,17 @@ import { keyPath, fieldLabel } from './annuaire-config.js';
 
 const WRITABLE = Object.freeze(['text', 'choice', 'choicelist', 'bool', 'date', 'number', 'ref', 'reflist']);
 
+// La clé de la photo dans la fenêtre (un « @ » ne peut pas être celui d'une colonne : aucun champ de la fiche ne la prend).
+export const PHOTO = '@photo';
+
 // Les groupes de la fenêtre, dans l'ordre : l'identité, les coordonnées, les relations, les champs de la fiche.
 export const GROUPS = Object.freeze(['identity', 'contact', 'relations', 'info']);
 
 // Pourquoi une colonne ne s'écrit pas ici : `null` quand elle s'écrit. Une colonne absente du document n'est pas proposée du tout (le réglage la signale déjà).
-function lockOf(col) {
+// La photo (la colonne « Pièces jointes » que l'annuaire désigne pour elle) s'écrit aussi : c'est le seul champ de ce genre que GFS envoie.
+function lockOf(col, key) {
   if (col.formula) return 'formula';
+  if (key === PHOTO && col.genre === 'file') return null;
   if (String(col.type).startsWith('DateTime') || !WRITABLE.includes(col.genre)) return 'type';
   return null;
 }
@@ -39,13 +44,14 @@ export function editableFields(config, schema, table, t) {
     if (steps.length > 1) { locked.push({ key, label, group, why: 'path', table: tableOfPath(schema, table, steps) }); return; }
     const col = columnOf(schema, table, steps[0]);
     if (!col) return;
-    const why = lockOf(col);
+    const why = lockOf(col, key);
     if (why) { locked.push({ key, label, group, why, table: '' }); return; }
     fields.push({ key, col: col.id, label, genre: col.genre, group, type: col.type, choices: col.choices || [], ref: col.ref, visible: col.visible });
   };
   if (config.first) add('first', t('an.set.first'), config.first, 'identity');
   add('name', config.first ? t('an.edit.family') : t('an.col.name'), config.name, 'identity');
   add('title', t('an.fiche.post'), config.title, 'identity');
+  if (config.avatar) add(PHOTO, t('an.set.avatar'), config.avatar, 'identity');
   add('email', t('an.mail'), config.email, 'contact');
   add('phone', t('an.phone'), config.phone, 'contact');
   add('manager', t('an.rel.manager'), config.manager, 'relations');
@@ -58,8 +64,10 @@ const listOf = cell => (Array.isArray(cell) ? cell.slice(cell[0] === 'L' ? 1 : 0
 const isoOf = seconds => new Date(seconds * 1000).toISOString().slice(0, 10);
 
 // La valeur de la fenêtre d'une cellule de Grist : un texte pour du texte, un choix, une date (« AAAA-MM-JJ ») ou un nombre ; une liste pour un choix multiple
-// ou une liste de références ; un nombre (0 : personne) pour une référence ; vrai ou faux pour un oui/non.
+// ou une liste de références ; un nombre (0 : personne) pour une référence ; vrai ou faux pour un oui/non ; { id, pick, name } pour une photo.
 const READERS = Object.freeze({
+  // une photo : le numéro de la pièce jointe (0 : aucune) ; `pick` et `name` disent l'image choisie dans la fenêtre, pas encore envoyée
+  file: cell => ({ id: listOf(cell).find(id => Number.isInteger(id) && id > 0) || 0, pick: 0, name: '' }),
   choicelist: cell => listOf(cell).map(String).filter(Boolean),
   reflist: cell => listOf(cell).filter(id => typeof id === 'number' && id > 0),
   ref: cell => (typeof cell === 'number' && cell > 0 ? cell : 0),
@@ -107,6 +115,7 @@ export function cellOf(field, value) {
     case 'choicelist': return value.length ? ['L', ...value] : null;
     case 'reflist': return value.length ? ['L', ...value] : null;
     case 'ref': return value || 0;
+    case 'file': return value.id ? ['L', value.id] : null; // la photo est déjà envoyée (`pick` est 0) quand l'action se compose
     case 'bool': return Boolean(value);
     case 'date': return value ? secondsOf(value) : null;
     case 'number': return String(value).trim() ? numberOf(value) : null;

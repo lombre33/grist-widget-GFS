@@ -29,6 +29,7 @@ import { isSub, parentOf, orderAnnuaires } from './annuaire-sub.js';
 import { MergedView, canMerge } from './annuaire-merge-view.js';
 import { MERGED_ROW, mergeReads } from './annuaire-merge.js';
 import { PickWindow, personPayload } from './annuaire-pick.js';
+import { useImages } from './annuaire-images.js';
 
 const NEW = '__new__';
 const NEW_SUB = '__new_sub__';
@@ -51,10 +52,12 @@ export class AnnuaireControl {
   #admin = null; // la preuve qu'a GFS que la personne administre le document (une promesse, demandée une fois : js/broker/transfer.js, `isOwner`)
 
   // opts : { port ({ doc }), container, t, locale(), inertTargets(), ask(opts) -> Promise<boolean>, notice(texte), writeBlock() -> texte ou null, fullAccess(),
+  //   images ({ download(numéro) -> Blob, upload(fichier, nom) -> numéro } : les pièces jointes des photos et des logos, js/annuaire/annuaire-images.js),
   //   isOwner() -> Promise<vrai, faux ou null> (jamais deviné : seul « vrai » compte), identity() -> l'adresse de la personne, ou '' tant qu'on ne la connaît
   //   pas }
   constructor(opts) {
     this.#o = opts;
+    useImages(opts.images || null);
     const consent = () => opts.ask({ title: opts.t('an.table.title'), message: opts.t('an.table.text'), confirmLabel: opts.t('table.create'),
       cancelLabel: opts.t('table.cancel') });
     this.#store = new AnnuaireStore({ port: opts.port, consent });
@@ -486,6 +489,7 @@ export class AnnuaireControl {
 export function createAnnuaire(c) {
   return new AnnuaireControl({ port: c.port, container: c.$('stage'), t: c.t, locale: () => c.locale, inertTargets: c.inertTargets, ask: opts => c.ask(opts),
     notice: text => c.notice(text), writeBlock: () => c.writeBlock(), fullAccess: () => c.fullAccess, isOwner: () => c.transfer.isOwner(),
+    images: { download: id => c.transfer.download(id), upload: (file, name) => c.transfer.upload(file, name) },
     identity: () => c.identity || '', rights: c.rights, targets: () => c.personTargets(), insert: (id, person) => c.openings.openPerson(id, person),
     unlock: target => c.unlock({ text: target.lock, focus: target.focus }), apps: () => c.openModules() });
 }

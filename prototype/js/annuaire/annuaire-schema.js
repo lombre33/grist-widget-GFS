@@ -3,7 +3,8 @@
 //
 // Un type de Grist devient un genre, celui dont l'annuaire a besoin : « text », « choice » et « choicelist » (un filtre par valeur), « bool » (un filtre
 // oui/non), « date », « number », « ref » et « reflist » (une référence : sa valeur est celle de la colonne visible de la table visée), « file » (des pièces
-// jointes : jamais lues). Un type que l'annuaire ne connaît pas est du texte. Une colonne dit aussi si Grist la calcule (`formula`) et, pour un choix, ses
+// jointes : leur numéro se lit pour la photo et le logo, js/annuaire/annuaire-model.js ; leur contenu, js/annuaire/annuaire-images.js). Un type que l'annuaire
+//   ne connaît pas est du texte. Une colonne dit aussi si Grist la calcule (`formula`) et, pour un choix, ses
 //   valeurs
 // (`choices`) : de quoi proposer de la modifier (js/annuaire/annuaire-edit.js).
 
@@ -89,7 +90,7 @@ export function tablesNeeded(config, tableId, schema) {
   const walk = columns => { let at = tableId; for (const colId of columns) { if (!at) break; at = follow(at, colId); } };
   for (const level of config.levels) walk(level.path);
   for (const field of config.fields) walk(field.path && field.path.length ? field.path : [field.col]);
-  for (const key of ['name', 'first', 'title', 'email', 'phone']) if (config[key]) walk(keyPath(config[key]));
+  for (const key of ['name', 'first', 'title', 'email', 'phone', 'avatar', 'logo']) if (config[key]) walk(keyPath(config[key]));
   if (config.lead) walk([config.lead]);
   return needed;
 }

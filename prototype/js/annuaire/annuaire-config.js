@@ -36,7 +36,10 @@ const path = value => (Array.isArray(value) ? value.map(text).filter(Boolean) : 
 
 // Les colonnes de la personne que GFS lit par un nom : toutes facultatives, sauf le nom. `name` est le nom complet (« Camille Martin ») ou, quand `first` est
 // dit, le nom de famille seul ; `first` est le prénom (la bonne pratique : deux colonnes, pour trier par nom, saluer par le prénom et éviter les doublons).
-export const PERSON_KEYS = Object.freeze(['name', 'first', 'title', 'email', 'phone', 'lead', 'manager']);
+export const PERSON_KEYS = Object.freeze(['name', 'first', 'title', 'email', 'phone', 'lead', 'manager', 'avatar', 'logo']);
+// `avatar` et `logo` (demande du porteur, 27/11 : « un avatar » et « un logo en haut à droite de la carte ») sont des colonnes « Pièces jointes » : `avatar`,
+// la photo, est une colonne de la personne ; `logo` est un chemin (« Structure › Direction › Logo », écrit comme `title`) : la colonne peut être celle de la
+// personne ou celle d'une table qu'une de ses références vise. Le niveau de la hiérarchie qui porte le logo se déduit du chemin (`logoLevelOf`).
 // L'ordre dans lequel le nom s'écrit quand le prénom est une colonne à part : « Camille Durand », « Durand Camille », « Durand, Camille » ; `upper` (un oui/non
 // à côté) met le nom de famille en capitales (« Camille DURAND », retour du porteur, 25/11).
 export const NAME_ORDERS = Object.freeze(['first-last', 'last-first', 'last-comma']);
@@ -74,7 +77,8 @@ function readSub(input) {
 
 // La configuration lue d'un texte JSON (ou d'un objet) : toujours complète, jamais d'exception. Ce que GFS ne connaît pas (une clé d'une version plus récente)
 // est ignoré à la lecture et perdu à la réécriture : `writeConfig` ne garde que ce qu'elle connaît ; une version plus récente écrit donc sa propre ligne. { v,
-// name, first, order, upper, hierarchy, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], relations: [{ col, label, inverse, card }],
+// name, first, order, upper, hierarchy, title, email, phone, lead, manager, avatar, logo, levels: [{ label, path: [colonnes] }], relations: [{ col, label,
+// inverse, card }],
 //   columns: ['email', 'phone'], fields: [{ col, path, label, filter, list, column }] }
 // `columns` : les colonnes fixes que la personne met en colonne de la liste (retour du porteur, 25/11 : « des colonnes pour les attributs, réglables comme les
 // filtres ») ; les champs ont leur propre `column`. `label` d'un champ (choix du porteur, 27/11 : « le nom du champ et la colonne, ce n'est pas forcément les
@@ -132,6 +136,15 @@ export const fieldPath = field => (field.path && field.path.length ? field.path 
 export const fieldLabel = field => (field.label && field.label.trim()) || fieldPath(field).at(-1);
 
 export const writeConfig = config => JSON.stringify(readConfig(config));
+
+// Le niveau de la hiérarchie qui porte le logo : celui dont le chemin est le chemin du logo moins sa dernière colonne (le logo de la direction : « Structure ›
+// Direction › Logo » pour le niveau « Structure › Direction »), ou -1 quand le logo vient de la personne ou d'une table qu'aucun niveau ne suit.
+export function logoLevelOf(config) {
+  const route = keyPath(config.logo);
+  if (route.length < 2) return -1;
+  const head = route.slice(0, -1).join(FIELD_SEPARATOR);
+  return (config.levels || []).findIndex(level => level.path.join(FIELD_SEPARATOR) === head);
+}
 
 // Ce que la lecture et les écrans utilisent : la configuration sans ce que l'option « postes et hiérarchie » éteinte met de côté (le poste, « responsable de sa
 // structure » et les niveaux). Les autres colonnes, dont le responsable direct, ne dépendent pas d'elle. Une configuration qui n'a pas passé par `readConfig`

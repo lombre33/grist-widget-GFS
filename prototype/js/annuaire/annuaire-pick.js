@@ -9,6 +9,7 @@ import { icon } from '../ui/icons.js';
 import { openModal, LIST_SHOWN } from '../ui/modal.js';
 import { pickFrom } from '../ui/pick-window.js';
 import { filterPeople } from './annuaire-model.js';
+import { avatarNode } from './annuaire-images.js';
 
 // La personne que l'app reçoit (5.4, point 16) : des textes, jamais autre chose de la fiche. `origin` : le nom de l'annuaire d'où elle vient.
 export function personPayload(person, origin) {
@@ -83,7 +84,7 @@ export class PickWindow {
     list.replaceChildren(...rows.map((person, at) => h('button', { type: 'button', class: 'an-pk-row', role: 'radio',
       'aria-checked': String(person.row === this.#row),
       tabindex: at === stop ? '0' : '-1', dataset: { act: 'pk-row', row: String(person.row), fk: `pk:${person.row}` } },
-    h('span', { class: 'an-pk-radio', 'aria-hidden': 'true' }), h('span', { class: 'an-av' }, person.initials || ''),
+    h('span', { class: 'an-pk-radio', 'aria-hidden': 'true' }), avatarNode({ id: person.avatar, text: person.initials || '' }),
     h('span', { class: 'an-pe-text' }, h('span', { class: 'an-pe-name' }, person.name), person.title ? h('span', { class: 'an-pe-sub' }, person.title) : null),
     h('span', { class: 'an-pk-path', title: path(person) }, path(person)))),
     ...(found.length > rows.length ? [h('p', { class: 'an-note' }, t('an.pick.more', { n: LIST_SHOWN }))] : []),

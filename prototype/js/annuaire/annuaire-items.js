@@ -39,7 +39,7 @@ export const headsOf = node => node.own.filter(person => person.lead);
 
 // L'élément d'une personne dans un organigramme : sa petite carte (nom, poste) et ce que le clic désigne (la personne).
 const personItem = person => ({ id: `p${person.row}`, ch: [], pick: { person: person.row }, card: { title: person.name, sub: person.title, count: 0, head: '',
-  initials: person.initials ?? initials(person.name), lines: [] } });
+  initials: person.initials ?? initials(person.name), avatar: person.avatar || 0, lines: [] } });
 
 // L'organigramme des structures : { id, ch, card, pick, people } pour chaque nœud de l'arbre des niveaux. `card` : ce que la carte écrit (le nom, le libellé du
 // niveau, le nombre de personnes, le responsable) ; `pick` : ce que le clic désigne (le nœud) ; `people` : les personnes rangées là, quand `withPeople` (le
@@ -50,7 +50,7 @@ export function structureItems(tree, levels, { withPeople = false } = {}) {
     const level = node.level >= 0 ? levels[node.level] : null;
     return { id: node.id || 'root', ch: node.ch.map(one), pick: { node: node.id }, people: withPeople ? node.own.map(personItem) : [],
       card: { title: node.name, sub: levelLabel(level), count: node.count, head: head ? head.name : '',
-        initials: head ? (head.initials ?? initials(head.name)) : '' } };
+        initials: head ? (head.initials ?? initials(head.name)) : '', avatar: head ? head.avatar || 0 : 0, logo: node.logo || 0 } };
   };
   return [one(tree)];
 }
@@ -64,7 +64,7 @@ export function managerItems(roots, linesOf = () => [], dim = () => false) {
     const below = ch.reduce((sum, child) => sum + child.card.count + 1, 0);
     const { person } = node;
     return { id: `p${person.row}`, ch, pick: { person: person.row }, card: { title: person.name, sub: person.title, count: below, head: '',
-      initials: person.initials ?? initials(person.name), lines: linesOf(person), dim: dim(person) } };
+      initials: person.initials ?? initials(person.name), avatar: person.avatar || 0, logo: person.logo || 0, lines: linesOf(person), dim: dim(person) } };
   };
   return roots.map(one);
 }

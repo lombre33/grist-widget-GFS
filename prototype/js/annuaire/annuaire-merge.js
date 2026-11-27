@@ -44,7 +44,7 @@ export function mergeReads(sources, labels) {
         continue;
       }
       const made = { row: out.length + 1, name: person.name, sort: person.sort, initials: person.initials, title: person.title, email: person.email,
-        phone: person.phone,
+        phone: person.phone, avatar: person.avatar || 0, logo: person.logo || 0,
         levels: [], fields: { [labels.origin]: [annuaire.name], [labels.path]: path ? [path] : [] }, rel: {}, lead: false, manager: null };
       out.push(made);
       if (address) byMail.set(address, [...(byMail.get(address) || []), { person: made, from: new Set([annuaire.row]) }]);

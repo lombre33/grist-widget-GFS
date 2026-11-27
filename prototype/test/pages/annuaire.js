@@ -16,6 +16,10 @@
 // `?lock=none|current|stale|foreign` : le verrou réel dans Grist (js/annuaire/annuaire-lock-control.js ; test/annuaire-verrou-firefox.mjs) : de fausses règles d'accès (aucune, celles du réglage,
 // celles d'un réglage d'avant, une règle écrite à la main) et un faux écrivain qui note ce qu'on lui demande d'écrire (`window.__annuaireLock`, `window.__annuaireAsks` : les questions posées) ;
 // `&lockfail=texte` : Grist refuse la pose. Ce que Grist en fait vraiment se mesure dans le labo (labo/run-annuaire-verrou.mjs).
+// `?images=1` : la photo et le logo (test/annuaire-images-firefox.mjs) : une colonne « Pièces jointes » `Photo` chez les personnes, `Logo` chez les structures, des images dessinées dans
+// la page (`fakeImages`), l'annuaire principal réglé sur elles (`avatar`, `logo`) ; `window.__annuaireUploaded` note ce que « Modifier » envoie, `window.__annuaireDownloads` ce qui est
+// téléchargé, `&uploadfail=texte` : l'envoi est refusé. Le vrai cadre d'envoi, les vrais refus et la lecture d'une vraie pièce jointe se mesurent dans le labo
+// (labo/run-annuaire-images-ui.mjs).
 // `?links=1` : les apps du menu « Insérer dans… » (voir `FAKE_TARGETS`) ; sans lui aucune app n'accepte de personne.
 //
 // `?sub=1` : les sous-annuaires (test/annuaire-sub-firefox.mjs) : `GFS_Directories` porte les colonnes que le moteur de partage y pose (lecteurs, écrivains, administrateurs,
@@ -96,6 +100,60 @@ function toolsDocument() {
   add({ Nom: 'Sacha Bernard', Poste: 'Archiviste', Email: 'sacha.bernard@exemple.fr', Structure: 7, Masquee: true });
   for (let n = 1; n <= 50; n++) add({ Nom: `Agent Essai ${String(n).padStart(2, '0')}`, Poste: 'Agent', Structure: 5, Email: `agent.essai.${String(n).padStart(2, '0')}@universite-exemple.fr` });
   return document;
+}
+
+// Le document des essais de `?images=1` : celui de `longDocument`, plus la colonne « Pièces jointes » des photos (la 99 est celle d'une photo qui ne vient pas) et celle des logos des structures.
+function imagesDocument() {
+  const document = longDocument();
+  const { Personnes: people, Structures: structures, _grist_Tables_column: columns } = document;
+  for (const [id, parent, colId] of [[60, 1, 'Photo'], [61, 2, 'Logo']]) {
+    columns.id.push(id); columns.parentId.push(parent); columns.colId.push(colId); columns.type.push('Attachments'); columns.visibleCol.push(0); columns.widgetOptions.push('');
+    columns.isFormula.push(false);
+  }
+  people.Photo = people.id.map(row => ({ 1: ['L', 11], 2: ['L', 99], 3: ['L', 12], 4: ['L', 13] })[row] || null);
+  structures.Logo = structures.id.map(row => ({ 1: ['L', 20], 3: ['L', 21], 4: ['L', 22] })[row] || null);
+  return document;
+}
+
+// Une image dessinée dans la page (un Blob) : `paint(contexte, largeur, hauteur)` la peint.
+function drawn(width, height, type, paint) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  paint(canvas.getContext('2d'), width, height);
+  return new Promise(resolve => canvas.toBlob(resolve, type, 0.9));
+}
+
+const photo = (from, to) => (c, w, h) => { const g = c.createLinearGradient(0, 0, w, h); g.addColorStop(0, from); g.addColorStop(1, to); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  c.fillStyle = '#ffffff'; c.beginPath(); c.arc(w / 2, h * 0.38, Math.min(w, h) * 0.18, 0, 7); c.fill(); c.fillRect(w * 0.3, h * 0.6, w * 0.4, h * 0.4); };
+const logo = (ink, accent) => (c, w, h) => { c.fillStyle = ink; c.fillRect(0, h * 0.25, w, h * 0.5); c.fillStyle = accent; c.fillRect(w * 0.08, h * 0.35, w * 0.3, h * 0.3); };
+
+// Les images de `?images=1` et le faux cadre d'envoi : `download(numéro)` rend le Blob (ou refuse pour la 99), `upload(fichier, nom)` en garde un et rend son numéro.
+async function fakeImages(failText) {
+  const blobs = new Map([
+    [11, await drawn(600, 400, 'image/jpeg', photo('#2f5f9e', '#9ec3ee'))], [12, await drawn(400, 400, 'image/jpeg', photo('#a8541c', '#f0b07a'))],
+    [13, await drawn(300, 500, 'image/jpeg', photo('#2f7a4f', '#a4d8b8'))],
+    [20, await drawn(480, 120, 'image/png', logo('#1a2740', '#6aa6ff'))], [21, await drawn(400, 100, 'image/png', logo('#9a3a00', '#ffc58a'))],
+    [22, await drawn(160, 160, 'image/png', logo('#111111', '#555555'))],
+  ]);
+  window.__annuaireUploaded = [];
+  window.__annuaireDownloads = [];
+  return {
+    download: async id => {
+      window.__annuaireDownloads.push(id);
+      await new Promise(resolve => setTimeout(resolve, 30));
+      if (!blobs.has(id)) throw new Error('403 : refusé');
+      return blobs.get(id);
+    },
+    upload: async (file, name) => {
+      if (failText) throw new Error(failText);
+      const id = 100 + window.__annuaireUploaded.length;
+      blobs.set(id, file);
+      const bitmap = await createImageBitmap(file).catch(() => null);
+      window.__annuaireUploaded.push({ id, name, size: file.size, type: file.type, width: bitmap ? bitmap.width : 0, height: bitmap ? bitmap.height : 0 });
+      return id;
+    },
+  };
 }
 
 // Les tables du document au format du faux Grist (des lignes).
@@ -194,7 +252,8 @@ async function mount() {
   const query = new URLSearchParams(location.search);
   const tools = query.get('tools') === '1';
   const rights = (query.get('rights') || '').split(',');
-  const grist = fakeGrist(tablesOf(tools ? toolsDocument() : (rights.includes('role') ? rightsDocument() : longDocument())));
+  const images = query.get('images') === '1';
+  const grist = fakeGrist(tablesOf(tools ? toolsDocument() : (images ? imagesDocument() : (rights.includes('role') ? rightsDocument() : longDocument()))));
   // Deux réglages pour les essais de « Modifier » : `window.__annuaireRefuse` (un texte : Grist refuse d'écrire la table des personnes, comme le ferait une règle d'accès)
   // et `window.__annuaireBlock` (un texte : le document ne s'écrit pas, ce que dit `writeBlock`).
   const applyUserActions = grist.port.doc.applyUserActions;
@@ -206,7 +265,7 @@ async function mount() {
   // L'annuaire principal met l'adresse et le télétravail (un oui/non) en colonnes de la liste (retour du porteur, 25/11) : toute la mesure de la liste les porte.
   const base = configFixture();
   const options = { ...(tools ? { checks: ['dup', 'mail', 'att', 'resp', 'dep'], leave: 'Depart', presence: { on: true, col: 'Masquee' }, mail: { per: 40, to: 'bcc' } } : {}),
-    ...(query.get('filters') === 'bar' ? { filterMode: 'bar' } : {}),
+    ...(query.get('filters') === 'bar' ? { filterMode: 'bar' } : {}), ...(images ? { avatar: 'Photo', logo: 'Structure › Direction › Logo' } : {}),
     edit: { self: rights.includes('self'), level: rights.includes('below') ? 'below' : (rights.includes('own') ? 'own' : ''), role: rights.includes('role') ? 'Gestion' : '' } };
   if (query.get('none') !== '1') {
     await seed.create({ name: 'Annuaire principal', table: 'Personnes', config: { ...base, ...options, columns: ['email'],
@@ -227,7 +286,7 @@ async function mount() {
     inertTargets: () => [], ask: async options => { window.__annuaireAsks.push(options.title); return true; }, notice: text => window.__annuaireNotices.push(text), writeBlock: () => window.__annuaireBlock || null, fullAccess: () => true,
     isOwner: async () => query.get('admin') !== '0', identity: () => query.get('me') || '',
     rights: query.get('sub') === '1' ? fakeRights() : (query.get('lock') ? fakeLockRights(grist, seed, query.get('lock'), (key, vars) => i18n.t(key, vars)) : undefined),
-    targets: () => (query.get('links') === '1' ? FAKE_TARGETS : []),
+    targets: () => (query.get('links') === '1' ? FAKE_TARGETS : []), images: images ? await fakeImages(query.get('uploadfail') || '') : undefined,
     insert: async (id, person) => { window.__annuaireInserted.push({ id, person }); return true; },
     unlock: async target => { window.__annuaireUnlocked.push(target.id); }, apps: async () => { window.__annuaireApps += 1; } });
   // Sans numéro, l'annuaire s'ouvre sur la vue fusionnée dès qu'il y a deux annuaires : les essais d'un seul annuaire partent de la ligne 1 (`?home=merged` : la vue fusionnée).

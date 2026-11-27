@@ -7,6 +7,7 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { chooser, switchButton, iconButton } from './annuaire-setup-shared.js';
 import { choiceOptions, refOptions } from './annuaire-edit.js';
+import { avatarNode, canUpload } from './annuaire-images.js';
 
 const INPUT_MODES = Object.freeze({ email: 'email', phone: 'tel', number: 'decimal' });
 
@@ -14,15 +15,22 @@ const INPUT_MODES = Object.freeze({ email: 'email', phone: 'tel', number: 'decim
 // références.
 export function say(field, value, { t, locale, labels }) {
   const names = labels[field.key] || {};
-  if (field.genre === 'bool') return t(value ? 'an.yes' : 'an.no');
-  if (field.genre === 'ref') return value ? names[value] || String(value) : '';
-  if (field.genre === 'reflist' || field.genre === 'choicelist') return value.map(each => names[each] || each).join(', ');
-  if (field.genre === 'date' && value) {
+  const speak = SAYERS[field.genre];
+  return speak ? speak(value, { t, locale, names }) : String(value ?? '');
+}
+
+const SAYERS = Object.freeze({
+  bool: (value, { t }) => t(value ? 'an.yes' : 'an.no'),
+  file: (value, { t }) => (value.pick ? value.name : (value.id ? t('an.img.current') : '')),
+  ref: (value, { names }) => (value ? names[value] || String(value) : ''),
+  reflist: (value, { names }) => value.map(each => names[each] || each).join(', '),
+  choicelist: (value, { names }) => value.map(each => names[each] || each).join(', '),
+  date: (value, { locale }) => {
+    if (!value) return '';
     const date = new Date(`${value}T12:00:00Z`);
     return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(locale, { dateStyle: 'medium', timeZone: 'UTC' });
-  }
-  return String(value ?? '');
-}
+  },
+});
 
 // Les noms des personnes ou des lignes qu'une référence désigne : { clé du champ: { id: nom } }. Un jeu de noms PAR CHAMP : les numéros de deux tables n'ont
 // rien de commun (le numéro 12 d'un poste n'est pas la personne 12), un jeu partagé montrait le nom d'une personne à la place du poste.
@@ -66,13 +74,34 @@ function refChips(field, value, t, names) {
       t('an.edit.add')));
 }
 
-// Le contrôle d'un champ pour sa valeur du moment. `host` : { t, locale, labels } (les noms de CE champ : labels[field.key]).
+// La photo : l'aperçu (celle de la fiche, ou l'image choisie et pas encore envoyée), « Choisir une image » (ou « Remplacer ») et « Retirer ». Sans envoi
+// possible (le cadre d'envoi de GFS absent) les gestes sont grisés et disent pourquoi. `host.previews` : { numéro du choix: image réduite en `data:` }.
+function photoControl(field, value, host) {
+  const { t } = host;
+  const can = canUpload();
+  const has = Boolean(value.pick || value.id);
+  const preview = value.pick && host.previews.get(value.pick) ?
+    h('span', { class: 'an-av an-av-xl has-img' }, h('img', { class: 'an-av-img', src: host.previews.get(value.pick), alt: '', draggable: 'false' })) :
+    avatarNode({ id: value.id, text: host.initials, cls: 'an-av-xl' });
+  const act = (name, glyph, text, fk) => h('button', { type: 'button', class: 'btn sm', 'aria-disabled': String(!can && name === 'ed-file'),
+    dataset: { act: name, key: field.key, fk } }, icon(glyph), text);
+  const note = !can ? t('an.img.noUpload') : (value.pick ? t('an.img.picked', { name: value.name }) : t('an.img.hint'));
+  return h('div', { class: 'an-ed-photo', role: 'group', 'aria-label': field.label }, preview,
+    h('div', { class: 'an-ed-photo-body' },
+      h('div', { class: 'an-ed-photo-acts' }, act('ed-file', 'import', t(has ? 'an.img.replace' : 'an.img.choose'), `ef:${field.key}`),
+        has ? act('ed-unfile', 'x', t('an.img.remove'), `er:${field.key}`) : null),
+      h('span', { class: 'an-set-hint' }, note)));
+}
+
+// Le contrôle d'un champ pour sa valeur du moment. `host` : { t, locale, labels (les noms de CE champ : labels[field.key]), previews, initials (de la personne,
+// pour sa photo) }.
 export function controlOf(field, value, host) {
   const { t } = host;
   const names = host.labels[field.key] || {};
   const pick = (act, text) => chooser(t, `ef:${field.key}`, text, { act, key: field.key });
   switch (field.genre) {
     case 'bool': return boolSwitch(field, value, t);
+    case 'file': return photoControl(field, value, host);
     case 'choice': return pick('ed-choice', value);
     case 'ref': return pick('ed-ref', value ? names[value] || String(value) : '');
     case 'choicelist': return choiceChips(field, value, t);

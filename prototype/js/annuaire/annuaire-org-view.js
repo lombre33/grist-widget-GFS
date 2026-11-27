@@ -6,6 +6,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { layoutOrg, defaultOpen, allOpen, step, fitZoom } from './annuaire-org.js';
+import { avatarNode, logoNode } from './annuaire-images.js';
 
 // La carte (largeur, hauteur) et l'espace entre deux cartes d'un étage (gx) et entre deux étages (gy) ; chaque petite ligne de relation ajoute LINE à la
 // hauteur.
@@ -158,7 +159,7 @@ export class OrgView {
     const extra = (card.lines || []).map(text => h('span', { class: 'an-oc-line', title: text }, text));
     const body = h('button', { type: 'button', class: `an-oc${card.dim ? ' is-dim' : ''}`, 'aria-pressed': String(item.id === this.#selected),
       dataset: { act: 'org-pick', id: item.id, fk: `oc:${item.id}` } },
-      card.initials ? h('span', { class: 'an-av' }, card.initials) : null,
+      card.initials ? avatarNode({ id: card.avatar, text: card.initials }) : null, logoNode(card.logo),
       h('span', { class: 'an-oc-text' }, h('span', { class: 'an-oc-title' }, card.title), card.head ||
         card.sub ? h('span', { class: 'an-oc-sub' }, card.head || card.sub) : null, ...extra),
       card.count ? h('span', { class: 'an-pill' }, String(card.count)) : null);
@@ -176,7 +177,7 @@ export class OrgView {
     const { card } = entry.item;
     const body = h('button', { type: 'button', class: 'an-oc is-person', 'aria-pressed': String(entry.item.id === this.#selected),
       title: [card.title, card.sub].filter(Boolean).join(' · '),
-      dataset: { act: 'org-pick', id: entry.item.id, fk: `oc:${entry.item.id}` } }, h('span', { class: 'an-av an-av-s' }, card.initials),
+      dataset: { act: 'org-pick', id: entry.item.id, fk: `oc:${entry.item.id}` } }, avatarNode({ id: card.avatar, text: card.initials, cls: 'an-av-s' }),
     h('span', { class: 'an-oc-text' }, h('span', { class: 'an-oc-title' }, card.title), card.sub ? h('span', { class: 'an-oc-sub' }, card.sub) : null));
     return h('div', { class: 'an-ocw is-person', vars: { '--x': `${entry.x}px`, '--y': `${entry.y}px`, '--oh': `${entry.h}px` } }, body);
   }

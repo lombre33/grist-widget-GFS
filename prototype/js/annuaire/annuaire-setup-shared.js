@@ -11,7 +11,7 @@ export const FILTERABLE = Object.freeze(['choice', 'choicelist', 'bool', 'ref', 
 export const MAX_PATH = 4;
 const TYPE_KEYS = Object.freeze({ choice: 'an.type.choice', choicelist: 'an.type.choicelist', bool: 'an.type.bool', date: 'an.type.date',
   number: 'an.type.number',
-  ref: 'an.type.ref', reflist: 'an.type.reflist', text: 'an.type.text' });
+  ref: 'an.type.ref', reflist: 'an.type.reflist', text: 'an.type.text', file: 'an.type.file' });
 
 // Les colonnes que GFS lit déjà par un nom ou que les niveaux suivent : elles ne se proposent pas en champ.
 export function takenColumns(config) {

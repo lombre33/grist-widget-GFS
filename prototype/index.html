@@ -11,8 +11,8 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-/rixe0ueMzmWMJB+TAxJM4Jrap/bWBBZ5Akm7OcayaM='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<link rel="stylesheet" href="css/gfs.css?v=a4303ec631">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-+jCZTk+3mAgPSb6CqX7uWGG4HZO8Jo4VBYDbSXv4fp4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="stylesheet" href="css/gfs.css?v=221e572630">
 <link rel="stylesheet" href="css/explorer.css?v=c8ff42b04b">
 <link rel="stylesheet" href="css/modules.css?v=dcbf3e09ce">
 <link rel="stylesheet" href="css/templates.css?v=48d8b4f22f">
@@ -29,7 +29,7 @@
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
 <script src="js/broker/router.js?v=20d0f9a823"></script>
 <!-- La garde de démarrage ensuite : un module qui ne charge pas (404 de GitHub Pages gardé par son CDN) ne laisse pas une page blanche (js/shell/boot-guard.js). Script classique, avant le module d'entrée. -->
-<script src="js/shell/boot-guard.js?v=2ab39b7823"></script>
+<script src="js/shell/boot-guard.js?v=79c1f3f8d9"></script>
 <!-- La carte d'importation, écrite par outils/versions.mjs (ne pas la modifier à la main) : chaque module se charge à son adresse versionnée, si bien que le cache de Pages
      (10 minutes) ne mélange jamais un module ancien avec un module neuf. Son empreinte (sha256) est dans la politique de sécurité ci-dessus. -->
 <script type="importmap">
@@ -140,7 +140,7 @@
     "./js/broker/arrival-table.js": "./js/broker/arrival-table.js?v=58ba2ca762",
     "./js/broker/arrival.js": "./js/broker/arrival.js?v=7694fcdfd6",
     "./js/broker/attach.js": "./js/broker/attach.js?v=1c1097b59b",
-    "./js/broker/broker.js": "./js/broker/broker.js?v=0ebcd8a01c",
+    "./js/broker/broker.js": "./js/broker/broker.js?v=0211463248",
     "./js/broker/context.js": "./js/broker/context.js?v=319559f3bd",
     "./js/broker/created-files.js": "./js/broker/created-files.js?v=4b6cddf6fb",
     "./js/broker/deposit.js": "./js/broker/deposit.js?v=357a730c38",
@@ -166,11 +166,12 @@
     "./js/broker/sharing-rules.js": "./js/broker/sharing-rules.js?v=efe8774466",
     "./js/broker/sharing.js": "./js/broker/sharing.js?v=e6dccec1cd",
     "./js/broker/sql-gate.js": "./js/broker/sql-gate.js?v=9cb1720289",
+    "./js/broker/startup-reads.js": "./js/broker/startup-reads.js?v=cd3775dddd",
     "./js/broker/state.js": "./js/broker/state.js?v=69aa288268",
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=063ac32914",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=79ce30f54e",
-    "./js/controller.js": "./js/controller.js?v=07cf5251dd",
+    "./js/controller.js": "./js/controller.js?v=5384cfa874",
     "./js/explorer/doc-key.js": "./js/explorer/doc-key.js?v=4c44c49f1a",
     "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=8c6344c05c",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=687fc21cc8",
@@ -315,6 +316,7 @@
     "./js/sharing/sync-service.js": "./js/sharing/sync-service.js?v=cf1dcccb6f",
     "./js/shell/about.js": "./js/shell/about.js?v=d2b02ee6a7",
     "./js/shell/annuaire-entry.js": "./js/shell/annuaire-entry.js?v=01171f733b",
+    "./js/shell/boot-skeleton.js": "./js/shell/boot-skeleton.js?v=8e270f4d37",
     "./js/shell/correcteurs.js": "./js/shell/correcteurs.js?v=55348b7ebd",
     "./js/shell/dock-assembly.js": "./js/shell/dock-assembly.js?v=c80490a181",
     "./js/shell/dock-state.js": "./js/shell/dock-state.js?v=bf40af2343",
@@ -451,11 +453,13 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=07cf5251dd">
+<link rel="modulepreload" href="./js/controller.js?v=5384cfa874">
+<link rel="modulepreload" href="./js/shell/boot-skeleton.js?v=8e270f4d37">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=e4ffb08a57">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
-<link rel="modulepreload" href="./js/broker/broker.js?v=0ebcd8a01c">
+<link rel="modulepreload" href="./js/broker/broker.js?v=0211463248">
+<link rel="modulepreload" href="./js/broker/startup-reads.js?v=cd3775dddd">
 <link rel="modulepreload" href="./js/broker/view-options.js?v=79ce30f54e">
 <link rel="modulepreload" href="./js/broker/own-section.js?v=b4451c0cb2">
 <link rel="modulepreload" href="./js/broker/view-link.js?v=1853f29883">
@@ -712,10 +716,42 @@
 <link rel="modulepreload" href="./js/annuaire/annuaire-config.js?v=b4089cb9f2">
 <!-- /préchargement -->
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
-<script type="module" src="js/gfs.js?v=44003a27d4"></script>
+<script type="module" src="js/gfs.js?v=60629b72f1"></script>
 </head>
 <body data-gfs="starting">
 <main class="stage" id="stage">
+  <!-- Le squelette de l'explorateur (css/gfs.css, `.boot`) : des barres de gris sur la grille de l'explorateur, sans aucun texte, posées avant que le code de GFS ait fini de lire
+       le document. Il reste sous les cadres des apps et sous l'explorateur : il ne se voit que tant que ni l'un ni l'autre n'est là, et se retire quand GFS est prêt
+       (js/shell/boot-skeleton.js) ou que la garde de démarrage parle (js/shell/boot-guard.js). -->
+  <div class="ex boot" id="boot" aria-hidden="true">
+    <div class="ex-head">
+      <div class="ex-title-row"><span class="boot-bar boot-title"></span><span class="grow"></span><span class="boot-bar boot-tools"></span></div>
+      <div class="ex-nav-row"><span class="boot-bar boot-crumbs"></span><span class="boot-bar boot-search"></span><span class="boot-bar boot-button"></span></div>
+    </div>
+    <div class="ex-body">
+      <div class="ex-tree">
+      <span class="boot-bar boot-leaf"></span>
+      <span class="boot-bar boot-leaf"></span>
+      <span class="boot-bar boot-leaf"></span>
+      <span class="boot-bar boot-leaf"></span>
+      <span class="boot-bar boot-leaf"></span>
+      <span class="boot-bar boot-leaf"></span>
+      </div>
+      <div class="ex-main"><div class="ex-scroll">
+      <div class="boot-row boot-th"><span class="boot-bar boot-h1"></span><span class="boot-bar boot-h2"></span><span class="boot-bar boot-h2"></span></div>
+      <div class="boot-row"><span class="boot-bar boot-ic"></span><span class="boot-bar boot-name"></span></div>
+      <div class="boot-row"><span class="boot-bar boot-ic"></span><span class="boot-bar boot-name"></span></div>
+      <div class="boot-row"><span class="boot-bar boot-ic"></span><span class="boot-bar boot-name"></span></div>
+      <div class="boot-row"><span class="boot-bar boot-ic"></span><span class="boot-bar boot-name"></span></div>
+      <div class="boot-row"><span class="boot-bar boot-ic"></span><span class="boot-bar boot-name"></span></div>
+      <div class="boot-row"><span class="boot-bar boot-ic"></span><span class="boot-bar boot-name"></span></div>
+      <div class="boot-row"><span class="boot-bar boot-ic"></span><span class="boot-bar boot-name"></span></div>
+      <div class="boot-row"><span class="boot-bar boot-ic"></span><span class="boot-bar boot-name"></span></div>
+      <div class="boot-row"><span class="boot-bar boot-ic"></span><span class="boot-bar boot-name"></span></div>
+      </div></div>
+    </div>
+    <div class="ex-foot"><div class="ex-info"><span class="boot-bar boot-info"></span></div></div>
+  </div>
   <div class="frames" id="frames"></div>
   <!-- La barre de GFS au-dessus d'une app : « Fichiers », « Fichiers ouverts », « Apps », la table de travail et la position de la barre, cinq boutons à icône seule (js/shell/dock.js), plus « LanguageTool » quand la personne l'a voulu, posés au bord que la personne choisit
        (`data-edge`), par-dessus l'espace que l'app laisse libre ; l'app apprend ce qu'elle recouvre (contrats 5.2, point 7). -->

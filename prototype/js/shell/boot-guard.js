@@ -111,6 +111,8 @@
   function render(text, detail, onReload) {
     var old = document.getElementById('boot-failure');
     if (old) old.remove();
+    var skeleton = document.getElementById('boot'); // le squelette de l'explorateur ne reste pas derrière la phrase
+    if (skeleton) skeleton.remove();
     var box = document.createElement('div');
     box.id = 'boot-failure';
     box.className = 'boot-failure';

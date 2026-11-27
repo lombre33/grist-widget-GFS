@@ -10,13 +10,17 @@ import { ERR, Refus, levelOf, checkBatch, readRefusal, visibleTables, cleanApply
 import { sliceOf, optionOf, checkKey, planSetOptions, planClear } from './options-slice.js';
 import { touchesPublication, publicationOpens, protectedRefusal } from './publication.js';
 import { touchesSharing, judgeSharing } from './sharing.js';
+import { shareStartupReads } from './startup-reads.js';
 
+// `closeStartup()` met fin au partage des lectures de la structure du démarrage (js/broker/startup-reads.js).
 export function createPort(grist) {
   const doc = grist.rpc.getStub('GristDocAPI@grist');
+  const shared = shareStartupReads(doc);
   return {
-    doc,
+    doc: shared.doc,
     view: grist.rpc.getStub('GristView'),
     widget: grist.rpc.getStub('WidgetAPI'),
+    closeStartup: shared.close,
   };
 }
 

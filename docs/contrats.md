@@ -1146,6 +1146,24 @@ mesurés, pas une promesse (cahier 1.3, 8).
    chacun : `options` (avec `settings`), `theme`, état de la table (`onRecords`) et ligne courante (`onRecord`).
 3. [T] GFS lit ensuite les réglages de sa section, décide de l'app à ouvrir (cahier 6.2 ; la règle est au point 7 de 7.4) et
    crée le sous-cadre.
+4. [T] **Les lectures de la structure du document se partagent pendant les trois premières secondes de la page** (27/11, `prototype/js/broker/startup-reads.js`,
+   faits vérifiés 197). Au démarrage, GFS et ses modules lisaient la liste des tables, le nom du document et les tables internes (`_grist_Tables`, `_grist_Tables_column`,
+   `_grist_Views`, `_grist_Views_section`, `_grist_Pages`, `_grist_Attachments`) jusqu'à cinq fois chacune, l'une après l'autre. Désormais GFS les lance toutes ensemble dès
+   `grist.ready()`, et la première lecture de chacune sert celles qui suivent (en vol ou finies), **chacune avec sa copie**. Ce qui est partagé : `listTables`, `getDocName` et
+   `fetchTable` d'une table dont le nom commence par `_grist_`, rien d'autre : **les tables de la personne ne sont jamais partagées**. Ce qui l'arrête : **toute écriture**
+   (`applyUserActions`) par le courtier efface ce qui est gardé, avant et après elle (une lecture qui était en vol pendant l'écriture n'est pas gardée) ; la première écriture du
+   moteur de partage (qui passe par `grist.docApi`) y met fin pour de bon ; et les trois secondes. Une lecture qui échoue n'est pas gardée. **Pour une app** : une lecture de ces tables, dans les trois premières secondes
+   de la page, peut rendre la réponse qu'une lecture de GFS venait d'obtenir ; jamais après qu'une écriture est passée par GFS ; ce qui change dans le document par une autre
+   voie (la personne, dans Grist) n'est vu qu'au-delà de ces trois secondes.
+5. [M] Vrai Grist 1.7.19 (Docker), relais de 40 et de 120 ms d'aller-retour, Chromium, médiane de cinq rechargements (`labo/run-lecture-unique.mjs`) : avant la lecture de la liste,
+   chaque table interne, `listTables` et `getDocName` partent **une fois** chez Grist (le démarrage d'avant : `_grist_Tables` cinq fois, `listTables` trois, les colonnes trois, 23
+   appels en tout contre 10) ; la liste est visible **455 → 194 ms** (40 ms) et **942 → 347 ms** (120 ms) après la création du port, les mêmes lignes dans les deux cas, la console
+   muette. Faits vérifiés 197.
+6. [T] **Avant que GFS ait lu le document, la page montre un squelette de l'explorateur** (27/11, `prototype/index.html` `#boot`, `css/gfs.css` `.boot`, `js/shell/boot-skeleton.js`) :
+   des barres de gris sur la grille de l'explorateur, sans texte, caché des lecteurs d'écran, sous les cadres des apps et sous l'explorateur (`z-index` 0). **Aucune app ne le voit** :
+   il est dans la page de GFS, pas dans le sous-cadre d'une app. GFS le retire quand il est prêt, hors de Grist, quand son démarrage échoue et quand la garde de démarrage (1.5)
+   parle. [M] première image 344 ms avant celle de l'explorateur (40 ms d'aller-retour, vrai Grist), même place au pixel que l'explorateur (0 px d'écart à 700 × 400), Firefox 161 à 700,
+   520 et 380 px, clair et sombre. Faits vérifiés 198.
 
 ### 4.2 Le sous-cadre, de la création au `ready`
 

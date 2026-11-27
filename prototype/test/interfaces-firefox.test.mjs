@@ -23,6 +23,8 @@ import { ROOT } from './helpers.mjs';
 import { findFirefox, serveSite, startFirefox } from './firefox.mjs';
 import { corbeilleProblems } from './corbeille-firefox.mjs';
 import { copierProblems } from './copier-firefox.mjs';
+import { raccourcisProblems } from './raccourcis-firefox.mjs';
+import { apparenceProblems } from './apparence-firefox.mjs';
 import { fermerProblems } from './fermer-firefox.mjs';
 import { activationProblems } from './activation-firefox.mjs';
 import { nomsGfsProblems } from './noms-gfs-firefox.mjs';
@@ -666,6 +668,8 @@ describe('l\'interface sous Firefox', () => {
         await page.view({ width: 700, scale: 1, mode });
         problems.push(...await corbeilleProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await copierProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await raccourcisProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await apparenceProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await fermerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await activationProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await nomsGfsProblems(page, language, caption(language, 700, 1, mode)));

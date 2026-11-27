@@ -59,3 +59,10 @@ test('sans la table des fichiers, rien ne s\'écrit et rien ne se crée', async 
   assert.equal(await writeFolderName(none.port.doc, [1], 'Contrats'), 0);
   assert.equal(none.actions.length, 0);
 });
+
+test('un raccourci (js/files/shortcuts.js) rangé dans le dossier ne part pas avec lui et ne se compte pas parmi les fichiers « d\'une app » : il reste à la personne', () => {
+  const link = file('s1', { app: 'gfs-shortcut', shortcut: { target: 'gfs-fichiers:p1', state: 'ok' } });
+  const files = [file('p1'), link];
+  assert.deepEqual(filesOfFolder(files, 'Contrats').map(each => each.id), ['p1']);
+  assert.equal(skippedInFolder(files, 'Contrats'), 0, 'sans le raccourci, aucun fichier d\'une app ne reste dans le dossier');
+});

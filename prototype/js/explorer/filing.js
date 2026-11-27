@@ -21,6 +21,7 @@ import { normalize } from '../ui/search.js';
 import { UndoStack } from '../files/undo-stack.js';
 import { isSpaceItself, isSpacePath, SPACES_ROOT, splitWrites, touchesSpaces, writePlacement } from '../sharing/spaces-filing.js';
 import { linkWithin } from '../sharing/space-links.js';
+import { SHORTCUT_APP } from '../files/shortcuts.js';
 
 // Les deux phrases d'un geste : celle de Ctrl+Z (`undoKey`, js/i18n/i18n-trash.js) et celle de Ctrl+Y (`redoKey`) ; `redoParams` : ce que dit le rétablissement
 // quand il n'est pas celui de l'annulation (le dossier où le fichier retourne).
@@ -44,6 +45,9 @@ const showsOf = (entries, folders) => [
   { op: 'addFolders', paths: [...(folders.add || []), ...(folders.moved || []).map(([, to]) => to)] },
   { op: 'pinFolders', paths: folders.pin || [], on: true },
   { op: 'pinFolders', paths: folders.unpin || [], on: false },
+  // l'apparence d'un dossier déplacé le suit (sa ligne d'état change de chemin sur place) ; celle d'un dossier retiré ou fondu dans un autre s'en va
+  { op: 'moveLooks', moved: folders.moved || [], gone: [...(folders.drop || []), ...(folders.merged || []).map(([from]) => from)] },
+  ...Object.entries(folders.looks || {}).map(([path, look]) => ({ op: 'look', path, look })), // un dossier qui revient avec son apparence
 ];
 
 // Les colonnes de la table `tableId` d'après les tables internes de Grist (deux petites tables : la table de fichiers peut peser des mégaoctets).
@@ -62,8 +66,9 @@ export class Filing {
   #inFlight = 0; // les écritures parties ou en route
 
   // opts : { port, rangement, t, locale(), files() -> [fichier], folders?() -> les dossiers gardés sans fichier, pinnedFolders?() -> ceux de ses dossiers que
-  //   la
-  //   personne a mis en favori, here() -> le dossier ouvert, specOf(file) -> son entrée `fichiers` du manifeste,
+  //   la personne a mis en favori, here() -> le dossier ouvert, specOf(file) -> son entrée `fichiers` du manifeste,
+  //          looks?() -> l'apparence des dossiers que montre la vue (chemin -> apparence, js/files/folder-looks.js) : un dossier supprimé que Ctrl+Z rend
+  //          revient avec elle,
   //          spaces?: { info() -> ce que disent les espaces (js/sharing/spaces-filing.js), owner() -> Promise<vrai si la personne est propriétaire> },
   //          folderShares?: { relocation(de, vers, dossiers), removal(chemins) } (js/sharing/folder-shares.js) : ce que renommer, déplacer ou supprimer un
   //          dossier de « Moi » change à ses partages et à ses liens, dans le même lot,
@@ -103,7 +108,9 @@ export class Filing {
   moveFile(file) {
     return this.#gesture(async () => {
       const now = this.#now(file);
-      const target = await this.#chooseFolder({ title: this.#opts.t('ex.moveTitle', { name: this.#title(now) }), folders: this.#folders(), current: now.folder,
+      // un raccourci reste dans « Moi » (js/files/shortcuts.js) : les dossiers d'un espace ne lui sont pas proposés
+      const folders = now.shortcut ? this.#folders().filter(path => !isSpacePath(path)) : this.#folders();
+      const target = await this.#chooseFolder({ title: this.#opts.t('ex.moveTitle', { name: this.#title(now) }), folders, current: now.folder,
         base: this.#opts.here() });
       if (target !== null && target !== now.folder) await this.#writeMoves([{ app: now.app, file: now.id, pinned: now.pinned, folder: target }], null, {},
         this.#movedBack(now, target));
@@ -420,6 +427,9 @@ export class Filing {
   //   rangement comme il était.
   async #write(entries, folders = {}, undo = null) {
     if (isEmptyWrite(entries, folders)) return false;
+    // un raccourci est à la personne seule : il ne se range jamais dans un espace (les placements d'un espace se partagent)
+    if (entries.some(entry => entry.app === SHORTCUT_APP && isSpacePath(normalizePath(entry.folder)))) {
+      this.#opts.notice(this.#opts.t('sc.noSpace')); return false; }
     const before = undo ? this.#before(entries, folders) : null;
     const plan = this.#opts.spaces ? splitWrites(entries, folders, this.#opts.files(), this.#opts.spaces.info()) : null;
     if (plan && plan.error) { this.#opts.notice(this.#opts.t(plan.error)); return false; }
@@ -503,15 +513,18 @@ export class Filing {
     // l'annulation lui en redonne une.
     const moved = (folders.moved || []).filter(([from]) => spare.includes(from)).map(([from, to]) => [to, from]);
     const fused = (folders.merged || []).filter(([from]) => spare.includes(from)).map(([from]) => from);
+    const back = [...dropped.filter(path => spare.includes(path)), ...fused];
+    const looks = this.#opts.looks ? this.#opts.looks() : new Map(); // l'apparence des dossiers qui reviennent revient avec eux
     return {
       entries: entries.map(entry => {
         const was = live.find(item => item.app === entry.app && item.id === String(entry.file));
         return { app: entry.app, file: entry.file, pinned: Boolean(was && was.pinned), folder: was ? was.folder || '' : '' };
       }),
-      add: [...dropped.filter(path => spare.includes(path)), ...fused],
+      add: back,
       drop: (folders.add || []).filter(path => !spare.includes(path) && !dropped.includes(path)),
       moved,
       ...this.#pinsBefore(folders, [...dropped, ...fused], (folders.merged || []).filter(([from]) => spare.includes(from))),
+      looks: Object.fromEntries(back.filter(path => looks.has(path)).map(path => [path, looks.get(path)])),
     };
   }
 
@@ -529,8 +542,9 @@ export class Filing {
   // tour le geste inverse, avec les deux phrases échangées. Rend la phrase de ce qui vient de se faire (`phrases.undo` : l'entrée porte celle qu'elle dit quand
   // on la joue).
   #replayWrite(before, phrases) {
-    const { entries, ...folders } = before;
-    return this.#gesture(async () => ((await this.#write(entries, folders, { undo: phrases.redo, redo: phrases.undo })) ?
+    const { entries, looks, ...folders } = before;
+    return this.#gesture(async () => ((await this.#write(entries, { ...folders, ...(Object.keys(looks).length ? { looks } : {}) },
+      { undo: phrases.redo, redo: phrases.undo })) ?
       this.#opts.t(phrases.undo.key, phrases.undo.params) : null));
   }
 }

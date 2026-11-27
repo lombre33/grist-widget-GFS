@@ -63,7 +63,7 @@ const batchesIn = () => JSON.parse(JSON.stringify(window.__annuaireBatches()));
 const inside = (inner, outer, slack = 1) => inner.left >= outer.left - slack && inner.right <= outer.right + slack && inner.top >= outer.top - slack && inner.bottom <= outer.bottom + slack;
 const apart = (a, b) => a.right <= b.left + 1 || b.right <= a.left + 1 || a.bottom <= b.top + 1 || b.bottom <= a.top + 1;
 
-async function reload(page, query, { width, mode }) {
+export async function reload(page, query, { width, mode }) {
   await page.goto(`${await page.run(() => `${location.origin}${location.pathname}`)}${query}`);
   await page.run(() => window.__ready);
   await page.view({ width, scale: 1, mode });

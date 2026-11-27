@@ -8,6 +8,7 @@
 import { OwnTable, TableDeclined } from './own-table.js';
 import { appActions, carryOver, usable } from './app-filing.js';
 import { readGfsFolderRows } from '../explorer/explorer-model.js';
+import { lookValue } from './folder-looks.js';
 import { DocumentNewer, STRUCTURE, STRUCTURE_ROW, isNewer, stamped, structureFrom } from './structure.js';
 
 export { TableDeclined, DocumentNewer };
@@ -107,31 +108,35 @@ function movedActions(tableId, data, identity, moved) {
 }
 
 // Les dossiers qui entrent dans les favoris (`pin`) ou en sortent (`unpin`) : la colonne « Favori » de leur ligne d'état, toutes leurs lignes ; un dossier qui
-// n'en a pas (il n'existe que par ses fichiers) reçoit la sienne, dans `created`.
-function pinActions(tableId, data, identity, { pin, unpin, created }) {
+// n'en a pas (il n'existe que par ses fichiers) reçoit la sienne, dans `created`. Un dossier qui revient avec son apparence (`looks`) l'écrit dans `Value`.
+function pinActions(tableId, data, identity, { pin, unpin, created, looks }) {
   const change = (paths, on) => paths.flatMap(path => rowsOf(data, folderKey(identity, path)).filter(rowId => isFavorite(data, rowId) !== on)
     .map(rowId => ['UpdateRecord', tableId, rowId, { Favorite: on }]));
   return [...change(pin, true), ...change(unpin, false), ...pin.filter(path => created.has(path)).map(path => ['AddRecord', tableId, null,
-    { ...folderKey(identity, path), Favorite: true }])];
+    { ...folderKey(identity, path), Favorite: true, ...(looks[path] ? { Value: lookValue(looks[path]) } : {}) }])];
+}
+
+// Les listes d'un lot de dossiers (voir `setFiling`) : sans doublon, vides quand elles manquent. Un dossier qui revient avec son apparence (Ctrl+Z d'une
+// suppression, `looks`) écrit la cellule `Value` : la colonne est lue avec les autres, ou ajoutée (jamais écrire une colonne absente).
+function folderBatch(folders) {
+  const looks = folders.looks || {};
+  const once = kind => [...new Set(folders[kind] || [])];
+  return { add: once('add'), drop: once('drop'), pin: once('pin'), unpin: once('unpin'), moved: folders.moved || [], merged: folders.merged || [],
+    extra: folders.extra || [], looks, columns: Object.keys(looks).length ? [...FILING, 'Value'] : FILING };
 }
 
 // Les actions sur les lignes d'état des dossiers gardés (`add`, `drop`, `moved`, `merged`, `pin`, `unpin` : voir `setFiling`) : celles qu'on retire (le favori
 // part avec la ligne), celles qu'on ajoute (si le chemin n'a pas déjà sa ligne : en favori quand `pin` le nomme aussi), celles qui changent de chemin sur
 // place, celles qui se fondent dans un dossier qui existe déjà, puis les favoris qui s'allument ou s'éteignent.
-function folderActions(tableId, data, identity, { add, drop, moved, merged, pin, unpin }) {
+function folderActions(tableId, data, identity, { add, drop, moved, merged, pin, unpin, looks = {} }) {
   const removal = rowId => ['RemoveRecord', tableId, rowId];
   const fresh = [...new Set([...add, ...pin])].filter(path => !drop.includes(path) && findRow(data, folderKey(identity, path)) < 0);
   return [...drop.flatMap(path => rowsOf(data, folderKey(identity, path)).map(removal)),
-    ...fresh.filter(path => !pin.includes(path)).map(path => ['AddRecord', tableId, null, { ...folderKey(identity, path), Favorite: false }]),
+    ...fresh.filter(path => !pin.includes(path)).map(path => (
+      ['AddRecord', tableId, null, { ...folderKey(identity, path), Favorite: false, ...(looks[path] ? { Value: lookValue(looks[path]) } : {}) }])),
     ...movedActions(tableId, data, identity, moved),
     ...merged.flatMap(([from, to]) => [...followedPin(tableId, data, identity, from, to), ...rowsOf(data, folderKey(identity, from)).map(removal)]),
-    ...pinActions(tableId, data, identity, { pin, unpin, created: new Set(fresh) })];
-}
-
-// Les listes d'un lot de dossiers (`setFiling`) : chacune vide quand le lot n'en dit rien ; `add`, `drop`, `pin` et `unpin` sans doublon.
-function lotOf(folders) {
-  const once = kind => [...new Set(folders[kind] || [])];
-  return { add: once('add'), drop: once('drop'), moved: folders.moved || [], merged: folders.merged || [], pin: once('pin'), unpin: once('unpin') };
+    ...pinActions(tableId, data, identity, { pin, unpin, created: new Set(fresh), looks })];
 }
 
 export class Rangement {
@@ -345,6 +350,25 @@ export class Rangement {
     return rows.length;
   }
 
+  // Les raccourcis de la personne (js/files/shortcuts.js) : une ligne de plus du rangement, sous l'app `gfs-shortcut`. `make({ data, tableId, identity })` rend
+  // les actions d'après la table relue ; sans table, l'accord de la personne est demandé comme pour tout rangement (`TableDeclined` s'il est refusé). Rend true
+  // quand un lot est parti. Un raccourci est à la personne seule : sans son adresse, rien ne s'écrit (`false`).
+  writeShortcuts(make) { return this.#writeRows(make); }
+
+  // L'apparence des dossiers de la personne (js/files/folder-looks.js) : la valeur de la ligne d'état du dossier. Mêmes règles que les raccourcis : l'accord
+  // pour créer la table, rien sans l'adresse de la personne (l'apparence est à elle seule), true quand un lot est parti.
+  writeLooks(make) { return this.#writeRows(make); }
+
+  async #writeRows(make) {
+    const state = await this.#ready([...FILING, 'Value']);
+    if (!this.identity) return false;
+    const actions = make({ data: state.data, tableId: this.#table.id, identity: this.identity });
+    if (!actions.length) return false;
+    await this.#port.doc.applyUserActions(actions);
+    await this.#stamp(state.data);
+    return true;
+  }
+
   // La table du rangement telle qu'elle est, sans la créer ni poser de question : null quand elle manque ou qu'une colonne du rangement lui manque (aucune
   // n'est ajoutée ici). Pour ce qui ne vaut pas qu'on dérange la personne.
   async #loaded() {
@@ -394,20 +418,20 @@ export class Rangement {
   //   change pas ; js/sharing/folder-identity.js), et retirée puis ajoutée chez l'app ;
   // - `merged` : [[de, vers]], un dossier gardé qui se fond dans un dossier qui existe déjà : sa ligne est retirée (le dossier d'arrivée garde ses partages,
   //   ceux du dossier qui arrive ne le suivent pas ; son favori, lui, passe au dossier d'arrivée) ;
-// - `pin`, `unpin` : les dossiers qui entrent dans les favoris ou en sortent (la colonne « Favori » de leur ligne d'état, créée au besoin) ;
+  // - `pin`, `unpin` : les dossiers qui entrent dans les favoris ou en sortent (la colonne « Favori » de leur ligne d'état, créée au besoin) ;
   // - `extra` : des actions de plus (les partages et les liens de ces dossiers) pour le même lot ;
   // - `quiet` : sans la table, rien n'est écrit et rien n'est demandé.
   // Relit d'abord ; fichiers et dossiers partent dans un seul lot, que Grist rejoue en entier ou pas du tout : un dossier déplacé n'est jamais rangé à moitié.
   // Rend true quand le lot est parti.
   async setFiling(entries, folders = {}) {
-    const lot = lotOf(folders);
-    if (!entries.length && Object.values(lot).every(list => !list.length)) return false;
+    const batch = folderBatch(folders);
+    if (!entries.length && ['add', 'drop', 'moved', 'merged', 'pin', 'unpin'].every(kind => !batch[kind].length)) return false;
     // La table du rangement et celles des apps se lisent en même temps. Quand la table du rangement vient de naître (la personne a été interrogée entre-temps),
     // ce que les apps ont rendu peut avoir vieilli : leurs tables se relisent.
-    const [state, firstTargets] = await Promise.all([folders.quiet === true ? this.#loaded() : this.#ready(FILING), this.#appTargets()]);
+    const [state, firstTargets] = await Promise.all([folders.quiet === true ? this.#loaded() : this.#ready(batch.columns), this.#appTargets()]);
     if (!state) return false;
     const targets = state.created ? await this.#appTargets() : firstTargets;
-    const actions = this.#actionsOf(state.data, targets, entries, { ...lot, extra: folders.extra || [] });
+    const actions = this.#actionsOf(state.data, targets, entries, batch);
     if (!actions.length) return false;
     await this.#port.doc.applyUserActions(actions);
     await this.#stamp(state.data);
@@ -416,7 +440,7 @@ export class Rangement {
 
   // Les actions d'un lot de rangement : les lignes des fichiers dans `GFS_Filing` (ceux des apps qui tiennent leur rangement vont chez elles), les lignes
   // d'état des dossiers, ce que les apps tiennent, puis les actions de plus (`extra`).
-  #actionsOf(data, targets, entries, { add, drop, moved, merged, pin, unpin, extra }) {
+  #actionsOf(data, targets, entries, { add, drop, moved, merged, pin, unpin, extra, looks }) {
     const identity = this.identity;
     const tableId = this.#table.id;
     const actions = entries.filter(({ app }) => !targets.has(app)).map(({ app, file, pinned, folder }) => {
@@ -425,7 +449,7 @@ export class Rangement {
       const record = { Favorite: pinned === true, Folder: folder || '' };
       return at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] : ['AddRecord', tableId, null, { ...key, ...record }];
     });
-    actions.push(...folderActions(tableId, data, identity, { add, drop, moved, merged, pin, unpin }));
+    actions.push(...folderActions(tableId, data, identity, { add, drop, moved, merged, pin, unpin, looks }));
     // Chez une app, un dossier déplacé est une ligne d'état retirée puis ajoutée : son numéro ne désigne rien dans les partages.
     const batch = { entries, add: [...add, ...moved.map(([, to]) => to)], drop: [...drop, ...moved.map(([from]) => from), ...merged.map(([from]) => from)] };
     for (const [app, target] of targets) actions.push(...this.#appBatch(app, target, batch, { tableId, data }, identity));

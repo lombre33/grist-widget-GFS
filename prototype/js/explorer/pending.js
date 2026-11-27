@@ -12,29 +12,38 @@ import { normalize } from '../ui/search.js';
 
 const searchOf = file => normalize(`${file.name} ${file.folder}`);
 
-// Ce que chaque sorte de changement fait à { files, folders, pinned } (`folders` : les dossiers gardés sans fichier ; `pinned` : les dossiers en favori,
-// absents d'une liste qui n'en porte pas). Les fichiers touchés sont recopiés, les autres gardent leur objet. Un fichier se désigne comme le rangement
-// l'écrit : par son app et son numéro.
-const pinnedOf = lists => lists.pinned || [];
+// Ce que chaque sorte de changement fait à { files, folders, pinned, looks } (`folders` : les dossiers gardés sans fichier ; `pinned` : les dossiers en favori,
+// absents d'une liste qui n'en porte pas ; `looks` : l'apparence des dossiers, chemin -> apparence). Les fichiers touchés sont recopiés, les autres gardent
+// leur objet. Un fichier se désigne comme le rangement l'écrit : par son app et son numéro.
 const SHOW = {
   // le ★ et le dossier d'un fichier (épingler, ranger, déplacer : une ligne de rangement)
-  place: (lists, { app, id, pinned, folder }) => ({ ...lists,
-    files: lists.files.map(file => (file.app === app && file.id === String(id) ? { ...file, pinned, folder, search: searchOf({ ...file, folder }) } : file)) }),
+  place: ({ files, ...rest }, { app, id, pinned, folder }) => ({ ...rest,
+    files: files.map(file => (file.app === app && file.id === String(id) ? { ...file, pinned, folder, search: searchOf({ ...file, folder }) } : file)) }),
   // le nom d'un fichier
-  rename: (lists, { key, name }) => ({ ...lists, files: lists.files.map(file => (file.key === key ? { ...file, name, search: searchOf({ ...file, name }) } :
-    file)) }),
+  rename: ({ files, ...rest }, { key, name }) => ({ ...rest,
+    files: files.map(file => (file.key === key ? { ...file, name, search: searchOf({ ...file, name }) } : file)) }),
   // un fichier qui part à la corbeille (choix du porteur, 24/11) : il quitte la liste des fichiers vivants
-  leave: (lists, { app, id }) => ({ ...lists, files: lists.files.filter(file => !(file.app === app && file.id === String(id))) }),
+  leave: ({ files, ...rest }, { app, id }) => ({ ...rest, files: files.filter(file => !(file.app === app && file.id === String(id))) }),
   // des dossiers gardés sans fichier qui s'ajoutent (un dossier neuf, ou celui qu'un déplacement a vidé), une fois chacun
-  addFolders: (lists, { paths }) => ({ ...lists, folders: [...lists.folders, ...paths.filter(path => !lists.folders.includes(path))] }),
+  addFolders: ({ folders, ...rest }, { paths }) => ({ ...rest, folders: [...folders, ...paths.filter(path => !folders.includes(path))] }),
   // des dossiers gardés sans fichier qui s'en vont, et leur favori avec eux (la ligne d'état qui le porte s'en va)
-  dropFolders: (lists, { paths }) => ({ ...lists, folders: lists.folders.filter(path => !paths.includes(path)),
-    ...(lists.pinned ? { pinned: lists.pinned.filter(path => !paths.includes(path)) } : {}) }),
+  dropFolders: ({ folders, pinned, ...rest }, { paths }) => ({ ...rest, folders: folders.filter(path => !paths.includes(path)),
+    ...(pinned ? { pinned: pinned.filter(path => !paths.includes(path)) } : {}) }),
   // des dossiers qui entrent dans les favoris (`on`) ou en sortent
-  pinFolders: (lists, { paths, on }) => ({ ...lists, pinned: on ? [...new Set([...pinnedOf(lists), ...paths])] :
-    pinnedOf(lists).filter(path => !paths.includes(path)) }),
+  pinFolders: ({ pinned = [], ...rest }, { paths, on }) => ({ ...rest,
+    pinned: on ? [...new Set([...pinned, ...paths])] : pinned.filter(path => !paths.includes(path)) }),
   // des dossiers en favori qui changent de chemin (renommés, déplacés, fondus dans un dossier qui existe déjà : `pairs`, [[de, vers]]) : leur favori les suit
-  followPins: (lists, { pairs }) => ({ ...lists, pinned: [...new Set(pinnedOf(lists).map(path => (pairs.find(([from]) => from === path) || [0, path])[1]))] }),
+  followPins: ({ pinned = [], ...rest }, { pairs }) => ({ ...rest,
+    pinned: [...new Set(pinned.map(path => (pairs.find(([from]) => from === path) || [0, path])[1]))] }),
+  // l'apparence d'un dossier (js/files/folder-looks.js) : posée, ou retirée quand `look` est null
+  look: ({ looks = new Map(), ...rest }, { path, look }) => ({ ...rest, looks: new Map(
+    [...looks].filter(([key]) => key !== path).concat(look ? [[path, look]] : [])) }),
+  // l'apparence qui suit les dossiers déplacés (`moved` : [[de, vers]]) et s'en va avec ceux qui s'effacent ou se fondent dans un autre (`gone` : [chemin])
+  moveLooks: ({ looks = new Map(), ...rest }, { moved = [], gone = [] }) => {
+    const next = new Map([...looks].filter(([path]) => !gone.includes(path) && !moved.some(([from]) => from === path)));
+    for (const [from, to] of moved) if (looks.has(from)) next.set(to, looks.get(from));
+    return { ...rest, looks: next };
+  },
 };
 
 export class Pending {

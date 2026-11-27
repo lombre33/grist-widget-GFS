@@ -21,6 +21,9 @@ import { columnOf } from './annuaire-schema.js';
 import { keyPath } from './annuaire-config.js';
 import { nameOf } from './annuaire-model.js';
 import { GLYPHS, MAX_PATH, typeLabel, formRow } from './annuaire-setup-shared.js';
+import { valuesEditor } from './annuaire-values-editor.js';
+import { isChoiceGenre } from './annuaire-field-edit.js';
+import { genreOf } from './annuaire-schema.js';
 
 const SEP = '\u001f';
 const DEEP_HOPS = 2; // combien de références la recherche suit d'un coup
@@ -104,8 +107,14 @@ function createWindow(host, { table, types }) {
   const note = h('span', { class: 'mod-note', 'aria-live': 'polite' });
   const cancel = h('button', { type: 'button', class: 'btn', dataset: { fk: 'nc-cancel' } }, t('an.set.cancel'));
   const ok = h('button', { type: 'button', class: 'btn primary', 'aria-disabled': 'true', dataset: { fk: 'nc-ok' } }, t('an.new.ok'));
-  const paint = () => seg.replaceChildren(...types.map(each => h('button', { type: 'button', class: 'an-seg-b', 'aria-pressed': String(each === chosen),
-    dataset: { type: each.type, fk: `nc-type:${each.type}` } }, each.label)));
+  const values = valuesEditor({ t, fk: 'nc-val' });
+  const valuesRow = formRow(t('an.new.values'), values.node, t('an.new.valuesHint'));
+  const choosing = () => isChoiceGenre(genreOf(chosen.type));
+  const paint = () => {
+    seg.replaceChildren(...types.map(each => h('button', { type: 'button', class: 'an-seg-b', 'aria-pressed': String(each === chosen),
+      dataset: { type: each.type, fk: `nc-type:${each.type}` } }, each.label)));
+    valuesRow.hidden = !choosing();
+  };
   const check = () => {
     const name = input.value.trim();
     const problem = blocked || (name && taken(name) ? t('an.new.taken') : '');
@@ -115,7 +124,7 @@ function createWindow(host, { table, types }) {
   };
   const section = h('section', { class: 'mod an-nl', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'an-nc-title' },
     h('header', { class: 'mod-head' }, h('h2', { id: 'an-nc-title' }, t('an.new.title'))),
-    h('div', { class: 'mod-body an-set-body' }, formRow(`${t('an.new.name')} *`, input), types.length > 1 ? formRow(t('an.new.type'), seg) : null,
+    h('div', { class: 'mod-body an-set-body' }, formRow(`${t('an.new.name')} *`, input), types.length > 1 ? formRow(t('an.new.type'), seg) : null, valuesRow,
       h('p', { class: 'an-set-hint' }, t('an.new.why', { table }))),
     h('footer', { class: 'mod-foot' }, note, cancel, ok));
   paint();
@@ -125,7 +134,7 @@ function createWindow(host, { table, types }) {
     busy = true;
     check();
     try {
-      done((await host.createColumn(table, { name: input.value.trim(), type: chosen.type })).id);
+      done((await host.createColumn(table, { name: input.value.trim(), type: chosen.type, choices: choosing() ? values.values() : [] })).id);
     } catch (error) {
       busy = false;
       check();

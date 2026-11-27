@@ -502,3 +502,14 @@ test('rowKey : « dir: » pour un dossier du rangement, « grp: » pour un dossi
   assert.equal(rowKey({ kind: 'folder', path: 'Un/dossier' }), 'dir:Un/dossier');
   assert.equal(rowKey({ kind: 'folder', shared: true, path: 'GFS_Received:Contrats' }), 'grp:GFS_Received:Contrats');
 });
+
+test('listItems : un raccourci (js/files/shortcuts.js) se montre dans son dossier de « Moi », jamais dans Récents, Favoris, Ouverts ni une recherche, où le fichier visé est déjà', () => {
+  const link = { key: 'gfs-shortcut:s1', app: 'gfs-shortcut', id: 's1', name: 'Convocation (lien)', folder: 'Formation', pinned: true, trashed: null, ts: T0 + DAY, type: 'email', typeInfo: null,
+    known: true, family: 'document', by: '', weight: 0, pieces: [], search: 'convocation lien formation', shortcut: { target: 'publipostage:2', state: 'ok' } };
+  const all = [...files(), link];
+  const ids = view => listItems(all, state(view), OPTIONS).rows.filter(r => r.kind === 'file').map(r => r.file.id);
+  assert.ok(ids({ path: 'Formation' }).includes('s1'), 'dans son dossier');
+  for (const view of ['recent', 'fav', 'opened']) assert.equal(ids({ view }).includes('s1'), false, `pas dans « ${view} »`);
+  assert.equal(ids({ q: 'convocation' }).includes('s1'), false, 'pas dans une recherche');
+  assert.equal(ids({ q: 'convocation' }).includes('2'), true, 'le fichier visé y est');
+});

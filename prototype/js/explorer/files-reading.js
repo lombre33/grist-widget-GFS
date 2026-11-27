@@ -15,6 +15,7 @@ import { createFileRefresh } from './file-refresh.js';
 import { listSignature } from './list-signature.js';
 import { filesEntry } from '../files/gfs-files.js';
 import { ANNUAIRES_ENTRY } from '../files/annuaire-files.js';
+import { shortcutFiles } from '../files/shortcuts.js';
 
 export class FilesReading {
   #x;
@@ -36,7 +37,10 @@ export class FilesReading {
         this.#waited = typeof learning !== 'string';
         if (x.prepare) await x.prepare();
         if (x.hint) await x.hint.prime(x.reader); // un document vu lourd à la visite précédente se lit d'emblée en lecture légère
-        return { ...(await loadFiles(x.port, [...x.apps(), filesEntry(), ANNUAIRES_ENTRY], learning, x.reader, x.guard || null)), stamp };
+        const read = await loadFiles(x.port, [...x.apps(), filesEntry(), ANNUAIRES_ENTRY], learning, x.reader, x.guard || null);
+        // les raccourcis de la personne (js/files/shortcuts.js) se montrent à côté des fichiers dans l'explorateur, sans en être : ce qui lit les fichiers
+        // (`onFiles`, les partages « à jour ») ne les voit pas
+        return { ...read, shortcutFiles: shortcutFiles(read.shortcuts, read.files, read.received), stamp };
       },
       onRestricted: () => {
         x.explorer().setFiles([]);
@@ -75,7 +79,7 @@ export class FilesReading {
   }
 
   #loaded(result, opts) {
-    const { files, trash, folders, pinned, received, spaces, problems, stats, stamp, gfsTable, binTable } = result;
+    const { files, trash, folders, pinned, received, spaces, problems, stats, stamp, gfsTable, binTable, shortcutFiles: shortcuts = [], looks } = result;
     const x = this.#x;
     const signature = listSignature(result);
     const same = signature === this.#signature;
@@ -87,7 +91,7 @@ export class FilesReading {
     x.rangement.note(gfsTable); // la table du rangement existe (ou non) : un geste de rangement le sait sans la relire
     if (x.noteBin) x.noteBin(binTable); // de même pour la table de la corbeille : mettre un fichier à la corbeille le sait
     if (x.pending) x.pending.retire(stamp);
-    x.explorer().setFiles(files, trash, folders, received, pinned);
+    x.explorer().setFiles([...files, ...shortcuts], trash, folders, received, looks, pinned);
     x.onFiles(files);
     if (x.onNotices) x.onNotices(result); // la cloche : ce qu'on a donné à la personne, d'après les fichiers, les espaces et les partages qu'elle lit
     x.openedBar().sync(); // un fichier renommé, ou disparu, change le compte de la barre

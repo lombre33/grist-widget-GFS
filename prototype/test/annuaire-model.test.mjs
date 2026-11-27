@@ -49,7 +49,7 @@ test('config : les niveaux sans colonne et les champs en double sont écartés, 
     fields: [{ col: 'Contrat', filter: 1 }, { col: 'Contrat' }, { col: '' }, { col: 'Site', filter: false }], inconnue: 'perdue' });
   assert.equal(config.name, 'Nom');
   assert.deepEqual(config.levels, [{ label: 'Pôle', path: ['Structure', 'Pole'] }]);
-  assert.deepEqual(config.fields, [{ col: 'Contrat', path: [], filter: true, list: false, column: false }, { col: 'Site', path: [], filter: false, list: false, column: false }]);
+  assert.deepEqual(config.fields, [{ col: 'Contrat', path: [], label: '', filter: true, list: false, column: false }, { col: 'Site', path: [], label: '', filter: false, list: false, column: false }]);
   assert.equal('inconnue' in config, false);
   assert.deepEqual(readConfig(writeConfig(config)), config);
 });
@@ -233,7 +233,7 @@ test('config : l\'ordre du nom est celui qu\'on a dit, sinon « prénom nom » ;
   assert.equal(readConfig({ order: 'last-comma' }).order, 'last-comma');
   assert.deepEqual([readConfig({}).upper, readConfig({ upper: true }).upper, readConfig({ upper: 'oui' }).upper], [false, true, false]);
   assert.equal(readConfig({ first: ' Prénom ' }).first, 'Prénom');
-  assert.deepEqual(readConfig({ fields: [{ col: 'Contrat', list: true }] }).fields, [{ col: 'Contrat', path: [], filter: false, list: true, column: false }]);
+  assert.deepEqual(readConfig({ fields: [{ col: 'Contrat', list: true }] }).fields, [{ col: 'Contrat', path: [], label: '', filter: false, list: true, column: false }]);
 });
 
 test('nom : une colonne seule, ou le prénom et le nom dans l\'ordre dit ; le tri est par nom de famille, les initiales celles du prénom et du nom', () => {
@@ -283,12 +283,12 @@ test('numéro : le lien d\'appel ne garde que ce qui se compose (chiffres, « + 
 
 test('champs : une colonne de la table, ou un chemin à suivre (retour du porteur, 25/11) ; sa clé, son nom, son genre, ses valeurs, son filtre et les tables lues', () => {
   const read = readConfig({ fields: [{ col: 'Contrat' }, { path: ['Structure', 'Pole'], filter: true, list: true }, { col: 'Structure', path: ['Structure'] }, { path: ['Structure', 'Pole'] }] });
-  assert.deepEqual(read.fields, [{ col: 'Contrat', path: [], filter: false, list: false, column: false },
-    { col: 'Structure › Pole', path: ['Structure', 'Pole'], filter: true, list: true, column: false },
-    { col: 'Structure', path: [], filter: false, list: false, column: false }], 'une colonne seule garde sa clé ; le même chemin ne compte qu\'une fois');
+  assert.deepEqual(read.fields, [{ col: 'Contrat', path: [], label: '', filter: false, list: false, column: false },
+    { col: 'Structure › Pole', path: ['Structure', 'Pole'], label: '', filter: true, list: true, column: false },
+    { col: 'Structure', path: [], label: '', filter: false, list: false, column: false }], 'une colonne seule garde sa clé ; le même chemin ne compte qu\'une fois');
   const [contrat, chemin] = read.fields;
   assert.deepEqual([fieldPath(contrat), fieldPath(chemin), fieldLabel(contrat), fieldLabel(chemin)], [['Contrat'], ['Structure', 'Pole'], 'Contrat', 'Pole']);
-  assert.deepEqual(JSON.parse(writeConfig(read)).fields[1], { col: 'Structure › Pole', path: ['Structure', 'Pole'], filter: true, list: true, column: false });
+  assert.deepEqual(JSON.parse(writeConfig(read)).fields[1], { col: 'Structure › Pole', path: ['Structure', 'Pole'], label: '', filter: true, list: true, column: false });
   const config = { ...configFixture(), fields: [{ col: 'Pôle de la structure', path: ['Structure', 'Pole'], filter: true, list: true }] };
   const built = buildPeople(config, 'Personnes', doc, schema);
   assert.deepEqual(built.find(person => person.row === 1).fields['Pôle de la structure'], ['Pôle Ressources']);

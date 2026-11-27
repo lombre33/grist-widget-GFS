@@ -74,3 +74,12 @@ test('à la corbeille : quand le fichier y est allé et par qui, et où il revie
   const root = read(infoBar(ctx({ state: { view: 'trash' }, selected: { kind: 'file', file: file({ trashed: { ts: 1762000000, by: '' }, by: '' }) } })));
   assert.equal(root.second, t('trash.deletedOn', { date: '01/11/2025' }), 'sans auteur ni dossier : la date seule');
 });
+
+test('un raccourci choisi (js/files/shortcuts.js) : son poids est un tiret (sa cible pèse déjà), pas « 0 o » ; « s\'ouvre dans » est celui de son fichier, rien quand on ne le lit plus', () => {
+  const link = file({ weight: 0, shortcut: { target: 'publipostage:1', state: 'ok' }, type: 'document' });
+  const one = read(infoBar(ctx({ selected: { kind: 'file', file: link } })));
+  assert.equal(one.first, 'Convocation· document · —');
+  assert.equal(one.second.startsWith('S\'ouvre dans Publipostage+'), true);
+  const gone = read(infoBar(ctx({ selected: { kind: 'file', file: file({ weight: 0, shortcut: { target: 'x', state: 'missing' } }) }, lockOf: () => ({ text: 'Plus accessible' }), opensIn: () => '' })));
+  assert.equal(gone.second, 'Plus accessible');
+});

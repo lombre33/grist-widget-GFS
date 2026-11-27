@@ -26,6 +26,12 @@ import { Filing } from '/js/explorer/filing.js';
 import { askName, chooseFolder } from '/js/explorer/filing-window.js';
 import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer/explorer-model.js';
 import { Copying } from '/js/files/copying.js';
+import { readShortcuts, shortcutFiles } from '/js/files/shortcuts.js';
+import { ShortcutGestures } from '/js/explorer/shortcut-gestures.js';
+import { readFolderLooks } from '/js/files/folder-looks.js';
+import { LookGestures } from '/js/explorer/look-gestures.js';
+import { askLook } from '/js/explorer/look-window.js';
+import { isSpacePath } from '/js/sharing/spaces-filing.js';
 import { applyPlacement, readSpaces } from '/js/sharing/spaces-filing.js';
 import { LinkControl } from '/js/sharing/link-control.js';
 import { filesManifest, filesColumnIds } from '/js/files/gfs-files.js';
@@ -130,7 +136,14 @@ async function mount() {
   let kept = []; // les dossiers que la personne garde sans fichier
   let pinned = []; // ceux de ses dossiers qu'elle a mis en favori (test/favoris-dossiers-firefox.mjs)
   let arrivals = []; // les fichiers reçus d'un autre document (« Partagés avec moi », `window.__shared`)
-  const show = () => explorer.setFiles(live, trashed, kept, arrivals, pinned);
+  // Les raccourcis (test/raccourcis-firefox.mjs) : les lignes `gfs-shortcut` d'un rangement de doublure (la table telle que `fetchTable` la rend), lues par le vrai modèle ; `window.__shortcutsOn` allume le bouton.
+  let shortcutRows = [];
+  const shortcutData = () => ({ id: shortcutRows.map(row => row.id), ...Object.fromEntries(['User', 'App', 'File', 'Folder', 'Value'].map(column => [column, shortcutRows.map(row => row[column])])) });
+  // L'apparence des dossiers (test/apparence-firefox.mjs) : les lignes d'état d'un rangement de doublure, lues par le vrai modèle ; `window.__looksOn` allume l'article « Apparence… ».
+  let lookRows = [];
+  const lookData = () => ({ id: lookRows.map(row => row.id), ...Object.fromEntries(['User', 'App', 'File', 'Folder', 'Value'].map(column => [column, lookRows.map(row => row[column])])) });
+  const show = () => explorer.setFiles([...live, ...shortcutFiles(readShortcuts(shortcutData(), 'essai@example.com'), live, arrivals)], trashed, kept, arrivals,
+    readFolderLooks(lookData(), 'essai@example.com'), pinned);
   const folders = new Map(files.map(file => [file.key, file.folder])); // où chaque fichier est au départ : couper puis coller en déplace, `__reset` les remet
   const pick = (list, wanted) => list.findIndex(file => file.key === wanted.key);
   const move = (from, to, wanted) => { const at = pick(from, wanted); if (at < 0) return null; const [file] = from.splice(at, 1); to.push(file); return file; };
@@ -221,6 +234,40 @@ async function mount() {
     port: null, rangement, t: i18n.t, locale: () => locale, files: () => live, folders: () => kept, pinnedFolders: () => pinned, appName: () => 'Publipostage+', here: () => (explorer.state.view === 'folder' ? explorer.state.path : ''),
     writeBlock: () => null, notice: text => window.__notices.push(text), specOf: () => null, refresh: async () => show(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
   });
+  let shortcutSeq = 0;
+  const shortcuts = new ShortcutGestures({
+    rangement: { identity: 'essai@example.com', writeShortcuts: async make => {
+      const actions = make({ data: shortcutData(), tableId: 'GFS_Filing', identity: 'essai@example.com' });
+      for (const [kind, , id, values] of actions) {
+        if (kind === 'AddRecord') shortcutRows.push({ id: ++shortcutSeq, ...values });
+        else if (kind === 'UpdateRecord') Object.assign(shortcutRows.find(row => row.id === id), values);
+        else if (kind === 'RemoveRecord') shortcutRows = shortcutRows.filter(row => row.id !== id);
+      }
+      return actions.length > 0;
+    } },
+    t: i18n.t, notice: text => window.__notices.push(text), writeBlock: () => null, files: () => live, folders: () => kept, locale: () => locale,
+    here: () => (explorer.state.view === 'folder' ? explorer.state.path : ''), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
+    queue: task => task(), undoStack: filing.undoStack, refresh: async () => show(),
+  });
+  let lookSeq = 0;
+  const lookGestures = new LookGestures({
+    rangement: { identity: 'essai@example.com', known: true, writeLooks: async make => {
+      const actions = make({ data: lookData(), tableId: 'GFS_Filing', identity: 'essai@example.com' });
+      for (const [kind, , id, values] of actions) {
+        if (kind === 'AddRecord') lookRows.push({ id: ++lookSeq, ...values });
+        else if (kind === 'UpdateRecord') Object.assign(lookRows.find(row => row.id === id), values);
+      }
+      return actions.length > 0;
+    } },
+    t: i18n.t, notice: text => window.__notices.push(text), writeBlock: () => null, looks: () => explorer.looks, isSpace: isSpacePath,
+    exists: path => path === '' || live.some(file => file.folder === path || file.folder.startsWith(`${path}/`)) || kept.includes(path),
+    windows: { look: opts => askLook(layer(opts)) }, queue: task => task(), undoStack: filing.undoStack, refresh: async () => show(),
+  });
+  window.__looksOn = false;
+  window.__lookLines = () => lookRows.map(row => ({ folder: row.Folder, value: row.Value }));
+  window.__shortcutsOn = false;
+  window.__shortcutGestures = shortcuts;
+  window.__shortcutLines = () => shortcutRows.map(row => ({ folder: row.Folder, ...JSON.parse(row.Value) }));
   // Un espace « Achats » (les espaces partagés, lot 4b) : le premier modèle est rangé dans son dossier Contrats, qui a un sous-dossier vide ; « Espaces » est une racine à côté de « Moi ».
   window.__spaces = () => {
     const info = readSpaces({ id: [1], Key: ['achats'], Name: ['Achats'] }, { id: [1, 2], Target: [live[0].key, ''], Space: ['achats', 'achats'], Folder: ['Contrats', 'Contrats/Sous'] });
@@ -416,21 +463,21 @@ async function mount() {
   const openedFiles = new OpenedFiles();
   const explorer = new Explorer({
     container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', received,
-    typeLabel: file => (file.received ? received.typeLabel(file) : baseLabel(file)),
-    lockOf: file => (file.received ? received.lockOf(file) : (file.name === 'Autre format' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => window.__importTypes || [], canClose: () => window.__canClose !== false,
+    typeLabel: file => (file.shortcut ? shortcuts.typeLabel(file, baseLabel) : (file.received ? received.typeLabel(file) : baseLabel(file))),
+    lockOf: file => (file.shortcut ? shortcuts.lockOf(file) : file.received ? received.lockOf(file) : (file.name === 'Autre format' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => window.__importTypes || [], canClose: () => window.__canClose !== false,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
       langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }),
       reopen: () => ({ on: window.__reopen, toggle: () => { window.__reopen = !window.__reopen; } }), place, onAbout: () => window.__about(), onDependencies: () => { window.__dependenciesAsked = (window.__dependenciesAsked || 0) + 1; void window.__dependencies(); },
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }),
       index: () => ({ why: null, open: () => { window.__indexFromSettings = (window.__indexFromSettings || 0) + 1; window.__indexAsk(); }, notice: text => window.__notices.push(text) }) }),
-    onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; }, get notices() { return window.__noticeStore; },
+    onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; }, get shortcuts() { return window.__shortcutsOn ? shortcuts : null; }, get lookGestures() { return window.__looksOn ? lookGestures : null; }, get notices() { return window.__noticeStore; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
     onImport: entry => { window.__imported = entry.valeur; }, onTemplates: () => { window.__templatesAsked = (window.__templatesAsked || 0) + 1; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file),
       // « Partager… » sur la ligne d'un espace entier (demande du 25/11) : il ouvre le partage de l'espace ; « Espaces » seul et un espace inconnu restent grisés.
       whyNotShareFolder: path => (path === 'Espaces' ? i18n.t('share.folder.space') : null),
       shareFolderFile(path) { return /^Espaces\/[^/]+$/.test(path) ? { key: `espace:${path.split('/')[1].toLowerCase()}`, name: path.split('/')[1], space: { name: path.split('/')[1] }, wholeSpace: true } : this.folderFile(path); } }, onWeight: estimate => window.__weight(estimate), alerts: ({ detail }) => (window.__alertBytes ? [alertBar({ bytes: window.__alertBytes, locale, t: i18n.t, detail })] : []), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
-    filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
+    filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: file => filing.moveFile(file), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: path => filing.moveFolder(path), ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), togglePinFolder: path => filing.togglePinFolder(path), undoStack: filing.undoStack },
   });
   window.__explorer = explorer;
@@ -453,6 +500,10 @@ async function mount() {
     arrivals = [];
     window.__sharedBlocked = '';
     window.__linkProxy = undefined; // plus de liens entre espaces : les menus redeviennent ceux d'avant
+    window.__shortcutsOn = false; // ni bouton ni raccourci : les menus redeviennent ceux d'avant
+    shortcutRows = [];
+    lookRows = [];
+    window.__looksOn = false;
     window.__filing.length = 0;
     window.__copies.length = 0;
     window.__notices.length = 0;

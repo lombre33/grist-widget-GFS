@@ -422,10 +422,14 @@ export class AnnuaireControl {
     const schema = await this.#schema();
     if (!schema) return;
     const admin = (await this.#proof()) === true;
-    const done = await new AnnuaireSetup({ ...this.#setupTools(schema), annuaire: current, taken: [], lock: this.#lock.forSetup(current, admin),
+    const setup = new AnnuaireSetup({ ...this.#setupTools(schema), annuaire: current, taken: [], lock: this.#lock.forSetup(current, admin),
       read: (draft, cache) => this.#store.read({ ...current, ...draft },
-      schema, cache) }).run();
-    if (!done) return;
+      schema, cache) });
+    const done = await setup.run();
+    if (!done) {
+      if (setup.wrote) await this.#read(); // une colonne créée ou modifiée pendant le réglage : l'annuaire se relit avec ce que Grist a maintenant
+      return;
+    }
     try {
       const saved = await this.#store.save(current, done.config, done.table);
       this.#list = this.#list.map(each => (each.row === saved.row ? saved : each));
@@ -441,7 +445,8 @@ export class AnnuaireControl {
   #setupTools(schema) {
     return { container: this.#o.container, inertTargets: this.#o.inertTargets, t: this.#o.t, schema,
       read: (draft, cache) => this.#store.read(draft, schema, cache),
-      fetch: name => this.#store.table(name), createColumn: (table, name, type, show) => this.#store.addColumn(table, name, type, show),
+      fetch: name => this.#store.table(name), createColumn: (table, name, type, show, choices) => this.#store.addColumn(table, name, type, show, choices),
+      columnState: (table, column) => this.#store.columnState(table, column), modify: actions => this.#store.modify(actions),
       createTable: name => this.#store.addTable(name),
         writeBlock: () => this.#o.writeBlock() };
   }

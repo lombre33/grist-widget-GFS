@@ -7,6 +7,7 @@
 // offre toujours de copier toutes les adresses (aucune limite) ou d'exporter la liste.
 
 import { normalize } from '../ui/search.js';
+import { fieldLabel } from './annuaire-config.js';
 
 // La longueur au-delà de laquelle un lien n'est plus ouvert (marge sous les ~2 000 caractères où des messageries coupent).
 export const MAILTO_LIMIT = 1800;
@@ -85,8 +86,7 @@ export function csvColumns(config, { labels, genres, show }) {
   if (config.phone) columns.push({ label: labels.phone, of: person => person.phone });
   config.levels.forEach((level, i) => columns.push({ label: level.label || level.path.at(-1), of: person => person.levels[i] }));
   for (const field of config.fields.filter(each => each.list || each.column)) {
-    const label = field.path && field.path.length ? field.path.at(-1) : field.col;
-    columns.push({ label, of: person => (person.fields[field.col] || []).map(value => show(value, genres[field.col])).join(', ') });
+    columns.push({ label: fieldLabel(field), of: person => (person.fields[field.col] || []).map(value => show(value, genres[field.col])).join(', ') });
   }
   return columns;
 }

@@ -6,6 +6,7 @@ import { icon } from '../ui/icons.js';
 import { person, formatDate, pathParts, stampOf, authorOf, rowKey, FAMILY_NAMES } from './explorer-model.js';
 import { SPACES_ROOT, folderLabel, isSpacePath } from '../sharing/spaces-filing.js';
 import { formatBytes } from '../weight/weight.js';
+import { folderIcon, lookColor, lookIn } from './folder-look-view.js';
 
 export const SORT_HEADERS = [['name', 'ex.name'], ['type', 'ex.type'], ['poids', 'ex.weight'], ['mod', 'ex.modified'], ['by', 'ex.by']];
 
@@ -95,6 +96,8 @@ const family = file => (FAMILY_NAMES.includes(file.family) ? file.family : null)
 
 // Le poids d'une ligne, dans la langue de la personne (js/weight/weight.js).
 const weightText = (ctx, bytes) => formatBytes(bytes, ctx.locale, ctx.t);
+// Le poids d'un fichier ; un raccourci ne pèse rien (sa cible pèse déjà) : un tiret, pas « 0 o ».
+const fileWeight = (ctx, file) => (file.shortcut ? '—' : weightText(ctx, file.weight));
 
 // Le fil d'Ariane : la racine (« Moi »), puis les dossiers ; « Résultats » quand une recherche ou un filtre est en cours.
 export function crumbs(ctx) {
@@ -120,12 +123,13 @@ export function crumbs(ctx) {
   return [link('', t('ex.me')), ...parts.flatMap((part, i) => [sep(), crumb(part, i)])];
 }
 
-function treeRow({ label, glyph, data, current, depth = 0, caret = null, toggle = null, count = null, grey = false }) {
+function treeRow({ label, glyph, data, current, depth = 0, caret = null, toggle = null, count = null, grey = false, look = null }) {
   // Le nom entier au survol : le volet est étroit, un nom long y est coupé (charte).
   return h('button', { type: 'button', class: 'tr-row', title: label, dataset: data, 'aria-current': String(Boolean(current)),
-    'aria-disabled': grey ? 'true' : null, vars: { '--d': depth } },
+    'aria-disabled': grey ? 'true' : null, 'data-look': lookColor(look), vars: { '--d': depth } },
     h('span', { class: 'car-slot', dataset: toggle === null ? null : { toggle } }, caret ? icon('chev-right', caret === 'open' ? 'open' : '') : null),
-    icon(glyph, glyph === 'folder' ? 'fld' : ''), h('span', { class: 'lbl' }, label), count === null ? null : h('span', { class: 'cnt' }, String(count)));
+    glyph === 'folder' ? folderIcon(look) : icon(glyph), h('span', { class: 'lbl' }, label),
+      count === null ? null : h('span', { class: 'cnt' }, String(count)));
 }
 
 // Le volet : Récents et Favoris toujours en haut, puis « Moi » et ses dossiers.
@@ -146,7 +150,8 @@ export function tree(ctx) {
     h('hr', { class: 'tr-sep' }));
   // « Espaces » est une racine à côté de « Moi » : ses lignes viennent après celles de « Moi », au même niveau que lui.
   const row = (item, shift) => h('div', { class: 'tr-folder' }, treeRow({
-    label: folderLabel(t, item.path, item.name), glyph: item.path === SPACES_ROOT ? 'users' : 'folder', data: { path: item.path }, current: inFolders &&
+    label: folderLabel(t, item.path, item.name), glyph: item.path === SPACES_ROOT ? 'users' : 'folder', look: lookIn(ctx, item.path), data: { path: item.path },
+    current: inFolders &&
       state.path === item.path, depth: item.depth + shift,
     caret: item.hasChildren ? (item.open ? 'open' : 'closed') : null, toggle: item.hasChildren ? item.path : null,
   }));
@@ -172,7 +177,7 @@ function fileCells(ctx, file, flat) {
   return [
     nameCell(ctx, file, flat),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, ctx.typeLabel(file))),
-    h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, file.weight)),
+    h('div', { class: 'wt', role: 'gridcell' }, fileWeight(ctx, file)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(stampOf(file), ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }, who.initials ? h('span', { class: 'who', title: who.name }, who.initials) : null),
     actionsCell(ctx, file),
@@ -202,7 +207,7 @@ const pinButton = (t, key, pinned) => h('button', { type: 'button', class: `rb p
 function actionsCell(ctx, file) {
   const { t } = ctx;
   return h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
-    : (ctx.state.view === 'shared' ? null : pinButton(t, file.key, file.pinned)), moreButton(t, file.key));
+    : (ctx.state.view === 'shared' || file.shortcut ? null : pinButton(t, file.key, file.pinned)), moreButton(t, file.key));
 }
 
 // « Restaurer » d'une ligne de la corbeille : il prend la place de l'étoile (un fichier à la corbeille ne s'épingle pas).
@@ -235,9 +240,10 @@ const whereHint = (ctx, folder) => (ctx.state.view === 'fav' && folder.parent ? 
 export function folderRow(ctx, folder) {
   const { t } = ctx;
   const key = rowKey(folder);
+  const look = folder.shared ? null : lookIn(ctx, folder.path); // un dossier reçu d'un autre document garde son aspect d'origine
   return h('div', { class: `ls-row folder${folder.pending ? ' lk' : ''}`, role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key },
-    'aria-selected': String(ctx.state.sel === key) },
-    h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't', title: folderLabel(t, folder.path, folder.name) },
+    'aria-selected': String(ctx.state.sel === key), 'data-look': lookColor(look) },
+    h('div', { class: 'nm', role: 'gridcell' }, folderIcon(look), h('span', { class: 't', title: folderLabel(t, folder.path, folder.name) },
       folderLabel(t, folder.path, folder.name)), whereHint(ctx, folder)),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, folderCaption(t, folder))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, folder.weight)),
@@ -251,22 +257,22 @@ function tileFacts(ctx, row) {
   const { t } = ctx;
   if (row.kind === 'folder') {
     return { folder: true, key: rowKey(row), lock: null, glyph: 'folder', name: row.name, caption: folderCaption(t, row), weight: weightText(ctx, row.weight),
-      fam: null, grey: row.pending > 0 };
+      fam: null, grey: row.pending > 0, look: row.shared ? null : lookIn(ctx, row.path) };
   }
   const file = row.file;
   const lock = ctx.lockOf(file);
   return { folder: false, key: file.key, lock, glyph: lock ? 'lock' : file.icon, name: file.name || t('ex.untitled'), caption: ctx.typeLabel(file),
-    weight: weightText(ctx, file.weight), fam: lock ? null : family(file) };
+    weight: fileWeight(ctx, file), fam: lock ? null : family(file) };
 }
 
 export function tile(ctx, row) {
-  const { folder, key, lock, glyph, name, caption, weight, fam, grey } = tileFacts(ctx, row);
+  const { folder, key, lock, glyph, name, caption, weight, fam, grey, look } = tileFacts(ctx, row);
   const selected = ctx.state.sel === key;
   return h('div', {
     class: `th${folder ? ' folder' : ''}${lock || grey ? ' lk' : ''}`, role: 'row', tabindex: selected ? '0' : '-1', dataset: { key },
-    'aria-selected': String(selected), 'data-fam': fam, title: lock ? lock.text : null,
+    'aria-selected': String(selected), 'data-fam': fam, 'data-look': lookColor(look), title: lock ? lock.text : null,
   },
-  h('div', { class: 'th-pv' }, icon(glyph, folder ? 'fld' : '')),
+  h('div', { class: 'th-pv' }, folder ? folderIcon(look) : icon(glyph)),
   h('span', { class: 'tn', title: lock ? `${name} · ${lock.text}` : name }, name),
   h('div', { class: 'tt' }, icon(glyph), caption),
   h('div', { class: 'tw' }, weight));
@@ -325,7 +331,8 @@ function noSelectionInfo(ctx) {
 function folderInfo(ctx, selected) {
   const { t } = ctx;
   const second = selected.shared ? t('rx.folder.hint') : filingHintOf(ctx);
-  return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)),
+  const look = selected.shared ? null : lookIn(ctx, selected.path);
+  return h('div', { class: 'inf', 'data-look': lookColor(look) }, infoLine1(folderIcon(look, ''), h('b', null, folderLabel(t, selected.path, selected.name)),
     h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
     second ? h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)) : null);
 }
@@ -337,7 +344,7 @@ function fileInfo(ctx, file) {
   const second = lock ? lock.text : fileFacts(ctx, file).filter(Boolean).join(' · ');
   return h('div', { class: 'inf', 'data-fam': lock ? null : family(file) },
     infoLine1(icon(lock ? 'lock' : file.icon), h('b', null, file.name || t('ex.untitled')),
-      h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)} · ${weightText(ctx, file.weight)}`)),
+      h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)} · ${fileWeight(ctx, file)}`)),
     h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)));
 }
 

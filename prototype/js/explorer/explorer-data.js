@@ -3,6 +3,8 @@
 // une table présente mais illisible est dite, app par app. Le rangement de GFS (`GFS_Filing`, 6.4) passe devant celui de chaque app.
 
 import { readFiles, readFiling, readGfsFiling, readGfsFolders, readGfsPinnedFolders, applyFiling } from './explorer-model.js';
+import { readShortcuts } from '../files/shortcuts.js';
+import { readFolderLooks } from '../files/folder-looks.js';
 import { TABLE } from '../files/rangement.js';
 import { readAppFolders, usable } from '../files/app-filing.js';
 import { BIN_TABLE, recipeOf, binFiles } from '../files/gfs-trash.js';
@@ -162,6 +164,8 @@ export async function loadFiles(port, apps, identity = '', reader = null, guard 
   if (reader) reader.learn(stats.bytes, problems.length > 0);
   stats.ms = Math.round(performance.now() - started);
   return { files, trash, folders, pinned, received: raw.received, spaces: raw.spaces, notices: raw.notices, problems, stats,
+    shortcuts: raw.gfs.data ? readShortcuts(raw.gfs.data, who) : [],
+    looks: raw.gfs.data ? readFolderLooks(raw.gfs.data, who) : new Map(),
     gfsTable: raw.gfs.data ? nameIn(raw.tables, TABLE) : null,
     binTable: raw.bin.data ? nameIn(raw.tables, BIN_TABLE) : null };
 }

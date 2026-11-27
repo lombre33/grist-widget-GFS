@@ -22,6 +22,8 @@ export class Removal {
     if (key.startsWith('dir:')) { await this.deleteFolder(key); return; }
     const file = x.files().find(item => item.key === key);
     if (!file) return;
+    // un raccourci se retire, sans corbeille : le fichier n'est pas touché
+    if (file.shortcut) { await this.leaving(key, () => opts.shortcuts.remove(file)); return; }
     if (!x.bin().handles(file)) { opts.notice(t('trash.appOnly', { app: opts.appName(file.app) })); return; }
     await this.leaving(key, () => x.bin().move(file));
   }

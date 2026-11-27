@@ -96,11 +96,11 @@ export class AnnuaireStore {
   // on le relit dans sa réponse. Le geste vient d'une fenêtre qui a dit ce qui s'écrit (js/annuaire/annuaire-setup-path.js).
   // Une référence montre la colonne `show` de sa table (le nom de la personne, pas son numéro : sans cela, la table montrerait des chiffres dans Grist) ; si ce
   // réglage échoue, la colonne reste créée, avec ses numéros.
-  addColumn(table, name, type, show = '') {
+  addColumn(table, name, type, show = '', choices = []) {
     return this.#then(async () => {
       const target = targetOf(type);
       const shown = target && show ? await this.#columnRef(target, show) : 0;
-      const result = await this.#port.doc.applyUserActions([addColumnAction(table, name, type, shown)]);
+      const result = await this.#port.doc.applyUserActions([addColumnAction(table, name, type, shown, choices)]);
       const made = result && Array.isArray(result.retValues) ? result.retValues[0] : null;
       const id = made && typeof made.colId === 'string' && made.colId ? made.colId : String(name).trim();
       if (shown && made && made.colRef) {
@@ -122,6 +122,25 @@ export class AnnuaireStore {
         PEOPLE_COLUMNS.map(col => col.id);
       return { id, columns: PEOPLE_COLUMNS.map((col, at) => ({ id: ids[at], type: col.type })) };
     });
+  }
+
+  // Ce que Grist garde d'une colonne, pour changer son type ou ses valeurs (js/annuaire/annuaire-field-edit.js) : { ids (les numéros de ligne), cells, raw (le
+  // texte de ses options, que le changement réécrit sans perdre les autres réglages) }, relus à l'instant ; une colonne qu'on ne trouve pas donne des cellules
+  // vides.
+  columnState(table, column) {
+    return this.#then(async () => {
+      const [data, tables, columns] = await Promise.all([this.#port.doc.fetchTable(table), this.#port.doc.fetchTable('_grist_Tables'),
+        this.#port.doc.fetchTable('_grist_Tables_column')]);
+      const parent = tables.id[tables.tableId.indexOf(table)];
+      const at = columns.id.findIndex((ref, i) => columns.parentId[i] === parent && columns.colId[i] === column);
+      return { ids: [...data.id], cells: Array.isArray(data[column]) ? [...data[column]] : [], raw: at >= 0 ? String(columns.widgetOptions[at] || '') : '' };
+    });
+  }
+
+  // Écrit un changement de colonne : les actions de js/annuaire/annuaire-field-edit.js (`modifyActions`), en un seul lot. Le geste vient du bouton d'une
+  // fenêtre qui a dit ce qui s'écrit ; Grist répond par ses règles d'accès (une erreur dit pourquoi : la fenêtre la montre telle quelle).
+  modify(actions) {
+    return this.#then(() => this.#port.doc.applyUserActions(actions));
   }
 
   // Le numéro (interne à Grist) d'une colonne d'une table : 0 quand on ne le trouve pas ou que la lecture est refusée.

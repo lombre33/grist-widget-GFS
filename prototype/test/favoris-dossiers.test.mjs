@@ -166,6 +166,16 @@ async function filed(rows, folders, entries = []) {
 }
 const mine = rows => rows.filter(line => line.User === ANA);
 
+test('Ctrl+Z d\'un dossier supprimé qui était en favori ET avait une apparence : une seule ligne revient, épinglée, avec son apparence (la ligne de main et la mienne se rejoignent)', async () => {
+  const look = { color: 'red', glyph: 'star' };
+  const { lines, done } = await filed([row(1, { Folder: 'Autre' })], { add: ['Vieux'], pin: ['Vieux'], looks: { Vieux: look } });
+  assert.equal(done, true);
+  const back = lines().filter(line => line.Folder === 'Vieux');
+  assert.equal(back.length, 1, 'une seule ligne, jamais deux (ni une épinglée, ni une avec l\'apparence)');
+  assert.equal(back[0].Favorite, true);
+  assert.deepEqual(JSON.parse(back[0].Value), { look }, 'l\'apparence est dans la même ligne');
+});
+
 test('épingler un dossier : la colonne « Favori » de sa ligne d\'état s\'allume, sur place ; une ligne déjà en favori n\'est pas réécrite ; celles des autres ne bougent pas', async () => {
   const { lines, done } = await filed([row(1, { Folder: 'Contrats' }), row(2, { Folder: 'Archives', Favorite: true }), row(3, { User: BEN, Folder: 'Contrats' })],
     { pin: ['Contrats', 'Archives'] });

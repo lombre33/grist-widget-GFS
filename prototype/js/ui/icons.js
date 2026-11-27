@@ -3,10 +3,14 @@
 // Le dessin est dans la page une seule fois (une feuille de symboles) ; chaque icône est un `<use>` : pas de style en ligne, la politique de
 // sécurité du contenu de GFS le refuse.
 
+import { LOOK_ICONS } from './icons-looks.js';
+
 const NS = 'http://www.w3.org/2000/svg';
 
 const ICONS = {
   doc: '<path d="M7 2h7l4 4v16H7z"/><path d="M14 2v4h4"/>',
+  // Un raccourci vers un fichier (js/files/shortcuts.js) : la page, et la flèche qui renvoie ailleurs (le mot « Raccourci » l'accompagne toujours).
+  shortcut: '<path d="M7 2h7l4 4v16H7z"/><path d="M14 2v4h4"/><path d="M10.5 18l5-5M11 13h4.5v4.5"/>',
   // Un PDF gardé par GFS : la page, et les lignes de ce qu'elle porte (le mot « PDF » l'accompagne toujours).
   pdf: '<path d="M7 2h7l4 4v16H7z"/><path d="M14 2v4h4"/><path d="M10 12h5M10 15.5h5M10 19h3"/>',
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M3 6l9 7 9-7"/>',
@@ -99,6 +103,8 @@ const ICONS = {
   fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   org: '<rect x="8.5" y="3" width="7" height="5" rx="1"/><rect x="2.5" y="16" width="7" height="5" rx="1"/><rect x="14.5" y="16" width="7" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/>',
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1.5 1.5 0 0 1-1.5 1.5A15.5 15.5 0 0 1 3.5 5.5 1.5 1.5 0 0 1 5 4Z"/>',
+  // Les repères dessinés dans un dossier et la goutte de « Apparence… » (js/ui/icons-looks.js).
+  ...LOOK_ICONS,
 };
 
 export const iconNames = () => Object.keys(ICONS);

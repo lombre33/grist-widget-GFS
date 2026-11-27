@@ -9,6 +9,7 @@
 //       act: { activate(key), deleteFolder(key), restore(key), purge(key), trashKey(key), duplicate(file), dropOpened(key) } }
 
 import { rowKey } from './explorer-model.js';
+import { isSpacePath } from '../sharing/spaces-filing.js';
 
 const item = (label, glyph, run, hint) => ({ label, icon: glyph, run, hint });
 
@@ -21,14 +22,50 @@ export function rowItems(x, key) {
     const { filing } = opts;
     const link = opts.links ? opts.links.linkAt(path) : null;
     if (link) return linkFolderItems(x, key, link);
-    return [item(t('ex.openFolder'), 'open', () => act.activate(key), t('key.enter')), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'),
-      item(t('ex.move'), 'move', () => void filing.moveFolder(path), choice ? undefined : 'Ctrl+X, V'), shareFolderItem(x, path), ...linkFolderItem(x, path),
+    return [item(t('ex.openFolder'), 'open', () => act.activate(key), t('key.enter')), pinFolderItem(x, key),
+      item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'), ...lookItem(x, path),
+      item(t('ex.move'), 'move', () => void filing.moveFolder(path), choice ? undefined : 'Ctrl+X, V'), shareFolderItem(x, path),
+        ...linkFolderItem(x, path),
         '-',
         deleteFolderItem(x, key)];
   }
   const file = x.shown.find(entry => entry.key === key);
   if (!file) return null;
+  if (file.shortcut) return shortcutItems(x, file);
   return ({ trash: () => trashItems(x, file), shared: () => sharedItems(x, file) })[x.view]?.() || fileItems(x, file);
+}
+
+// « Apparence… » (js/explorer/look-gestures.js) : juste après « Renommer », sur un dossier de « Moi » ; grisé pendant un choix et pour un dossier d'un espace,
+// le clic dit pourquoi. Rien (liste vide) sans les gestes (les essais de l'explorateur seul).
+function lookItem(x, path) {
+  const { t, opts } = x;
+  if (!opts.lookGestures) return [];
+  const why = x.choice ? t('ex.choose.newOff') : opts.lookGestures.whyNot(path);
+  return [{ label: t('lk.menu'), icon: 'droplet', greyed: why !== null, run: () => (why ? opts.notice(why) : void opts.lookGestures.change(path)) }];
+}
+
+// « Créer un raccourci… » (js/explorer/shortcut-gestures.js) : sur tout fichier, dans toutes les vues ; grisé pendant un choix, pour un raccourci et pour une
+// arrivée d'un autre document pas encore acceptée, le clic dit pourquoi. Rien (liste vide) sans le contrôle des raccourcis (les essais de l'explorateur seul).
+function shortcutCreateItem(x, file) {
+  const { t, opts } = x;
+  if (!opts.shortcuts) return [];
+  const why = x.choice ? t('ex.choose.newOff') : opts.shortcuts.whyNot(file);
+  return [{ label: t('sc.menu'), icon: 'shortcut', greyed: why !== null, run: () => (why ? opts.notice(why) : void opts.shortcuts.create(file)) }];
+}
+
+// Le menu d'un raccourci : l'ouvrir (c'est la cible qui s'ouvre), aller au fichier d'origine, le renommer, le déplacer, le retirer. Renommer et retirer ne
+// touchent que le raccourci, jamais le fichier visé ; déplacer le range dans un autre dossier de « Moi ».
+function shortcutItems(x, file) {
+  const { t, opts, choice, act } = x;
+  const missing = file.shortcut.state === 'missing';
+  const why = choice ? t('ex.choose.newOff') : null;
+  const gesture = (label, glyph, run, hint) => ({ label, icon: glyph, hint, greyed: why !== null, run: () => (why ? opts.notice(why) : void run()) });
+  const open = x.openAs(file);
+  return [{ ...item(open.label, open.icon, () => act.activate(file.key), t('key.enter')), greyed: open.greyed },
+    { label: t('sc.origin'), icon: 'move', greyed: missing, run: () => (missing ? opts.notice(t('sc.missing')) : act.showOrigin(file)) },
+    gesture(t('ex.rename'), 'edit', () => opts.shortcuts.rename(file), 'F2'),
+    gesture(t('ex.move'), 'move', () => opts.filing.moveFile(file), choice ? undefined : 'Ctrl+X, V'), '-',
+    gesture(t('sc.remove'), 'trash', () => opts.shortcuts.remove(file), t('key.delete'))];
 }
 
 // Le menu d'un dossier reçu d'un autre document (« Partagés avec moi », clé « grp:<id> ») : l'ouvrir, et répondre pour tous ses fichiers à accepter. Il n'est
@@ -39,6 +76,16 @@ function groupItems(x, key) {
   if (!row) return null;
   return [item(t('ex.openFolder'), 'open', () => x.act.activate(key), t('key.enter')),
     ...(row.pending ? [item(t('rx.folder.answer'), 'check', () => void x.shared.askFolder(row))] : [])];
+}
+
+// « Épingler en favori » d'un dossier de « Moi » (ou « Retirer des favoris », quand il l'est) : juste après « Ouvrir le dossier », comme dans le menu d'un
+// fichier. Les espaces et leurs dossiers ne s'épinglent pas encore : l'article reste grisé et le clic dit pourquoi.
+function pinFolderItem(x, key) {
+  const { t, opts } = x;
+  const path = key.slice(4);
+  if (isSpacePath(path)) return { label: t('ex.pin'), icon: 'pin', greyed: true, run: () => opts.notice(t('ex.favFolderSpace')) };
+  const row = x.rows.find(entry => entry.kind === 'folder' && `dir:${entry.path}` === key);
+  return item(row && row.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void opts.filing.togglePinFolder(path));
 }
 
 // « Partager… » d'un dossier ou d'un espace (js/sharing/share-control.js) : les dossiers et les espaces se partagent (la ligne d'un espace ouvre le partage de
@@ -102,7 +149,7 @@ function sharedItems(x, file) {
   if (file.direct) return fileItems(x, file);
   const open = x.openAs(file);
   return x.shared.menu(file) || [{ label: open.label, icon: open.icon, hint: x.t('key.enter'), greyed: open.greyed, run: () => x.act.activate(file.key) },
-    ...x.kept.extras(file)];
+    ...x.kept.extras(file), ...shortcutCreateItem(x, file)];
 }
 
 // Pourquoi un geste (la corbeille ou la copie) est grisé pour ce fichier, en une phrase, ou null : pendant un choix ; pour un fichier qu'aucun gardien ne
@@ -143,6 +190,7 @@ function fileItems(x, file) {
   const drop = x.view === 'opened' ? [item(t('ex.openedDrop'), 'x', () => void act.dropOpened(file.key))] : [];
   const linkTo = opts.links ? [linkFileItem(x, file, whyShare)] : [];
   return [{ ...item(open.label, open.icon, () => act.activate(file.key), t('key.enter')), greyed: open.greyed }, ...drop, ...extras, share, ...linkTo,
+    ...shortcutCreateItem(x, file),
     item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
     item(t('ex.rename'), 'edit', () => void filing.rename(file), 'F2'), duplicate,
       item(t('ex.move'), 'move', () => void filing.moveFile(file), choice ? undefined : 'Ctrl+X, V'),

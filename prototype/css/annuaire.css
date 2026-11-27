@@ -63,6 +63,19 @@
 .an-av { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--accent-soft);
   color: var(--accent-ink); font-size: max(12px, var(--fs-min)); font-weight: 700; letter-spacing: .02em; }
 .an-av .ic { width: 18px; height: 18px; }
+/* Les images (27/11 ; js/annuaire/annuaire-images.js) : la photo recouvre les initiales du rond ; le logo est une pastille sur fond blanc (les logos sont dessinés pour le
+   clair : le fond ne suit pas le thème sombre, par le jeton `--image-ground`), en haut à droite d'une carte, ou au bout de l'en-tête de la fiche. */
+.an-av { position: relative; overflow: hidden; }
+.an-av-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.an-av.has-img { background: var(--surface-sunken); color: transparent; }
+.an-logo { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 28px; padding: 3px; box-sizing: border-box;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--image-ground); pointer-events: none; }
+.an-logo.is-wait { visibility: hidden; }
+.an-logo-img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.an-logo-l { position: static; flex: none; margin-left: auto; width: 56px; height: 36px; padding: 4px; }
+.an-pcard { position: relative; }
+.an-oc { position: relative; }
+.an-oc > .an-logo { top: -9px; right: 10px; width: 36px; height: 22px; padding: 2px; border-radius: 6px; }
 .an-av-l { width: 40px; height: 40px; }
 .an-av-xl { width: 48px; height: 48px; font-size: max(15px, var(--fs-min)); }
 
@@ -317,6 +330,7 @@
 .an-sec:last-child { border-bottom: 0; }
 .an-sec h3 { margin: 0 0 6px; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
 .an-set-help { margin: 0 0 6px; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
+.an-set-row[hidden] { display: none; }
 .an-set-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: start; gap: 8px; padding: 3px 0; }
 .an-set-label { padding-top: 6px; font-size: max(12.5px, var(--fs-min)); font-weight: 600; }
 .an-set-control { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -433,7 +447,7 @@
 
 /* Les champs de la fiche : une ligne par champ (nom, type, « Liste », « Filtre »), les suggestions en pointillés dessous. */
 .an-ftable { display: flex; flex-direction: column; }
-.an-frow { display: grid; grid-template-columns: minmax(0, 1fr) 100px 62px 48px 48px 76px; align-items: center; gap: 8px; min-height: 30px; padding: 0 4px; border-bottom: 1px solid var(--border);
+.an-frow { display: grid; grid-template-columns: minmax(0, 1fr) 100px 62px 48px 48px 100px; align-items: center; gap: 8px; min-height: 30px; padding: 0 4px; border-bottom: 1px solid var(--border);
   font-size: max(12.5px, var(--fs-min)); }
 .an-frow.is-head { min-height: 22px; font-size: max(10.5px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
 .an-f-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -445,7 +459,25 @@
 .an-f-acts .an-ib .ic { width: 13px; height: 13px; }
 .an-sugs { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 8px; }
 .an-sug-row { display: flex; flex-wrap: wrap; gap: 6px; }
-@container anset (max-width: 520px) { .an-frow { grid-template-columns: minmax(0, 1fr) 58px 44px 44px 76px; } .an-f-type { display: none; } }
+@container anset (max-width: 520px) { .an-frow { grid-template-columns: minmax(0, 1fr) 58px 44px 44px 100px; } .an-f-type { display: none; } }
+
+/* Modifier un champ (js/annuaire/annuaire-field-window.js) : son nom, sa colonne, puis ce que Grist garde de la colonne (type, valeurs) et ce qui s'y écrira. */
+.an-f-col { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 400; font-size: max(11.5px, var(--fs-min)); color: var(--text-muted); }
+.an-fw-head { margin: 10px 0 2px; padding-top: 8px; border-top: 1px solid var(--border); font-size: max(12.5px, var(--fs-min)); font-weight: 700; }
+.an-fw-why { margin: 0; font-size: max(11.5px, var(--fs-min)); color: var(--text-muted); }
+.an-fw-preview { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding: 8px 10px; border: 1px dashed var(--border-strong); border-radius: var(--radius-input);
+  background: var(--surface-sunken); color: var(--text); font-size: max(12px, var(--fs-min)); }
+.an-fw-preview p { margin: 0; }
+.an-fw-preview .an-fw-title { font-weight: 700; }
+.an-vals-ed { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.an-vals-in { display: flex; gap: 6px; }
+.an-vals-in .an-set-input { flex: 1 1 auto; min-width: 0; }
+.an-vals-in .btn { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.an-vals { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.an-val { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 0 2px 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-btn);
+  background: var(--surface-sunken); color: var(--text); font-size: max(12px, var(--fs-min)); }
+.an-val-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-val .an-ib { width: 22px; height: 22px; }
 
 /* Le champ caché de la copie de secours (js/annuaire/annuaire-copy.js) : sélectionnable, jamais vu. */
 .an-copy-field { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; }

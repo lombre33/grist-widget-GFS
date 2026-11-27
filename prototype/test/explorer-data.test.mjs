@@ -318,6 +318,16 @@ test('un fichier placé dans un espace en prend le dossier ; les dossiers de l\'
   assert.equal(spaces.spaces.length, 1);
 });
 
+test('l\'apparence d\'un espace (colonne Style de GFS_Spaces) rejoint celle des dossiers de la personne dans `looks` ; sans la colonne, `looks` reste ce que dit le rangement', async () => {
+  const style = JSON.stringify({ look: { color: 'red', glyph: 'star' } });
+  const gfs = { id: [1], User: ['ana@exemple.org'], App: [''], File: [''], Favorite: [false], Folder: ['Archives'], Value: [JSON.stringify({ look: { color: 'blue' } })] };
+  const data = { ...tables(), gfs_filing: gfs, GFS_Spaces: { id: [1], Key: ['achats'], Name: ['Achats'], Style: [style] }, GFS_Placement: { id: [] } };
+  const styled = await loadFiles(port(data), [{ manifest: legacy }], 'ana@exemple.org');
+  assert.deepEqual([...styled.looks].sort(), [['Archives', { color: 'blue' }], ['Espaces/Achats', { color: 'red', glyph: 'star' }]]);
+  const old = await loadFiles(port({ ...data, GFS_Spaces: { id: [1], Key: ['achats'], Name: ['Achats'] } }), [{ manifest: legacy }], 'ana@exemple.org');
+  assert.deepEqual([...old.looks.keys()], ['Archives']);
+});
+
 test('les fichiers reçus d\'un autre document (GFS_Received, GFS_Received_2…) sont lus à part : jamais dans `files`, tous états confondus, un document sans partage en rend une liste vide', async () => {
   const arrival = (id, name, extra = {}) => ({ id: [1], FileId: [id], Name: [name], Type: ['pdf'], Date: [1762000000], Author: ['compta@exemple.fr'], Content: [['L', 1]], Size: [100], ...Object.fromEntries(Object.entries(extra).map(([key, value]) => [key, [value]])) });
   const data = { ...tables(), GFS_Received: arrival('r1', 'Facture.pdf'), GFS_Received_2: arrival('r2', 'Devis.pdf', { Accepted: true, Refused: false }) };

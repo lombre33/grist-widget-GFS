@@ -20,6 +20,11 @@
 .an-ed-pill { gap: 2px; padding: 0 2px 0 10px; background: var(--accent-soft); border-color: var(--accent-soft-border); color: var(--accent-ink); font-weight: 600; cursor: default; }
 .an-ed-pill > span { overflow-wrap: anywhere; }
 .an-ed-pill .an-ib { width: 22px; height: 22px; }
+.an-ed-photo { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.an-ed-photo-body { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.an-ed-photo-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.an-ed-photo-acts .btn { display: inline-flex; align-items: center; gap: 5px; }
+.an-ed-photo-acts .ic { width: 13px; height: 13px; }
 .an-ed-add { display: inline-flex; align-items: center; gap: 4px; }
 .an-ed-add .ic { width: 13px; height: 13px; }
 

@@ -94,11 +94,30 @@ export class AnnuaireStore {
 
   // Ajoute la colonne `name` (vide, du type `type` : « Text », « Ref:Personnes »…) à `table` : { id } (js/files/doc-tools.js). Le geste vient d'une fenêtre qui
   // a dit ce qui s'écrit (js/annuaire/annuaire-setup-path.js). Une référence montre la colonne `show` de sa table (le nom de la personne, pas son numéro).
-  addColumn(table, name, type, show = '') { return this.#then(() => this.#tools.addColumn(table, name, type, show)); }
+  addColumn(table, name, type, show = '', choices = []) { return this.#then(() => this.#tools.addColumn(table, name, type, show, choices)); }
 
   // Crée la table des personnes `name` avec son nom et son adresse e-mail : { id, columns: [{ id, type }] }. Le geste vient d'une fenêtre qui a dit ce qui
   // s'écrit (js/annuaire/annuaire-setup-table.js).
   addTable(name) { return this.#then(() => this.#tools.addTable(name, PEOPLE_COLUMNS)); }
+
+  // Ce que Grist garde d'une colonne, pour changer son type ou ses valeurs (js/annuaire/annuaire-field-edit.js) : { ids (les numéros de ligne), cells, raw (le
+  // texte de ses options, que le changement réécrit sans perdre les autres réglages) }, relus à l'instant ; une colonne qu'on ne trouve pas donne des cellules
+  // vides.
+  columnState(table, column) {
+    return this.#then(async () => {
+      const [data, tables, columns] = await Promise.all([this.#port.doc.fetchTable(table), this.#port.doc.fetchTable('_grist_Tables'),
+        this.#port.doc.fetchTable('_grist_Tables_column')]);
+      const parent = tables.id[tables.tableId.indexOf(table)];
+      const at = columns.id.findIndex((ref, i) => columns.parentId[i] === parent && columns.colId[i] === column);
+      return { ids: [...data.id], cells: Array.isArray(data[column]) ? [...data[column]] : [], raw: at >= 0 ? String(columns.widgetOptions[at] || '') : '' };
+    });
+  }
+
+  // Écrit un changement de colonne : les actions de js/annuaire/annuaire-field-edit.js (`modifyActions`), en un seul lot. Le geste vient du bouton d'une
+  // fenêtre qui a dit ce qui s'écrit ; Grist répond par ses règles d'accès (une erreur dit pourquoi : la fenêtre la montre telle quelle).
+  modify(actions) {
+    return this.#then(() => this.#port.doc.applyUserActions(actions));
+  }
 
   #then(task) {
     const run = this.#queue.then(task);

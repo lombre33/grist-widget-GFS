@@ -21,6 +21,9 @@ import { columnOf } from './annuaire-schema.js';
 import { keyPath } from './annuaire-config.js';
 import { nameOf } from './annuaire-model.js';
 import { GLYPHS, MAX_PATH, typeLabel, formRow } from './annuaire-setup-shared.js';
+import { valuesEditor } from './annuaire-values-editor.js';
+import { isChoiceGenre } from './annuaire-field-edit.js';
+import { genreOf } from './annuaire-schema.js';
 
 const SEP = '\u001f';
 const DEEP_HOPS = 2; // combien de références la recherche suit d'un coup
@@ -65,7 +68,7 @@ function columnRow(host, col, path, follow) {
 
 // Les colonnes des tables que les références de `table` visent, d'un coup : « Poste › Pôle ». Rien qui revienne sur ses pas (une table déjà suivie n'est pas
 // suivie deux fois) ; au plus DEEP_HOPS références, et jamais plus que MAX_PATH colonnes en tout.
-function deepRows(host, table, path) {
+function deepRows(host, table, path, files = false) {
   const { t, schema, draft } = host;
   const rows = [];
   const visit = (at, via, seen) => {
@@ -74,7 +77,7 @@ function deepRows(host, table, path) {
       if (col.genre !== 'ref' || !schema[col.ref] || seen.has(col.ref)) continue;
       const next = [...via, col.id];
       for (const target of schema[col.ref].columns) {
-        if (target.genre === 'file') continue;
+        if ((target.genre === 'file') !== files) continue;
         rows.push({ value: `deep:${[...next, target.id].join(SEP)}`, label: [...next, target.id].join(' › '), glyph: GLYPHS[target.genre] || 'table',
           alt: false,
           searchOnly: true, hint: t('an.set.inTable', { table: col.ref }), sample: () => host.sample.text([...path, ...next, target.id]) });
@@ -104,8 +107,14 @@ function createWindow(host, { table, types }) {
   const note = h('span', { class: 'mod-note', 'aria-live': 'polite' });
   const cancel = h('button', { type: 'button', class: 'btn', dataset: { fk: 'nc-cancel' } }, t('an.set.cancel'));
   const ok = h('button', { type: 'button', class: 'btn primary', 'aria-disabled': 'true', dataset: { fk: 'nc-ok' } }, t('an.new.ok'));
-  const paint = () => seg.replaceChildren(...types.map(each => h('button', { type: 'button', class: 'an-seg-b', 'aria-pressed': String(each === chosen),
-    dataset: { type: each.type, fk: `nc-type:${each.type}` } }, each.label)));
+  const values = valuesEditor({ t, fk: 'nc-val' });
+  const valuesRow = formRow(t('an.new.values'), values.node, t('an.new.valuesHint'));
+  const choosing = () => isChoiceGenre(genreOf(chosen.type));
+  const paint = () => {
+    seg.replaceChildren(...types.map(each => h('button', { type: 'button', class: 'an-seg-b', 'aria-pressed': String(each === chosen),
+      dataset: { type: each.type, fk: `nc-type:${each.type}` } }, each.label)));
+    valuesRow.hidden = !choosing();
+  };
   const check = () => {
     const name = input.value.trim();
     const problem = blocked || (name && taken(name) ? t('an.new.taken') : '');
@@ -115,7 +124,7 @@ function createWindow(host, { table, types }) {
   };
   const section = h('section', { class: 'mod an-nl', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'an-nc-title' },
     h('header', { class: 'mod-head' }, h('h2', { id: 'an-nc-title' }, t('an.new.title'))),
-    h('div', { class: 'mod-body an-set-body' }, formRow(`${t('an.new.name')} *`, input), types.length > 1 ? formRow(t('an.new.type'), seg) : null,
+    h('div', { class: 'mod-body an-set-body' }, formRow(`${t('an.new.name')} *`, input), types.length > 1 ? formRow(t('an.new.type'), seg) : null, valuesRow,
       h('p', { class: 'an-set-hint' }, t('an.new.why', { table }))),
     h('footer', { class: 'mod-foot' }, note, cancel, ok));
   paint();
@@ -125,7 +134,7 @@ function createWindow(host, { table, types }) {
     busy = true;
     check();
     try {
-      done((await host.createColumn(table, { name: input.value.trim(), type: chosen.type })).id);
+      done((await host.createColumn(table, { name: input.value.trim(), type: chosen.type, choices: choosing() ? values.values() : [] })).id);
     } catch (error) {
       busy = false;
       check();
@@ -147,17 +156,20 @@ function createWindow(host, { table, types }) {
 
 // Un chemin de colonnes depuis la personne, ou null quand la personne renonce. opts : { title, text, types ([{ type, label }] : les types qu'on propose pour
 // créer une colonne ; rien : pas de création), filter(col, path) -> bool (les colonnes qu'on propose), clear (propose « Aucune » au premier étage : rend []),
-// current (le chemin en cours, qu'on retrouve marqué dans la liste) }.
-export async function pickPath(host, { title, text = '', types = [], filter = () => true, clear = false, current = [] }) {
+// current (le chemin en cours, qu'on retrouve marqué dans la liste), files (vrai : seules les colonnes « Pièces jointes » se choisissent, la photo et le logo ;
+// les références se suivent mais ne se choisissent pas) }.
+export async function pickPath(host, { title, text = '', types = [], filter = () => true, clear = false, current = [], files = false }) {
   const { t, schema, draft } = host;
   const path = [];
   host.sample.load();
   for (;;) {
     const table = tableAfter(schema, draft.table, path);
-    const cols = (schema[table] ? schema[table].columns : []).filter(col => col.genre !== 'file' && filter(col, path));
+    const cols = (schema[table] ? schema[table].columns : []).filter(col => (files ? col.genre === 'file' ||
+      (col.genre === 'ref' && schema[col.ref]) : col.genre !== 'file') &&
+      filter(col, path));
     const none = clear && path.length === 0 ? [{ value: 'none', label: t('an.set.none'), glyph: 'x', hint: '', alt: false }] : [];
     const items = [...(types.length ? [createRow(host, table)] : []), ...none, ...cols.map(col => columnRow(host, col, path, path.length < MAX_PATH - 1)),
-      ...deepRows(host, table, path)];
+      ...deepRows(host, table, path, files)];
     const here = current.length === path.length + 1 && path.every((id, i) => id === current[i]) ? `use:${current[path.length]}` : null;
     const chosen = await host.list({ title, text: path.length ? '' : text, crumbs: [draft.table, ...path], back: true, items, none: t('an.set.noColumn'),
       current: here, alt: { icon: 'chev-right', label: item => t('an.set.follow', { table: item.follow }), text: item => item.follow },
@@ -168,31 +180,31 @@ export async function pickPath(host, { title, text = '', types = [], filter = ()
       if (made) return [...path, made];
       continue;
     }
-    const answer = answerOf(chosen, path);
+    const answer = answerOf(chosen, path, files ? id => (columnOf(schema, table, id) || {}).genre === 'ref' : null);
     if (answer !== undefined) return answer;
   }
 }
 
 // Ce que le choix d'une ligne répond : un chemin (c'est fini), `null` (la personne renonce), ou `undefined` (le choix continue : on suit une référence ou on
 // revient en arrière, `path` change).
-function answerOf(chosen, path) {
+function answerOf(chosen, path, mustFollow = null) {
   if (chosen === null) return null;
   if (chosen.jump !== undefined) { path.length = chosen.jump; return undefined; }
   if (chosen.value === 'none') return [];
   if (chosen.value.startsWith('deep:')) return [...path, ...chosen.value.slice(5).split(SEP)];
   const col = chosen.value.slice(4);
-  if (!chosen.alt) return [...path, col];
+  if (!chosen.alt && !(mustFollow && mustFollow(col))) return [...path, col];
   path.push(col);
   return undefined;
 }
 
 // Une colonne de la table des personnes : son identifiant, '' pour « Aucune » (avec `clear`), ou null quand la personne renonce. opts : { title, text, types,
-// filter(col) -> bool, clear (propose « Aucune »), current (la colonne en cours) }.
-export async function pickColumn(host, { title, text = '', types = [], filter = () => true, clear = false, current = '' }) {
+// filter(col) -> bool, clear (propose « Aucune »), current (la colonne en cours), files (vrai : seules les colonnes « Pièces jointes » se proposent) }.
+export async function pickColumn(host, { title, text = '', types = [], filter = () => true, clear = false, current = '', files = false }) {
   const { t, schema, draft } = host;
   host.sample.load();
   for (;;) {
-    const cols = (schema[draft.table] ? schema[draft.table].columns : []).filter(col => col.genre !== 'file' && filter(col));
+    const cols = (schema[draft.table] ? schema[draft.table].columns : []).filter(col => (col.genre === 'file') === files && filter(col));
     const items = [...(types.length ? [createRow(host, draft.table)] : []), ...(clear ? [{ value: 'none', label: t('an.set.none'), glyph: 'x', hint: '' }] :
       []),
       ...cols.map(col => columnRow(host, col, [], false))];

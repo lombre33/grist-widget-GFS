@@ -10,6 +10,7 @@
 // ajoute une copie à la liste (premier nom libre), et un rangement de doublure qui déplace vraiment les fichiers et les dossiers ; `window.__copies` note [identifiant, dossier] de chaque copie rangée.
 // Les icônes des types (test/icones-firefox.mjs) : l'ambiance se pose comme dans GFS, par le vrai `ThemeSetting` et le vrai `ThemeHost` (`window.__ambiance(id)`, le mode vient de `data-grist-appearance`), et
 // `window.__withPdf()` ajoute à la liste un PDF gardé par GFS, lu par le vrai modèle avec le vrai manifeste de GFS (la famille « pdf », rouge) ; `window.__reset()` le retire et rend l'ambiance d'origine.
+// Les dossiers en favori (test/favoris-dossiers-firefox.mjs) : `window.__pin(...chemins)` en pose, le rangement de doublure note « pin:chemin » et « unpin:chemin » dans `window.__filing`.
 // Les dossiers sans fichier (test/dossiers-firefox.mjs) : le vrai `Filing` (js/explorer/filing.js) et les vraies fenêtres du rangement (js/explorer/filing-window.js) sur un rangement de doublure qui tient les dossiers gardés
 // (`window.__keep(...chemins)` en pose, `window.__filing` note chaque lot « setFiling:+gardé:-retiré »), et la corbeille y garde le dossier du dernier fichier qui part, comme le contrôleur.
 // Un fichier que seule l'app ouverte sait fermer ou copier (test/composite-firefox.mjs) : la « Grille de suivi » en fait office ; `window.__appOpen = false` : l'app n'est pas ouverte, le geste est grisé et dit
@@ -25,6 +26,11 @@ import { Filing } from '/js/explorer/filing.js';
 import { askName, chooseFolder } from '/js/explorer/filing-window.js';
 import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer/explorer-model.js';
 import { Copying } from '/js/files/copying.js';
+import { readShortcuts, shortcutFiles } from '/js/files/shortcuts.js';
+import { ShortcutGestures } from '/js/explorer/shortcut-gestures.js';
+import { readFolderLooks } from '/js/files/folder-looks.js';
+import { LookGestures } from '/js/explorer/look-gestures.js';
+import { askLook } from '/js/explorer/look-window.js';
 import { applyPlacement, readSpaces } from '/js/sharing/spaces-filing.js';
 import { LinkControl } from '/js/sharing/link-control.js';
 import { filesManifest, filesColumnIds } from '/js/files/gfs-files.js';
@@ -127,8 +133,19 @@ async function mount() {
   let live = [...files];
   let trashed = [];
   let kept = []; // les dossiers que la personne garde sans fichier
+  let pinned = []; // ceux de ses dossiers qu'elle a mis en favori (test/favoris-dossiers-firefox.mjs)
   let arrivals = []; // les fichiers reçus d'un autre document (« Partagés avec moi », `window.__shared`)
-  const show = () => explorer.setFiles(live, trashed, kept, arrivals);
+  // Les raccourcis (test/raccourcis-firefox.mjs) : les lignes `gfs-shortcut` d'un rangement de doublure (la table telle que `fetchTable` la rend), lues par le vrai modèle ; `window.__shortcutsOn` allume le bouton.
+  let shortcutRows = [];
+  const shortcutData = () => ({ id: shortcutRows.map(row => row.id), ...Object.fromEntries(['User', 'App', 'File', 'Folder', 'Value'].map(column => [column, shortcutRows.map(row => row[column])])) });
+  // L'apparence des dossiers (test/apparence-firefox.mjs) : les lignes d'état d'un rangement de doublure, lues par le vrai modèle ; `window.__looksOn` allume l'article « Apparence… ».
+  let lookRows = [];
+  const lookData = () => ({ id: lookRows.map(row => row.id), ...Object.fromEntries(['User', 'App', 'File', 'Folder', 'Value'].map(column => [column, lookRows.map(row => row[column])])) });
+  // `GFS_Spaces` de la doublure (js/sharing/space-looks.js) : la colonne `Style` n'y est pas tant que la personne n'a pas accepté de l'ajouter.
+  const spaceTable = { id: [1], Key: ['achats'], Name: ['Achats'] };
+  const spaceInfo = () => readSpaces(spaceTable, { id: [] });
+  const show = () => explorer.setFiles([...live, ...shortcutFiles(readShortcuts(shortcutData(), 'essai@example.com'), live, arrivals)], trashed, kept, arrivals,
+    new Map([...readFolderLooks(lookData(), 'essai@example.com'), ...(window.__spacesOn ? spaceInfo().looks : [])]), pinned);
   const folders = new Map(files.map(file => [file.key, file.folder])); // où chaque fichier est au départ : couper puis coller en déplace, `__reset` les remet
   const pick = (list, wanted) => list.findIndex(file => file.key === wanted.key);
   const move = (from, to, wanted) => { const at = pick(from, wanted); if (at < 0) return null; const [file] = from.splice(at, 1); to.push(file); return file; };
@@ -207,18 +224,73 @@ async function mount() {
     setFiling: async (entries, folders = {}) => {
       const add = folders.add || [];
       const drop = folders.drop || [];
-      window.__filing.push(['setFiling', ...add.map(path => `+${path}`), ...drop.map(path => `-${path}`)]);
+      const pin = folders.pin || [];
+      const unpin = folders.unpin || [];
+      window.__filing.push(['setFiling', ...add.map(path => `+${path}`), ...drop.map(path => `-${path}`), ...pin.map(path => `pin:${path}`), ...unpin.map(path => `unpin:${path}`)]);
       for (const entry of entries) { const file = live.find(item => item.id === entry.file); if (file) file.folder = entry.folder; }
-      kept = [...kept.filter(path => !drop.includes(path)), ...add.filter(path => !kept.includes(path))];
+      kept = [...kept.filter(path => !drop.includes(path)), ...[...add, ...pin].filter((path, at, all) => !kept.includes(path) && all.indexOf(path) === at)];
+      pinned = [...pinned.filter(path => !drop.includes(path) && !unpin.includes(path)), ...pin.filter(path => !pinned.includes(path))];
     },
   };
   const filing = new Filing({
-    port: null, rangement, t: i18n.t, locale: () => locale, files: () => live, folders: () => kept, appName: () => 'Publipostage+', here: () => (explorer.state.view === 'folder' ? explorer.state.path : ''),
+    port: null, rangement, t: i18n.t, locale: () => locale, files: () => live, folders: () => kept, pinnedFolders: () => pinned, appName: () => 'Publipostage+', here: () => (explorer.state.view === 'folder' ? explorer.state.path : ''),
     writeBlock: () => null, notice: text => window.__notices.push(text), specOf: () => null, refresh: async () => show(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
   });
+  let shortcutSeq = 0;
+  const shortcuts = new ShortcutGestures({
+    rangement: { identity: 'essai@example.com', writeShortcuts: async make => {
+      const actions = make({ data: shortcutData(), tableId: 'GFS_Filing', identity: 'essai@example.com' });
+      for (const [kind, , id, values] of actions) {
+        if (kind === 'AddRecord') shortcutRows.push({ id: ++shortcutSeq, ...values });
+        else if (kind === 'UpdateRecord') Object.assign(shortcutRows.find(row => row.id === id), values);
+        else if (kind === 'RemoveRecord') shortcutRows = shortcutRows.filter(row => row.id !== id);
+      }
+      return actions.length > 0;
+    } },
+    t: i18n.t, notice: text => window.__notices.push(text), writeBlock: () => null, files: () => live, folders: () => kept, locale: () => locale,
+    here: () => (explorer.state.view === 'folder' ? explorer.state.path : ''), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
+    queue: task => task(), undoStack: filing.undoStack, refresh: async () => show(),
+  });
+  let lookSeq = 0;
+  // Une instance neuve à chaque essai : la sonde « propriétaire ? » ne part qu'une fois par instance.
+  const buildLookGestures = () => new LookGestures({
+    rangement: { identity: 'essai@example.com', known: true, writeLooks: async make => {
+      const actions = make({ data: lookData(), tableId: 'GFS_Filing', identity: 'essai@example.com' });
+      for (const [kind, , id, values] of actions) {
+        if (kind === 'AddRecord') lookRows.push({ id: ++lookSeq, ...values });
+        else if (kind === 'UpdateRecord') Object.assign(lookRows.find(row => row.id === id), values);
+      }
+      return actions.length > 0;
+    } },
+    t: i18n.t, notice: text => window.__notices.push(text), writeBlock: () => null, looks: () => explorer.looks,
+    spaces: { info: () => (window.__spacesOn ? spaceInfo() : null), owner: async () => window.__owner === true },
+    port: { doc: { fetchTable: async () => spaceTable, applyUserActions: async actions => {
+      for (const [kind, , id, values] of actions) {
+        if (kind === 'AddColumn') spaceTable[id] = spaceTable.id.map(() => '');
+        else if (kind === 'UpdateRecord') for (const [column, value] of Object.entries(values)) spaceTable[column][spaceTable.id.indexOf(id)] = value;
+      }
+      window.__spaceActions.push(...actions);
+    } } },
+    consent: () => {
+      window.__consents += 1;
+      return ask({ title: i18n.t('lk.col.title'), message: i18n.t('lk.col.text'), confirmLabel: i18n.t('lk.col.ok'), cancelLabel: i18n.t('table.cancel'), container: stage, inertTargets: () => [explorer.root] });
+    },
+    exists: path => path === '' || live.some(file => file.folder === path || file.folder.startsWith(`${path}/`)) || kept.includes(path),
+    windows: { look: opts => askLook(layer(opts)) }, queue: task => task(), undoStack: filing.undoStack, refresh: async () => show(),
+  });
+  let lookGestures = buildLookGestures();
+  window.__warm = () => lookGestures.warm();
+  window.__looksOn = false;
+  Object.assign(window, { __spacesOn: false, __owner: false, __consents: 0, __spaceActions: [] });
+  window.__spaceStyle = () => spaceTable.Style || null;
+  window.__lookLines = () => lookRows.map(row => ({ folder: row.Folder, value: row.Value }));
+  window.__shortcutsOn = false;
+  window.__shortcutGestures = shortcuts;
+  window.__shortcutLines = () => shortcutRows.map(row => ({ folder: row.Folder, ...JSON.parse(row.Value) }));
   // Un espace « Achats » (les espaces partagés, lot 4b) : le premier modèle est rangé dans son dossier Contrats, qui a un sous-dossier vide ; « Espaces » est une racine à côté de « Moi ».
   window.__spaces = () => {
-    const info = readSpaces({ id: [1], Key: ['achats'], Name: ['Achats'] }, { id: [1, 2], Target: [live[0].key, ''], Space: ['achats', 'achats'], Folder: ['Contrats', 'Contrats/Sous'] });
+    window.__spacesOn = true;
+    const info = readSpaces(spaceTable, { id: [1, 2], Target: [live[0].key, ''], Space: ['achats', 'achats'], Folder: ['Contrats', 'Contrats/Sous'] });
     applyPlacement(live, info);
     kept = [...new Set([...kept, ...info.folders])];
     show();
@@ -260,6 +332,9 @@ async function mount() {
   // Un fichier que quelqu'un a donné à la personne par son adresse (« Partagés avec moi », lot 4c) : le premier modèle, à la racine, jamais rangé par elle.
   window.__direct = () => { live[0].folder = ''; live[0].direct = { by: 'marc@example.com' }; show(); };
   window.__keep = (...paths) => { kept = [...new Set([...kept, ...paths])]; show(); };
+  // Des dossiers déjà en favori (leur ligne d'état est gardée aussi) : `window.__pin(...chemins)`.
+  window.__pinFile = (...names) => { for (const file of live) if (names.includes(file.name)) file.pinned = true; show(); };
+  window.__pin = (...paths) => { kept = [...new Set([...kept, ...paths])]; pinned = [...new Set([...pinned, ...paths])]; show(); };
   // Le menu « Réglages » : la langue et le bord de la barre que la personne a choisis en dernier (la ligne de la barre est une doublure : le vrai Dock se mesure dans le labo), et la vraie fenêtre « À propos ».
   const EDGES = [['gauche', 'dock-left'], ['haut', 'dock-top'], ['droite', 'dock-right'], ['bas', 'dock-bottom']];
   window.__resetSettings = () => { window.__language = language; window.__place = 'gauche'; window.__langtool = false; window.__reopen = true; };
@@ -408,22 +483,22 @@ async function mount() {
   const openedFiles = new OpenedFiles();
   const explorer = new Explorer({
     container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', received,
-    typeLabel: file => (file.received ? received.typeLabel(file) : baseLabel(file)),
-    lockOf: file => (file.received ? received.lockOf(file) : (file.name === 'Autre format' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => window.__importTypes || [], canClose: () => window.__canClose !== false,
+    typeLabel: file => (file.shortcut ? shortcuts.typeLabel(file, baseLabel) : (file.received ? received.typeLabel(file) : baseLabel(file))),
+    lockOf: file => (file.shortcut ? shortcuts.lockOf(file) : file.received ? received.lockOf(file) : (file.name === 'Autre format' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => window.__importTypes || [], canClose: () => window.__canClose !== false,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
       langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }),
       reopen: () => ({ on: window.__reopen, toggle: () => { window.__reopen = !window.__reopen; } }), place, onAbout: () => window.__about(), onDependencies: () => { window.__dependenciesAsked = (window.__dependenciesAsked || 0) + 1; void window.__dependencies(); },
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }),
       index: () => ({ why: null, open: () => { window.__indexFromSettings = (window.__indexFromSettings || 0) + 1; window.__indexAsk(); }, notice: text => window.__notices.push(text) }) }),
-    onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; }, get notices() { return window.__noticeStore; },
+    onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; }, get shortcuts() { return window.__shortcutsOn ? shortcuts : null; }, get lookGestures() { return window.__looksOn ? lookGestures : null; }, get notices() { return window.__noticeStore; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
     onImport: entry => { window.__imported = entry.valeur; }, onTemplates: () => { window.__templatesAsked = (window.__templatesAsked || 0) + 1; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file),
       // « Partager… » sur la ligne d'un espace entier (demande du 25/11) : il ouvre le partage de l'espace ; « Espaces » seul et un espace inconnu restent grisés.
       whyNotShareFolder: path => (path === 'Espaces' ? i18n.t('share.folder.space') : null),
       shareFolderFile(path) { return /^Espaces\/[^/]+$/.test(path) ? { key: `espace:${path.split('/')[1].toLowerCase()}`, name: path.split('/')[1], space: { name: path.split('/')[1] }, wholeSpace: true } : this.folderFile(path); } }, onWeight: estimate => window.__weight(estimate), alerts: ({ detail }) => (window.__alertBytes ? [alertBar({ bytes: window.__alertBytes, locale, t: i18n.t, detail })] : []), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
-    filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
-      newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
+    filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: file => filing.moveFile(file), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: path => filing.moveFolder(path), ...moving,
+      newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), togglePinFolder: path => filing.togglePinFolder(path), undoStack: filing.undoStack },
   });
   window.__explorer = explorer;
   // Ce qu'on a donné à la personne dans le document (la cloche, test/notifications-firefox.mjs) : `window.__given(items)` pose la liste que le magasin rendrait (js/sharing/notice-store.js) et un faux magasin
@@ -438,12 +513,21 @@ async function mount() {
     explorer.close(); // la fermeture vide le presse-papiers : chaque mesure part de rien
     filing.undoStack.clear(); // et la pile de Ctrl+Z
     live = [...files];
-    for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); delete file.space; delete file.ownFolder; delete file.direct; }
+    for (const file of live) { file.trashed = null; file.pinned = false; file.folder = folders.get(file.key); delete file.space; delete file.ownFolder; delete file.direct; }
     trashed = [];
     kept = [];
+    pinned = [];
     arrivals = [];
     window.__sharedBlocked = '';
     window.__linkProxy = undefined; // plus de liens entre espaces : les menus redeviennent ceux d'avant
+    window.__shortcutsOn = false; // ni bouton ni raccourci : les menus redeviennent ceux d'avant
+    shortcutRows = [];
+    lookRows = [];
+    window.__looksOn = false;
+    lookGestures = buildLookGestures();
+    Object.assign(window, { __spacesOn: false, __owner: false, __consents: 0 });
+    window.__spaceActions.length = 0;
+    delete spaceTable.Style;
     window.__filing.length = 0;
     window.__copies.length = 0;
     window.__notices.length = 0;

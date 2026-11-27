@@ -118,33 +118,28 @@ export function readGfsFiling(data, identity = '') {
   return byFile;
 }
 
-// Les dossiers que la personne `identity` garde même sans fichier (`GFS_Filing`, les lignes d'état de dossier : ni app ni fichier, contrats 6.4, point 11) :
-// des chemins normalisés, sans doublon. Ceux qu'elle a créés, et ceux qu'un rangement a vidés de leur dernier fichier ; un dossier qui a des fichiers existe de
-// toute façon par eux.
-export function readGfsFolders(data, identity = '') {
-  const found = new Set();
+// Les lignes d'état des dossiers de la personne `identity` (`GFS_Filing`, ni app ni fichier, contrats 6.4, point 11) : { i, path, favorite }, une par ligne
+// (`i` : sa place dans `data`, `favorite` : la colonne « Favori » est vraie, 6.4, point 11). Les lignes réservées (« @… ») n'en sont pas.
+function* stateLines(data, identity) {
   for (let i = 0; i < rowCount(data); i++) {
     const user = text(cell(data, 'User', i));
     if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'File', i))) continue;
     const path = normalizePath(cell(data, 'Folder', i));
-    if (path) found.add(path);
+    if (path) yield { i, path, favorite: cell(data, 'Favorite', i) === true };
   }
-  return [...found];
 }
 
-// Les lignes d'état des dossiers de la personne `identity` (`GFS_Filing`, ni app ni fichier) : [{ id, path }], une par ligne, `id` le numéro de ligne de
-// Grist. C'est ce numéro, jamais le chemin, qui désigne un dossier de « Moi » dans les partages et les liens (js/sharing/folder-identity.js) : le dossier garde
-// sa ligne quand on le renomme ou le déplace.
-export function readGfsFolderRows(data, identity = '') {
-  const found = [];
-  for (let i = 0; i < rowCount(data); i++) {
-    const user = text(cell(data, 'User', i));
-    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'File', i))) continue;
-    const path = normalizePath(cell(data, 'Folder', i));
-    if (path) found.push({ id: data.id[i], path });
-  }
-  return found;
-}
+// Les dossiers que la personne `identity` garde même sans fichier (`GFS_Filing`, les lignes d'état de dossier) : des chemins normalisés, sans doublon. Ceux
+// qu'elle a créés, et ceux qu'un rangement a vidés de leur dernier fichier ; un dossier qui a des fichiers existe de toute façon par eux.
+export const readGfsFolders = (data, identity = '') => [...new Set([...stateLines(data, identity)].map(line => line.path))];
+
+// Ceux de ces dossiers que la personne a mis en favori (la colonne « Favori » de leur ligne d'état, 6.4, point 11) : un dossier dont une ligne l'est, l'est.
+export const readGfsPinnedFolders = (data, identity = '') => [...new Set([...stateLines(data, identity)].filter(line => line.favorite).map(line => line.path))];
+
+// Les lignes d'état des dossiers de la personne `identity` : [{ id, path }], une par ligne, `id` le numéro de ligne de Grist. C'est ce numéro, jamais le
+// chemin, qui désigne un dossier de « Moi » dans les partages et les liens (js/sharing/folder-identity.js) : le dossier garde sa ligne quand on le renomme ou
+// le déplace.
+export const readGfsFolderRows = (data, identity = '') => [...stateLines(data, identity)].map(({ i, path }) => ({ id: data.id[i], path }));
 
 // Pose dossier et favori sur les fichiers, et le texte de recherche (nom et dossier, normalisés une fois). Le rangement propre de l'app (`filing`, par
 // identifiant) sert de point de départ ; celui de GFS (`gfsFiling`, par clé « app:fichier ») passe devant : l'app seule garde le sien (6.4, point 5).
@@ -237,6 +232,25 @@ export function subfolders(files, path, locale, spare = []) {
     .sort((a, b) => a.name.localeCompare(b.name, locale, { sensitivity: 'base', numeric: true }));
 }
 
+// Ceux des dossiers en favori (`pinned`) qui existent encore : un dossier garde sa ligne d'état (`spare`) ou des fichiers, et un dossier qu'un autre geste a
+// fait disparaître n'est plus montré (il ne se rallume pas tout seul : sa ligne en dit plus que la liste, qu'un geste en cours peut devancer).
+export const existingPinned = (files, pinned, spare = []) => pinned.filter(path => spare.includes(path) || files.some(file => inside(file.folder, path)));
+
+// Les dossiers en favori que « Favoris » montre : [{ kind: 'folder', path, name, parent, count, ts, weight, pinned: true, files, search }], rangés comme les
+// dossiers d'une vue à plat (`files` : ceux du dossier, sous-dossiers compris, pour le total du pied de fenêtre). `parent` : le dossier du dessus, que la
+// ligne dit à côté du nom ('' à la racine).
+export function favoriteFolders(files, pinned, spare = []) {
+  return existingPinned(files, pinned, spare).map(path => {
+    const own = files.filter(file => inside(file.folder, path));
+    const sum = newSum();
+    for (const file of own) addWeight(sum, file);
+    const name = path.split('/').pop();
+    return { kind: 'folder', path, name, parent: path.split('/').slice(0, -1).join('/'), count: own.length, weight: sum.bytes, pinned: true, files: own,
+      ts: own.reduce((latest, file) => (file.ts !== null && (latest === null || file.ts > latest) ? file.ts : latest), null),
+        search: normalize(`${name} ${path}`) };
+  });
+}
+
 // L'arbre des dossiers pour le volet : [{ path, name, depth, count, hasChildren }] dans l'ordre d'affichage, selon les dossiers ouverts.
 export function treeRows(files, openPaths, locale, spare = []) {
   const rows = [];
@@ -290,42 +304,54 @@ export const rowKey = row => (row.kind === 'file' ? row.file.key : `${row.shared
 
 // Les fichiers du niveau que la vue montre : { pool, flat (une liste à plat, sans les dossiers du rangement), groups (les dossiers reçus d'un autre document à
 // montrer en tête) }.
-function levelOf(files, state, filtering, locale) {
+function levelOf(files, state, filtering, locale, { pinned, spare }) {
   if (state.view === 'shared' && !filtering) return { flat: true, ...sharedLevel(files, state.group, locale) };
-  if (state.view === 'recent') return { pool: [...files].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT), flat: true,
+  // Un raccourci (js/files/shortcuts.js) ne se montre que dans son dossier de « Moi » : ni dans les listes à plat, ni dans une recherche (le fichier visé y
+  // est).
+  const real = files.filter(file => !file.shortcut);
+  if (state.view === 'recent') return { pool: [...real].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT), flat: true,
     groups: [] };
-  if (state.view === 'fav') return { pool: files.filter(file => file.pinned), flat: true, groups: [] };
-  if (filtering || ['trash', 'shared', 'opened'].includes(state.view)) return { pool: files, flat: true, groups: [] };
+  if (state.view === 'fav') return { pool: real.filter(file => file.pinned), flat: true, groups: favoriteFolders(files, pinned, spare) };
+  if (filtering || ['trash', 'shared', 'opened'].includes(state.view)) return { pool: real, flat: true, groups: [] };
   return { pool: files.filter(file => file.folder === state.path && keptInFolder(file)), flat: false, groups: [] };
 }
 
 // Les lignes affichées : { rows: [{ kind: 'folder', ... } | { kind: 'file', file }], flat, covered }. `covered` : les fichiers que la liste couvre, ceux des
 // dossiers montrés compris (le total du pied de fenêtre en fait la somme : une pièce jointe que deux d'entre eux citent n'y est comptée qu'une fois).
 // `state` : { view: 'folder'|'recent'|'fav'|'trash'|'shared'|'opened', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le
-//   nom du type dans la langue ; `spare` : les dossiers gardés sans fichier. Récents garde d'abord les huit plus récents, puis les trie comme demandé
-//   (l'explorateur y commence par « modifié, le plus récent d'abord »). La corbeille, « Partagés avec moi » et « Ouverts » sont des listes à plat : `files` est
-//   alors celle des fichiers qui y sont, tous montrés, sans dossier.
-export function listItems(files, state, { locale, typeLabel, spare = [] }) {
+//   nom du type dans la langue ; `spare` : les dossiers gardés sans fichier ; `pinned` : les dossiers en favori (leur ligne porte `pinned`, et « Favoris » les
+//   montre en tête, avant les fichiers). Récents garde d'abord les huit plus récents, puis les trie comme demandé (l'explorateur y commence par « modifié, le
+//   plus récent d'abord »). La corbeille, « Partagés avec moi » et « Ouverts » sont des listes à plat : `files` est alors celle des fichiers qui y sont, tous
+//   montrés, sans dossier.
+export function listItems(files, state, { locale, typeLabel, spare = [], pinned = [] }) {
   const needles = words(state.q);
   const filtering = needles.length > 0 || state.type !== 'all';
   const ctx = { locale, label: typeLabel, name: (a, b) => (a.name || '').localeCompare(b.name || '', locale, { sensitivity: 'base', numeric: true }) };
-  let { pool, flat, groups } = levelOf(files, state, filtering, locale);
+  let { pool, flat, groups } = levelOf(files, state, filtering, locale, { pinned, spare });
   pool = pool.filter(file => (state.type === 'all' || file.type === state.type) && matchesWords(needles, file.search));
+  // Un dossier en favori n'a pas de type : un filtre de type l'écarte ; la recherche le trouve par son nom et son chemin
+  if (state.view === 'fav') {
+    groups = state.type === 'all' ? groups.filter(group => matchesWords(needles, group.search)) : [];
+    groups.sort((a, b) => a.name.localeCompare(b.name, locale, { sensitivity: 'base', numeric: true }) ||
+      a.path.localeCompare(b.path, locale, { numeric: true }));
+  }
   const sorter = SORTERS[state.sort.key] || SORTERS.name;
   const compare = (a, b) => (sorter(a, b, ctx) * state.sort.dir) || ctx.name(a, b);
   pool.sort(compare);
   const rows = pool.map(file => ({ kind: 'file', file }));
   if (!flat || groups.length) {
     // « Espaces » est une racine à côté de « Moi » (js/sharing/spaces-filing.js) : « Moi » ne la liste pas parmi ses dossiers.
+    const marked = new Set(pinned);
     const folders = flat ? groups : subfolders(files, state.path, locale, spare).filter(folder => folder.path !== SPACES_ROOT).map(folder =>
-      ({ kind: 'folder', ...folder }));
+      ({ kind: 'folder', ...folder, pinned: marked.has(folder.path) }));
     // Les dossiers vont par nom (renversés quand le tri par nom l'est), sauf quand la liste est triée par poids : ils suivent alors le même ordre que les
     // fichiers (le tri est stable : à poids égal, l'ordre des noms).
     if (state.sort.key === 'poids') folders.sort((a, b) => (a.weight - b.weight) * state.sort.dir);
     else if (state.sort.key === 'name' && state.sort.dir < 0) folders.reverse();
     rows.unshift(...folders);
   }
-  return { rows, flat, covered: flat ? [...pool, ...groups.flatMap(group => group.files)] : files.filter(file => inside(file.folder, state.path)) };
+  return { rows, flat, covered: flat ? [...new Set([...pool, ...groups.flatMap(group => group.files)])] :
+    files.filter(file => inside(file.folder, state.path)) };
 }
 
 // Les types présents dans les fichiers, pour le filtre : [{ value, label, icon, family, count }] (types connus d'abord, puis inconnus).

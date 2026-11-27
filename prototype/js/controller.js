@@ -5,6 +5,8 @@ import { CATALOGUE } from './apps/catalogue.js';
 import { loadAll, label } from './apps/manifest.js';
 import { GristState } from './broker/state.js';
 import { createPort } from './broker/broker.js';
+import { warmStructure, endOnWrite } from './broker/startup-reads.js';
+import { removeSkeleton } from './shell/boot-skeleton.js';
 import { ViewOptions, addressOf } from './broker/view-options.js';
 import { ownSectionHandlers } from './broker/own-section.js';
 import { ViewLink, LINK_KEY } from './broker/view-link.js';
@@ -172,7 +174,7 @@ export class GfsController {
         // une table que Grist ne sait plus envoyer en entier n'est pas redemandée sans fin (js/explorer/read-guard.js)
         guard: createReadGuard({ docId, store: key => keyStore(window, key, 'sessionStorage') }),
       prepare: () => this.names.refresh(this.apps.filter(item => item.ok)),
-      explorer: () => this.explorer, openedBar: () => this.openedBar, appName: this.appName, t: this.t, onSpaces: spaces => { this.spaces = spaces; },
+      explorer: () => this.explorer, openedBar: () => this.openedBar, appName: this.appName, t: this.t, onSpaces: spaces => this.#onSpaces(spaces),
       onFiles: files => void this.followFolders(files),
       onNotices: result => void this.notices.update({ files: result.files, spaces: result.spaces, sources: result.notices }),
       onStats: stats => { this.doc.body.dataset.explorerStats = JSON.stringify(stats); this.liveList.note(stats); },
@@ -213,12 +215,15 @@ export class GfsController {
       warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) });
   }
 
+  // Le moteur de partage écrit par `grist.docApi`, sans passer par le port : sa première écriture met fin au partage des lectures du démarrage.
+  #docApi() { return endOnWrite(this.grist.docApi, () => this.port.closeStartup()); }
+
   // Le partage entre documents, les droits et le poids : ce que les fenêtres du widget lisent du document (js/sharing/, js/rights/, js/weight/).
   #buildSharing() {
     // Le partage de fichiers avec d'autres documents Grist (js/sharing/share-other.js) : le moteur du kit, son port et les fenêtres ne se chargent qu'au
     // premier besoin.
     this.otherDocuments = createOtherDocuments({
-      t: this.t, container: this.$('stage'), inertTargets: this.inertTargets, docApi: () => this.grist.docApi, transfer: this.transfer,
+      t: this.t, container: this.$('stage'), inertTargets: this.inertTargets, docApi: () => this.#docApi(), transfer: this.transfer,
       language: () => this.lang, notice: text => this.notice(text), writeBlock: () => this.writeBlock(),
         files: () => (this.explorer ? this.explorer.files : []),
       following: { follow: (link, path, ids) => this.rangement.follow(link, path, ids), unfollow: (link, path) => this.rangement.unfollow(link, path) },
@@ -226,7 +231,7 @@ export class GfsController {
     // Les dossiers partagés « à jour » (js/share-follow.js) : à chaque lecture des fichiers, la condition du lien suit le contenu du dossier.
     this.followFolders = createFollower({
       rangement: this.rangement, writeBlock: () => this.writeBlock(), isOwner: () => this.transfer.isOwner(), engine: () => this.otherDocuments.engine(),
-        docApi: () => this.grist.docApi,
+        docApi: () => this.#docApi(),
     });
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, manifests: this.manifests, now: () => Date.now(), container: this.$('stage'),
@@ -283,13 +288,14 @@ export class GfsController {
 
   async start() {
     const { doc } = this;
-    if (window.parent === window) { this.status.say(this.t('gfs.noGrist'), true); doc.body.dataset.gfs = 'standalone'; return; }
+    if (window.parent === window) { this.status.say(this.t('gfs.noGrist'), true); doc.body.dataset.gfs = 'standalone'; removeSkeleton(doc); return; }
     installSprite(doc);
     doc.documentElement.lang = this.lang;
     this.language.onChange(event => this.#onLanguage(event));
     watchStorage(this.language);
     this.grist.on('message', message => this.state.feed(message));
     this.grist.ready({ requiredAccess: 'full', onEditOptions: () => this.onEditOptions() });
+    warmStructure(this.port.doc); // la structure du document se lit en une seule vague, que les étapes du démarrage retrouvent (js/broker/startup-reads.js)
     this.#installPrint();
     // la lecture part avec celles des manifestes : un seul aller-retour de réseau pour les deux (elle ne dépend d'aucun manifeste)
     const libraries = this.#loadLibraries();
@@ -310,13 +316,14 @@ export class GfsController {
     await identified;
     this.resume.begin(); // d'ici, où la personne est se retient
     doc.body.dataset.gfs = 'ready';
+    removeSkeleton(doc);
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
     void this.state.whenTable().then(() => this.viewLink.ensure()).then(() => this.pageTree.tidy());
     // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient
     // (js/sharing/sync-resume.js ; rien ne se charge sans table de partage).
     whenReceived(() => { void this.pageTree.tidy(); void this.#refreshReceived(); });
-    if (!this.writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false,
+    if (!this.writeBlock()) void resumeSharing({ docApi: this.#docApi(), transfer: this.transfer, language: () => this.lang, busy: () => false,
       isOwner: () => this.transfer.isOwner(), resumeReception: () => this.otherDocuments.resumeReceive() }).catch(error =>
         console.warn('GFS : le partage entre documents ne reprend pas', error));
     if (this.fullAccess) this.rangement.sweepLater(); // les lignes-sondes restées s'enlèvent plus tard, en tâche de fond (js/files/rangement.js)
@@ -544,6 +551,13 @@ export class GfsController {
   }
 
   // La table n'existe pas encore : la personne décide de la créer (contrats 6.2, point 1). Une fenêtre du widget, au-dessus de celle des apps.
+  // Ce que disent les espaces, à chaque lecture : l'explorateur les garde, et la sonde « propriétaire ? » part dès qu'il y en a un (l'article « Apparence… »
+  // d'un espace est grisé pour qui ne l'est pas, js/explorer/look-gestures.js).
+  #onSpaces(spaces) {
+    this.spaces = spaces;
+    if (spaces && spaces.spaces.length && this.lookGestures) void this.lookGestures.warm();
+  }
+
   #askTableConsent() {
     return this.ask({ title: this.t('table.title'), message: this.t('table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
   }

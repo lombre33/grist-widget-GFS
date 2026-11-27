@@ -2,10 +2,12 @@
 // puis ce module, qui passe la main au contrôleur : abonnement aux événements de Grist, grist.ready(), manifestes, explorateur ou app.
 
 import { GfsController } from './controller.js';
+import { removeSkeleton } from './shell/boot-skeleton.js';
 
 const controller = new GfsController({ grist: window.grist, router: window.GFSRouter, search: location.search });
 controller.start().catch(error => {
   console.error('GFS : démarrage impossible', error);
+  removeSkeleton();
   const status = document.getElementById('status');
   status.hidden = false;
   status.classList.add('status--bad');

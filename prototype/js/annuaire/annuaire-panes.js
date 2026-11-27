@@ -5,6 +5,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { initials, levelLabel, headsOf, telHref } from './annuaire-items.js';
+import { avatarNode, logoNode } from './annuaire-images.js';
 import { fieldLabel } from './annuaire-config.js';
 import { maskedPill, presenceRow } from './annuaire-tools.js';
 import { insertButton } from './annuaire-insert-menu.js';
@@ -74,7 +75,7 @@ export function personRow(person, { selected, tabStop, extra = [], cells = null,
   return h('button', { type: 'button', class: `an-person${cells ? ' has-cols' : ''}${masked ? ' is-masked' : ''}`, 'aria-pressed': String(selected),
     tabindex: tabStop ? '0' : '-1',
     dataset: { act: 'person', row: String(person.row), fk: `pe:${person.row}` } },
-  h('span', { class: 'an-av' }, who(person)),
+  avatarNode({ id: person.avatar, text: who(person) }),
   h('span', { class: 'an-pe-text' }, h('span', { class: 'an-pe-name' }, person.name), person.title ? h('span', { class: 'an-pe-sub' }, person.title) : null),
   masked && t ? maskedPill(t) : null,
   ...(cells || []).map(([label, text]) => h('span', { class: 'an-pe-col', title: text, dataset: { label } }, text)),
@@ -101,7 +102,7 @@ export function columnHead(columns, t, sort = null) {
 export function personCard(person, { selected, tabStop, extra = [], masked = false, t = null }) {
   return h('button', { type: 'button', class: `an-pcard${masked ? ' is-masked' : ''}`, 'aria-pressed': String(selected), tabindex: tabStop ? '0' : '-1',
     dataset: { act: 'person', row: String(person.row), fk: `pe:${person.row}` } },
-  h('span', { class: 'an-av an-av-l' }, who(person)),
+  avatarNode({ id: person.avatar, text: who(person), cls: 'an-av-l' }), logoNode(person.logo),
   h('span', { class: 'an-pe-name' }, person.name), person.title ? h('span', { class: 'an-pe-sub' }, person.title) : null, masked && t ? maskedPill(t) : null,
   h('span', { class: 'an-pe-pills' }, ...[...pathOf(person).slice(-2), ...extra].slice(0, 4).map(value => h('span', { class: 'an-pill' }, value))),
   person.email ? h('span', { class: 'an-pc-line' }, icon('mail'), person.email) : null,
@@ -204,9 +205,9 @@ export function fiche(person, ctx) {
   const path = attachment(person, ctx);
   const write = ficheActions(person, ctx);
   return h('div', { class: 'an-fiche-card' },
-    h('div', { class: 'an-fiche-head' }, h('span', { class: 'an-av an-av-xl' }, who(person)),
+    h('div', { class: 'an-fiche-head' }, avatarNode({ id: person.avatar, text: who(person), cls: 'an-av-xl' }),
       h('div', { class: 'an-fiche-id' }, h('h3', null, person.name), person.title ? h('p', { class: 'an-pe-sub' }, person.title) : null,
-        ctx.masked && ctx.masked.has(person.row) ? maskedPill(t) : null)), write,
+        ctx.masked && ctx.masked.has(person.row) ? maskedPill(t) : null), logoNode(person.logo, 'an-logo-l')), write,
     ctx.presence && ctx.presence(person) ? presenceRow(person, ctx.presence(person), t) : null,
     contact.length ? section(t('an.fiche.contact'), h('dl', { class: 'an-fiche-rows' }, ...contact)) : null, path ? section(t('an.fiche.attach'), path) : null,
     fields.length ? section(t('an.fiche.fields'), h('dl', { class: 'an-fiche-rows' }, ...fields)) : null,
@@ -223,7 +224,7 @@ export function nodeFiche(node, ctx) {
     dataset: { act: 'person', row: String(person.row), fk: `ph:${person.row}` } }, person.name));
   return h('div', { class: 'an-fiche-card' },
     h('div', { class: 'an-fiche-head' }, h('span', { class: 'an-av an-av-xl' }, icon('users')),
-      h('div', { class: 'an-fiche-id' }, h('h3', null, node.name), level ? h('p', { class: 'an-pe-sub' }, level) : null)),
+      h('div', { class: 'an-fiche-id' }, h('h3', null, node.name), level ? h('p', { class: 'an-pe-sub' }, level) : null), logoNode(node.logo, 'an-logo-l')),
     h('div', { class: 'an-fiche-levels' }, h('span', { class: 'an-pill' }, t('an.count', { n: node.count }))),
     heads.length ? h('dl', { class: 'an-fiche-rows' }, ficheRow(t('an.heads', { n: heads.length }), h('span', { class: 'an-fr-vals' }, ...names), '', t)) :
       null,

@@ -12,7 +12,8 @@ import { h } from '../ui/dom.js';
 import { openModal } from '../ui/modal.js';
 import { pickFrom } from '../ui/pick-window.js';
 import { readConfig } from './annuaire-config.js';
-import { genreOf, targetOf } from './annuaire-schema.js';
+import { genreOf, targetOf, columnOf } from './annuaire-schema.js';
+import { modifyActions } from './annuaire-field-edit.js';
 import { Sampler } from './annuaire-sample.js';
 import { peopleTab, peopleAct } from './annuaire-setup-people.js';
 import { hierarchyTab, hierarchyAct, levelInput, paintPreview } from './annuaire-setup-levels.js';
@@ -34,11 +35,14 @@ export class AnnuaireSetup {
   #sampler = null;
   #stamp = 0;
   #timer = null;
+  #wrote = false;
 
   // opts : { container, inertTargets(), t, schema, annuaire (celui qu'on règle, ou null), taken: [noms déjà pris], read(annuaire, cache) -> { people, tree }
   //   (facultatif), fetch(table) -> les tableaux de colonnes de la table (pour les exemples ; facultatif), createColumn(table, nom, type) -> { id } (l'écriture
   //   d'une
-  //   colonne, avec l'accord de la personne donné dans la fenêtre « Créer une colonne » ; facultatif), createTable(nom) -> { id, columns } (l'écriture de la
+  //   colonne, avec l'accord de la personne donné dans la fenêtre « Créer une colonne » ; facultatif), columnState(table, colonne) -> { ids, cells, raw },
+  //   modify(actions) (le changement du type et des valeurs d'une colonne : js/annuaire/annuaire-field-window.js ; facultatifs), createTable(nom) -> { id,
+  //   columns } (l'écriture de la
   //   table
   //   des personnes, avec l'accord donné dans la fenêtre « Créer une table » ; facultatif), writeBlock() -> texte ou null (ce qui empêche d'écrire), lock (le
   //   verrou
@@ -58,6 +62,7 @@ export class AnnuaireSetup {
       inertTargets: this.#o.inertTargets, preview: this.#preview, lock: this.#o.lock || null, body: this.#refs.body, sample: this.#sample(),
       repaint: () => this.#paint(), changed: () => { this.#paint(); this.#schedule(); }, list: opts => this.#list(opts),
         focus: (...keys) => this.#focus(...keys), createColumn: (table, made) => this.#createColumn(table, made), createTable: name => this.#createTable(name),
+        columnState: (table, col) => this.#columnState(table, col), modifyColumn: (table, col, plan) => this.#modifyColumn(table, col, plan),
         writeBlock: () => (this.#o.writeBlock ? this.#o.writeBlock() : null) };
   }
 
@@ -84,14 +89,38 @@ export class AnnuaireSetup {
   }
 
   // Une colonne nouvelle dans `table` : Grist l'écrit (le nom réel peut changer : on le relit), le schéma du réglage la connaît aussitôt, la table se relira.
-  async #createColumn(table, { name, type }) {
+  async #createColumn(table, { name, type, choices = [] }) {
     if (!this.#o.createColumn) throw new Error('écriture indisponible');
-    const made = await this.#o.createColumn(table, name, type, this.#draft.config.name);
-    const col = { id: made.id, type, genre: genreOf(type), ref: targetOf(type), visible: '' };
+    const made = await this.#o.createColumn(table, name, type, this.#draft.config.name, choices);
+    this.#wrote = true;
+    const col = { id: made.id, type, genre: genreOf(type), ref: targetOf(type), visible: '', formula: false, choices };
     if (this.#o.schema[table]) this.#o.schema[table].columns.push(col);
     this.#cache.delete(table);
     return col;
   }
+
+  // Ce que Grist garde d'une colonne (ses cellules, ses options), relu à l'instant pour changer son type ou ses valeurs (js/annuaire/annuaire-field-window.js).
+  #columnState(table, column) {
+    if (!this.#o.columnState) return Promise.reject(new Error('lecture indisponible'));
+    return this.#o.columnState(table, column);
+  }
+
+  // Écrit le changement d'une colonne (js/annuaire/annuaire-field-edit.js : le type, les valeurs), en un seul lot ; le schéma du réglage le sait aussitôt, la
+  // table se relira. Une erreur de Grist (ses règles d'accès) remonte telle quelle à la fenêtre qui l'a demandé.
+  async #modifyColumn(table, column, plan) {
+    if (!this.#o.modify) throw new Error('écriture indisponible');
+    await this.#o.modify(modifyActions(table, column, plan));
+    this.#wrote = true;
+    const col = columnOf(this.#o.schema, table, column);
+    if (col) {
+      if (plan.type) Object.assign(col, { type: plan.type.to, genre: plan.type.genre });
+      col.choices = plan.choices;
+    }
+    this.#cache.delete(table);
+  }
+
+  // Le réglage a-t-il écrit dans le document (une colonne créée ou modifiée) ? Même fermé sans enregistrer, l'annuaire doit alors se relire.
+  get wrote() { return this.#wrote; }
 
   // La table des personnes que GFS crée (son nom et son adresse e-mail) : Grist l'écrit (l'identifiant réel peut changer : on le relit), le schéma du réglage
   // la connaît aussitôt. Rend { table, name, email } : l'identifiant de la table et ceux des deux colonnes.

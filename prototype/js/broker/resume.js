@@ -18,6 +18,7 @@
 import { StoredChoice, keyStore, watchKey } from '../shell/stored-choice.js';
 import { placeOf } from '../explorer/explorer-place.js';
 import { slotKey, parseMemory, serializeMemory, needsList, decide } from './resume-place.js';
+import { earlyFields, earlyTarget, startEarly, keeps, undoEarly } from './resume-early.js';
 
 export const ENABLED_KEY = 'gfs.rouvrir';
 // Le temps qu'on laisse à Grist pour dire la table de la section : une section sans table n'a pas de souvenir, et ne retient pas l'arrivée plus longtemps.
@@ -74,12 +75,18 @@ export class Resume {
     if (!this.#slot || !this.enabled || !c.fullAccess) return null;
     const memory = parseMemory(this.#slot.read());
     if (!memory) return null;
+    const target = earlyTarget(memory);
+    const early = target ? startEarly(c, target) : null; // l'app démarre pendant que la liste vérifie le fichier (js/broker/resume-early.js)
     let who = '';
     if (needsList(memory)) {
       who = await identified;
       await c.refreshFiles({ quiet: true }); // la page n'a rien affiché de la liste : lue sans phrase, derrière l'arrivée
     }
-    return this.#carryOut(decide(memory, { who, files: c.explorer.files, folders: c.explorer.folders, locale: c.locale, lockOf: file => c.lockOf(file) }));
+    const outcome = decide(memory, { who, files: c.explorer.files, folders: c.explorer.folders, locale: c.locale, lockOf: file => c.lockOf(file) });
+    if (!early || !(await early)) return this.#carryOut(outcome);
+    if (keeps(target, outcome)) return 'file'; // le même fichier, toujours ouvrable : l'app est déjà là
+    undoEarly(c, target);
+    return this.#carryOut(outcome);
   }
 
   async #carryOut(outcome) {
@@ -122,6 +129,6 @@ export class Resume {
     const key = c.opened.shown(c.session);
     if (!key) return { ...base, lieu: 'app' };
     const file = c.explorer.files.find(item => item.key === key);
-    return { ...base, lieu: 'fichier', key, name: file ? file.name || '' : '' };
+    return { ...base, lieu: 'fichier', key, name: file ? file.name || '' : '', ...(file ? earlyFields(file) : {}) };
   }
 }

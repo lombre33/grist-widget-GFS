@@ -2,7 +2,9 @@
 // connexion à Grist, et n'en garde que les colonnes déclarées. Une table que l'app n'a pas encore créée n'est pas un problème (aucun fichier) ;
 // une table présente mais illisible est dite, app par app. Le rangement de GFS (`GFS_Filing`, 6.4) passe devant celui de chaque app.
 
-import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling } from './explorer-model.js';
+import { readFiles, readFiling, readGfsFiling, readGfsFolders, readGfsPinnedFolders, applyFiling } from './explorer-model.js';
+import { readShortcuts } from '../files/shortcuts.js';
+import { readFolderLooks } from '../files/folder-looks.js';
 import { TABLE } from '../files/rangement.js';
 import { readAppFolders, usable } from '../files/app-filing.js';
 import { BIN_TABLE, recipeOf, binFiles } from '../files/gfs-trash.js';
@@ -131,7 +133,8 @@ async function readEverything(real, apps, reader, guard) {
 // Rend { files, trash, folders, received, spaces, problems: [{ app, reason, held }], stats: { ms, tables, rows } } :
 //   `spaces` ce que disent les espaces partagés (js/sharing/spaces-filing.js, null sans partage), dont les dossiers sont ajoutés à `folders` ;
 //   `files` les fichiers vivants, `trash` ceux qui sont à la corbeille (js/explorer/explorer-model.js, `trashed`) : ils ne sont jamais mêlés, pour que rien de
-//   ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier supprimé ; `folders` les dossiers que la personne garde sans fichier (6.4, point 11) ;
+//   ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier supprimé ; `folders` les dossiers que la personne garde sans fichier (6.4, point 11) et
+//   `pinned` ceux de ses dossiers qu'elle a mis en favori (la colonne « Favori » de leur ligne d'état) ;
 //   `gfsTable` le nom que le document donne à la table du rangement, ou null quand elle n'existe pas ; `binTable` celui de la table de la corbeille
 //   (js/files/gfs-trash.js), ou null. Un rangement de GFS illisible ne cache aucun fichier : ils restent à leur place d'avant.
 // `reader` : la lecture légère (js/explorer/explorer-sql.js), qui lit d'abord et tant que le document n'est pas connu léger ; sans elle, ou éteinte, tout
@@ -141,7 +144,7 @@ export async function loadFiles(port, apps, identity = '', reader = null, guard 
   const started = performance.now();
   const raw = await readEverything(port, apps, reader, guard);
   const who = await identity;
-  const { context, folders } = await arrange(port, raw, who);
+  const { context, folders, pinned } = await arrange(port, raw, who);
   const files = [];
   const trash = [];
   const problems = [];
@@ -160,7 +163,9 @@ export async function loadFiles(port, apps, identity = '', reader = null, guard 
   stats.indexed = noContent(raw);
   if (reader) reader.learn(stats.bytes, problems.length > 0);
   stats.ms = Math.round(performance.now() - started);
-  return { files, trash, folders, received: raw.received, spaces: raw.spaces, notices: raw.notices, problems, stats,
+  return { files, trash, folders, pinned, received: raw.received, spaces: raw.spaces, notices: raw.notices, problems, stats,
+    shortcuts: raw.gfs.data ? readShortcuts(raw.gfs.data, who) : [],
+    looks: new Map([...(raw.gfs.data ? readFolderLooks(raw.gfs.data, who) : []), ...((raw.spaces && raw.spaces.looks) || [])]),
     gfsTable: raw.gfs.data ? nameIn(raw.tables, TABLE) : null,
     binTable: raw.bin.data ? nameIn(raw.tables, BIN_TABLE) : null };
 }
@@ -176,7 +181,7 @@ function noContent(raw) {
 }
 
 // Ce que la lecture range avec l'adresse de la personne : le rangement de GFS, les espaces partagés et la corbeille des apps. Rend { context, folders },
-// `context` ce que `readAppFiles` reçoit, `folders` les dossiers de GFS et ceux des espaces.
+// `context` ce que `readAppFiles` reçoit, `folders` les dossiers de GFS et ceux des espaces, `pinned` les dossiers de GFS en favori.
 async function arrange(port, raw, identity) {
   const { tables, light, gfs, spaces, bin } = raw;
   if (gfs.error) console.warn('GFS : le rangement de GFS est illisible', gfs.error);
@@ -184,7 +189,8 @@ async function arrange(port, raw, identity) {
   if (spaces) folders.push(...spaces.folders);
   const address = identity || await sharedAddress(port, tables);
   if (bin.error) console.warn('GFS : la corbeille des apps est illisible', bin.error);
-  return { folders, context: { identity, address, spaces, bin, gfsFiling: gfs.data ? readGfsFiling(gfs.data, identity) : null } };
+  return { folders, pinned: gfs.data ? readGfsPinnedFolders(gfs.data, identity) : [],
+    context: { identity, address, spaces, bin, gfsFiling: gfs.data ? readGfsFiling(gfs.data, identity) : null } };
 }
 
 // Les fichiers d'une table de fichiers d'une app, rangés et placés : { found, binned } (`binned` : ceux qu'elle a mis à la corbeille de GFS), ou { problem }

@@ -6,7 +6,7 @@
 // rangée au niveau qu'elle a (« niveau sauté »).
 
 import { columnOf, columnAt } from './annuaire-schema.js';
-import { fieldPath, fieldLabel, keyPath } from './annuaire-config.js';
+import { fieldPath, fieldLabel, keyPath, logoLevelOf } from './annuaire-config.js';
 import { initials, levelLabel } from './annuaire-items.js';
 import { idsOf } from './annuaire-relations.js';
 import { normalize, words, matchesWords } from '../ui/search.js';
@@ -58,22 +58,38 @@ function refValues(ids, col, ctx, depth) {
   });
 }
 
-// Suit un chemin de colonnes depuis une ligne de `tableId` : toutes les colonnes sauf la dernière doivent être des références à une seule ligne ; la valeur est
-// celle de la dernière colonne. [] quand un maillon est vide ou n'est pas une référence.
-export function followPath(ctx, tableId, rowAt, columns) {
+// Suit un chemin de colonnes depuis une ligne de `tableId` : toutes les colonnes sauf la dernière doivent être des références à une seule ligne. Rend la
+// dernière cellule avec sa colonne et la ligne qui la porte, { col, cell, table, row }, ou null quand un maillon est vide ou n'est pas une référence.
+function walkPath(ctx, tableId, rowAt, columns) {
   let table = tableId;
   let at = rowAt;
   for (let i = 0; i < columns.length; i++) {
     const col = columnOf(ctx.schema, table, columns[i]);
     const cell = ctx.data[table] && Array.isArray(ctx.data[table][columns[i]]) ? ctx.data[table][columns[i]][at] : undefined;
-    if (!col) return [];
-    if (i === columns.length - 1) return valuesOf(cell, col, ctx);
-    if (col.genre !== 'ref' || typeof cell !== 'number') return [];
+    if (!col) return null;
+    if (i === columns.length - 1) return { col, cell, table, row: ctx.data[table].id[at] };
+    if (col.genre !== 'ref' || typeof cell !== 'number') return null;
     at = ctx.at(col.ref, cell);
     table = col.ref;
-    if (at < 0) return [];
+    if (at < 0) return null;
   }
-  return [];
+  return null;
+}
+
+// Les valeurs de la dernière colonne du chemin, en textes : [] quand un maillon est vide ou n'est pas une référence.
+export function followPath(ctx, tableId, rowAt, columns) {
+  const end = walkPath(ctx, tableId, rowAt, columns);
+  return end ? valuesOf(end.cell, end.col, ctx) : [];
+}
+
+// L'image que le chemin désigne (la photo, le logo) : { id (le numéro de la première pièce jointe), table, col, row (la cellule qui la porte) }, ou null quand
+// la dernière colonne n'est pas une colonne de pièces jointes ou que la cellule est vide. Le numéro est celui de `_grist_Attachments` : le contenu se
+// télécharge à la demande (js/annuaire/annuaire-images.js).
+export function attachmentOf(ctx, tableId, rowAt, columns) {
+  const end = columns.length ? walkPath(ctx, tableId, rowAt, columns) : null;
+  if (!end || end.col.genre !== 'file') return null;
+  const id = Array.isArray(end.cell) ? end.cell.slice(end.cell[0] === 'L' ? 1 : 0).find(each => Number.isInteger(each) && each > 0) : undefined;
+  return id ? { id, table: end.table, col: end.col.id, row: end.row } : null;
 }
 
 // Le nom qu'une personne porte : `last` seul (la colonne du nom complet), ou le prénom et le nom de famille dans l'ordre que l'annuaire dit quand le prénom est
@@ -93,21 +109,26 @@ const bySort = (a, b) => (a.sort ?? a.name).localeCompare(b.sort ?? b.name, 'fr'
 // par nom (de famille d'abord quand le prénom est une colonne à part).
 // `lead` : la personne est responsable de sa structure (la colonne `lead` de la configuration est un oui/non, ou n'est pas vide) ; `manager` : le numéro de la
 //   ligne de son responsable (la colonne `manager` est une référence à la même table), ou null ; `rel` : { colonne: [numéros de ligne] } pour chaque relation
-//   de la configuration (js/annuaire/annuaire-relations.js).
+//   de la configuration (js/annuaire/annuaire-relations.js) ; `avatar` : le numéro de la pièce jointe de la photo (0 sans) ; `logo` : celui du logo, `logoAt` :
+//   { table, col, row } la cellule qui le porte (pour en poser un autre), `logoLevel` : le niveau qui le porte (-1 : la personne ou aucun niveau).
 export function buildPeople(config, tableId, data, schema) {
   const ctx = { ...lookup(data), schema };
   const table = data[tableId];
   if (!table || !Array.isArray(table.id)) return [];
   const one = (key, i) => (config[key] ? followPath(ctx, tableId, i, keyPath(config[key]))[0] || '' : '');
+  const logoLevel = logoLevelOf(config);
   const people = table.id.map((row, i) => {
     const managerCell = config.manager && Array.isArray(table[config.manager]) ? table[config.manager][i] : null;
     const lead = config.lead ? followPath(ctx, tableId, i, [config.lead]) : [];
+    const photo = attachmentOf(ctx, tableId, i, keyPath(config.avatar));
+    const logo = attachmentOf(ctx, tableId, i, keyPath(config.logo));
     return { row, ...nameOf(one('first', i), one('name', i), config.order, config.upper), title: one('title', i), email: one('email', i),
       phone: one('phone', i),
       levels: config.levels.map(level => followPath(ctx, tableId, i, level.path)[0] || ''),
       fields: Object.fromEntries(config.fields.map(field => [field.col, followPath(ctx, tableId, i, fieldPath(field))])),
       rel: Object.fromEntries((config.relations || []).map(rel => [rel.col, idsOf(Array.isArray(table[rel.col]) ? table[rel.col][i] : null)])),
-      lead: lead.length > 0 && lead[0] !== 'false', manager: typeof managerCell === 'number' && managerCell > 0 ? managerCell : null };
+      lead: lead.length > 0 && lead[0] !== 'false', manager: typeof managerCell === 'number' && managerCell > 0 ? managerCell : null,
+      avatar: photo ? photo.id : 0, logo: logo ? logo.id : 0, logoAt: logo ? { table: logo.table, col: logo.col, row: logo.row } : null, logoLevel };
   });
   return people.filter(person => person.name).sort(bySort);
 }
@@ -119,7 +140,7 @@ export const nodeId = (person, levels) => levels.reduce((id, _level, i) => (pers
 // La hiérarchie : { id, name, level (-1 pour la racine), own: [personnes rangées ici], count (ici et dessous), ch: [nœuds] }. Le nœud d'un niveau s'identifie
 // par son chemin (« Pôle Ressources › Direction des finances » n'est pas « Direction des finances » d'un autre pôle). Les enfants sont triés par nom.
 export function buildTree(people, levels, rootName) {
-  const root = { id: '', name: rootName, level: -1, own: [], count: 0, ch: [] };
+  const root = { id: '', name: rootName, level: -1, own: [], count: 0, ch: [], logo: 0, logoAt: null };
   for (const person of people) {
     let node = root;
     levels.forEach((level, i) => {
@@ -127,7 +148,9 @@ export function buildTree(people, levels, rootName) {
       if (!value) return; // niveau sauté
       const id = `${node.id}\u001f${i}:${value}`;
       let child = node.ch.find(each => each.id === id);
-      if (!child) { child = { id, name: value, level: i, own: [], count: 0, ch: [] }; node.ch.push(child); }
+      if (!child) { child = { id, name: value, level: i, own: [], count: 0, ch: [], logo: 0, logoAt: null }; node.ch.push(child); }
+      // Le nœud d'un niveau qui porte un logo prend celui de ses personnes (elles le partagent : c'est la même ligne de la table du niveau).
+      if (person.logo && person.logoLevel === i && !child.logo) { child.logo = person.logo; child.logoAt = person.logoAt; }
       node = child;
     });
     node.own.push(person);

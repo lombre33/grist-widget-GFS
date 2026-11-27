@@ -31,10 +31,10 @@ export class DocTools {
 
   // Ajoute la colonne `name` (vide, du type `type` : « Text », « Ref:Personnes »…) à `table` : { id }. Grist choisit l'identifiant (il peut différer du nom) :
   // on le relit dans sa réponse. Une référence montre la colonne `show` de sa table ; si ce réglage échoue, la colonne reste créée, avec ses numéros.
-  async addColumn(table, name, type, show = '') {
+  async addColumn(table, name, type, show = '', choices = []) {
     const target = targetOf(type);
     const shown = target && show ? await this.#columnRef(target, show) : 0;
-    const result = await this.#port.doc.applyUserActions([addColumnAction(table, name, type, shown)]);
+    const result = await this.#port.doc.applyUserActions([addColumnAction(table, name, type, shown, choices)]);
     const made = result && Array.isArray(result.retValues) ? result.retValues[0] : null;
     const id = made && typeof made.colId === 'string' && made.colId ? made.colId : String(name).trim();
     if (shown && made && made.colRef) {

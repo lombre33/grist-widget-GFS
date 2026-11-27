@@ -9,23 +9,15 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { columnAt } from './annuaire-schema.js';
-import { FIELD_SEPARATOR, FIXED_COLUMNS, fieldPath } from './annuaire-config.js';
-import { switchButton, iconButton, shift, typeLabel, FILTERABLE, GLYPHS } from './annuaire-setup-shared.js';
+import { FIELD_SEPARATOR, FIXED_COLUMNS, fieldPath, fieldLabel } from './annuaire-config.js';
+import { switchButton, iconButton, shift, typeLabel, takenColumns, FILTERABLE, GLYPHS } from './annuaire-setup-shared.js';
 import { pickPath } from './annuaire-setup-path.js';
+import { FIELD_TYPES } from './annuaire-field-edit.js';
+import { editField } from './annuaire-field-window.js';
 
 const SUGGESTED = 6;
 // l'ordre des suggestions : ce qui donne un filtre d'abord
 const KINDS = Object.freeze(['choice', 'choicelist', 'bool', 'date', 'ref', 'reflist', 'text', 'number']);
-
-// Les colonnes que GFS lit déjà par un nom ou que les niveaux suivent : elles ne se proposent pas en champ.
-function takenColumns(config) {
-  const taken = new Set(['name', 'first', 'title', 'email', 'phone', 'lead', 'manager'].map(key => config[key]).filter(Boolean));
-  for (const level of config.levels) if (level.path[0]) taken.add(level.path[0]);
-  for (const rel of config.relations) if (rel.col) taken.add(rel.col);
-  for (const field of config.fields) taken.add(field.col);
-  for (const col of [config.leave, config.presence.col]) if (col) taken.add(col); // les colonnes des options (départ, présence) ne se proposent pas en champ
-  return taken;
-}
 
 // Les suggestions : les colonnes libres, celles qui donnent un filtre d'abord.
 function suggestions(host) {
@@ -70,7 +62,9 @@ function fieldRow(host, field, at) {
   const { t, draft, schema } = host;
   const col = columnAt(schema, draft.table, fieldPath(field));
   const can = col ? FILTERABLE.includes(col.genre) : false;
-  const name = h('span', { class: 'an-f-name', title: col ? '' : t('an.fld.absent') }, icon(GLYPHS[col ? col.genre : ''] || 'table'), field.col);
+  const shown = fieldLabel(field);
+  const name = h('span', { class: 'an-f-name', title: col ? '' : t('an.fld.absent') }, icon(GLYPHS[col ? col.genre : ''] || 'table'), shown,
+    shown === field.col ? null : h('span', { class: 'an-f-col' }, field.col));
   const last = draft.config.fields.length - 1;
   return h('div', { class: 'an-frow' }, name, h('span', { class: 'an-f-type' }, typeLabel(col, draft.table, t)),
     h('span', { class: 'an-f-sw' }, switchButton({ on: field.column, label: `${field.col} · ${t('an.fld.col.column')}`, fk: `fk:${at}`,
@@ -80,7 +74,9 @@ function fieldRow(host, field, at) {
     h('span', { class: 'an-f-sw' }, switchButton({ on: can && field.filter, label: `${field.col} · ${t('an.fld.col.filter')}`, fk: `ff:${at}`,
       data: { act: 'fld-filter', index: String(at) },
       disabled: !can, title: can ? '' : t('an.set.noFilter') })),
-    h('span', { class: 'an-f-acts' }, iconButton(t, { glyph: 'chev-up', label: t('an.set.up'), fk: `fu:${at}`, data: { act: 'fld-up', index: String(at) },
+    h('span', { class: 'an-f-acts' }, iconButton(t, { glyph: 'edit', label: t('an.fld.edit', { name: shown }), fk: `fe:${at}`,
+      data: { act: 'fld-edit', index: String(at) } }),
+      iconButton(t, { glyph: 'chev-up', label: t('an.set.up'), fk: `fu:${at}`, data: { act: 'fld-up', index: String(at) },
       disabled: at === 0 }),
       iconButton(t, { glyph: 'chev-down', label: t('an.set.down'), fk: `fd:${at}`, data: { act: 'fld-down', index: String(at) }, disabled: at === last }),
       iconButton(t, { glyph: 'trash', label: t('an.set.remove'), fk: `fr:${at}`, data: { act: 'fld-remove', index: String(at) } })));
@@ -120,6 +116,7 @@ const ACTS = Object.freeze({
   'fld-down': (host, data) => reorder(host, Number(data.index), 1),
   'fld-remove': (host, data) => { host.draft.config.fields.splice(Number(data.index), 1); host.repaint(); },
   sug: (host, data) => { addField(host, [data.col]); },
+  'fld-edit': (host, data) => void editField(host, Number(data.index)),
   'field-add': host => void pickField(host),
 });
 
@@ -153,11 +150,8 @@ function addField(host, path) {
 async function pickField(host) {
   const { t, draft } = host;
   const taken = takenColumns(draft.config);
-  const kinds = [['Text', 'an.type.text'], ['Choice', 'an.type.choice'], ['ChoiceList', 'an.type.choicelist'], ['Bool', 'an.type.bool'],
-    ['Date', 'an.type.date'],
-    ['Numeric', 'an.type.number']];
   const path = await pickPath(host, { title: t('an.set.pickField'), text: t('an.set.pickFieldText'),
-    types: kinds.map(([type, key]) => ({ type, label: t(key) })),
+    types: FIELD_TYPES.map(({ type, key }) => ({ type, label: t(key) })),
     filter: (col, followed) => followed.length > 0 || !taken.has(col.id) });
   if (path !== null) addField(host, path);
 }

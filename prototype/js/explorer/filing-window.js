@@ -77,6 +77,7 @@ export function chooseFolder({ container, inertTargets, t, title, folders, curre
     note.textContent = !found.length ? t('ex.moveNone') : (found.length > SHOWN ? t('work.more', { n: SHOWN, total: found.length }) : '');
   };
   search.addEventListener('input', render);
+  cancel.addEventListener('click', () => done(null));
   list.addEventListener('click', event => {
     const button = event.target.closest('.wk-item');
     const item = button && shown[Number(button.dataset.index)];

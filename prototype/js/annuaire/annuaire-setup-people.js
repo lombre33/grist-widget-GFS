@@ -36,7 +36,10 @@ export function peopleTab(host) {
     h('section', { class: 'an-sec' }, h('h3', null, t('an.set.persons')), column('name'),
       split ? column('first') : null, ...(split ? orderRows(host) : []), splitDisclosure(host, split), column('email'),
       phone ? column('phone') : h('div', { class: 'an-set-add' }, h('button', { type: 'button', class: 'an-sug', 'aria-disabled': table ? null : 'true',
-        title: table ? null : t('an.set.needTable'), dataset: { act: 'add-phone', fk: 'add-phone' } }, icon('plus'), t('an.set.phone')))));
+        title: table ? null : t('an.set.needTable'), dataset: { act: 'add-phone', fk: 'add-phone' } }, icon('plus'), t('an.set.phone')))),
+    h('section', { class: 'an-sec' }, h('h3', null, t('an.set.images')),
+      formRow(t('an.set.avatar'), chooser(t, 'pc:avatar', config.avatar, { act: 'pick-image', key: 'avatar' }, need), t('an.set.avatarHint')),
+      formRow(t('an.set.logo'), chooser(t, 'pc:logo', config.logo, { act: 'pick-image', key: 'logo' }, need), t('an.set.logoHint'))));
 }
 
 // « Séparer le nom et le prénom » : un bouton qui déplie la raison, et rend les deux colonnes. Fermé, le prénom est oublié.
@@ -68,6 +71,7 @@ function orderRows(host) {
 const ACTS = Object.freeze({
   'pick-table': host => void pickTable(host),
   'pick-person': (host, data) => void pickPerson(host, data.key),
+  'pick-image': (host, data) => void pickImage(host, data.key),
   'add-phone': host => { host.ui.phone = true; host.repaint(); void pickPerson(host, 'phone'); },
   'toggle-split': host => {
     const { draft, ui } = host;
@@ -137,5 +141,22 @@ async function pickPerson(host, key) {
   if (chosen === null) return;
   draft.config[key] = chosen;
   if (key === 'phone' && !chosen) host.ui.phone = false;
+  host.changed();
+}
+
+// La colonne de la photo (une colonne « Pièces jointes » de la personne) ou le chemin du logo (une colonne « Pièces jointes » de la personne, ou d'une table
+// que ses références visent : « Structure › Direction › Logo »). Une colonne se crée au besoin ; « Aucune » les vide.
+async function pickImage(host, key) {
+  const { t, draft } = host;
+  const options = { title: t(`an.set.${key}`), text: t(`an.set.${key}Hint`), types: [{ type: 'Attachments', label: t('an.type.file') }], clear: true,
+    files: true };
+  let chosen;
+  if (key === 'avatar') chosen = await pickColumn(host, { ...options, current: draft.config.avatar });
+  else {
+    const path = await pickPath(host, { ...options, current: keyPath(draft.config.logo) });
+    chosen = path === null ? null : path.join(FIELD_SEPARATOR);
+  }
+  if (chosen === null) return;
+  draft.config[key] = chosen;
   host.changed();
 }

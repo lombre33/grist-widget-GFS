@@ -208,6 +208,7 @@ function annuaireWindows(probe) {
       exits: [{ fk: 'lk-cancel' }, 'Escape'] },
     { name: '« Modifier la fiche »', open: async () => { await gesture('.an-person')(); await delay(300); await probe.click('.an-side [data-fk="edit"]'); }, exits: [{ fk: 'ed-cancel' }, 'Escape'] },
     { name: '« Ajouter des personnes »', open: gesture('[data-fk="add"]'), exits: [{ fk: 'ed-cancel' }, 'Escape'] },
+    { name: '« Modifier le champ »', open: gesture('[data-fk="configure"]', '[data-fk="tab:fields"]', '[data-fk="fe:0"]'), exits: [{ fk: 'fw-cancel' }, 'Escape'] },
     { name: '« À vérifier »', query: 'tools=1', open: gesture('[data-fk="check"]'), exits: [{ fk: 'chk-close' }, 'Escape'] },
     { name: '« Écrire au groupe »', query: 'tools=1', open: gesture('[data-fk="mail"]'), exits: [{ fk: 'mail-close' }, 'Escape'] },
     { name: '« Changer d\'annuaire »', query: 'sub=1', open: gesture('[data-fk="switch"]'), exits: [{ fk: 'pick-cancel' }, 'Escape'] },

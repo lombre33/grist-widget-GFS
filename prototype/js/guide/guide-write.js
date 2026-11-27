@@ -23,14 +23,25 @@ export function fieldsOf(config, schema, table, directory = null) {
     const base = field(`role:${role.col}`, role.col, { role });
     return { ...base, kind: kindOf(base.column, directory), mode: base.column && base.column.genre === 'ref' ? 'ref' : base.mode };
   });
-  return [...plain.filter(item => item.key !== 'parent' || (item.column && item.column.genre === 'ref' && item.column.ref === table)), ...roles];
+  const kind = config.kind ? [field('kind', config.kind)] : [];
+  const extras = config.fields.map(each => field(`x:${each.id}`, each.col, { extra: each }));
+  return [...plain.filter(item => item.key !== 'parent' || (item.column && item.column.genre === 'ref' && item.column.ref === table)), ...kind, ...extras,
+    ...roles];
+}
+
+// Les champs que le formulaire montre pour le type `kindId` : ceux de toute démarche (titre, mère, mots-clés, étapes, détails), le type, les champs du type,
+// puis les rôles. Les champs d'un autre type ne se montrent pas et ne s'écrivent pas : ce qu'ils gardent reste dans la table.
+export function visibleFields(fields, config, kindId) {
+  const type = config.types.find(each => each.id === kindId);
+  const mine = new Set(type ? type.fields : []);
+  return fields.filter(item => !item.key.startsWith('x:') || mine.has(item.extra.id));
 }
 
 // Les valeurs de départ du formulaire : celles de la démarche (rien pour une nouvelle ; `parent` : la mère proposée).
 export function valuesFrom(proc, parent = null) {
   const own = key => (proc ? proc.roles[key] : null);
   const values = { title: proc ? proc.title : '', parent: proc ? proc.parent : parent, keywords: proc ? proc.keywords.join(', ') : '',
-    steps: proc ? proc.steps.join('\n') : '', details: proc ? proc.details : '', roles: {} };
+    steps: proc ? proc.steps.join('\n') : '', details: proc ? proc.details : '', kind: proc ? proc.kind : '', extra: proc ? { ...proc.extra } : {}, roles: {} };
   for (const key of Object.keys(proc ? proc.roles : {})) {
     const cell = own(key);
     values.roles[key] = cell.ids.length ? { id: cell.ids[0], text: cell.texts[0] || '' } : { id: null, text: cell.texts[0] || '' };
@@ -45,6 +56,8 @@ function cellOf(item, values) {
     return item.mode === 'ref' ? (own.id || 0) : String(own.text || '').trim();
   }
   if (item.key === 'parent') return values.parent || 0;
+  if (item.key === 'kind') return String(values.kind || '');
+  if (item.key.startsWith('x:')) return String((values.extra || {})[item.extra.id] ?? '').trim();
   return String(values[item.key] ?? '').trim();
 }
 
@@ -65,7 +78,10 @@ export function recordOf(fields, values, before = null) {
 export function problemOf(fields, values) {
   const title = fields.find(item => item.key === 'title');
   if (!title || !title.mode) return 'gd.proc.errNoTitleCol';
-  return String(values.title || '').trim() ? '' : 'gd.proc.errTitle';
+  if (!String(values.title || '').trim()) return 'gd.proc.errTitle';
+  const badLink = fields.some(item => item.extra && item.extra.shape === 'link' && String((values.extra || {})[item.extra.id] ?? '').trim() &&
+    !/^https?:\/\/\S+$/i.test(String(values.extra[item.extra.id]).trim()));
+  return badLink ? 'gd.proc.errLink' : '';
 }
 
 // Les démarches sous une démarche, de proche en proche : [lignes].

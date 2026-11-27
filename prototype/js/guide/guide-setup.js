@@ -14,6 +14,7 @@ import { pickColumn } from '../annuaire/annuaire-setup-path.js';
 import { chooser, formRow, iconButton } from '../annuaire/annuaire-setup-shared.js';
 import { isPeopleTable } from '../annuaire/annuaire-schema.js';
 import { readConfig, ROLE_PRESETS, MAX_ROLES } from './guide-config.js';
+import { GuideTypes } from './guide-types-window.js';
 
 const SAMPLE = Object.freeze({ state: 'none', load() {}, text: () => '', whenLoaded() {} }); // le choix d'une colonne n'a pas de personne d'exemple
 const OPTIONAL = Object.freeze([['keywords', 'gd.set.keywords', 'gd.set.keywordsHint'], ['steps', 'gd.set.steps', 'gd.set.stepsHint'],
@@ -59,8 +60,8 @@ export class GuideSetup {
   // Les colonnes déjà prises par un usage (le titre, la mère, un rôle… : une colonne ne sert qu'à un seul), sauf `keep`.
   #used(keep = '') {
     const { config } = this.#draft;
-    return new Set([config.title, config.parent, config.keywords, config.steps, config.details, ...config.roles.map(role => role.col)].filter(col => col &&
-      col !== keep));
+    return new Set([config.title, config.parent, config.keywords, config.steps, config.details, config.kind, ...config.fields.map(field => field.col),
+      ...config.roles.map(role => role.col)].filter(col => col && col !== keep));
   }
 
   // Choisit une colonne pour `key` ('title', 'parent'…) ; `types` : ce qu'on propose de créer ; `filter` : les colonnes qu'on propose.
@@ -139,6 +140,17 @@ export class GuideSetup {
     this.#refs.body.querySelector(`[data-fk="role-label:${at === null ? config.roles.length - 1 : at}"]`)?.focus();
   }
 
+  // « Types et champs » : la fenêtre des types ; ce qu'elle rend remplace les types, les champs et la colonne du type du réglage.
+  async #editTypes() {
+    const { container, inertTargets, t } = this.#o;
+    const { config, table } = this.#draft;
+    const done = await new GuideTypes({ container, inertTargets, t, config, createColumns: specs => this.#o.createColumns(table, specs),
+      writeBlock: this.#o.writeBlock }).run();
+    if (!done) return;
+    Object.assign(config, { kind: done.kind, fields: done.fields, types: done.types });
+    this.#paint();
+  }
+
   async #choosePreset(at) {
     const { t } = this.#o;
     const role = this.#draft.config.roles[at];
@@ -185,6 +197,11 @@ export class GuideSetup {
         this.#choice('parent', t('gd.set.parent'), t('gd.set.parentHint'), 'set-parent'),
       ...OPTIONAL.map(([key, label, hint]) => this.#choice(key, t(label), t(hint), `set-${key}`)),
       formRow(t('gd.set.directory'), chooser(t, 'set-directory', directory ? directory.name : '', { act: 'directory' }), t('gd.set.directoryHint')),
+      formRow(t('gd.set.types'), h('button', { type: 'button', class: 'an-pickbtn', 'aria-disabled': table ? null : 'true',
+        title: table ? null : t('gd.set.needTable'),
+        dataset: { act: 'types', fk: 'set-types' } }, config.types.length ? t('gd.set.typesCount', { n: config.types.length }) : t('gd.set.typesNone'),
+          icon('chev-down')),
+        t('gd.set.typesHint')),
       h('h3', { class: 'gd-set-h' }, t('gd.set.roles')), h('p', { class: 'an-set-hint' }, t('gd.set.rolesHint')), ...roles,
       h('button', { type: 'button', class: 'btn sm gd-set-add', 'aria-disabled': !table || config.roles.length >= MAX_ROLES ? 'true' : null,
         dataset: { act: 'role-add', fk: 'role-add' } },
@@ -210,7 +227,8 @@ export class GuideSetup {
     const button = event.target.closest('[data-act]');
     if (!button || button.getAttribute('aria-disabled') === 'true') return;
     const at = Number(button.dataset.at);
-    const run = { table: () => this.#chooseTable(), directory: () => this.#chooseDirectory(), 'role-add': () => this.#chooseRoleColumn(null),
+    const run = { table: () => this.#chooseTable(), directory: () => this.#chooseDirectory(), types: () => this.#editTypes(),
+      'role-add': () => this.#chooseRoleColumn(null),
       'role-col': () => this.#chooseRoleColumn(at), 'role-preset': () => this.#choosePreset(at),
       'role-del': () => { this.#draft.config.roles.splice(at, 1); this.#paint(); } }[button.dataset.act] || (() => this.#chooseColumn(button.dataset.act));
     void run();

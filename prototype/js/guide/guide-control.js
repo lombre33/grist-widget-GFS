@@ -179,12 +179,34 @@ export class GuideControl {
     }
   }
 
+  // Des colonnes de texte pour les champs et le type des démarches : la personne dit oui dans une fenêtre qui les nomme, GFS les ajoute à la table du guide.
+  // Rend { clé : identifiant réel de la colonne } (Grist choisit l'identifiant), ou null quand elle refuse.
+  async #makeColumns(schema, table, specs) {
+    const { t } = this.#o;
+    const ok = await this.#o.ask({ title: t('gd.fld.askTitle'), message: t('gd.fld.askText', { table, columns: specs.map(spec => spec.name).join(', ') }),
+      confirmLabel: t('table.create'), cancelLabel: t('table.cancel') });
+    if (!ok) return null;
+    const made = {};
+    try {
+      for (const spec of specs) {
+        const col = await this.#store.addColumn(table, spec.name, 'Text');
+        made[spec.key] = col.id;
+        if (schema[table]) schema[table].columns.push({ id: col.id, type: 'Text', genre: 'text', ref: '', visible: '' });
+      }
+    } catch (error) {
+      console.error('GFS : création des colonnes du guide impossible', error);
+      this.#o.notice(t('gd.fld.failed', { reason: String(error && error.message) }));
+    }
+    return made;
+  }
+
   async #setup(guide) {
     const schema = await this.#schema();
     if (!schema) return null;
     return new GuideSetup({ container: this.#o.container, inertTargets: this.#o.inertTargets, t: this.#o.t, schema, guide,
       taken: guide ? [] : this.#list.map(each => each.name),
       directories: await this.#directories(), createTable: () => this.#makeTable(schema),
+        createColumns: (table, specs) => this.#makeColumns(schema, table, specs),
         createColumn: (table, name, type, show) => this.#store.addColumn(table, name, type, show),
       writeBlock: () => this.#o.writeBlock() }).run();
   }
@@ -243,7 +265,7 @@ export class GuideControl {
     if (!done) return;
     try {
       if (done.remove) { await this.#remove(proc, data, current); return; }
-      const saved = await this.#store.saveProcedure(current, proc ? proc.row : null, recordOf(fields, done.values, done.before));
+      const saved = await this.#store.saveProcedure(current, proc ? proc.row : null, recordOf(done.fields, done.values, done.before));
       await this.#read();
       if (Number.isFinite(saved)) this.#window.showProc(saved);
       this.#window.say(t(proc ? 'gd.proc.saved' : 'gd.proc.created', { title: String(done.values.title).trim() }));

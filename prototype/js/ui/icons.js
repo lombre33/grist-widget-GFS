@@ -108,6 +108,9 @@ const ICONS = {
   guide: '<path d="M12 3v18M9 21h6"/><path d="M6 5h10l3 2.5-3 2.5H6z"/><path d="M18 12H8l-3 2.5L8 17h10z"/>',
   building: '<path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M14 10h5a1 1 0 0 1 1 1v10"/><path d="M8 8h2M8 12h2M8 16h2M2.5 21h19"/>',
   briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/>',
+  // Les types de démarche du guide : un livre (information), un chemin (parcours).
+  book: '<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
+  route: '<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>',
   corner: '<path d="M5 4v9a3 3 0 0 0 3 3h11"/><path d="M15 12l4 4-4 4"/>',
   // Le plan des bâtiments de l'annuaire (27/11) : le plan d'un étage (des murs) et un local (sa porte) ; l'étage est « stack » et
   // le site « pin ».

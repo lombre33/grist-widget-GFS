@@ -104,7 +104,7 @@
 .gd-who-b { color: var(--text-muted); font-size: max(12px, var(--fs-min)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* La fiche : à gauche la démarche (chemin, titre, étapes), à droite « Qui contacter ». */
-.gd-back { margin: 10px 14px 0; }
+.gd-back { margin: 0; }
 .gd-info { padding: 8px 14px 14px; }
 .gd-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 0 0 4px; }
 .gd-crumb { padding: 0 2px; border: 0; background: transparent; color: var(--text-muted); font: inherit; font-size: max(12.5px, var(--fs-min)); cursor: pointer; }
@@ -175,6 +175,32 @@
 .gd-edit .mod-foot { align-items: center; }
 .gd-remove { color: var(--danger-ink); border-color: var(--danger-ink); }
 .gd-remove[aria-disabled="true"] { opacity: .6; cursor: not-allowed; }
-.gd-fiche-bar { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+.gd-fiche-bar { display: flex; align-items: center; gap: 6px; justify-content: space-between; margin: 10px 14px 0; }
 .gd-ibtn[aria-disabled="true"], .gd-edit-b[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
 .gd-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 18px; }
+
+/* Les types de démarche (27/11) : la pastille du type (même magenta que le fichier), la réponse en grand, le numéro à appeler, le lieu, le bouton d'action, l'ordre d'un parcours. */
+.gd-chip.is-type { background: var(--t-guide-soft); color: var(--t-guide-ink); border-color: var(--t-guide-line); }
+.gd-chip.is-when { margin-right: 6px; font-variant-numeric: tabular-nums; }
+.gd-chip.is-toggle { cursor: pointer; }
+.gd-chip.is-toggle[aria-pressed="true"] { background: var(--accent-soft, var(--t-guide-soft)); border-color: var(--accent-solid); color: var(--text); font-weight: 600; }
+.gd-answer { margin: 4px 0; font-size: calc(var(--fs-head) * 1.05); font-weight: 600; line-height: 1.4; }
+.gd-urgent { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--danger-ink); border-radius: var(--radius-lg); color: var(--danger-ink); text-decoration: none; }
+.gd-urgent-t { display: flex; flex-direction: column; min-width: 0; }
+.gd-urgent-t b { font-size: calc(var(--fs-head) * 1.1); }
+.gd-urgent-t small { color: var(--text-muted); }
+.gd-where { display: flex; align-items: center; gap: 8px; }
+.gd-where-t { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; }
+.gd-where-t small { color: var(--text-muted); }
+.gd-where .btn[aria-disabled="true"] { opacity: .6; cursor: not-allowed; }
+.gd-cta { align-self: flex-start; text-decoration: none; }
+.gd-kv { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.gd-kv-k { min-width: 90px; color: var(--text-muted); font-size: max(12.5px, var(--fs-min)); font-weight: 600; }
+.gd-long { white-space: pre-wrap; overflow-wrap: anywhere; }
+.gd-link { color: var(--accent-ink, var(--accent-solid)); overflow-wrap: anywhere; }
+.gd-ty-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.gd-ty-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.gd-ty-ic { width: 18px; height: 18px; color: var(--t-guide-ink); }
+.gd-ty-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gd-ty-new { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: center; }
+.gd-ty-pick { display: flex; flex-wrap: wrap; gap: 4px; }

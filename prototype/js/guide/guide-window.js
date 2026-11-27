@@ -8,7 +8,8 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { mountWindow, giveBackFocus, trapTab, listKeys, LIST_SHOWN } from '../ui/modal.js';
 import { ancestors, below, searchProcedures } from './guide-model.js';
-import { themeTiles, treeNav, procedureRow, infoPane, contactsPane } from './guide-panes.js';
+import { themeTiles, treeNav, procedureRow, infoPane, contactsPane, visibleAnswer } from './guide-panes.js';
+import { typeOf } from './guide-types.js';
 import { treeKeys } from './guide-keys.js';
 
 const VIEWS = Object.freeze([['themes', 'tiles', 'gd.view.themes'], ['list', 'list', 'gd.view.list']]);
@@ -237,8 +238,8 @@ export class GuideWindow {
     const back = h('button', { type: 'button', class: 'btn sm gd-back', dataset: { act: 'back', fk: 'back' } }, icon('chev-left'), t('gd.back'));
     const edit = h('button', { type: 'button', class: 'btn sm gd-edit-b', 'aria-disabled': this.#addWhy() ? 'true' : null, title: this.#addWhy() || null,
       dataset: { act: 'edit', row: String(proc.row), fk: 'edit' } }, icon('edit'), t('gd.proc.edit'));
-    return [h('div', { class: 'gd-card gd-fiche-info' }, h('div', { class: 'gd-fiche-bar' }, back, edit), infoPane(data, proc, { t })),
-      h('div', { class: 'gd-card gd-fiche-who' }, contactsPane(data.answerFor(proc.row),
+    return [h('div', { class: 'gd-card gd-fiche-info' }, h('div', { class: 'gd-fiche-bar' }, back, edit), infoPane(data, proc, { t, config: data.config })),
+      h('div', { class: 'gd-card gd-fiche-who' }, contactsPane(visibleAnswer(data.answerFor(proc.row), typeOf(data.config, proc)),
         { t, titleOf: row => (data.index.byRow.get(row) || { title: '' }).title }))];
   }
 
@@ -282,6 +283,7 @@ export class GuideWindow {
       configure: () => this.#o.onConfigure(),
       new: () => this.#o.onNew(),
       newproc: () => this.#newProc(),
+      mapoff: () => this.say(this.#o.t('gd.map.off')),
       edit: () => this.#guardedEdit(row),
       view: () => { this.#view = data.view; this.#proc = null; this.#note = ''; this.#repaint(); },
       open: () => this.#openProc(row),

@@ -8,7 +8,8 @@ import { openModal } from '../ui/modal.js';
 import { pickFrom } from '../ui/pick-window.js';
 import { formRow, chooser } from '../annuaire/annuaire-setup-shared.js';
 import { ancestors } from './guide-model.js';
-import { mothersFor, valuesFrom, problemOf, choicesFor } from './guide-write.js';
+import { mothersFor, valuesFrom, problemOf, choicesFor, visibleFields } from './guide-write.js';
+import { typeLabel, fieldLabel } from './guide-types.js';
 
 const TEXT_FIELDS = Object.freeze([['title', 'gd.proc.f.title', 'input'], ['keywords', 'gd.proc.f.keywords', 'input'], ['steps', 'gd.proc.f.steps', 'area'],
   ['details', 'gd.proc.f.details', 'area']]);
@@ -32,6 +33,11 @@ export class GuideEdit {
   get #ctx() { return { directory: this.#o.directory, data: this.#o.read.data }; }
 
   #field(key) { return this.#fields.find(item => item.key === key); }
+
+  get #config() { return this.#o.read.config; }
+
+  // Les champs que le formulaire montre pour le type choisi.
+  #visible() { return visibleFields(this.#fields, this.#config, this.#values.kind); }
 
   // Ce que dit un champ qu'on ne sait pas écrire (colonne absente ou d'un type que GFS n'écrit pas) : grisé, avec sa raison.
   #why(item) { return item.mode ? '' : this.#o.t(item.column ? 'gd.proc.noWrite' : 'gd.proc.noCol', { col: item.col }); }
@@ -70,6 +76,17 @@ export class GuideEdit {
     this.#paint();
   }
 
+  async #pickKind() {
+    const { t, container, inertTargets } = this.#o;
+    const config = this.#config;
+    const items = [{ value: '', label: t('gd.proc.noKind'), glyph: 'x', hint: t('gd.proc.noKindHint') },
+      ...config.types.map(type => ({ value: type.id, label: typeLabel(type, t), glyph: type.glyph,
+        hint: type.fields.map(id => config.fields.find(field => field.id === id))
+        .filter(Boolean).map(field => fieldLabel(field, t)).join(' · ') }))];
+    const chosen = await pickFrom({ container, inertTargets, t, title: t('gd.proc.f.kind'), items, current: this.#values.kind || '', none: t('an.noneFound') });
+    if (chosen !== null) { this.#values.kind = chosen; this.#paint(); }
+  }
+
   // ---------- la fenêtre ----------
 
   #textRow(key, labelKey, shape) {
@@ -83,6 +100,19 @@ export class GuideEdit {
       dataset: { fk: `pf:${key}` } });
     control.value = this.#values[key] ?? '';
     return formRow(key === 'title' ? `${t(labelKey)} *` : t(labelKey), control, why || (HINTS[key] ? t(HINTS[key]) : ''));
+  }
+
+  // Un champ du type : une ligne, un paragraphe, une liste ou une adresse, selon sa forme.
+  #extraRow(item) {
+    const { t } = this.#o;
+    const { extra } = item;
+    const why = this.#why(item);
+    const long = extra.shape === 'long';
+    const control = h(long ? 'textarea' : 'input', { class: long ? 'an-set-input gd-area' : 'an-set-input', autocomplete: 'off', rows: long ? '3' : null,
+      type: long ? null : 'text',
+      'aria-label': fieldLabel(extra, t), readonly: why ? '' : null, title: why || null, dataset: { fk: `pf:${item.key}` } });
+    control.value = this.#values.extra[extra.id] ?? '';
+    return formRow(fieldLabel(extra, t), control, why || (extra.shape === 'list' ? t('gd.proc.h.list') : extra.shape === 'link' ? t('gd.proc.h.link') : ''));
   }
 
   #roleRow(item) {
@@ -103,12 +133,18 @@ export class GuideEdit {
     const { t } = this.#o;
     const { body, note, save } = this.#refs;
     const parent = this.#field('parent');
+    const kind = this.#field('kind');
     const roles = this.#fields.filter(item => item.key.startsWith('role:'));
+    const type = this.#config.types.find(each => each.id === this.#values.kind);
     const keep = body.ownerDocument.activeElement;
     const kept = keep && keep.dataset ? keep.dataset.fk : null;
     body.replaceChildren(this.#textRow('title', 'gd.proc.f.title', 'input'),
+      kind ? formRow(t('gd.proc.f.kind'), chooser(t, 'pf:kind', type ? typeLabel(type, t) : '', { act: 'kind' },
+        { disabled: !kind.mode, title: this.#why(kind) }),
+        t('gd.proc.h.kind')) : null,
       parent ? formRow(t('gd.proc.f.parent'), chooser(t, 'pf:parent', this.#labelOf(parent) || t('gd.proc.noMother'), { act: 'mother' }),
         t('gd.proc.h.parent')) : null,
+      ...this.#visible().filter(item => item.key.startsWith('x:')).map(item => this.#extraRow(item)),
       ...TEXT_FIELDS.slice(1).map(([key, label, shape]) => this.#textRow(key, label, shape)),
       roles.length ? h('h3', { class: 'gd-set-h' }, t('gd.proc.contacts')) : null,
         roles.length ? h('p', { class: 'an-set-hint' }, t('gd.proc.contactsHint')) : null,
@@ -125,14 +161,15 @@ export class GuideEdit {
     const { t, writeBlock } = this.#o;
     const blocked = writeBlock && writeBlock();
     if (blocked) return blocked;
-    const key = problemOf(this.#fields, this.#values);
+    const key = problemOf(this.#visible(), this.#values);
     return key ? t(key) : '';
   }
 
   // La saisie : le champ qui change met à jour la valeur sans redessiner (le clavier reste où il est).
   #input(event) {
     const fk = event.target.dataset ? event.target.dataset.fk : '';
-    if (fk && fk.startsWith('pf:') && fk !== 'pf:parent') this.#values[fk.slice(3)] = event.target.value;
+    if (fk && fk.startsWith('pf:x:')) this.#values.extra[fk.slice(5)] = event.target.value;
+    else if (fk && fk.startsWith('pf:') && fk !== 'pf:parent' && fk !== 'pf:kind') this.#values[fk.slice(3)] = event.target.value;
     else if (fk && fk.startsWith('pr:')) this.#values.roles[fk.slice(3)] = { id: null, text: event.target.value };
     const problem = this.#problem();
     this.#refs.note.textContent = problem;
@@ -144,6 +181,7 @@ export class GuideEdit {
     const button = event.target.closest('[data-act]');
     if (!button || button.getAttribute('aria-disabled') === 'true') return;
     if (button.dataset.act === 'mother') void this.#pickMother();
+    else if (button.dataset.act === 'kind') void this.#pickKind();
     else if (button.dataset.act === 'role') void this.#pickRole(this.#field(`role:${button.dataset.col}`));
   }
 
@@ -168,7 +206,8 @@ export class GuideEdit {
     refs.body.addEventListener('click', event => this.#click(event));
     refs.body.addEventListener('input', event => this.#input(event));
     refs.save.addEventListener('click', () => {
-      if (refs.save.getAttribute('aria-disabled') !== 'true') done({ values: this.#values, before: proc ? valuesFrom(proc, null) : null }); });
+      if (refs.save.getAttribute('aria-disabled') !== 'true') done({ values: this.#values, before: proc ? valuesFrom(proc, null) : null,
+        fields: this.#visible() }); });
     if (remove) remove.addEventListener('click', () => { if (remove.getAttribute('aria-disabled') !== 'true') done({ remove: true }); });
     cancel.addEventListener('click', () => done(null));
     return result;

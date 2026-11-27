@@ -47,6 +47,7 @@ const TROISIEME_PERSONNE = new Set([
   'mod.native.copy', 'mod.native.missing', 'so.tab.none.folder', // le nom « copie » (« Copie figée », « Copie indisponible : … », le niveau « Copie à jour »), pas l'impératif de « copier »
   'dep.tag.copy', 'dep.d.ok', 'dep.src.noCopy', // idem : « copie figée », « Copie intacte », « Copie indisponible »
   'dep.state.active', // l'adjectif « Active » (l'état d'une bibliothèque), pas l'impératif d'« activer »
+  'gd.type.request', // le nom du type « Demande » (une démarche qu'on demande), pas l'impératif de « demander »
   'an.sub.refreshHint', 'an.sub.refreshNoDate', 'an.sub.stamp', 'an.sub.stampNoDate', // le nom « copie » (« copie du 20/11 »), pas l'impératif de « copier »
 ]);
 const PRONOM_TU = /(^|[^\p{L}])(?:(?:tu|toi|ton|ta|tes|te|tien|tiens|tienne|tiennes)(?![\p{L}])|t[’'](?=\p{L}))/iu;

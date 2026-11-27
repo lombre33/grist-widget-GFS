@@ -41,3 +41,31 @@
   .an-body[data-view="plan"], .an-body[data-view="plan"][data-side="true"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
   .an-main[data-view="plan"] { overflow: hidden; }
 }
+
+/* L'image du plan d'un lieu (lot 2 ; js/annuaire/annuaire-plan-map.js) : un cadre qu'on agrandit et qu'on déplace, sur fond creusé, les trois boutons de zoom en haut à
+   droite. L'image s'ajuste dans le cadre (`object-fit`), puis la vue la déplace par `transform` (posé par le code, jamais un attribut `style`). Large (plus de 640 px) et
+   sans la fiche ouverte : le cadre à gauche, les lieux et les occupants à droite ; sinon l'un sous l'autre. */
+.an-pl-imgacts { flex: none; display: flex; flex-wrap: wrap; gap: 6px; margin-left: 4px; }
+.an-pl-imgacts:empty { display: none; }
+.an-pl-img-b[aria-disabled="true"] { color: var(--text-muted); cursor: default; }
+.an-pl-side { flex: none; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.an-pl-map { flex: none; margin: 0; }
+.an-pl-vp { position: relative; height: clamp(140px, 40vh, 300px); overflow: hidden; border: 1px solid var(--border); border-radius: calc(var(--radius-lg) * 1.25); background: var(--surface-sunken);
+  touch-action: none; outline-offset: 2px; }
+.an-pl-vp.is-zoomed { cursor: grab; }
+.an-pl-vp.is-drag { cursor: grabbing; }
+.an-pl-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform-origin: 0 0; user-select: none; -webkit-user-drag: none; }
+.an-pl-mapnote { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: 12px; text-align: center; }
+.an-pl-mapnote[hidden] { display: none; }
+.an-pl-zoom { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
+.an-pl-zb { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-btn);
+  background: var(--surface); color: var(--text); cursor: pointer; }
+.an-pl-zb:hover { border-color: var(--border-strong); }
+.an-pl-zb[aria-disabled="true"] { color: var(--text-muted); cursor: default; }
+.an-pl-zb svg { width: 15px; height: 15px; }
+@container an (min-width: 640px) {
+  .an-body[data-view="plan"][data-side="false"] .an-pl-body.has-map { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; gap: 10px 14px; }
+  .an-body[data-view="plan"][data-side="false"] .an-pl-body.has-map > .an-pl-head { grid-column: 1 / -1; }
+  .an-body[data-view="plan"][data-side="false"] .an-pl-body.has-map > .an-pl-map { grid-column: 1; grid-row: 2; }
+  .an-body[data-view="plan"][data-side="false"] .an-pl-body.has-map > .an-pl-side { grid-column: 2; grid-row: 2; }
+}

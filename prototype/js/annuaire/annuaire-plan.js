@@ -10,7 +10,7 @@
 // l'annuaire cache.
 
 import { normalize } from '../ui/search.js';
-import { planReady } from './annuaire-config.js';
+import { planReady, PLAN_TABLE } from './annuaire-config.js';
 
 export const KINDS = Object.freeze(['site', 'building', 'floor', 'room']);
 export const USES = Object.freeze(['office', 'meeting', 'circulation', 'service']);
@@ -74,7 +74,8 @@ export function planOf(config, tableId, data) {
   const column = people && Array.isArray(people[config.plan.office]) ? people[config.plan.office] : [];
   const offices = new Map();
   (people && Array.isArray(people.id) ? people.id : []).forEach((row, i) => { if (byId.has(column[i])) offices.set(row, column[i]); });
-  return { table: config.plan.table, places, byId, kids, offices };
+  // `canImage` : la table a sa colonne « Plan » (les pièces jointes) ; sans elle, rien ne s'écrit (jamais une colonne absente).
+  return { table: config.plan.table, places, byId, kids, offices, canImage: Array.isArray(rows[PLAN_TABLE.image]) };
 }
 
 // Le genre d'un lieu : celui que la table dit, sinon celui que sa profondeur suggère (site, bâtiment, étage, local).

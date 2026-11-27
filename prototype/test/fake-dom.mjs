@@ -8,10 +8,19 @@ class FakeNode {
   prepend(...nodes) { this.children.unshift(...nodes); }
   replaceChildren(...nodes) { this.children = [...nodes]; }
   cloneNode() { return this; }
+  // Les classes d'un nœud, lues et écrites dans `className` (`add`, `remove`, `toggle`, `contains`).
+  get classList() {
+    const node = this;
+    const list = () => node.className.split(/\s+/).filter(Boolean);
+    const set = names => { node.className = [...new Set(names)].join(' '); };
+    return { contains: name => list().includes(name), add: (...names) => set([...list(), ...names]), remove: (...names) => set(list().filter(each => !names.includes(each))),
+      toggle(name, force) { const on = force === undefined ? !list().includes(name) : Boolean(force); set(on ? [...list(), name] : list().filter(each => each !== name)); return on; } };
+  }
   get elements() { return this.children.filter(node => typeof node !== 'string'); }
   // `h` ajoute du texte comme chaîne ; `children` de `infoBar` est lu comme des éléments : la doublure sépare les deux.
   get childrenElements() { return this.elements; }
   get textContent() { return this.children.map(node => (typeof node === 'string' ? node : node.textContent)).join(''); }
+  set textContent(value) { this.children = value === '' || value == null ? [] : [String(value)]; }
 }
 
 export function installFakeDocument() {

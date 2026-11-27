@@ -30,6 +30,8 @@ import { MergedView, canMerge } from './annuaire-merge-view.js';
 import { MERGED_ROW, mergeReads } from './annuaire-merge.js';
 import { PickWindow, personPayload } from './annuaire-pick.js';
 import { useImages } from './annuaire-images.js';
+import { writePlanImage } from './annuaire-plan-image.js';
+import { imageWhy } from './annuaire-plan-pane.js';
 
 const NEW = '__new__';
 const NEW_SUB = '__new_sub__';
@@ -70,7 +72,7 @@ export class AnnuaireControl {
       notice: text => opts.notice(text), port: opts.port, rights: opts.rights, schema: () => this.#schema(), writeBlock: () => opts.writeBlock() });
     this.#window = new AnnuaireWindow({ container: opts.container, t: opts.t, locale: opts.locale, inertTargets: opts.inertTargets, writeBlock: opts.writeBlock,
       onSwitch: () => void this.#switch(), onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onEdit: row => this.#edit(row),
-        onAdd: () => this.#addPeople(),
+        onAdd: () => this.#addPeople(), onPlanImage: (id, file) => void this.#planImage(id, file),
       onCheck: () => this.#check(), onMail: people => this.#mail(people), onPresence: (row, on) => this.#setPresence(row, on),
         onSub: key => this.#subGesture(key), onMergePick: row => this.#mergePick(row), targets: () => (opts.targets ? opts.targets() : []),
       onInsert: (id, person) => this.#insert(id, person), onUnlock: target => (opts.unlock ? opts.unlock(target) : undefined),
@@ -330,6 +332,21 @@ export class AnnuaireControl {
     await this.#read(true);
     this.#window.say(t(on ? 'an.pres.shown' : 'an.pres.hidden', { name: person.name }));
     return true;
+  }
+
+  // L'image du plan d'un lieu : choisie, remplacée ou retirée (`file` : null). Réservée aux administrateurs ; une seule cellule s'écrit
+  // (js/annuaire/annuaire-plan-image.js).
+  async #planImage(id, file) {
+    const { t } = this.#o;
+    const read = this.#data;
+    if (!read || !read.plan) return;
+    const blocked = this.#o.writeBlock();
+    if (blocked) { this.#o.notice(blocked); return; }
+    const why = imageWhy(read);
+    if (why) { this.#window.say(t(why)); return; }
+    const done = await writePlanImage({ store: this.#store, plan: read.plan, id, file, t });
+    if (done.ok) await this.#read(true);
+    this.#window.say(done.say);
   }
 
   // La lecture d'un annuaire principal, vue d'un administrateur (les fiches masquées y sont) : de quoi prendre la copie d'un sous-annuaire.

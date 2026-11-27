@@ -59,7 +59,7 @@ const alive = async run => { if (run.frame.isDetached()) run.frame = await findF
 const fetchTable = async (run, name) => (await alive(run)).evaluate(table => grist.docApi.fetchTable(table), name);
 const rowsOf = data => (data && data.id ? data.id.map((id, i) => Object.fromEntries(Object.keys(data).map(key => [key, data[key][i]]))) : []);
 // La ligne-sonde de `GFS_Filing` (`@sonde`) est ajoutée par GFS puis retirée aussitôt (rangement.js) : on ne lit pas la table pendant qu'elle y est (jusqu'à 10 s). Il arrive (document
-// tenu par Sync+, une fois sur deux ou trois) que la ligne reste : le retrait est perdu, cause non mesurée (le cadre refait ?). Ce n'est pas ce que cet essai mesure : elle n'est pas comptée.
+// tenu par Sync+, trois fois sur quatre) que la ligne reste : le retrait est perdu (le cadre refait ?) ; GFS la retire désormais en tâche de fond (run-sonde-restee.mjs). Ce n'est pas ce que cet essai mesure : elle n'est pas comptée.
 const rows = async (run, name) => {
   for (let attempt = 0; ; attempt += 1) {
     const list = rowsOf(await fetchTable(run, name));

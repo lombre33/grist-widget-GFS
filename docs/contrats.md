@@ -1392,6 +1392,12 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    celle que GFS a donnée (`access`, `gfs`) et rien n'est écrit dans le document ; l'essai échoue avec l'app à `71287c4`. À
    `dc00b9d`, le choix de langue de l'app restait refusé dans GFS (le cadre n'a pas de stockage : la case revenait sur la
    langue de la page, sans rechargement) ; depuis `f6d3fd0` il est grisé et la langue est celle de GFS (point 6).
+   **Après un rechargement de la page de Grist (27/11, cahier 6.2, point 6 ; faits vérifiés 188)**, GFS rouvre le fichier que la personne avait ouvert :
+   c'est une **ouverture comme un double-clic**, de raison `explorateur` (aucune raison de plus, le contrat ne change pas), rendue une fois au premier
+   `contexte` de l'app à froid, ou par l'appel `ouvrir` d'une app déjà là. GFS ne la lance qu'après avoir lu la liste des fichiers de la personne et y
+   avoir trouvé le fichier : une app lancée à froid sur un numéro absent ou que les règles cachent ouvre une page blanche (« Nouveau modèle », mesuré le
+   26/11), jamais rouvert à l'aveugle. L'app n'a rien à faire de plus ; elle applique, à cette ouverture, ce qu'elle applique à toute ouverture (le mode
+   Lecture ou Édition de la vue pour Publipostage+, faits vérifiés 186).
 4. [D] `bibliotheques` : GFS cherche dans son catalogue (2.6, point 6) les bibliothèques qu'exigent les extensions actives de
    l'app et donne, pour chacune, l'adresse du mode choisi (CDN ou vendorisé) et son empreinte. L'extension charge la
    bibliothèque par cette adresse, avec l'empreinte (`integrity`) et `crossorigin="anonymous"`, au premier usage, et ne charge
@@ -2427,7 +2433,13 @@ rangée d'un fichier, selon ce qui vient d'abord.
    22/10** dans le vrai moteur de Grist (grist-static, Pyodide ; `prototype/labo/run-identite.mjs`, 41 vérifications, fr/clair
    et en/sombre) : voir `faits-verifies.md`, section 3. Sous le niveau « Partagé » (11.4, point 2), une règle laisse chaque
    personne ajouter, lire et retirer sa seule ligne-sonde ; sans elle, la sonde est refusée à tout non-propriétaire. [M] Mesuré
-   le 22/10 : faits vérifiés, 10.8.
+   le 22/10 : faits vérifiés, 10.8. **Une ligne-sonde restée** (26/11) : le retrait part sans attendre ; si Grist refait la page entre
+   l'ajout et le retrait, ou si l'onglet se ferme, il est perdu et la ligne reste. GFS la retire alors **en tâche de fond, 8 secondes après
+   qu'il est prêt** (jamais au démarrage, une seule fois par ouverture, d'un seul lot, seulement s'il y en a) : celles dont `Address`
+   est l'adresse de la personne, jamais celle d'une autre (elle retire les siennes à son tour), ni en lecture seule, ni dans un document
+   qu'une version plus récente a préparé (point 16). Une ligne-sonde que la page lit puis ne retrouve pas (retirée par une autre page de
+   la personne) ne dit pas que la personne est inconnue : rien n'est gardé, le geste suivant réessaie. [M] Mesuré le 26/11 : faits
+   vérifiés, 185.
 10. [T] **Copier, couper, coller** (décision du porteur, 04/11). Le presse-papiers de l'explorateur est **à lui** (une seule chose à
     la fois, en mémoire de la page : ni le presse-papiers du système, ni le navigateur ; il se vide à la fermeture de l'explorateur,
     parce que ce qui y attendait a pu changer pendant que la personne était dans une app). **Ctrl/⌘+C** copie un fichier (un dossier

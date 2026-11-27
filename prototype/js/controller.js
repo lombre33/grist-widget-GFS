@@ -53,6 +53,7 @@ import { SecurityRelay } from './broker/security-relay.js';
 import { ask } from './ui/ask-window.js';
 import { Entries } from './broker/entries.js';
 import { Openings } from './broker/openings.js';
+import { Resume } from './broker/resume.js';
 import { OpenedFiles } from './explorer/opened-files.js';
 import { FilesReading } from './explorer/files-reading.js';
 import { createHeavyHint } from './explorer/heavy-hint.js';
@@ -133,6 +134,7 @@ export class GfsController {
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
     const docId = docKey(() => this.port.doc.getDocName()); // demandé une fois à Grist, pour ce qui se garde par document sur le navigateur
+    this.docId = docId;
     this.#buildLightReads(docId);
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Filing` (contrats 7.4), écrit seulement sur un geste de la
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
@@ -147,6 +149,7 @@ export class GfsController {
       personTargets: entries.personTargets });
     this.opened = new OpenedFiles(); // les fichiers que GFS a ouverts dans une app, pour la vue « Ouverts » de l'explorateur (js/explorer/opened-files.js)
     this.openings = new Openings(this);
+    this.resume = new Resume(this); // où la personne en était avant un rechargement de la page (js/broker/resume.js)
     this.links = this.#buildLinks();
     // Le cadre d'envoi (js/broker/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire
     // (js/rights/rights-reader.js).
@@ -303,6 +306,7 @@ export class GfsController {
     buildDock(this);
     const arrived = await this.#arrive(identified);
     await identified;
+    this.resume.begin(); // d'ici, où la personne est se retient
     doc.body.dataset.gfs = 'ready';
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
@@ -313,6 +317,7 @@ export class GfsController {
     if (!this.writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false,
       isOwner: () => this.transfer.isOwner(), resumeReception: () => this.otherDocuments.resumeReceive() }).catch(error =>
         console.warn('GFS : le partage entre documents ne reprend pas', error));
+    if (this.fullAccess) this.rangement.sweepLater(); // les lignes-sondes restées s'enlèvent plus tard, en tâche de fond (js/files/rangement.js)
     this.weight.watch(); // le poids du document, 5 s plus tard (js/weight/weight-guard.js) : en dernier, rien d'autre n'attend après lui
   }
 
@@ -330,6 +335,8 @@ export class GfsController {
   // l'explorateur. Les réglages de la section parlent d'abord ; sans eux, la table d'une app qui garde sa vue dans le document (`arrivee` du manifeste) dit si
   // la section est la sienne (js/broker/arrival-table.js). Rend `true` si une app s'est ouverte.
   async #arrive(identified) {
+    const resumed = await this.resume.arrive(identified); // le souvenir de l'onglet passe avant le réglage de la vue (js/broker/resume.js)
+    if (resumed) return resumed === 'file';
     const manifests = this.manifests();
     const rules = { installed: appId => this.registry.has(appId), granted: this.state.grantedAccess };
     let id = arrivalApp(this.state.allOptions, manifests, rules);
@@ -432,6 +439,7 @@ export class GfsController {
     this.dock.setPresent(false);
     if (this.session) this.session.show(false);
     this.explorer.open();
+    this.resume.sync();
     void this.refreshFiles();
     this.liveList.start();
     this.rights.resume(this.explorer, { annuaire: () => void openAnnuaire(this).then(() => this.notice(this.t('an.sub.ready'))),
@@ -452,6 +460,7 @@ export class GfsController {
       this.session.show(true);
       this.session.focus();
     }
+    this.resume.sync();
   }
 
   // Une seule lecture des fichiers fait foi, la dernière lancée (js/explorer/files-reading.js). `quiet` : sans « Lecture des fichiers… ».

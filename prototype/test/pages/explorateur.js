@@ -4,7 +4,7 @@
 // dernier fichier que l'explorateur a ouvert ; `window.__askConflict({ app, repeat })` ouvre la fenêtre du nom pris et `window.__conflict` garde la réponse de la personne quand elle se ferme.
 // La corbeille et le clavier (test/corbeille-firefox.mjs) : le vrai `Trash` (js/files/trash.js) et la vraie fenêtre d'accord (js/ui/ask-window.js) sur un gardien de doublure qui déplace les fichiers entre deux
 // listes ; `window.__filing` note ce que l'explorateur demande au rangement (renommer, déplacer, épingler), `window.__notices` les phrases qu'il dit, `window.__explorer` est l'explorateur, et
-// `window.__reset()` remet les fichiers, la vue et la recherche comme au départ ; `window.__language`, `window.__place` et `window.__langtool` gardent le dernier choix du menu « Réglages » (la langue, le bord de la barre : la ligne de la barre est ici une doublure,
+// `window.__reset()` remet les fichiers, la vue et la recherche comme au départ ; `window.__language`, `window.__place`, `window.__langtool` et `window.__reopen` (« Rouvrir au rechargement », allumé au départ) gardent le dernier choix du menu « Réglages » (la langue, le bord de la barre : la ligne de la barre est ici une doublure,
 // celle du vrai Dock se mesure dans le labo) et `window.__resetSettings()` les remet au départ. L'ambiance (décision du 03/11) et l'accessibilité renforcée (04/11) : `window.__theme` est le réglage du thème (`choose`, `chooseAccess`), et la page prend
 // ce qu'il dit comme celle de GFS. La copie et le presse-papiers (test/copier-firefox.mjs) : le vrai `Copying` (js/files/copying.js) sur un gardien de doublure qui
 // ajoute une copie à la liste (premier nom libre), et un rangement de doublure qui déplace vraiment les fichiers et les dossiers ; `window.__copies` note [identifiant, dossier] de chaque copie rangée.
@@ -262,7 +262,7 @@ async function mount() {
   window.__keep = (...paths) => { kept = [...new Set([...kept, ...paths])]; show(); };
   // Le menu « Réglages » : la langue et le bord de la barre que la personne a choisis en dernier (la ligne de la barre est une doublure : le vrai Dock se mesure dans le labo), et la vraie fenêtre « À propos ».
   const EDGES = [['gauche', 'dock-left'], ['haut', 'dock-top'], ['droite', 'dock-right'], ['bas', 'dock-bottom']];
-  window.__resetSettings = () => { window.__language = language; window.__place = 'gauche'; window.__langtool = false; };
+  window.__resetSettings = () => { window.__language = language; window.__place = 'gauche'; window.__langtool = false; window.__reopen = true; };
   window.__resetSettings();
   const place = () => ({
     label: i18n.t('dock.place'), icon: 'dock-left', submenu: EDGES.map(([edge, glyph]) => ({ label: i18n.t(`dock.${edge}`), icon: glyph, check: window.__place === edge, run: () => { window.__place = edge; } })),
@@ -411,7 +411,8 @@ async function mount() {
     typeLabel: file => (file.received ? received.typeLabel(file) : baseLabel(file)),
     lockOf: file => (file.received ? received.lockOf(file) : (file.name === 'Autre format' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => window.__importTypes || [], canClose: () => window.__canClose !== false,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
-      langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(), onDependencies: () => { window.__dependenciesAsked = (window.__dependenciesAsked || 0) + 1; void window.__dependencies(); },
+      langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }),
+      reopen: () => ({ on: window.__reopen, toggle: () => { window.__reopen = !window.__reopen; } }), place, onAbout: () => window.__about(), onDependencies: () => { window.__dependenciesAsked = (window.__dependenciesAsked || 0) + 1; void window.__dependencies(); },
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }),
       index: () => ({ why: null, open: () => { window.__indexFromSettings = (window.__indexFromSettings || 0) + 1; window.__indexAsk(); }, notice: text => window.__notices.push(text) }) }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; }, get notices() { return window.__noticeStore; },

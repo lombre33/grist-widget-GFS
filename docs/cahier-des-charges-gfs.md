@@ -732,6 +732,19 @@ enregistrée par l'autre app.
 4. L'app applique ensuite son propre ordre d'arrivée. Pour Publipostage+ : la ligne choisie si une règle la retient, puis le
    modèle de la vue, puis le ★ du document, sinon une page blanche (`js/main.js`, démarrage).
 5. Une section neuve, sans rien : l'explorateur vide, qui propose « Installer une app ». Rien ne s'installe sans un geste.
+6. **Après un rechargement de la page (décidé le 27/11, demande du porteur : « si un fichier d'app est ouvert, on rouvre le même fichier dans
+   l'app ; si on était dans l'explorateur, on rouvre le même endroit »)** : ce point passe **avant** les points 1 à 5. Quand Grist recharge la page,
+   ou qu'on la quitte pour une autre page de Grist et qu'on y revient, il reconstruit le cadre de GFS (mesuré, faits vérifiés 188). GFS retient donc,
+   sur l'onglet seulement (`sessionStorage` du cadre, jamais dans le document ni dans la vue de Grist), où la personne en est : le fichier que GFS
+   a fait ouvrir dans une app, ou l'endroit de l'explorateur (la vue, le dossier). Au démarrage : le fichier est rouvert, le même, dans l'app (comme
+   un double-clic, raison `explorateur`, contrats 5.2, point 3) s'il existe encore dans la liste de la personne et si son app et son extension le
+   permettent ; sinon l'explorateur s'ouvre avec une phrase qui dit pourquoi (jamais la page blanche que Publipostage+ montrerait d'un numéro
+   absent) ; l'explorateur revient au même dossier (un dossier disparu ramène au dossier du dessus) ou à la même vue (Récents, Favoris, Partagés
+   avec moi, corbeille). Sans souvenir (onglet neuf), pour une autre personne, ou sans accès complet : l'arrivée est celle des points 1 à 5, le
+   réglage de la vue reste le départ d'un onglet neuf. La ligne « Rouvrir au rechargement » (Réglages ▸ Réglages avancés, allumée de départ) la
+   coupe, et efface ce qu'elle retenait. **Limites dites** : GFS ne connaît que les fichiers qu'il a lui-même fait ouvrir (un modèle changé dans le
+   sélecteur de l'app, ou un « Nouveau » pas encore enregistré, n'est pas retenu) ; la liste « Fichiers ouverts » repart vide ; un fichier rouvert
+   suit le mode Lecture ou Édition de la vue ; ce qui n'était pas enregistré est perdu, comme à tout rechargement.
 
 ### 6.3 Navigation
 

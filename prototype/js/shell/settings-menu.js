@@ -13,8 +13,10 @@ import { LANGUAGE_NAMES } from './language.js';
 // opts : { t, language() → { choice, grist }, onLanguage(choice), onTheme(), langtool() → { shown, toggle() } (js/shell/correcteurs.js), place() → la ligne
 //   « Position de la barre » (js/shell/dock.js), onAbout(), onDependencies(), manage() → { why (la raison pour laquelle « Gérer les partages… » est grisé, ou
 //   null), open(),
-//   notice(texte) }, index() → la même chose pour « Index des noms… » (js/rights/index-control.js) }
-export function settingsItems({ t, language, onLanguage, onTheme, langtool, place, onAbout, onDependencies, manage, index }) {
+//   notice(texte) }, index() → la même chose pour « Index des noms… » (js/rights/index-control.js), reopen() → { on, toggle() } la ligne « Rouvrir au
+//   rechargement »
+//   (js/broker/resume.js) }
+export function settingsItems({ t, language, onLanguage, onTheme, langtool, reopen, place, onAbout, onDependencies, manage, index }) {
   const { choice, grist } = language();
   const pick = (value, label) => ({ label, check: choice === value, run: () => onLanguage(value) });
   const sharing = manage();
@@ -37,6 +39,9 @@ export function settingsItems({ t, language, onLanguage, onTheme, langtool, plac
     // chose.
     { label: t('set.advanced'), icon: 'more', title: t('set.advanced.tip'), submenu: [
       { label: t('set.langtool'), icon: 'spell', title: t('langtool.tip'), check: langtool().shown, toggle: true, run: () => langtool().toggle() },
+      // La reprise après un rechargement (26/11, demande du porteur) : allumée, GFS rouvre le fichier ou l'endroit de l'explorateur où l'on était
+      // (js/broker/resume.js).
+      { label: t('set.reopen'), icon: 'refresh', title: t('set.reopen.tip'), check: reopen().on, toggle: true, run: () => reopen().toggle() },
     ] },
     place(),
     '-',

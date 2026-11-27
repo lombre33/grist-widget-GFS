@@ -65,6 +65,17 @@ function findRow(data, values) {
 const rowsOf = (data, values) => ((data && data.id) || []).filter((rowId, i) => Object.keys(values).every(column => data[column] &&
   data[column][i] === values[column]));
 
+// Les lignes-sondes que le retrait n'a pas enlevées et que la personne a laissées elle-même : celles dont `Address` est son adresse (celle de quelqu'un d'autre
+// est à lui, il la retire à son tour). Sans adresse connue, aucune.
+function leftProbes(data, address) {
+  const me = String(address || '').toLowerCase();
+  if (!me || !data || !data.User || !data.Address) return [];
+  return data.id.filter((rowId, i) => data.User[i] === PROBE.User && String(data.Address[i] || '').trim().toLowerCase() === me);
+}
+
+// Le temps que GFS laisse passer, une fois lancé, avant de retirer en tâche de fond les lignes-sondes restées (la personne navigue déjà).
+const SWEEP_DELAY = 8000;
+
 // La ligne d'état d'un dossier que la personne garde sans fichier : ni app ni fichier (6.4, point 11).
 const folderKey = (identity, path) => ({ User: identity, App: '', File: '', Folder: path });
 
@@ -102,6 +113,7 @@ export class Rangement {
   #identity = null; // null : pas encore lue ; '' : lue, sans adresse de personne ; sinon l'adresse
   #pending = null;
   #stamped = false; // le numéro de structure a été tenté (noté ou refusé) pendant cette ouverture
+  #sweeping = false; // le retrait des lignes-sondes restées est programmé ou fait pendant cette ouverture
 
   // `port` : { doc } (les interfaces brutes de Grist) ; `consent()` : une promesse, true quand la personne accepte la création de la table ;
   // `canWrite()` : faux quand le document est en lecture seule (la sonde n'écrirait que des refus) ; `onIdentity(adresse)` : appelé quand GFS apprend l'adresse
@@ -147,6 +159,27 @@ export class Rangement {
     return this.#pending;
   }
 
+  // Les lignes-sondes que la personne a laissées dans le document (Grist refait la page entre l'ajout et le retrait, l'onglet se ferme : le retrait est perdu
+  // et la ligne reste) : retirées d'un seul lot, et seulement s'il y en a. Rien sans adresse connue, sans droit d'écrire ni sur un document qu'une version plus
+  // récente a préparé ; ni pendant qu'une sonde de cette page est en route. Rend le nombre de lignes retirées.
+  async sweepProbes() {
+    if (!this.#identity || this.#pending || !this.#canWrite()) return 0;
+    const { exists, data } = await this.#table.load();
+    if (!exists || isNewer(this.#structureIn(data).found)) return 0;
+    const left = leftProbes(data, this.#identity);
+    if (!left.length) return 0;
+    await this.#port.doc.applyUserActions([['BulkRemoveRecord', this.#table.id, left]]);
+    return left.length;
+  }
+
+  // Le retrait des lignes-sondes restées part en tâche de fond, une fois GFS lancé et pendant que la personne navigue (js/controller.js) : jamais au démarrage,
+  // une seule fois par ouverture, et un échec ne se dit que dans la console (la ligne restera jusqu'à l'ouverture suivante).
+  sweepLater(delay = SWEEP_DELAY) {
+    if (this.#sweeping) return;
+    this.#sweeping = true;
+    setTimeout(() => this.sweepProbes().catch(error => console.warn('GFS : les lignes-sondes restées n’ont pas pu être retirées', error)), delay);
+  }
+
   #learn(found) {
     if (found === null) return this.identity;
     this.#identity = found;
@@ -169,7 +202,10 @@ export class Rangement {
     try {
       const table = await doc.fetchTable(tableId);
       const at = (table.id || []).indexOf(rowId);
-      return addressOf(at >= 0 && table.Address ? table.Address[at] : '');
+      // Une ligne qui n'est plus là (une autre page de la personne a retiré les lignes-sondes restées) ne dit rien : la personne n'est pas pour autant
+      // inconnue.
+      if (at < 0) return null;
+      return addressOf(table.Address ? table.Address[at] : '');
     } finally {
       // La ligne part sans que l'adresse l'attende : une écriture de plus à Grist, c'est un aller-retour de réseau (deux fois le prix d'une lecture) que
       // l'explorateur n'a pas à patienter pour une adresse déjà lue.

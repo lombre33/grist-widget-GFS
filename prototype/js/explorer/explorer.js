@@ -20,6 +20,7 @@ import { PiecesBox } from './explorer-pj.js';
 import { Removal } from './explorer-removal.js';
 import { parentPath } from './explorer-keys.js';
 import { Keyboard } from './explorer-keyboard.js';
+import { applyPlace } from './explorer-place.js';
 import { UndoStack } from '../files/undo-stack.js';
 import { undoable } from './explorer-undo.js';
 import { Clipboard } from './explorer-clipboard.js';
@@ -148,6 +149,13 @@ export class Explorer {
   }
 
   get isOpen() { return !this.root.hidden; }
+
+  // Va à l'endroit que la reprise après un rechargement a retenu (js/explorer/explorer-place.js, js/broker/resume.js).
+  goTo(place) {
+    applyPlace(this.state, place);
+    this.#refs.search.value = '';
+    this.render();
+  }
 
   get files() { return this.#files; }
 
@@ -323,6 +331,7 @@ export class Explorer {
     this.#renderCrumbs();
     this.#renderTree();
     this.#renderList();
+    if (this.#opts.onPlace) this.#opts.onPlace(); // la reprise retient l'endroit (elle n'écrit que ce qui change)
   }
 
   #renderHead() {

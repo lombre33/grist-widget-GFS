@@ -1,0 +1,10 @@
+/* Page d'essai de la relance de LanguageTool (relance.html) : un seul cadre, assez haut pour les trois parties. */
+#cadres iframe { height: 1180px; }
+.zone { margin: 0 0 10px; }
+.zone h3 { font-size: 14px; margin: 8px 0 2px; }
+.question { margin: 2px 0; }
+.pas { margin: 4px 0; }
+.boite[data-etat="cachee"] { display: none; }
+.rang { margin: 0 0 6px; }
+.rang .nom { display: block; font-size: 12px; font-weight: 600; }
+.rang .editable { min-height: 36px; margin: 2px 0; }

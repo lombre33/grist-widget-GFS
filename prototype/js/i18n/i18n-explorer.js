@@ -56,6 +56,7 @@ export const EXPLORER_STRINGS = {
     // Les gestes d'une ligne : favori, renommer, dupliquer, déplacer, ouvrir le dossier.
     'ex.pin': 'Épingler en favori',
     'ex.unpin': 'Retirer des favoris',
+    'ex.favFolderSpace': 'Les espaces et leurs dossiers ne se mettent pas encore en favori.',
     'ex.more': 'Plus d’actions',
     'ex.rename': 'Renommer',
     'ex.duplicate': 'Dupliquer',
@@ -202,6 +203,7 @@ export const EXPLORER_STRINGS = {
     // Les gestes d'une ligne : favori, renommer, dupliquer, déplacer, ouvrir le dossier.
     'ex.pin': 'Pin as favorite',
     'ex.unpin': 'Remove from favorites',
+    'ex.favFolderSpace': 'Spaces and their folders can’t be added to favorites yet.',
     'ex.more': 'More actions',
     'ex.rename': 'Rename',
     'ex.duplicate': 'Duplicate',

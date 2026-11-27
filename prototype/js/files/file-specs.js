@@ -7,5 +7,5 @@ import { filesManifest } from './gfs-files.js';
 import { ANNUAIRES_MANIFEST } from './annuaire-files.js';
 import { GUIDES_MANIFEST } from './guide-files.js';
 
-export const fileSpecsOf = manifests => [filesManifest(), ANNUAIRES_MANIFEST, GUIDES_MANIFEST, ...manifests].flatMap(manifest =>
+export const fileSpecsOf = manifests => [filesManifest(), ANNUAIRES_MANIFEST, ...manifests, GUIDES_MANIFEST].flatMap(manifest =>
   (manifest.fichiers || []).map(spec => ({ table: spec.table, spec })));

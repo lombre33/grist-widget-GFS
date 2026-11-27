@@ -64,6 +64,7 @@ test('fileSpecsOf : les fichiers de GFS, des annuaires et des apps, chacun avec 
   const specs = fileSpecsOf([publipostage()]);
   assert.deepEqual(specs.map(item => item.table).slice(0, 3), ['GFS_Files', 'GFS_Directories', 'Publipostage_Modeles']);
   assert.ok(specs.every(item => item.spec.table === item.table));
-  assert.deepEqual(fileSpecsOf([]).length, 2);
-  assert.deepEqual(fileSpecsOf([{ id: 'sans-fichiers' }]).length, 2);
+  assert.equal(specs.at(-1).table, 'GFS_Guides', 'le guide vient après les apps : l\'ordre des tables des apps ne change pas');
+  assert.deepEqual(fileSpecsOf([]).length, 3);
+  assert.deepEqual(fileSpecsOf([{ id: 'sans-fichiers' }]).length, 3);
 });
